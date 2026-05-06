@@ -31,6 +31,7 @@ describe("init-project settings runtime", () => {
       const template = readFileSync(join(ROOT, "assets/hooks/settings.template.json"), "utf-8");
       expect(settings).toBe(template);
       expect(settings).toContain("trace-event.sh");
+      expect(settings).toContain("session-start-context.sh");
       expect(settings).not.toContain("memory-intake.sh");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

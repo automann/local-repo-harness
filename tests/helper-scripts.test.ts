@@ -30,7 +30,7 @@ function copyHelpers(cwd: string) {
   mkdirSync(scriptsDir, { recursive: true });
   mkdirSync(join(cwd, ".ai", "harness"), { recursive: true });
 
-  for (const file of readdirSync(HELPER_DIR).filter((name) => name.endsWith(".sh"))) {
+  for (const file of readdirSync(HELPER_DIR).filter((name) => name.endsWith(".sh") || name.endsWith(".ts"))) {
     copyFileSync(join(HELPER_DIR, file), join(scriptsDir, file));
   }
   copyFileSync(join(ROOT, "assets/workflow-contract.v1.json"), join(cwd, ".ai/harness/workflow-contract.json"));
@@ -500,6 +500,160 @@ describe("Workflow helper scripts", () => {
       expect(handoff).toContain("Contract: tasks/contracts/alpha.contract.md");
       expect(handoff).toContain("Checks: .ai/harness/checks/latest.json");
       expect(handoff).toContain("Next recommended action: Finish handoff");
+      expect(handoff).toContain("## Exact Next Step");
+      expect(handoff).toContain("## Resume Prompt");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prepare-handoff should include untracked files in changed-file context", () => {
+    const cwd = tmpWorkspace("helper-prepare-handoff-untracked");
+    try {
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      copyHelpers(cwd);
+      copyFileSync(
+        join(ROOT, "assets/hooks/lib/workflow-state.sh"),
+        join(cwd, ".ai/hooks/lib/workflow-state.sh")
+      );
+      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n\n- [ ] Continue\n");
+
+      expect(run("git", ["init"], cwd).status).toBe(0);
+      expect(run("git", ["config", "user.name", "Helper Test"], cwd).status).toBe(0);
+      expect(run("git", ["config", "user.email", "helper@test.local"], cwd).status).toBe(0);
+      expect(run("git", ["add", "."], cwd).status).toBe(0);
+      expect(run("git", ["commit", "-m", "init"], cwd).status).toBe(0);
+
+      writeFileSync(join(cwd, "scripts/untracked-helper.ts"), "export {}\n");
+
+      const res = run("bash", ["scripts/prepare-handoff.sh", "manual-checkpoint"], cwd);
+      expect(res.status).toBe(0);
+
+      const handoff = readFileSync(join(cwd, ".ai/harness/handoff/current.md"), "utf-8");
+      expect(handoff).toContain("scripts/untracked-helper.ts");
+      expect(handoff).toContain("untracked files");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("codex-handoff-resume should write resume packet and print bootstrap prompt", () => {
+    const cwd = tmpWorkspace("helper-codex-resume");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\n## Exact Next Step\n- Continue.\n");
+      writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
+      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
+      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n");
+      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+
+      const res = run(
+        "bash",
+        ["scripts/codex-handoff-resume.sh", "--cwd", cwd, "--reason", "unit-test", "--print-prompt"],
+        cwd,
+        { CODEX_HOME: join(cwd, ".codex") }
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("fresh Codex session");
+      expect(res.stdout).toContain("Required first reads:");
+      const resume = readFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "utf-8");
+      expect(resume).toContain("**Reason**: unit-test");
+      expect(resume).toContain(`**Working Directory**: ${cwd}`);
+      expect(resume).toContain("generated-by: project-initializer codex-handoff-resume v1");
+      expect(resume).toContain(".ai/harness/context-budget/latest.json");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("codex-handoff-resume should reject policy paths outside the repo", () => {
+    const cwd = tmpWorkspace("helper-codex-resume-safe-path");
+    const outsideName = `${cwd.split("/").pop()}-resume.md`;
+    const outsidePath = join(cwd, "..", outsideName);
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify({ handoff_resume: { resume_packet_file: `../${outsideName}` } }, null, 2) + "\n"
+      );
+
+      const res = run("bash", ["scripts/codex-handoff-resume.sh", "--cwd", cwd, "--reason", "safe-path"], cwd);
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/harness/handoff/resume.md"))).toBe(true);
+      expect(existsSync(outsidePath)).toBe(false);
+    } finally {
+      rmSync(outsidePath, { force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("codex-handoff-resume should reject policy paths outside the harness surface", () => {
+    const cwd = tmpWorkspace("helper-codex-resume-harness-surface");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      mkdirSync(join(cwd, ".git"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify({ handoff_resume: { resume_packet_file: ".git/config" } }, null, 2) + "\n"
+      );
+
+      const res = run("bash", ["scripts/codex-handoff-resume.sh", "--cwd", cwd, "--reason", "safe-surface"], cwd);
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/harness/handoff/resume.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".git/config"))).toBe(false);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prepare-codex-handoff should refresh repo/global handoff and resume packet", () => {
+    const cwd = tmpWorkspace("helper-codex-handoff");
+    const codexHome = join(cwd, ".codex");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      copyFileSync(
+        join(ROOT, "assets/hooks/lib/workflow-state.sh"),
+        join(cwd, ".ai/hooks/lib/workflow-state.sh")
+      );
+      writeFileSync(join(cwd, "AGENTS.md"), "# AGENTS\n");
+      writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
+      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
+      writeFileSync(
+        join(cwd, "tasks/todo.md"),
+        "# Task Execution Checklist (Primary)\n\n> **Source Plan**: (none)\n> **Status**: Idle\n\n## Execution\n- [ ] Continue Codex handoff\n"
+      );
+      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+
+      const res = run(
+        "bash",
+        ["scripts/prepare-codex-handoff.sh", "--reason", "unit-test"],
+        cwd,
+        { CODEX_HOME: codexHome }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/harness/handoff/current.md"))).toBe(true);
+      expect(readFileSync(join(cwd, ".ai/harness/handoff/current.md"), "utf-8")).toContain("## Exact Next Step");
+      expect(readFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "utf-8")).toContain("Codex Resume Packet");
+      const handoffs = readdirSync(join(codexHome, "handoffs")).filter((name) => /^handoff-\d{6}\.md$/.test(name));
+      expect(handoffs.length).toBe(1);
+      const global = readFileSync(join(codexHome, "handoffs", handoffs[0]), "utf-8");
+      expect(global).toContain("Filesystem-first fallback handoffs");
+      expect(global).toContain("### Repo Handoff");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -28,6 +28,7 @@ This repository dogfoods the `project-initializer` workflow. Treat it as a Bun +
 - Prefer additive migration behavior over destructive replacement.
 - Preserve the distinction between milestone tracking in `docs/PROGRESS.md` and active work tracking in `tasks/`.
 - Keep `assets/workflow-contract.v1.json` and `.ai/harness/workflow-contract.json` aligned.
+- Treat Codex auto-compact as a fallback only; long-task rollover belongs in `.ai/harness/handoff/current.md` and `.ai/harness/handoff/resume.md`.
 
 ## Verification Defaults
 

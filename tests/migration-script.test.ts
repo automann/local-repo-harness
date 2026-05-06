@@ -57,6 +57,7 @@ describe("Migration script contract", () => {
     expect(script).toContain(".ai/harness/policy.json");
     expect(script).toContain(".ai/harness/events.jsonl");
     expect(script).toContain(".ai/harness/handoff/current.md");
+    expect(script).toContain(".ai/harness/context-budget");
     expect(script).toContain(".ai/harness/workflow-contract.json");
     expect(workflowContract).toContain("new-spec.sh");
     expect(workflowContract).toContain("new-sprint.sh");
@@ -73,6 +74,9 @@ describe("Migration script contract", () => {
     expect(workflowContract).toContain("ensure-task-workflow.sh");
     expect(workflowContract).toContain("check-task-workflow.sh");
     expect(workflowContract).toContain("maintenance-triage.sh");
+    expect(workflowContract).toContain("context-budget.ts");
+    expect(workflowContract).toContain("prepare-codex-handoff.sh");
+    expect(workflowContract).toContain("codex-handoff-resume.sh");
     expect(script).toContain("pi_ensure_task_sync");
     expect(sharedLib).toContain("check:task-sync");
     expect(sharedLib).toContain("check:task-workflow");
@@ -145,6 +149,8 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".ai/harness/events.jsonl"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/failures/latest.jsonl"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/handoff/current.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/harness/handoff/resume.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/harness/context-budget/latest.json"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/workflow-contract.json"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/runs/.gitkeep"))).toBe(true);
       expect(existsSync(join(repo, "scripts/new-spec.sh"))).toBe(true);
@@ -162,15 +168,20 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/ensure-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/maintenance-triage.sh"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/context-budget.ts"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/prepare-codex-handoff.sh"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(repo, "scripts/skill-factory-check.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(true);
       expect(existsSync(join(repo, ".ai/hooks/finalize-handoff.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(repo, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/memory-intake.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/run-hook.sh"))).toBe(true);
       expect(existsSync(join(repo, ".claude/hooks/finalize-handoff.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".claude/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(repo, "tasks/research.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/todo.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/lessons.md"))).toBe(true);
@@ -204,6 +215,7 @@ describe("Migration script contract", () => {
 
       const settings = readFileSync(join(repo, ".claude/settings.json"), "utf-8");
       expect(settings).toContain(".ai/hooks/run-hook.sh");
+      expect(settings).toContain("session-start-context.sh");
       expect(settings).toContain("trace-event.sh");
       expect(settings).not.toContain("memory-intake.sh");
       expect(settings).not.toContain("skill-factory-session-end.sh");
@@ -219,11 +231,15 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.hosts).toEqual(["claude-code", "codex"]);
       expect(policy.external_tooling.mode).toBe("guidance-only");
       expect(policy.external_tooling.gbrain.mcp).toBe("candidate-disabled");
+      expect(policy.context_budget.status_file).toBe(".ai/harness/context-budget/latest.json");
+      expect(policy.handoff_resume.resume_packet_file).toBe(".ai/harness/handoff/resume.md");
+      expect(policy.sidecar_research.main_thread_policy).toContain("consume conclusions");
       const workflowContract = JSON.parse(readFileSync(join(repo, ".ai/harness/workflow-contract.json"), "utf-8"));
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("switch-plan.sh");
       expect(workflowContract.helpers.scripts).toContain("check-context-files.sh");
       expect(workflowContract.helpers.scripts).toContain("maintenance-triage.sh");
+      expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
 
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
       expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");

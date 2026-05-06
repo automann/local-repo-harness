@@ -46,20 +46,52 @@ workflow_policy_get() {
   printf '%s' "$default_value"
 }
 
+workflow_repo_relative_path() {
+  local value="$1"
+  local default_value="$2"
+  local allowed_prefix="${3:-}"
+
+  if [[ -z "$value" || "$value" == /* || "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+    printf '%s' "$default_value"
+    return 0
+  fi
+
+  case "$value" in
+    ..|../*|*/..|*/../*)
+      printf '%s' "$default_value"
+      ;;
+    *)
+      if [[ -n "$allowed_prefix" && "$value" != "$allowed_prefix"* ]]; then
+        printf '%s' "$default_value"
+        return 0
+      fi
+      printf '%s' "$value"
+      ;;
+  esac
+}
+
 workflow_context_map_file() {
-  workflow_policy_get '.context.map_file' '.ai/context/context-map.json'
+  workflow_repo_relative_path "$(workflow_policy_get '.context.map_file' '.ai/context/context-map.json')" '.ai/context/context-map.json' '.ai/context/'
 }
 
 workflow_failure_log_file() {
-  workflow_policy_get '.harness.failure_log_file' '.ai/harness/failures/latest.jsonl'
+  workflow_repo_relative_path "$(workflow_policy_get '.harness.failure_log_file' '.ai/harness/failures/latest.jsonl')" '.ai/harness/failures/latest.jsonl' '.ai/harness/'
 }
 
 workflow_events_file() {
-  workflow_policy_get '.harness.events_file' '.ai/harness/events.jsonl'
+  workflow_repo_relative_path "$(workflow_policy_get '.harness.events_file' '.ai/harness/events.jsonl')" '.ai/harness/events.jsonl' '.ai/harness/'
 }
 
 workflow_runs_dir() {
-  workflow_policy_get '.harness.runs_dir' '.ai/harness/runs'
+  workflow_repo_relative_path "$(workflow_policy_get '.harness.runs_dir' '.ai/harness/runs')" '.ai/harness/runs' '.ai/harness/'
+}
+
+workflow_context_budget_status_file() {
+  workflow_repo_relative_path "$(workflow_policy_get '.context_budget.status_file' '.ai/harness/context-budget/latest.json')" '.ai/harness/context-budget/latest.json' '.ai/harness/'
+}
+
+workflow_resume_packet_file() {
+  workflow_repo_relative_path "$(workflow_policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')" '.ai/harness/handoff/resume.md' '.ai/harness/'
 }
 
 workflow_ensure_harness_surface() {
@@ -68,11 +100,15 @@ workflow_ensure_harness_surface() {
     "$(dirname "$(workflow_policy_file)")" \
     "$(dirname "$(workflow_checks_file)")" \
     "$(dirname "$(workflow_handoff_file)")" \
+    "$(dirname "$(workflow_context_budget_status_file)")" \
+    "$(dirname "$(workflow_resume_packet_file)")" \
     "$(dirname "$(workflow_failure_log_file)")" \
     "$(workflow_runs_dir)"
 
   [[ -f "$(workflow_checks_file)" ]] || printf "{}\n" > "$(workflow_checks_file)"
   [[ -f "$(workflow_handoff_file)" ]] || printf "# Harness Handoff\n\n> **Reason**: bootstrap\n" > "$(workflow_handoff_file)"
+  [[ -f "$(workflow_context_budget_status_file)" ]] || printf "{}\n" > "$(workflow_context_budget_status_file)"
+  [[ -f "$(workflow_resume_packet_file)" ]] || printf "# Codex Resume Packet\n\n> **Reason**: bootstrap\n" > "$(workflow_resume_packet_file)"
   [[ -f "$(workflow_failure_log_file)" ]] || : > "$(workflow_failure_log_file)"
   [[ -f "$(workflow_events_file)" ]] || : > "$(workflow_events_file)"
 }
@@ -519,11 +555,11 @@ workflow_active_review() {
 }
 
 workflow_checks_file() {
-  workflow_policy_get '.harness.checks_file' '.ai/harness/checks/latest.json'
+  workflow_repo_relative_path "$(workflow_policy_get '.harness.checks_file' '.ai/harness/checks/latest.json')" '.ai/harness/checks/latest.json' '.ai/harness/'
 }
 
 workflow_handoff_file() {
-  workflow_policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md'
+  workflow_repo_relative_path "$(workflow_policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')" '.ai/harness/handoff/current.md' '.ai/harness/'
 }
 
 workflow_append_event() {
@@ -659,15 +695,23 @@ workflow_contract_allows_path() {
 workflow_write_handoff() {
   local reason="${1:-session-stop}"
   local handoff_file active_plan active_contract active_review checks_file next_task changed_files diff_stat spec_file source_plan parent_run_id supersedes
+  local budget_file resume_file events_file recent_commands blockers decisions goal
+  local changed_count untracked_count
 
   workflow_ensure_harness_surface
   handoff_file="$(workflow_handoff_file)"
   checks_file="$(workflow_checks_file)"
+  budget_file="$(workflow_context_budget_status_file)"
+  resume_file="$(workflow_resume_packet_file)"
+  events_file="$(workflow_events_file)"
   spec_file="docs/spec.md"
   active_plan="$(get_active_plan || true)"
   active_contract="$(workflow_active_contract || true)"
   active_review="$(workflow_active_review || true)"
   source_plan="$(get_todo_source_plan || true)"
+  if [[ "$source_plan" == "(none)" ]]; then
+    source_plan=""
+  fi
   parent_run_id="${HOOK_RUN_ID:-${CLAUDE_RUN_ID:-${CODEX_RUN_ID:-run-$(date '+%Y%m%dT%H%M%S')-$$}}}"
   supersedes="$(workflow_read_state_field "$(workflow_task_state_file)" 'source_plan' || true)"
 
@@ -681,15 +725,54 @@ workflow_write_handoff() {
   next_task="${next_task:-(none)}"
 
   if is_git_repo; then
-    changed_files="$( (git diff --name-only HEAD 2>/dev/null || true) | head -10 )"
+    changed_files="$(
+      {
+        git diff --name-only HEAD 2>/dev/null || true
+        git ls-files --others --exclude-standard 2>/dev/null || true
+      } | sed '/^[[:space:]]*$/d' | sort -u
+    )"
     changed_files="${changed_files:-(none)}"
+    changed_count="$(printf '%s\n' "$changed_files" | sed '/^(none)$/d; /^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+    if [[ "$changed_count" -gt 80 ]]; then
+      changed_files="$(
+        {
+          printf '%s\n' "$changed_files" | head -80
+          printf '... (%s total changed/untracked paths; inspect git status --short)\n' "$changed_count"
+        }
+      )"
+    fi
 
     diff_stat="$( (git diff --shortstat HEAD 2>/dev/null || true) | tr -d '\n' )"
+    untracked_count="$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
+    if [[ "$untracked_count" -gt 0 ]]; then
+      diff_stat="${diff_stat:-no tracked diff}; ${untracked_count} untracked files"
+    fi
     diff_stat="${diff_stat:-no uncommitted diff against HEAD}"
   else
     changed_files="(none)"
     diff_stat="git repository not detected"
   fi
+
+  if [[ -f "$events_file" ]]; then
+    recent_commands="$(
+      { grep '"event_type":"tool_trace"' "$events_file" 2>/dev/null || true; } \
+        | tail -5 \
+        | sed -E 's/^/- /'
+    )"
+  fi
+  recent_commands="${recent_commands:-- (none captured)}"
+
+  if [[ -n "$source_plan" ]]; then
+    goal="Continue task checklist sourced from ${source_plan}."
+  elif [[ -n "$active_plan" ]]; then
+    goal="Continue active plan ${active_plan}."
+  elif [[ "$next_task" != "(none)" && "$next_task" != "No active execution checklist" ]]; then
+    goal="$next_task"
+  else
+    goal="No active plan. Continue from the latest user request and filesystem state."
+  fi
+  decisions="Use filesystem artifacts as source of truth; treat SQLite/thread state as a rebuildable read model only."
+  blockers="(none recorded)"
 
   cat > "$handoff_file" <<EOF_HANDOFF
 # Harness Handoff
@@ -697,7 +780,43 @@ workflow_write_handoff() {
 > **Generated**: $(date '+%Y-%m-%d %H:%M:%S')
 > **Reason**: ${reason}
 
-## Active Artifacts
+## Goal
+
+${goal}
+
+## Decisions
+
+- ${decisions}
+
+## Files Touched
+
+\`\`\`
+${changed_files}
+\`\`\`
+
+## Commands Run
+
+${recent_commands}
+
+## Checks
+
+- Checks file: ${checks_file}
+- Context budget: ${budget_file}
+
+## Blockers
+
+- ${blockers}
+
+## Exact Next Step
+
+- ${next_task}
+
+## Resume Prompt
+
+- Resume packet: ${resume_file}
+- Start a fresh Codex session and read this handoff before continuing; do not rely on auto-compact.
+
+## Source Artifacts
 
 - Spec: ${spec_file}
 - Plan: ${active_plan:-(none)}
@@ -705,6 +824,8 @@ workflow_write_handoff() {
 - Contract: ${active_contract:-(none)}
 - Review: ${active_review:-(none)}
 - Checks: ${checks_file}
+- Context Budget: ${budget_file}
+- Resume Packet: ${resume_file}
 - Policy: $(workflow_policy_file)
 - Context Map: $(workflow_context_map_file)
 

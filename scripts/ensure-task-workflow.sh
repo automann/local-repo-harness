@@ -250,7 +250,7 @@ TODO_EOF
 }
 
 ensure_auxiliary_files() {
-  mkdir -p plans plans/archive tasks/archive tasks/contracts tasks/reviews docs scripts .ai/context .ai/harness/checks .ai/harness/handoff .ai/harness/failures .ai/harness/runs
+  mkdir -p plans plans/archive tasks/archive tasks/contracts tasks/reviews docs scripts .ai/context .ai/harness/checks .ai/harness/handoff .ai/harness/context-budget .ai/harness/failures .ai/harness/runs
 
   if [[ ! -f "docs/spec.md" ]]; then
     cat > docs/spec.md <<'SPEC_EOF'
@@ -342,6 +342,18 @@ PROGRESS_EOF
 HANDOFF_EOF
   fi
 
+  if [[ ! -f ".ai/harness/handoff/resume.md" ]]; then
+    cat > ".ai/harness/handoff/resume.md" <<'RESUME_EOF'
+# Codex Resume Packet
+
+> **Reason**: bootstrap
+RESUME_EOF
+  fi
+
+  if [[ ! -f ".ai/harness/context-budget/latest.json" ]]; then
+    echo "{}" > ".ai/harness/context-budget/latest.json"
+  fi
+
   if [[ ! -f ".ai/harness/events.jsonl" ]]; then
     : > ".ai/harness/events.jsonl"
   fi
@@ -387,6 +399,35 @@ HANDOFF_EOF
     "failure_log_file": ".ai/harness/failures/latest.jsonl",
     "events_file": ".ai/harness/events.jsonl",
     "runs_dir": ".ai/harness/runs"
+  },
+  "context_budget": {
+    "status_file": ".ai/harness/context-budget/latest.json",
+    "source_priority": ["rollout_token_count", "state_thread", "tool_call_count"],
+    "zones": {
+      "yellow": 0.55,
+      "orange": 0.7,
+      "red": 0.8
+    },
+    "fallback_model_windows": {
+      "gpt-5.4": 1050000,
+      "gpt-5.5": 258000
+    },
+    "fallback_tool_calls": {
+      "yellow": 30,
+      "orange": 40,
+      "red": 50
+    }
+  },
+  "handoff_resume": {
+    "resume_packet_file": ".ai/harness/handoff/resume.md",
+    "global_handoff_dir": "~/.codex/handoffs",
+    "auto_start_new_session": false
+  },
+  "sidecar_research": {
+    "default": true,
+    "output_file": "tasks/research.md",
+    "preferred_runners": ["subagent", "codex exec --json"],
+    "main_thread_policy": "consume conclusions and evidence paths, not raw logs"
   },
   "profiles": {
     "orchestration": "shared-long-running-harness",

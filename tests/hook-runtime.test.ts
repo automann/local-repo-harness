@@ -277,6 +277,8 @@ describe("Hook runtime behavior", () => {
       });
       expect(warn1.status).toBe(0);
       expect(warn1.stdout).toContain("Yellow zone");
+      expect(warn1.stdout).toContain("Persist research/todo/handoff");
+      expect(warn1.stdout).not.toContain("/compact");
 
       const warn2 = runHook("context-pressure-hook.sh", cwd, {
         env: { CLAUDE_SESSION_ID: "warnsession" },
@@ -308,6 +310,42 @@ describe("Hook runtime behavior", () => {
       expect(existsSync(join(workspace, ".claude/.atomic_pending"))).toBe(true);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("session-start-context injects only generated Codex resume packets", () => {
+    const cwd = tmpWorkspace("session-start-context");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+
+      writeFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "# Codex Resume Packet\n\n> **Reason**: bootstrap\n");
+      const bootstrapRes = runHook("session-start-context.sh", cwd);
+      expect(bootstrapRes.status).toBe(0);
+      expect(bootstrapRes.stdout.trim()).toBe("");
+
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/resume.md"),
+        [
+          "# Codex Resume Packet",
+          "<!-- generated-by: project-initializer codex-handoff-resume v1 -->",
+          "",
+          "## Resume Prompt",
+          "",
+          "You are starting a fresh Codex session.",
+          "",
+          "Required first reads:",
+          "- AGENTS.md",
+        ].join("\n")
+      );
+
+      const res = runHook("session-start-context.sh", cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("SessionStart");
+      expect(res.stdout).toContain("additionalContext");
+      expect(res.stdout).toContain("fresh Codex session");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
     }
   });
 

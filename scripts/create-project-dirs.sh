@@ -121,6 +121,7 @@ mkdir -p .ai/hooks
 mkdir -p .ai/context
 mkdir -p .ai/harness/checks
 mkdir -p .ai/harness/handoff
+mkdir -p .ai/harness/context-budget
 mkdir -p .ai/harness/failures
 mkdir -p .ai/harness/runs
 mkdir -p .ops/database
@@ -243,6 +244,8 @@ DOCS_SPEC_EOF
 # - .ai/harness/checks/latest.json
 # - .ai/harness/events.jsonl
 # - .ai/harness/handoff/current.md
+# - .ai/harness/handoff/resume.md
+# - .ai/harness/context-budget/latest.json
 # - .ai/harness/failures/latest.jsonl
 # - .ai/harness/runs/.gitkeep
 pi_ensure_harness_state_surface "$PWD" "apply"

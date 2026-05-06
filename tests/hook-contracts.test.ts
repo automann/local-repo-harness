@@ -29,6 +29,7 @@ describe("Hook contracts", () => {
     expect(script).toContain(".prompt");
     expect(script).toContain(".session_id");
     expect(script).toContain(".transcript_path");
+    expect(script).toContain("CODEX_TRANSCRIPT_PATH");
     expect(script).toContain(".run_id");
     expect(script).toContain(".memory_type");
     expect(script).toContain(".load_reason");
@@ -65,6 +66,10 @@ describe("Hook contracts", () => {
     expect(script).toContain("WARN_FILE");
     expect(script).toContain("RED_FILE");
     expect(script).toContain(".tool-call-count");
+    expect(script).toContain("scripts/context-budget.ts");
+    expect(script).toContain("prepare-codex-handoff.sh");
+    expect(script).toContain("fresh-session resume packet");
+    expect(script).not.toContain("/compact");
   });
 
   test("prompt-guard should cover Chinese bug/feature keywords and avoid emoji", () => {
@@ -122,6 +127,8 @@ describe("Hook contracts", () => {
     const settings = read("assets/hooks/settings.template.json");
     expect(settings).toContain("run-hook.sh");
     expect(settings).toContain(".ai/hooks/run-hook.sh");
+    expect(settings).toContain("SessionStart");
+    expect(settings).toContain("session-start-context.sh");
     expect(settings).toContain("pre-edit-guard.sh");
     expect(settings).toContain("post-edit-guard.sh");
     expect(settings).toContain("trace-event.sh");

@@ -36,6 +36,8 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .claude/*.bak.*
 .claude/*.backup-*
 .ai/harness/events.jsonl
+.ai/harness/handoff/resume.md
+.ai/harness/context-budget/latest.json
 .ai/harness/runs/
 EOF_RUNTIME
 )
@@ -501,7 +503,7 @@ pi_install_helpers() {
   local target_dir="$1"
   local helpers_dir="$2"
   local mode="${3:-apply}"
-  local helper_names="${4:-new-plan.sh plan-to-todo.sh archive-workflow.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-agent-tooling.sh ensure-task-workflow.sh check-task-workflow.sh}"
+  local helper_names="${4:-new-plan.sh plan-to-todo.sh archive-workflow.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-agent-tooling.sh ensure-task-workflow.sh check-task-workflow.sh context-budget.ts prepare-codex-handoff.sh codex-handoff-resume.sh}"
   local scripts_dir="$target_dir/scripts"
   local helper_name
 
@@ -518,7 +520,7 @@ pi_install_helpers() {
         cp "$helpers_dir/$helper_name" "$scripts_dir/$helper_name"
       fi
     done
-    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh
+    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/prepare-codex-handoff.sh "$scripts_dir"/codex-handoff-resume.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh
     return 0
   fi
 
@@ -685,6 +687,35 @@ pi_write_harness_policy() {
     "events_file": ".ai/harness/events.jsonl",
     "runs_dir": ".ai/harness/runs"
   },
+  "context_budget": {
+    "status_file": ".ai/harness/context-budget/latest.json",
+    "source_priority": ["rollout_token_count", "state_thread", "tool_call_count"],
+    "zones": {
+      "yellow": 0.55,
+      "orange": 0.7,
+      "red": 0.8
+    },
+    "fallback_model_windows": {
+      "gpt-5.4": 1050000,
+      "gpt-5.5": 258000
+    },
+    "fallback_tool_calls": {
+      "yellow": 30,
+      "orange": 40,
+      "red": 50
+    }
+  },
+  "handoff_resume": {
+    "resume_packet_file": ".ai/harness/handoff/resume.md",
+    "global_handoff_dir": "~/.codex/handoffs",
+    "auto_start_new_session": false
+  },
+  "sidecar_research": {
+    "default": true,
+    "output_file": "tasks/research.md",
+    "preferred_runners": ["subagent", "codex exec --json"],
+    "main_thread_policy": "consume conclusions and evidence paths, not raw logs"
+  },
   "profiles": {
     "orchestration": "$(pi_orchestration_profile)",
     "evaluation": "$(pi_evaluation_profile)",
@@ -845,11 +876,14 @@ pi_ensure_harness_state_surface() {
     "$target_dir/.ai/context" \
     "$target_dir/.ai/harness/checks" \
     "$target_dir/.ai/harness/handoff" \
+    "$target_dir/.ai/harness/context-budget" \
     "$target_dir/.ai/harness/failures" \
     "$target_dir/.ai/harness/runs"
 
   [[ -f "$target_dir/.ai/harness/checks/latest.json" ]] || printf "{}\n" > "$target_dir/.ai/harness/checks/latest.json"
   [[ -f "$target_dir/.ai/harness/handoff/current.md" ]] || printf "# Harness Handoff\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/current.md"
+  [[ -f "$target_dir/.ai/harness/handoff/resume.md" ]] || printf "# Codex Resume Packet\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/resume.md"
+  [[ -f "$target_dir/.ai/harness/context-budget/latest.json" ]] || printf "{}\n" > "$target_dir/.ai/harness/context-budget/latest.json"
   [[ -f "$target_dir/.ai/harness/events.jsonl" ]] || : > "$target_dir/.ai/harness/events.jsonl"
   [[ -f "$target_dir/.ai/harness/failures/latest.jsonl" ]] || : > "$target_dir/.ai/harness/failures/latest.jsonl"
   [[ -f "$target_dir/.ai/harness/runs/.gitkeep" ]] || : > "$target_dir/.ai/harness/runs/.gitkeep"

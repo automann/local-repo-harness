@@ -79,6 +79,9 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain(".ai/harness/policy.json");
     expect(content).toContain(".ai/context/context-map.json");
     expect(contract.helpers.scripts).toContain("maintenance-triage.sh");
+    expect(contract.helpers.scripts).toContain("context-budget.ts");
+    expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
+    expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("check-agent-tooling.sh");
     expect(contract.helpers.scripts).toContain("check-context-files.sh");
     expect(sharedLib).toContain("ensure-task-workflow.sh");
@@ -96,6 +99,8 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain("settings.template.json");
     expect(contract.helpers.scripts).toContain("switch-plan.sh");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/handoff/resume.md");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/external-tooling.md");
     expect(sharedLib).not.toContain(".skill-factory-state.json");
     expect(sharedLib).not.toContain(".memory-context.json");
@@ -136,6 +141,9 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain(".ai/harness/policy.json");
     expect(content).toContain(".ai/context/context-map.json");
     expect(contract.helpers.scripts).toContain("maintenance-triage.sh");
+    expect(contract.helpers.scripts).toContain("context-budget.ts");
+    expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
+    expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("check-agent-tooling.sh");
     expect(contract.helpers.scripts).toContain("check-context-files.sh");
     expect(content).not.toContain("pi_install_skill_factory");
@@ -198,6 +206,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(settings).toContain("post-bash.sh");
     expect(settings).toContain("trace-event.sh");
     expect(settings).toContain("context-pressure-hook.sh");
+    expect(settings).toContain("session-start-context.sh");
     expect(settings).not.toContain("memory-intake.sh");
     expect(settings).not.toContain("skill-factory-session-end.sh");
     expect(settings).not.toContain("bash -lc");

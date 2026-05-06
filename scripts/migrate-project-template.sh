@@ -7,6 +7,7 @@
 # - Sprint artifacts: tasks/contracts/, tasks/reviews/, .ai/context/context-map.json
 # - Harness state: .ai/harness/checks/latest.json, .ai/harness/policy.json,
 #   .ai/harness/events.jsonl, .ai/harness/handoff/current.md,
+#   .ai/harness/handoff/resume.md, .ai/harness/context-budget/latest.json,
 #   .ai/harness/failures/latest.jsonl, .ai/harness/runs/.gitkeep
 #
 # Usage:
@@ -339,7 +340,7 @@ create_task_files_if_missing() {
   progress_file="$repo/docs/PROGRESS.md"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] ensure docs/spec.md, tasks/*, reviews, .ai/context/context-map.json, and .ai/harness/{checks/latest.json,policy.json,events.jsonl,handoff/current.md,failures/latest.jsonl,runs/.gitkeep} exist with 3.1 guidance"
+    echo "[dry-run] ensure docs/spec.md, tasks/*, reviews, .ai/context/context-map.json, and .ai/harness/{checks/latest.json,policy.json,events.jsonl,handoff/current.md,handoff/resume.md,context-budget/latest.json,failures/latest.jsonl,runs/.gitkeep} exist with 3.1 guidance"
     return
   fi
 

@@ -204,7 +204,7 @@ hook_get_transcript_path() {
     return
   fi
 
-  printf '%s' "${CLAUDE_TRANSCRIPT_PATH:-}"
+  printf '%s' "${CLAUDE_TRANSCRIPT_PATH:-${CODEX_TRANSCRIPT_PATH:-}}"
 }
 
 hook_get_cwd() {

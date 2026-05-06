@@ -17,6 +17,8 @@ Use this file for advanced orchestration and planning patterns.
 - Trigger for new features, unfamiliar code, or architecture-sensitive refactors.
 - Read deeply before planning: deeply, in great details, intricacies, go through everything.
 - Output research into `tasks/research.md` (not chat-only summaries).
+- Use subagents or sidecar `codex exec --json` for broad documentation scans, repo archaeology, large logs, and multi-source synthesis.
+- Keep the main thread for decisions, integration, and verification; consume sidecar conclusions and evidence paths rather than raw output.
 - Guardrail: do not implement during Research.
 
 ## Plan Protocol

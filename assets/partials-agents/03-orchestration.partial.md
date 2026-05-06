@@ -18,6 +18,11 @@
 ### 4. Subagent Strategy
 - Offload independent tracks to focused subagents.
 - Parallelize only non-dependent paths.
+- For broad research, logs, and repo archaeology, use subagents or sidecar `codex exec --json`; write conclusions to `tasks/research.md`.
+
+### 4b. Context Budget
+- Treat auto-compact as an unreliable fallback.
+- At orange/red context pressure, refresh `.ai/harness/handoff/current.md` and `.ai/harness/handoff/resume.md`, then resume from a fresh session.
 
 ### 5. Self-Improvement Loop
 - After correction, append prevention rule to `tasks/lessons.md`.

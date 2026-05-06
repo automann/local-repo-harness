@@ -13,6 +13,9 @@
 | `scripts/lib/project-init-lib.sh` | Shared install logic | contract query + helper installation |
 | `assets/workflow-contract.v1.json` | Canonical workflow contract | helper/file/dir inventory |
 | `assets/hooks/` | Shared hook implementation source | repo-local hook scripts and libs |
+| `scripts/context-budget.ts` | Codex context-pressure reader | rollout token_count first, SQLite/tool-count fallback |
+| `scripts/prepare-codex-handoff.sh` | Compact-independent handoff writer | repo/global handoff + resume packet refresh |
+| `scripts/codex-handoff-resume.sh` | Fresh-session bootstrap helper | resume prompt generation |
 | `scripts/assemble-template.ts` | CLAUDE/AGENTS template assembly | `assembleTemplate`, `assembleTemplateWithHooks` |
 | `tests/` | Contract and regression coverage | migration/bootstrap/helper tests |
 
@@ -22,6 +25,8 @@
 - The repo-local workflow contract now exists as a machine-readable manifest installed at `.ai/harness/workflow-contract.json`.
 - `.ai/context/context-map.json` and `.ai/harness/policy.json` layer progressive-loading and enforcement metadata on top of the workflow manifest.
 - `.ai/hooks/` remains the shared source of truth; `.claude/hooks/` should stay a shim layer.
+- Codex context pressure now follows a filesystem-first contract: rollout JSONL token counts drive waterline decisions; SQLite is a rebuildable sidecar read model, not task state.
+- Session recovery is explicit handoff + fresh-session bootstrap. Auto-compact is treated as an unreliable fallback, not a primary continuation path.
 
 ### Implicit Contracts
 - `scripts/check-task-sync.sh` requires `tasks/` changes whenever substantive repo files change.
@@ -50,13 +55,17 @@
 - The progressive-loading contract only works when directory AGENTS files land on immediate module paths like `apps/web/AGENTS.md`; writing to `apps/AGENTS.md` or other container roots is effectively invisible to the context map.
 - Custom plan `K` must stay layout-agnostic; nested context files should only appear when the target repo already has real `apps/*`, `packages/*`, or `services/*` modules.
 - Once helper installation moves behind `assets/workflow-contract.v1.json`, regression tests should assert helper presence via the manifest instead of string-matching explicit shell argument lists.
+- `SessionStart` context injection should only emit a real generated resume packet containing `## Resume Prompt`; a bootstrap placeholder must stay silent to avoid context pollution.
+- `workflow_write_handoff()` runs under `set -euo pipefail` via `prepare-handoff.sh`, so optional grep-based event extraction must tolerate no-match pipelines.
+- Policy-sourced harness output paths must stay repo-relative; absolute paths or `..` segments should fall back to the default workflow surface before any hook writes files.
+- Handoff changed-file summaries must include untracked files and must not silently hide the files most likely to be missing after an interrupted long task.
 
 ## Technical Debt / Risks
 - `ensure-task-workflow.sh` still assumes the workflow surface already exists; it does not yet synthesize a fallback runtime contract manifest for partially migrated repos.
 - The workflow contract is machine-readable, but some shell stubs still create content bodies directly rather than deriving full file contents from the manifest.
 - Root routing docs are repo-specific and can drift from future template conventions if not kept in sync.
 - This repo still relies on migration/bootstrap scripts staying idempotent across repeated local runs.
-- `.ai/hooks/` and `assets/hooks/` are close but not fully identical, which increases the risk that self-host behavior and generated hook behavior diverge.
+- `.ai/hooks/` and `assets/hooks/` are now covered by parity tests, but the manual mirror still needs review whenever hook source changes.
 
 ## Research Conclusions
 ### What to Preserve
@@ -76,6 +85,7 @@
 - Keep hook authority and failure handling explicit in docs so new maintainers do not have to infer the runtime chain from tests.
 - Make parity risk explicit: generated output is the downstream contract, and self-hosted behavior must call out whether it matches or diverges.
 - Keep the machine-readable policy focused on workflow enforcement; do not turn v1 into a heavyweight architecture linter.
+- Keep `context_budget`, `handoff_resume`, and `sidecar_research` policy sections as runtime coordination metadata. The canonical goal/todo/research state remains Markdown/JSON files in the repo.
 
 ### Open Questions
 - Whether `ensure-task-workflow.sh` should auto-install a fallback runtime contract manifest when run in a partially migrated repo.

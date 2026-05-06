@@ -33,6 +33,8 @@ bun.lockb
 .claude/*.bak.*
 .claude/*.backup-*
 .ai/harness/events.jsonl
+.ai/harness/handoff/resume.md
+.ai/harness/context-budget/latest.json
 .ai/harness/runs/
 # END: claude-runtime-temp
 # Project-specific

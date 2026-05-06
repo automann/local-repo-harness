@@ -37,6 +37,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, ".ai/harness/events.jsonl"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/failures/latest.jsonl"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/handoff/current.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/handoff/resume.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/runs/.gitkeep"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/new-spec.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/new-sprint.sh"))).toBe(true);
@@ -49,15 +51,20 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/ensure-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/check-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/maintenance-triage.sh"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/context-budget.ts"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/prepare-codex-handoff.sh"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/skill-factory-check.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/finalize-handoff.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/memory-intake.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/hooks/run-hook.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".claude/hooks/finalize-handoff.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".claude/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".claude/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/hooks/memory-intake.sh"))).toBe(false);
@@ -68,6 +75,7 @@ describe("create-project-dirs runtime smoke", () => {
       const settingsTemplate = readFileSync(join(ROOT, "assets/hooks/settings.template.json"), "utf-8");
       expect(settings).toBe(settingsTemplate);
       expect(settings).toContain("trace-event.sh");
+      expect(settings).toContain("session-start-context.sh");
       expect(settings).toContain("finalize-handoff.sh");
       expect(settings).not.toContain("memory-intake.sh");
       expect(settings).not.toContain("skill-factory-session-end.sh");
@@ -79,6 +87,9 @@ describe("create-project-dirs runtime smoke", () => {
       const workflowContract = JSON.parse(readFileSync(join(cwd, ".ai/harness/workflow-contract.json"), "utf-8"));
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("check-task-workflow.sh");
+      expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
+      expect(workflowContract.artifacts.requiredFiles).toContain(".ai/harness/context-budget/latest.json");
+      expect(workflowContract.artifacts.requiredFiles).toContain(".ai/harness/handoff/resume.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/external-tooling.md");
       const policy = JSON.parse(readFileSync(join(cwd, ".ai/harness/policy.json"), "utf-8"));
       expect(policy.external_tooling.routing).toEqual({
@@ -89,6 +100,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.external_tooling.hosts).toEqual(["claude-code", "codex"]);
       expect(policy.external_tooling.mode).toBe("guidance-only");
       expect(policy.external_tooling.gbrain.mcp).toBe("candidate-disabled");
+      expect(policy.context_budget.zones).toEqual({ yellow: 0.55, orange: 0.7, red: 0.8 });
+      expect(policy.handoff_resume.auto_start_new_session).toBe(false);
+      expect(policy.sidecar_research.output_file).toBe("tasks/research.md");
 
       const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8"));
       expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
@@ -157,6 +171,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "services"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/context/context-map.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/policy.json"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

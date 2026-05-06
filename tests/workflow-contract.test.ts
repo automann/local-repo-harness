@@ -57,7 +57,12 @@ describe("workflow contract manifest", () => {
   test("helper inventory should come from the workflow contract", () => {
     const contract = loadWorkflowContract(join(ROOT, "assets/workflow-contract.v1.json"));
     expect(contract.helpers.scripts).toContain("switch-plan.sh");
+    expect(contract.helpers.scripts).toContain("context-budget.ts");
+    expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
+    expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/handoff/resume.md");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/context-budget/latest.json");
   });
 });
 

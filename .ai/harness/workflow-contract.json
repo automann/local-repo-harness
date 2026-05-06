@@ -22,7 +22,10 @@
       "ensure-task-workflow.sh",
       "check-task-workflow.sh",
       "maintenance-triage.sh",
-      "switch-plan.sh"
+      "switch-plan.sh",
+      "context-budget.ts",
+      "prepare-codex-handoff.sh",
+      "codex-handoff-resume.sh"
     ]
   },
   "artifacts": {
@@ -40,6 +43,7 @@
       ".ai/harness/checks",
       ".ai/harness/failures",
       ".ai/harness/handoff",
+      ".ai/harness/context-budget",
       ".ai/harness/runs",
       "docs/reference-configs"
     ],
@@ -66,6 +70,9 @@
       "scripts/check-task-workflow.sh",
       "scripts/maintenance-triage.sh",
       "scripts/switch-plan.sh",
+      "scripts/context-budget.ts",
+      "scripts/prepare-codex-handoff.sh",
+      "scripts/codex-handoff-resume.sh",
       "tasks/todo.md",
       "tasks/lessons.md",
       "tasks/research.md",
@@ -75,6 +82,8 @@
       ".ai/harness/events.jsonl",
       ".ai/harness/failures/latest.jsonl",
       ".ai/harness/handoff/current.md",
+      ".ai/harness/handoff/resume.md",
+      ".ai/harness/context-budget/latest.json",
       ".ai/harness/policy.json",
       ".ai/harness/runs/.gitkeep",
       ".ai/harness/workflow-contract.json",
