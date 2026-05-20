@@ -101,7 +101,11 @@ describe("Migration script contract", () => {
     expect(sharedLib).toContain("claude-runtime-temp");
     expect(script).toContain("docs/reference-configs");
     expect(script).toContain("Existing external_tooling overrides are preserved");
+    expect(script).toContain("pi_workflow_contract_upgrade_action_paths");
+    expect(script).not.toContain("EOF_REMOVED");
     expect(read("assets/workflow-contract.v1.json")).toContain('"runtimeManifest": ".ai/harness/workflow-contract.json"');
+    expect(read("assets/workflow-contract.v1.json")).toContain('"upgrade"');
+    expect(read("assets/workflow-contract.v1.json")).toContain('"known_generated"');
   });
 
   test("should include external tooling defaults and advisory output in dry-run reports", () => {
@@ -119,6 +123,8 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("routing complex->gstack, simple->waza, knowledge->gbrain");
       expect(res.stdout).toContain("Hosts: claude-code, codex");
       expect(res.stdout).toContain("Advisory report (dry-run snapshot)");
+      expect(res.stdout).toContain("upgrade_plan:");
+      expect(res.stdout).toContain("Upgrade/reconfigure/cleanup plan");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -218,6 +224,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "docs/reference-configs/agentic-development-flow.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/external-tooling.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/sprint-contracts.md"))).toBe(true);
+      expect(existsSync(join(repo, "docs/reference-configs/global-working-rules.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/spa-day-protocol.md"))).toBe(false);
       expect(existsSync(join(repo, "docs/reference-configs/hook-operations.md"))).toBe(false);
       expect(existsSync(join(repo, "docs/reference-configs/evaluator-rubric.md"))).toBe(false);
@@ -289,6 +296,9 @@ describe("Migration script contract", () => {
       expect(policy.worktree_strategy.finish_script).toBe("scripts/contract-worktree.sh finish");
       expect(policy.worktree_strategy.validation_route).toBe("waza:check");
       expect(policy.sidecar_research.main_thread_policy).toContain("consume conclusions");
+      expect(policy.upgrade.strategy_version).toBe(1);
+      expect(policy.upgrade.cleanup.remove_only_ownership).toBe("known_generated");
+      expect(policy.upgrade.action_classes.preserve).toContain("user-authored hooks");
       const workflowContract = JSON.parse(readFileSync(join(repo, ".ai/harness/workflow-contract.json"), "utf-8"));
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("switch-plan.sh");
@@ -303,6 +313,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
+      expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
       expect(workflowContract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain("tasks/notes");
       expect(workflowContract.artifacts.requiredDirectories).toContain("tasks/workstreams");
@@ -443,6 +454,8 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.codex_automation_profile.source).toBe("~/.codex/skills");
       expect(policy.external_tooling.gbrain.mcp).toBe("configured");
       expect(policy.agentic_development.routing.complex_engineering_plan).toBe("gstack:plan-eng-review");
+      expect(policy.upgrade.strategy_version).toBe(1);
+      expect(policy.upgrade.cleanup.custom_hooks).toBe("preserve");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

@@ -39,6 +39,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "docs/reference-configs/external-tooling.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/reference-configs/sprint-contracts.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/reference-configs/document-generation.md"))).toBe(true);
+      expect(existsSync(join(cwd, "docs/reference-configs/global-working-rules.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/brief.md"))).toBe(false);
       expect(existsSync(join(cwd, "docs/tech-stack.md"))).toBe(false);
       expect(existsSync(join(cwd, "docs/decisions.md"))).toBe(false);
@@ -138,6 +139,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/external-tooling.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
+      expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("_ops/README.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain("_ops/scripts");
       expect(workflowContract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
@@ -221,6 +223,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.context_budget.zones).toEqual({ yellow: 0.55, orange: 0.7, red: 0.8 });
       expect(policy.handoff_resume.auto_start_new_session).toBe(false);
       expect(policy.sidecar_research.output_file).toBe("tasks/research.md");
+      expect(policy.documentation.reference_configs).toContain("global-working-rules.md");
+      expect(policy.upgrade.strategy_version).toBe(1);
+      expect(policy.upgrade.cleanup.remove_only_ownership).toBe("known_generated");
 
       const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8"));
       expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");

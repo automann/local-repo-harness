@@ -35,6 +35,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 - Claiming completion should include contract verification evidence, a run snapshot, implementation notes, and a passing review artifact.
 - Stopping a session should refresh `.ai/harness/handoff/current.md` for easier resume.
 - Use `docs/reference-configs/agentic-development-flow.md` for skill routing and `docs/reference-configs/external-tooling.md` for install/update commands.
+- Use `docs/reference-configs/global-working-rules.md` as the user-level Claude/Codex rule template; keep repo-local workflow contracts in repo files.
 - Contract-level execution should run in an isolated `codex/<task-slug>` worktree. Merge back only after the contract is fulfilled, `tasks/reviews/<slug>.review.md` recommends pass, and the target worktree is clean.
 
 ## Documentation Profile

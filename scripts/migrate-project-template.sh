@@ -239,43 +239,7 @@ cleanup_removed_workflow_assets() {
   while IFS= read -r rel_path; do
     [[ -z "$rel_path" ]] && continue
     remove_path_if_exists "$repo/$rel_path"
-  done <<'EOF_REMOVED'
-scripts/skill-factory-check.sh
-scripts/skill-factory-create.sh
-.ai/hooks/lib/memory-state.sh
-.ai/hooks/lib/skill-factory.sh
-.ai/hooks/memory-intake.sh
-.ai/hooks/skill-factory-session-end.sh
-.claude/hooks/anti-simplification.sh
-.claude/hooks/atomic-commit.sh
-.claude/hooks/atomic-pending.sh
-.claude/hooks/changelog-guard.sh
-.claude/hooks/context-pressure-hook.sh
-.claude/hooks/finalize-handoff.sh
-.claude/hooks/hook-input.sh
-.claude/hooks/lib
-.claude/hooks/lib/memory-state.sh
-.claude/hooks/lib/skill-factory.sh
-.claude/hooks/memory-intake.sh
-.claude/hooks/post-bash.sh
-.claude/hooks/post-edit-guard.sh
-.claude/hooks/pre-code-change.sh
-.claude/hooks/pre-edit-guard.sh
-.claude/hooks/prompt-guard.sh
-.claude/hooks/run-hook.sh
-.claude/hooks/session-start-context.sh
-.claude/hooks/skill-factory-session-end.sh
-.claude/hooks/tdd-guard-hook.sh
-.claude/hooks/trace-event.sh
-.claude/hooks/worktree-guard.sh
-.claude/skill-factory
-.claude/.memory-context.json
-.claude/.memory-snapshot.json
-.claude/.skill-factory-state.json
-.claude/.skill-factory-session.json
-.claude/.skill-factory-session-marker.json
-.claude/.skill-factory-user
-EOF_REMOVED
+  done < <(pi_workflow_contract_upgrade_action_paths "$WORKFLOW_CONTRACT_ASSET" "remove" "known_generated")
 }
 
 ensure_runtime_gitignore_block() {
@@ -782,6 +746,7 @@ print_report() {
   echo "- Workflow migration: docs/spec.md + plans/ + tasks/contracts + tasks/reviews + .ai/context/context-map.json + .ai/harness/*"
   echo "- Workflow contract manifest installed at: .ai/harness/workflow-contract.json"
   echo "- Helper scripts: installed from workflow contract manifest, including context scans and maintenance triage"
+  echo "- Upgrade/reconfigure/cleanup plan: generated from workflow contract migrations.upgrade"
   echo "- Existing external_tooling overrides are preserved; missing defaults are merged into .ai/harness/policy.json"
   echo "- Runtime temporary ignore block synced to .gitignore"
   pi_print_external_tooling_report "$repo" "$MODE" "$SCRIPT_DIR/check-agent-tooling.sh"

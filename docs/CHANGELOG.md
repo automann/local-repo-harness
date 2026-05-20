@@ -2,6 +2,15 @@
 
 All notable changes to this skill are documented here.
 
+## [Unreleased]
+
+## [4.0.1] - 2026-05-20
+
+### Added
+
+- Added a versioned upgrade strategy to the workflow contract, inspector output, harness policy, and migration cleanup path so legacy reconfiguration, archives, preserves, and removals are auditable.
+- Added `docs/reference-configs/global-working-rules.md` as the user-level Claude/Codex rule template with enforceable P1/P2/P3 due diligence.
+
 ## [4.0.0] - 2026-05-20
 
 ### Changed

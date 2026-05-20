@@ -583,7 +583,7 @@ ARCHITECTURE_INDEX_EOF
     "profile": "minimal-agentic",
     "required": ["docs/spec.md", "docs/architecture/index.md"],
     "on_demand": ["docs/brief.md", "docs/tech-stack.md", "docs/decisions.md", "docs/architecture.md", "docs/packages.md"],
-    "reference_configs": ["harness-overview.md", "agentic-development-flow.md", "external-tooling.md", "sprint-contracts.md", "handoff-protocol.md", "document-generation.md"],
+    "reference_configs": ["harness-overview.md", "agentic-development-flow.md", "external-tooling.md", "sprint-contracts.md", "handoff-protocol.md", "document-generation.md", "global-working-rules.md"],
     "rule": "create optional docs only when the agent has concrete repo evidence or the user asks"
   },
   "lsp_profiles": {
@@ -610,6 +610,28 @@ ARCHITECTURE_INDEX_EOF
       "target": "main",
       "requires_clean_check": true,
       "preserve_unrelated_changes": true
+    }
+  },
+  "upgrade": {
+    "strategy_version": 1,
+    "supported_legacy_versions": ["pre-tasks-first", "tasks-first-without-contract-manifest", "current-v1"],
+    "action_classes": {
+      "preserve": "keep user-authored hooks, ignored reference material, secrets, and local env files unchanged",
+      "archive": "move user-authored legacy workflow documents or checklists into archive/research surfaces before refresh",
+      "reconfigure": "merge managed config defaults without overwriting explicit repo overrides",
+      "remove": "delete only workflow-contract actions marked ownership=known_generated"
+    },
+    "cleanup": {
+      "source": ".ai/harness/workflow-contract.json#migrations.upgrade.actions",
+      "remove_only_ownership": "known_generated",
+      "unknown_files": "preserve-or-archive",
+      "custom_hooks": "preserve",
+      "ignored_reference_material": "preserve",
+      "local_secrets": "preserve"
+    },
+    "reporting": {
+      "inspector_field": "upgrade_plan",
+      "dry_run_required": true
     }
   },
   "profiles": {

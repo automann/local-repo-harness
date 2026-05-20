@@ -91,6 +91,7 @@ describe("create-project-dirs scaffold parity", () => {
         "./docs/reference-configs/agentic-development-flow.md",
         "./docs/reference-configs/document-generation.md",
         "./docs/reference-configs/external-tooling.md",
+        "./docs/reference-configs/global-working-rules.md",
         "./docs/reference-configs/handoff-protocol.md",
         "./docs/reference-configs/harness-overview.md",
         "./docs/reference-configs/sprint-contracts.md",

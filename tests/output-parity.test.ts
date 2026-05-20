@@ -196,6 +196,7 @@ describe("Output Quality Gates", () => {
     expect(output).toContain("docs/reference-configs/external-tooling.md");
     expect(output).toContain("docs/reference-configs/sprint-contracts.md");
     expect(output).toContain("docs/reference-configs/evaluator-rubric.md");
+    expect(output).toContain("docs/reference-configs/global-working-rules.md");
     expect(output).toContain("docs/reference-configs/handoff-protocol.md");
     expect(output).not.toContain("assets/reference-configs/");
   });

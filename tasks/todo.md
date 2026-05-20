@@ -25,3 +25,8 @@
 - [x] Added the `project-initializer` architecture diagram and linked it from the architecture index
 - [x] Added contract-level worktree lifecycle start/finish automation with sprint verification and clean fast-forward merge gate
 - [x] Rebased contract worktree lifecycle onto 4.0.0 and preserved worktrees placeholder/runtime-state checks
+- [x] Added manifest-driven upgrade/reconfigure/cleanup strategy for legacy workflow versions
+- [x] Extended inspector output with concrete upgrade plans and stale managed-config detection
+- [x] Replaced migration cleanup heredoc with workflow-contract-owned `known_generated` removals
+- [x] Added global Claude/Codex working-rules reference config and synced user-level global files
+- [x] Bumped release metadata to 4.0.1 for package, skill-version manifest, README, and changelog

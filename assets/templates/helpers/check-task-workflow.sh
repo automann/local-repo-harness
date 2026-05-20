@@ -183,6 +183,10 @@ notes_dir="$(policy_get '.tasks.notes_dir' 'tasks/notes')"
 workstreams_dir="$(policy_get '.tasks.workstreams_dir' 'tasks/workstreams')"
 runs_dir="$(policy_get '.harness.runs_dir' '.ai/harness/runs')"
 context_map_file="$(policy_get '.context.map_file' '.ai/context/context-map.json')"
+upgrade_strategy_version=""
+if [[ -f "$policy_file" ]] && command -v jq >/dev/null 2>&1; then
+  upgrade_strategy_version="$(policy_get '.upgrade.strategy_version' '')"
+fi
 
 check_required_dir "plans"
 check_required_dir "plans/archive"
@@ -227,6 +231,10 @@ check_required_file "$lessons_file"
 check_required_file "$research_file"
 check_required_file "$context_map_file"
 check_required_file "$policy_file"
+
+if [[ -f "$policy_file" && -z "$upgrade_strategy_version" ]] && command -v jq >/dev/null 2>&1; then
+  report_issue "Harness policy is missing upgrade.strategy_version; rerun migration to merge the versioned upgrade strategy."
+fi
 
 if [[ ! -f "$WORKFLOW_CONTRACT_PATH" ]]; then
   report_issue "Missing workflow contract manifest: $WORKFLOW_CONTRACT_PATH"

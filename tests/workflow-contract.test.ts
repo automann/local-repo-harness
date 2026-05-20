@@ -92,6 +92,7 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredDirectories).toContain("_ops/submissions");
     expect(contract.artifacts.requiredFiles).toContain("_ops/README.md");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
+    expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
@@ -100,6 +101,10 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/worktrees/");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
+    expect(contract.migrations.upgrade?.strategyVersion).toBe(1);
+    expect(contract.migrations.upgrade?.actionClasses).toContain("reconfigure");
+    expect(contract.migrations.upgrade?.safety.removeOnlyOwnership).toBe("known_generated");
+    expect(contract.migrations.upgrade?.actions.some((action) => action.action === "remove" && action.ownership === "known_generated")).toBe(true);
   });
 
   test("runtime harness artifacts should be ignored local state, not tracked deliverables", () => {
@@ -143,6 +148,37 @@ describe("state inspection and legacy doc migration", () => {
       expect(result.drift_signals).toContain("legacy-docs-plan");
       expect(result.drift_signals).toContain("legacy-docs-todo");
       expect(result.drift_signals).toContain("legacy-docs-progress");
+      expect(result.upgrade_plan.map((item) => item.id)).toContain("legacy-docs-plan");
+      expect(result.upgrade_plan.map((item) => item.action)).toContain("archive");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("inspector should produce an upgrade plan for current-v1 repos with stale managed config", () => {
+    const repo = mkdtempSync(join(tmpdir(), "inspect-project-state-current-stale-"));
+
+    try {
+      mkdirSync(join(repo, "plans"), { recursive: true });
+      mkdirSync(join(repo, "tasks"), { recursive: true });
+      mkdirSync(join(repo, ".ai", "harness"), { recursive: true });
+      mkdirSync(join(repo, ".claude", "hooks"), { recursive: true });
+      const staleContract = JSON.parse(readFileSync(join(ROOT, "assets/workflow-contract.v1.json"), "utf-8"));
+      delete staleContract.migrations.upgrade;
+      writeFileSync(join(repo, ".ai", "harness", "workflow-contract.json"), JSON.stringify(staleContract, null, 2) + "\n");
+      writeFileSync(join(repo, ".ai", "harness", "policy.json"), JSON.stringify({ version: 1 }, null, 2));
+      writeFileSync(join(repo, ".claude", "hooks", "run-hook.sh"), "#!/bin/bash\necho generated\n");
+      writeFileSync(join(repo, ".claude", "hooks", "custom-bash.sh"), "#!/bin/bash\necho custom\n");
+
+      const result = inspectRepo(repo);
+      expect(result.mode).toBe("audit");
+      expect(result.legacy_contract_version).toBe("current-v1");
+      expect(result.drift_signals).toContain("policy-missing-upgrade-strategy");
+      expect(result.drift_signals).toContain("stale-generated-claude-hook-shims");
+      expect(result.upgrade_plan.map((item) => item.id)).toContain("policy-upgrade-strategy-refresh");
+      expect(result.upgrade_plan.map((item) => item.id)).toContain("legacy-claude-hook-shims");
+      expect(result.upgrade_plan.map((item) => item.id)).toContain("custom-claude-hooks-preserve");
+      expect(result.upgrade_plan.find((item) => item.id === "legacy-claude-hook-shims")?.ownership).toBe("known_generated");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

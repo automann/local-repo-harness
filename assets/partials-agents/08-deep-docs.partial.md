@@ -21,6 +21,7 @@
 - `docs/reference-configs/harness-overview.md`: orchestration playbook
 - `docs/reference-configs/external-tooling.md`: gstack/Waza/gbrain routing, Codex-first Waza sync, and advisory install/update commands
 - `docs/reference-configs/document-generation.md`: minimal docs profile and on-demand document rules
+- `docs/reference-configs/global-working-rules.md`: user-level Claude/Codex rule template
 - `docs/reference-configs/sprint-contracts.md`: contract rules
 - `docs/reference-configs/evaluator-rubric.md`: review thresholds
 - `docs/reference-configs/handoff-protocol.md`: handoff expectations

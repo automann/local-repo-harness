@@ -319,8 +319,8 @@ PI_EVALUATION_PROFILE_DEFAULT="browser-qa"
 PI_HANDOFF_PROFILE_DEFAULT="artifact-aware"
 PI_DOCUMENTATION_PROFILE_DEFAULT="minimal-agentic"
 PI_DEFAULT_LSP_PROFILE="typescript-lsp"
-PI_MINIMAL_REFERENCE_CONFIGS="harness-overview.md agentic-development-flow.md external-tooling.md sprint-contracts.md handoff-protocol.md document-generation.md"
-PI_FULL_REFERENCE_CONFIGS="agentic-development-flow.md ai-workflows.md changelog-versioning.md coding-standards.md development-protocol.md document-generation.md evaluator-rubric.md external-tooling.md git-strategy.md handoff-protocol.md harness-overview.md hook-operations.md release-deploy.md spa-day-protocol.md sprint-contracts.md workflow-orchestration.md"
+PI_MINIMAL_REFERENCE_CONFIGS="harness-overview.md agentic-development-flow.md external-tooling.md sprint-contracts.md handoff-protocol.md document-generation.md global-working-rules.md"
+PI_FULL_REFERENCE_CONFIGS="agentic-development-flow.md ai-workflows.md changelog-versioning.md coding-standards.md development-protocol.md document-generation.md evaluator-rubric.md external-tooling.md git-strategy.md global-working-rules.md handoff-protocol.md harness-overview.md hook-operations.md release-deploy.md spa-day-protocol.md sprint-contracts.md workflow-orchestration.md"
 
 pi_write_file_if_apply() {
   local mode="${1:-apply}"
@@ -502,6 +502,57 @@ if (Array.isArray(value)) {
   console.log(value);
 }
 ' "$contract_file" "$selector"
+      ;;
+  esac
+}
+
+pi_workflow_contract_upgrade_action_paths() {
+  local contract_file="$1"
+  local action_filter="${2:-remove}"
+  local ownership_filter="${3:-known_generated}"
+  local runtime
+
+  if [[ ! -f "$contract_file" ]]; then
+    return 1
+  fi
+
+  runtime="$(pi_resolve_json_runtime || true)"
+  if [[ -z "$runtime" ]]; then
+    echo "[warn] no runtime available to read workflow contract: $contract_file" >&2
+    return 1
+  fi
+
+  case "$runtime" in
+    python3)
+      "$runtime" - "$contract_file" "$action_filter" "$ownership_filter" <<'PY_EOF'
+import json
+import sys
+
+path, action_filter, ownership_filter = sys.argv[1], sys.argv[2], sys.argv[3]
+contract = json.load(open(path, "r", encoding="utf-8"))
+for action in contract.get("migrations", {}).get("upgrade", {}).get("actions", []):
+    if action.get("action") != action_filter:
+        continue
+    if ownership_filter and action.get("ownership") != ownership_filter:
+        continue
+    for rel_path in action.get("paths", []):
+        print(rel_path)
+PY_EOF
+      ;;
+    *)
+      "$runtime" -e '
+const fs = require("fs");
+const [, filePath, actionFilter, ownershipFilter] = process.argv;
+const contract = JSON.parse(fs.readFileSync(filePath, "utf8"));
+const actions = contract.migrations?.upgrade?.actions ?? [];
+for (const action of actions) {
+  if (action.action !== actionFilter) continue;
+  if (ownershipFilter && action.ownership !== ownershipFilter) continue;
+  for (const relPath of action.paths ?? []) {
+    console.log(relPath);
+  }
+}
+' "$contract_file" "$action_filter" "$ownership_filter"
       ;;
   esac
 }
@@ -1254,6 +1305,28 @@ pi_write_harness_policy() {
       "preserve_unrelated_changes": true
     }
   },
+  "upgrade": {
+    "strategy_version": 1,
+    "supported_legacy_versions": ["pre-tasks-first", "tasks-first-without-contract-manifest", "current-v1"],
+    "action_classes": {
+      "preserve": "keep user-authored hooks, ignored reference material, secrets, and local env files unchanged",
+      "archive": "move user-authored legacy workflow documents or checklists into archive/research surfaces before refresh",
+      "reconfigure": "merge managed config defaults without overwriting explicit repo overrides",
+      "remove": "delete only workflow-contract actions marked ownership=known_generated"
+    },
+    "cleanup": {
+      "source": ".ai/harness/workflow-contract.json#migrations.upgrade.actions",
+      "remove_only_ownership": "known_generated",
+      "unknown_files": "preserve-or-archive",
+      "custom_hooks": "preserve",
+      "ignored_reference_material": "preserve",
+      "local_secrets": "preserve"
+    },
+    "reporting": {
+      "inspector_field": "upgrade_plan",
+      "dry_run_required": true
+    }
+  },
   "profiles": {
     "orchestration": "$(pi_orchestration_profile)",
     "evaluation": "$(pi_evaluation_profile)",
@@ -1544,8 +1617,18 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function mergeDefaults(defaultsValue, currentValue) {
+const unionArrayPaths = new Set(["documentation.reference_configs"]);
+
+function mergeDefaults(defaultsValue, currentValue, path = []) {
   if (Array.isArray(defaultsValue)) {
+    const keyPath = path.join(".");
+    if (Array.isArray(currentValue) && unionArrayPaths.has(keyPath)) {
+      const result = [...currentValue];
+      for (const item of defaultsValue) {
+        if (!result.includes(item)) result.push(item);
+      }
+      return result;
+    }
     return Array.isArray(currentValue) ? currentValue : defaultsValue;
   }
 
@@ -1554,7 +1637,7 @@ function mergeDefaults(defaultsValue, currentValue) {
     if (isPlainObject(currentValue)) {
       for (const [key, value] of Object.entries(currentValue)) {
         result[key] = Object.prototype.hasOwnProperty.call(defaultsValue, key)
-          ? mergeDefaults(defaultsValue[key], value)
+          ? mergeDefaults(defaultsValue[key], value, [...path, key])
           : value;
       }
     }
@@ -1585,14 +1668,22 @@ import sys
 
 defaults_path, current_path, output_path = sys.argv[1:]
 
-def merge_defaults(defaults_value, current_value):
+UNION_ARRAY_PATHS = {("documentation", "reference_configs")}
+
+def merge_defaults(defaults_value, current_value, path=()):
     if isinstance(defaults_value, list):
+        if isinstance(current_value, list) and path in UNION_ARRAY_PATHS:
+            result = list(current_value)
+            for item in defaults_value:
+                if item not in result:
+                    result.append(item)
+            return result
         return current_value if isinstance(current_value, list) else defaults_value
     if isinstance(defaults_value, dict):
         result = dict(defaults_value)
         if isinstance(current_value, dict):
             for key, value in current_value.items():
-                result[key] = merge_defaults(defaults_value[key], value) if key in defaults_value else value
+                result[key] = merge_defaults(defaults_value[key], value, path + (key,)) if key in defaults_value else value
         return result
     return defaults_value if current_value is None else current_value
 

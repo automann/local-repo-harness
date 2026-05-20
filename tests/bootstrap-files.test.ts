@@ -105,6 +105,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(sharedLib).toContain("implementation-notes.template.md");
     expect(content).toContain("pi_install_reference_configs");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
+    expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
     expect(content).toContain("install_workflow_contract");
     expect(content).toContain('cp "$ASSETS_HOOKS_DIR/settings.template.json" .claude/settings.json');
@@ -124,6 +125,8 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/external-tooling.md");
+    expect(contract.migrations.upgrade.strategyVersion).toBe(1);
+    expect(contract.migrations.upgrade.safety.removeOnlyOwnership).toBe("known_generated");
     expect(contract.artifacts.requiredDirectories).toContain("tasks/notes");
     expect(contract.artifacts.requiredDirectories).toContain("tasks/workstreams");
     expect(contract.agenticDevelopment.routing.productDiscovery).toBe("gstack:office-hours");
@@ -190,6 +193,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(sharedLib).toContain("check:task-workflow");
     expect(content).toContain("pi_install_reference_configs");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
+    expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
     expect(content).toContain('cp "$ASSETS_HOOKS_DIR/settings.template.json" .claude/settings.json');
     expect(content).toContain("settings.template.json");
     expect(content).toContain("mkdir -p .ai/hooks");

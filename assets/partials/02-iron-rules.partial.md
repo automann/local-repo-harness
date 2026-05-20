@@ -22,6 +22,7 @@ Load these only when needed:
 - `docs/reference-configs/harness-overview.md`
 - `docs/reference-configs/agentic-development-flow.md`
 - `docs/reference-configs/document-generation.md`
+- `docs/reference-configs/global-working-rules.md`
 - `docs/reference-configs/sprint-contracts.md`
 - `docs/reference-configs/evaluator-rubric.md`
 - `docs/reference-configs/handoff-protocol.md`

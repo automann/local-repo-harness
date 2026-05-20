@@ -72,6 +72,28 @@ export type WorkflowContract = {
   migrations: {
     legacyVersions: string[];
     legacyPaths: string[];
+    upgrade?: {
+      strategyVersion: number;
+      supportedLegacyVersions: string[];
+      actionClasses: string[];
+      safety: {
+        removeOnlyOwnership: string;
+        unknownFiles: string;
+        customHooks: string;
+        ignoredReferenceMaterial: string;
+        localSecrets: string;
+      };
+      actions: Array<{
+        id: string;
+        signal: string;
+        action: "preserve" | "archive" | "reconfigure" | "remove";
+        risk: "low" | "medium" | "high";
+        ownership: "known_generated" | "managed_config" | "user_authored" | "user_local";
+        paths: string[];
+        targetPaths?: string[];
+        summary: string;
+      }>;
+    };
   };
 };
 

@@ -78,7 +78,7 @@ Most common guards:
 - Durable progress: `tasks/workstreams/`
 - Release history: `docs/CHANGELOG.md`
 
-## Current Model (4.0.0)
+## Current Model (4.0.1)
 
 - Question flow uses **12 grouped decision points** with harness defaults inferred first.
 - Plan menu is tiered:
