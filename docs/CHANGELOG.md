@@ -7,6 +7,7 @@ All notable changes to this skill are documented here.
 ### Fixed
 
 - Made repeated `migrate-project-template.sh --apply` idempotent after a clean migration commit by normalizing first-write JSON output and preserving unchanged version stamps.
+- Removed stale `3.1 guidance` wording from migration dry-run output.
 
 ## [4.0.2] - 2026-05-20
 

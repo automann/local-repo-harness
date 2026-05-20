@@ -32,3 +32,4 @@
 - [x] Bumped release metadata to 4.0.1 for package, skill-version manifest, README, and changelog
 - [x] Bumped release metadata to 4.0.2 and installed router entrypoint helpers into generated repos
 - [x] Fixed repeated migration apply idempotency for generated policy, Claude settings, and version stamp files
+- [x] Removed stale 3.1 wording from migration dry-run output

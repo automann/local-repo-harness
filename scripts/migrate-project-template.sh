@@ -321,7 +321,7 @@ create_task_files_if_missing() {
   todo_file="$repo/tasks/todo.md"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] ensure docs/spec.md, tasks/*, workstreams, reviews, notes, .ai/context/{capabilities.json,context-map.json}, and .ai/harness/{checks/latest.json,policy.json,events.jsonl,architecture/events.jsonl,handoff/current.md,handoff/resume.md,context-budget/latest.json,failures/latest.jsonl,worktrees/.gitkeep,runs/.gitkeep} exist with 3.1 guidance"
+    echo "[dry-run] ensure docs/spec.md, tasks/*, workstreams, reviews, notes, .ai/context/{capabilities.json,context-map.json}, and .ai/harness/{checks/latest.json,policy.json,events.jsonl,architecture/events.jsonl,handoff/current.md,handoff/resume.md,context-budget/latest.json,failures/latest.jsonl,worktrees/.gitkeep,runs/.gitkeep} exist with current workflow guidance"
     return
   fi
 
