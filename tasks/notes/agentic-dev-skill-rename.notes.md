@@ -27,6 +27,7 @@ The next directory-migration slice can add a new installed path and alias resolv
 
 - `/Users/chris/.codex/skills/agentic-dev` is now the real Codex new-name installed copy.
 - `/Users/chris/.codex/skills/agentic-dev-skill` and `/Users/chris/.codex/skills/project-initializer` remain legacy Codex runtime fallback bundles, but they must not contain `SKILL.md` files or `assets/skill-commands/` because Codex discovery scans those recursively and would show duplicate command skills.
-- `/Users/chris/.claude/skills/agentic-dev` is a symlink alias to the active source repo at `/Users/chris/.claude/skills/project-initializer`.
+- `/Users/chris/.claude/skills/agentic-dev` is now the active git-backed source repo.
+- `/Users/chris/.claude/skills/project-initializer` is the legacy symlink alias pointing at `/Users/chris/.claude/skills/agentic-dev`.
 - Installed-copy sync uses `scripts/sync-codex-installed-copies.sh`; it excludes `.git/`, `_ops/`, `node_modules/`, `.DS_Store`, and local `evals/benchmark.md`.
 - Generated helper smoke verified the default resolver path without explicit root envs resolves to `/Users/chris/.codex/skills/agentic-dev`.

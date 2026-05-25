@@ -238,7 +238,8 @@
 ### What Changed
 - `/Users/chris/.codex/skills/agentic-dev` is now a real installed copy synced from the source repo while excluding `.git/`, `_ops/`, `node_modules/`, and `.DS_Store`.
 - `/Users/chris/.codex/skills/agentic-dev-skill` and `/Users/chris/.codex/skills/project-initializer` remain legacy Codex runtime fallback bundles. They intentionally omit `SKILL.md` files and `assets/skill-commands/` so Codex discovery does not show duplicate `agentic-dev-*` command skills.
-- `/Users/chris/.claude/skills/agentic-dev` is a symlink to `/Users/chris/.claude/skills/project-initializer`, because the legacy Claude path is the active source repo and copying a second source tree there would create avoidable drift.
+- `/Users/chris/.claude/skills/agentic-dev` is the active git-backed source repo.
+- `/Users/chris/.claude/skills/project-initializer` is the legacy symlink alias pointing at `/Users/chris/.claude/skills/agentic-dev`, preserving old path compatibility without keeping a second source tree.
 - Generated helper smoke without `AGENTIC_DEV_ROOT`, `AGENTIC_DEV_SKILL_ROOT`, or `PROJECT_INITIALIZER_ROOT` resolved upstream assets from `/Users/chris/.codex/skills/agentic-dev`.
 
 ### What to Preserve
