@@ -1,6 +1,6 @@
 {
-  "version": "5.1.1",
-  "templateVersion": "5.1.1",
+  "version": "5.1.2",
+  "templateVersion": "5.1.2",
   "skillName": "agentic-dev",
   "contractId": "tasks-first-harness-v1",
   "legacyAliases": [
@@ -87,6 +87,10 @@
     {
       "version": "5.1.1",
       "description": "Refreshes stale reference and architecture docs for the current agentic-dev command, hook, migration, eval, plugin, and minimal-documentation contracts"
+    },
+    {
+      "version": "5.1.2",
+      "description": "Adds generated Codex hook adapter support through .codex/hooks.json while keeping .ai/hooks as the shared implementation layer"
     }
   ],
   "generatedProjectStamp": {

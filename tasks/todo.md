@@ -62,3 +62,5 @@
 - [x] Verified reference drift scan and repo workflow checks for the doc refresh
 - [x] Removed empty optional doc placeholders and refreshed command inventory docs for the current 13-command surface
 - [x] Bumped release metadata to 5.1.1 for package, skill manifest, README, stamp, and changelog
+- [x] Added generated Codex hook adapter support through `.codex/hooks.json` while keeping `.ai/hooks/` as the shared implementation layer
+- [x] Bumped release metadata to 5.1.2 for the Codex hook adapter release

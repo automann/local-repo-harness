@@ -51,7 +51,9 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/architecture/events.jsonl
 .ai/harness/worktrees/
 .ai/harness/runs/
-.codex/
+.codex/*
+!.codex/
+!.codex/hooks.json
 EOF_RUNTIME
 )
 PI_EXTERNAL_TOOLING_HOSTS_DEFAULT=$(cat <<'EOF_EXTERNAL_TOOLING_HOSTS'

@@ -41,6 +41,8 @@ command_exists() {
 
 install_hook_settings_template() {
     cp "$ASSETS_HOOKS_DIR/settings.template.json" .claude/settings.json
+    mkdir -p .codex
+    cp "$ASSETS_HOOKS_DIR/codex.hooks.template.json" .codex/hooks.json
 }
 
 ensure_runtime_gitignore_block() {

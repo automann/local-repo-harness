@@ -98,6 +98,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/skill-factory-check.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/finalize-handoff.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
@@ -117,7 +118,10 @@ describe("create-project-dirs runtime smoke", () => {
 
       const settings = readFileSync(join(cwd, ".claude/settings.json"), "utf-8");
       const settingsTemplate = readFileSync(join(ROOT, "assets/hooks/settings.template.json"), "utf-8");
+      const codexHooks = readFileSync(join(cwd, ".codex/hooks.json"), "utf-8");
+      const codexHooksTemplate = readFileSync(join(ROOT, "assets/hooks/codex.hooks.template.json"), "utf-8");
       expect(settings).toBe(settingsTemplate);
+      expect(codexHooks).toBe(codexHooksTemplate);
       expect(settings).toContain("trace-event.sh");
       expect(settings).toContain("session-start-context.sh");
       expect(settings).toContain("finalize-handoff.sh");

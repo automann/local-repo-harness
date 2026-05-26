@@ -76,6 +76,7 @@ describe("create-project-dirs scaffold parity", () => {
         "./.claude/templates/research.template.md",
         "./.claude/templates/review.template.md",
         "./.claude/templates/spec.template.md",
+        "./.codex/hooks.json",
         "./.gitignore",
         "./deploy/README.md",
         "./deploy/env/.gitkeep",

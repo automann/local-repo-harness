@@ -43,7 +43,7 @@ describe("workflow contract manifest", () => {
   });
 
   test("hook asset files should stay in parity with self-hosted .ai/hooks", () => {
-    const assetFiles = collectFiles(join(ROOT, "assets/hooks")).filter((file) => file !== "./settings.template.json");
+    const assetFiles = collectFiles(join(ROOT, "assets/hooks")).filter((file) => !["./settings.template.json", "./codex.hooks.template.json"].includes(file));
     const runtimeFiles = collectFiles(join(ROOT, ".ai/hooks"));
 
     expect(runtimeFiles).toEqual(assetFiles);
@@ -82,6 +82,7 @@ describe("workflow contract manifest", () => {
     expect(contract.agenticDevelopment?.routing.bugOrRegression).toBe("waza:hunt");
     expect(contract.agenticDevelopment?.dueDiligence.levels).toContain("P2_DATA_FLOW_TRACE");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
+    expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-resolver.ts");

@@ -37,6 +37,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(existsSync(join(ROOT, "CLAUDE.md"))).toBe(true);
     expect(existsSync(join(ROOT, "AGENTS.md"))).toBe(true);
     expect(existsSync(join(ROOT, ".claude/settings.json"))).toBe(true);
+    expect(existsSync(join(ROOT, ".codex/hooks.json"))).toBe(true);
 
     const claude = read("CLAUDE.md");
     const agents = read("AGENTS.md");
@@ -120,6 +121,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
     expect(content).toContain("install_workflow_contract");
     expect(content).toContain('cp "$ASSETS_HOOKS_DIR/settings.template.json" .claude/settings.json');
+    expect(content).toContain('cp "$ASSETS_HOOKS_DIR/codex.hooks.template.json" .codex/hooks.json');
     expect(content).toContain("mkdir -p .ai/hooks");
     expect(content).toContain("settings.template.json");
     expect(contract.helpers.scripts).toContain("switch-plan.sh");
@@ -128,6 +130,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
+    expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
@@ -212,6 +215,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
     expect(content).toContain('cp "$ASSETS_HOOKS_DIR/settings.template.json" .claude/settings.json');
+    expect(content).toContain('cp "$ASSETS_HOOKS_DIR/codex.hooks.template.json" .codex/hooks.json');
     expect(content).toContain("settings.template.json");
     expect(content).toContain("mkdir -p .ai/hooks");
     expect(sharedLib).not.toContain(".skill-factory-state.json");
@@ -248,7 +252,8 @@ describe("Bootstrap Script Contracts", () => {
 
   test("hook template should reference existing local hook scripts", () => {
     const settings = read("assets/hooks/settings.template.json");
-    const hookCommands = [...settings.matchAll(/\.ai\/hooks\/([A-Za-z0-9.-]+\.sh)/g)].map((m) => m[1]);
+    const codexHooks = read("assets/hooks/codex.hooks.template.json");
+    const hookCommands = [...`${settings}\n${codexHooks}`.matchAll(/\.ai\/hooks\/([A-Za-z0-9.-]+\.sh)/g)].map((m) => m[1]);
 
     expect(hookCommands.length).toBeGreaterThan(0);
     for (const fileName of hookCommands) {
@@ -257,6 +262,7 @@ describe("Bootstrap Script Contracts", () => {
 
     expect(hookCommands).toContain("run-hook.sh");
     expect(settings).toContain(".ai/hooks/run-hook.sh");
+    expect(codexHooks).toContain(".ai/hooks/run-hook.sh");
     expect(settings).toContain("worktree-guard.sh");
     expect(settings).toContain("pre-edit-guard.sh");
     expect(settings).toContain("post-edit-guard.sh");

@@ -28,6 +28,7 @@ describe("Migration script contract", () => {
   test("should migrate team hooks to settings.json", () => {
     const script = read("scripts/migrate-project-template.sh");
     expect(script).toContain(".claude/settings.json");
+    expect(script).toContain(".codex/hooks.json");
     expect(script).toContain("settings.local.json");
     expect(script).toContain("migrate_workflow");
   });
@@ -108,7 +109,8 @@ describe("Migration script contract", () => {
     expect(sharedLib).toContain("check:task-sync");
     expect(sharedLib).toContain("check:task-workflow");
     expect(sharedLib).toContain(".claude/.trace.jsonl");
-    expect(sharedLib).toContain(".codex/");
+    expect(sharedLib).toContain(".codex/*");
+    expect(sharedLib).toContain("!.codex/hooks.json");
     expect(sharedLib).toContain("_ref/");
     expect(sharedLib).toContain("_ops/");
     expect(script).toContain("tasks/contracts");
@@ -278,11 +280,17 @@ describe("Migration script contract", () => {
       expect(spec).toContain("# Product Spec:");
 
       const settings = readFileSync(join(repo, ".claude/settings.json"), "utf-8");
+      const codexHooks = readFileSync(join(repo, ".codex/hooks.json"), "utf-8");
       expect(settings).toContain(".ai/hooks/run-hook.sh");
+      expect(codexHooks).toContain(".ai/hooks/run-hook.sh");
       expect(settings).toContain("session-start-context.sh");
+      expect(codexHooks).toContain("session-start-context.sh");
       expect(settings).toContain("trace-event.sh");
+      expect(codexHooks).toContain("trace-event.sh");
       expect(settings).not.toContain("memory-intake.sh");
+      expect(codexHooks).not.toContain("memory-intake.sh");
       expect(settings).not.toContain("skill-factory-session-end.sh");
+      expect(codexHooks).not.toContain("skill-factory-session-end.sh");
 
       const handoff = readFileSync(join(repo, ".ai/harness/handoff/current.md"), "utf-8");
       expect(handoff).toContain("# Harness Handoff");
@@ -399,7 +407,8 @@ describe("Migration script contract", () => {
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
       expect(gitignore).toContain(".claude/.trace.jsonl");
-      expect(gitignore).toContain(".codex/");
+      expect(gitignore).toContain(".codex/*");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain("_ops/");
       expect(gitignore).not.toContain("_ops/secrets/");
@@ -667,7 +676,8 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.task-state.json");
       expect(gitignore).toContain(".claude/.active-plan");
       expect(gitignore).toContain(".claude/.trace.jsonl");
-      expect(gitignore).toContain(".codex/");
+      expect(gitignore).toContain(".codex/*");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain("_ops/");
       expect(gitignore).not.toContain(".claude/.memory-context.json");

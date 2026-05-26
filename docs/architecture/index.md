@@ -80,5 +80,5 @@ Project
 
 ## Review Backlog
 
-- Treat repo-local `.codex/` as local/untracked state unless a documented Codex repo-local contract is verified. If Codex needs a repo-local adapter, keep the implementation boundary under `.ai/`; reserve `~/.codex` for global Codex runtime state.
+- Keep repo-local `.codex/hooks.json` as the Codex adapter while keeping hook implementation under `.ai/hooks/`; reserve other `.codex/` files for local Codex runtime state.
 - Consider adding `bun scripts/capability-resolver.ts validate --format text` to the strict workflow gate after the architecture registry has been used through one more real slice.

@@ -17,7 +17,7 @@ instead of becoming separate hook sources of truth.
 
 - `.ai/hooks/` is the shared hook implementation.
 - `.claude/settings.json` is the Claude adapter surface.
-- Repo-local `.codex/` is not a committed contract surface. Use `.ai/` for repo-local implementation and reserve `~/.codex` for global Codex runtime state.
+- `.codex/hooks.json` is the Codex adapter surface.
 - Runtime files under `.ai/harness/checks`, `.ai/harness/handoff`, `.ai/harness/failures`, `.ai/harness/context-budget`, `.ai/harness/architecture/events.jsonl`, `.ai/harness/worktrees`, and `.ai/harness/runs` are ignored state, not durable deliverables.
 
 ## Verification Surface

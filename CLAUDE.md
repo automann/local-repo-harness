@@ -21,7 +21,7 @@ This repository self-hosts the `agentic-dev` contract, formerly `agentic-dev-ski
 
 - Sync `tasks/` whenever substantive repo changes are made.
 - Use `tasks/notes/<slug>.notes.md` only for non-obvious slice decisions, deviations, tradeoffs, and open questions; do not use notes as durable memory or a task log, and archive/promote them deliberately when the slice closes.
-- Treat `.ai/hooks/` as the shared hook implementation and `.claude/settings.json` as the Claude adapter only.
+- Treat `.ai/hooks/` as the shared hook implementation, `.claude/settings.json` as the Claude adapter, and `.codex/hooks.json` as the Codex adapter.
 - Keep the umbrella hierarchy explicit: architecture owns stable truth, capability contracts own local agent context, `tasks/workstreams/<domain>/<capability>/` owns durable progress, and `tasks/todo.md` owns only the current session slice.
 - Treat `.ai/context/capabilities.json` as the source of truth for capability prefixes; `agent-context-blocks.txt` and nested agent files are compatibility inputs only.
 - Keep architecture drift handling split: `architecture-drift.sh` writes architecture requests/events, `workstream-sync.sh` maintains durable capability workstreams, and `context-contract-sync.sh` only updates controlled local `CLAUDE.md`/`AGENTS.md` architecture blocks.
