@@ -1,6 +1,6 @@
 # Sprint Contract: hook-global-runtime
 
-> **Status**: Active
+> **Status**: Partial
 > **Plan**: plans/plan-20260528-1436-hook-global-runtime.md
 > **Owner**: ancienttwo
 > **Capability ID**: root
@@ -53,20 +53,42 @@ Build the `agentic-dev` global CLI (类 codegraph install pattern, 但其为 hoo
 
 ```yaml
 allowed_paths:
+  # Docs
   - docs/spec.md
   - docs/architecture/global-hook-runtime.md
+  - docs/reference-configs/external-tooling.md
+  # Plans / Tasks
   - plans/
   - tasks/todo.md
   - tasks/contracts/hook-global-runtime.contract.md
   - tasks/reviews/hook-global-runtime.review.md
   - tasks/notes/hook-global-runtime.notes.md
+  # Harness contract surface
   - .ai/context/capabilities.json
+  - .ai/harness/workflow-contract.json
+  - .ai/harness/policy.json
   - .codex/hooks.json
   - assets/templates/helpers/check-task-workflow.sh
+  - assets/workflow-contract.v1.json
+  # Scripts (Phase 0 canary + Phase 1D template/check updates)
   - scripts/canary-global-hook.sh
   - scripts/check-task-workflow.sh
   - scripts/agentic-dev.sh
   - scripts/hook-shim.sh
+  - scripts/migrate-project-template.sh
+  - scripts/lib/project-init-lib.sh
+  - scripts/check-agent-tooling.sh
+  # Root-level CLI / build surface (Phase 1A scaffold + Phase 1F distribution)
+  - package.json
+  - bun.lock
+  - tsconfig.json
+  - install.sh
+  - install.ps1
+  - CLAUDE.md
+  - AGENTS.md
+  # CI release pipeline (Phase 1F)
+  - .github/workflows/release.yml
+  # Source / tests
   - src/
   - tests/
 ```
