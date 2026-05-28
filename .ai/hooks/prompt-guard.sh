@@ -217,7 +217,7 @@ maybe_capture_embedded_approved_plan() {
       "Embedded approved plan detected but scripts/capture-plan.sh is missing." \
       "Install workflow helpers before executing an embedded approved plan." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   local body title slug capture_output
@@ -229,7 +229,7 @@ maybe_capture_embedded_approved_plan() {
       "PLEASE IMPLEMENT THIS PLAN was provided without a plan body." \
       "Paste the approved plan body after the marker so scripts/capture-plan.sh can store and project it." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   title="$(derive_embedded_approved_plan_title "$body")"
@@ -246,7 +246,7 @@ maybe_capture_embedded_approved_plan() {
       "Embedded approved plan capture failed." \
       "Fix the capture-plan.sh or plan-to-todo.sh error before editing implementation files." \
       "state_violation"
-    exit 1
+    exit 2
   fi
   printf '%s\n' "$capture_output"
   exit 0
@@ -334,7 +334,7 @@ if is_plan_creation_intent || is_think_plan_start_intent; then
         "Research is missing or older than the latest plan ($latest_plan)." \
         "Update tasks/research.md with fresh findings before drafting a new plan." \
         "missing_artifact"
-      exit 1
+      exit 2
     else
       echo "[ResearchGate] WARNING: tasks/research.md does not exist yet. Consider creating it with current findings before drafting the plan."
       echo "  首次创建计划：建议先写 tasks/research.md，但不阻塞。"
@@ -373,7 +373,7 @@ if [ "$implement_intent" -eq 1 ]; then
       "Implementation requested without docs/spec.md." \
       "Run bash scripts/new-spec.sh and capture stable product intent before implementing." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   maybe_capture_embedded_approved_plan
@@ -395,7 +395,7 @@ if [ "$implement_intent" -eq 1 ]; then
       "No active plan found in plans/." \
       "Capture the approved planning output with bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --execute, or run bash scripts/ensure-task-workflow.sh --slug <slug> --title <title> when no planning output exists." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   plan_status="$(get_plan_status "$active_plan")"
@@ -413,7 +413,7 @@ if [ "$implement_intent" -eq 1 ]; then
       "Plan status is $plan_status in $active_plan." \
       "Complete the annotation cycle and move the plan to Approved before implementation." \
       "state_violation"
-    exit 1
+    exit 2
   fi
 
   if [ "$plan_status" = "Approved" ] || [ "$plan_status" = "Executing" ]; then
@@ -425,7 +425,7 @@ if [ "$implement_intent" -eq 1 ]; then
         "Implementation requested without a complete plan Evidence Contract." \
         "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before implementation." \
         "quality_gate"
-      exit 1
+      exit 2
     fi
 
     if [ "$plan_status" = "Approved" ] && [ "$execution_approval_intent" -eq 1 ]; then
@@ -446,7 +446,7 @@ if [ "$implement_intent" -eq 1 ]; then
         "Implementation requested without an active sprint contract." \
         "Run bash scripts/plan-to-todo.sh --plan $active_plan to create the contract/review/notes scaffold before implementation." \
         "missing_artifact"
-      exit 1
+      exit 2
     fi
   fi
 fi
@@ -460,7 +460,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Done intent detected without an active plan." \
       "Finish the plan workflow and ensure plans/ contains the active plan before marking work done." \
       "state_violation"
-    exit 1
+    exit 2
   fi
 
   contract_file="$(derive_contract_path "$active_plan" || true)"
@@ -471,7 +471,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Could not derive a contract path from $active_plan." \
       "Rename the plan to plan-<timestamp>-<slug>.md so the matching contract can be resolved." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   if [ ! -f "$contract_file" ]; then
@@ -481,7 +481,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Missing task contract $contract_file." \
       "Create the contract or regenerate tasks from the active plan before marking work done." \
       "missing_artifact"
-    exit 1
+    exit 2
   fi
 
   if ! evidence_error="$(plan_evidence_contract_error "$active_plan")"; then
@@ -492,7 +492,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Done intent detected without a complete plan Evidence Contract." \
       "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before marking work done." \
       "quality_gate"
-    exit 1
+    exit 2
   fi
 
   if [ -f "scripts/verify-contract.sh" ]; then
@@ -503,7 +503,7 @@ if [ "$done_intent" -eq 1 ]; then
         "Contract verification failed for $contract_file." \
         "Resolve the failing exit criteria in the contract before marking work done." \
         "contract_failure"
-      exit 1
+      exit 2
     fi
   else
     echo "[ContractGuard] verify-contract.sh not found at scripts/verify-contract.sh (degraded mode: skipping strict verification)."
@@ -517,7 +517,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Done intent detected without a sprint review artifact." \
       "Run Waza /check after verification and record its evaluator recommendation in tasks/reviews/<slug>.review.md before marking work done." \
       "quality_gate"
-    exit 1
+    exit 2
   fi
 
   if ! workflow_review_recommends_pass "$review_file"; then
@@ -527,7 +527,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Sprint review is missing a passing recommendation." \
       "Run Waza /check with fresh verification evidence and record a pass recommendation before marking work done." \
       "quality_gate"
-    exit 1
+    exit 2
   fi
 
   checks_file="$(workflow_checks_file)"
@@ -538,7 +538,7 @@ if [ "$done_intent" -eq 1 ]; then
       "Done intent detected without structured verification evidence." \
       "Run the relevant checks so .ai/harness/checks/latest.json exists before marking work done." \
       "quality_gate"
-    exit 1
+    exit 2
   fi
 
   if ! checks_error="$(workflow_checks_pass "$checks_file" "$contract_file" "$review_file")"; then
@@ -548,7 +548,7 @@ if [ "$done_intent" -eq 1 ]; then
       "$checks_error" \
       "Run bash scripts/verify-sprint.sh so .ai/harness/checks/latest.json records a passing current sprint verification." \
       "quality_gate"
-    exit 1
+    exit 2
   fi
 fi
 

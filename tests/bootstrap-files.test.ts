@@ -54,8 +54,10 @@ describe("Bootstrap Script Contracts", () => {
 
   test("repo package should expose workflow verification scripts", () => {
     const pkg = JSON.parse(read("package.json"));
-    expect(pkg.name).toBe("agentic-harness");
+    expect(pkg.name).toBe("repo-harness");
+    expect(pkg.version).toBe("0.1.1");
     expect(pkg.private).toBeUndefined();
+    expect(pkg.bin["repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin["agentic-dev"]).toBe("src/cli/index.ts");
     expect(pkg.scripts["check:brain-manifest"]).toBe("bash scripts/check-brain-manifest.sh");
     expect(pkg.scripts["check:task-sync"]).toBe("bash scripts/check-task-sync.sh");
@@ -269,7 +271,10 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain("has_changes_glob");
     expect(content).toContain("PlanStatusGuard");
     expect(content).toContain("ensure-task-workflow.sh");
-    expect(content).toContain("exit 1");
+    // Block-path guards must use exit 2 so Claude Code's hook protocol treats
+    // them as blocking and surfaces stderr to the model (exit 1 is reported as
+    // "non-blocking status code: No stderr output").
+    expect(content).toContain("exit 2");
   });
 
   test("hook template should reference existing local hook scripts", () => {

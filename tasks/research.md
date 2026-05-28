@@ -421,13 +421,16 @@
 ## 2026-05-28 NPM Package Name Notes
 
 ### What Changed
-- The npm package name is `agentic-harness`, while the installed bin command remains `agentic-dev`.
-- `npx -y agentic-harness init` is the intended one-shot command for existing repos once the package is published.
+- The npm package name and primary installed command are `repo-harness`.
+- `agentic-dev` remains a compatibility bin alias for existing local workflows and installed references.
+- `npx -y repo-harness init` is the intended one-shot command for existing repos once the package is published.
 - Because `npx` runs packages from an npm `_npx` cache directory, `agentic-dev init` forces `AGENTIC_DEV_LINK_INSTALLED_COPIES=0` for those sources so Codex/Claude skill roots receive copies instead of symlinks to temporary cache paths.
 
 ### What to Preserve
 - Do not use a personal npm scope for the public package name.
-- Keep `agentic-dev` as the command name and repo/product display name even though the npm package name is `agentic-harness`.
+- Keep `agentic-dev` as a compatibility command alias and repo/product heritage name, while `repo-harness` is the primary CLI command and npm package name.
+- Reset only the npm/CLI release line to `0.1.x`; keep `assets/skill-version.json` and generated project stamps on the `5.2.3` workflow compatibility line.
+- GitHub repository metadata moved to `https://github.com/Ancienttwo/repo-harness`; npm package metadata should point at `git+https://github.com/Ancienttwo/repo-harness.git`.
 
 ## 2026-05-27 CodeGraph vs Understand Anything Research Notes
 
@@ -537,3 +540,78 @@
 - Do not auto-sync arbitrary docs or all `docs/**`; sync must remain manifest-controlled and one-way from repo source to default brain.
 - Do not make hook correctness depend on `gbrain`, MCP, or querying the default brain. The hook may write exact opted-in files and should remain non-blocking.
 - Keep repo-local contracts, hooks, scripts, checks, and evidence authoritative; brain files are durable advisory knowledge, not the active workflow source of truth.
+
+## 2026-05-28 Active Plan / Todo / Review Semantics Correction
+
+### What Changed
+- `.ai/harness/active-plan` is now an explicit per-worktree selector only; `.claude/.active-plan` remains a legacy mirror, and runtime helpers no longer treat the latest `plans/plan-*.md` as the implicit active plan.
+- `.ai/harness/active-worktree` records the owning worktree path whenever `capture-plan.sh`, `plan-to-todo.sh`, or `switch-plan.sh` selects an active plan.
+- `tasks/todo.md` is a deferred-goal ledger only. Active implementation checkboxes stay in the selected plan's `## Task Breakdown`; `plan-to-todo.sh` creates contract/review/notes and updates the plan status without copying those tasks into todo.
+- Hook execution no longer blocks implementation because `tasks/todo.md` is not sourced from the active plan. It requires the active plan plus contract/review/check evidence instead.
+- `contract-worktree finish` keeps active markers long enough for verification, then removes local runtime markers before scope checks and commit/merge.
+- Review templates and guard messages now make review completion a post-verification Waza `/check` step.
+
+### Why
+- A single global active plan turns Draft planning into a repo-wide lock, which conflicts with the worktree-first contract model.
+- Repeating plan breakdowns in `tasks/todo.md` creates two mutable execution ledgers that can drift; medium/long-term deferred goals need different metadata: reason, tradeoff, and revisit trigger.
+- Reviews are evaluator evidence, not planning scaffolding. They should be filled after verification, then used by done gates together with `.ai/harness/checks/latest.json`.
+
+### Verification
+- `bun test tests/helper-scripts.test.ts tests/hook-runtime.test.ts tests/workflow-contract.test.ts tests/migration-script.test.ts tests/bootstrap-files.test.ts tests/create-project-dirs.runtime.test.ts tests/agents-assembly.test.ts tests/scaffold-parity.test.ts tests/output-parity.test.ts tests/readme-dx.test.ts tests/cli/init.test.ts`
+- `bun test`
+- `bash scripts/check-deploy-sql-order.sh`
+- `bash scripts/check-task-sync.sh`
+- `bash scripts/check-task-workflow.sh --strict`
+- `bun scripts/inspect-project-state.ts --repo . --format text`
+- `bash scripts/migrate-project-template.sh --repo . --dry-run`
+
+## 2026-05-28 Hook Protocol Compliance Fix (PreToolUse exit-code semantics)
+
+### Symptom
+- Claude Code surfaced `PreToolUse:Edit hook error / Failed with non-blocking status code: No stderr output` whenever a guard tried to block an edit (e.g. `ContractScopeGuard` rejecting an out-of-scope file). The model could not see the reason, retried the same edit, and the user saw an opaque error.
+
+### Root Cause
+- Every block-intent path in `pre-edit-guard.sh`, `worktree-guard.sh`, and `prompt-guard.sh` exited with `exit 1` and wrote the diagnostic + structured JSON to stdout via `hook_structured_error`.
+- Claude Code's hook protocol only treats `exit 2` as a true block (stderr is what gets fed to the model). Any other non-zero exit is a non-blocking status code, and the helper text was on stdout, so stderr was empty — hence "No stderr output".
+
+### Fix
+- `hook_structured_error` (`.ai/hooks/hook-input.sh`, mirrored in `assets/hooks/`) now mirrors `[guard] reason` and `Fix: ...` to stderr when `action=block`, while still emitting the existing telemetry JSON on stdout for trace/log consumers.
+- Every block-intent `exit 1` was replaced with `exit 2` (4 sites in `pre-edit-guard.sh`, 1 in `worktree-guard.sh`, 18 in `prompt-guard.sh`).
+- Tests: new `tests/hook-protocol.test.ts` pins exit 2 + stderr contents for `WorktreeGuard`, `ExternalReferenceGuard`, `OpsPrivateGuard`, `ContractScopeGuard`, `PlanTransitionGuard`, `PlanStatusGuard`, `ContractGuard`, and the `hook_structured_error` dual-channel contract. Existing assertions in `tests/hook-runtime.test.ts` and `tests/bootstrap-files.test.ts` were updated from `exit 1` to `exit 2`; stdout/JSON telemetry remains unchanged for backwards compatibility.
+
+### Known Adjacent Bug (Not Fixed Here)
+- `workflow_contract_allows_path` compares the (potentially absolute) `tool_input.file_path` against contract `allowed_paths` patterns that are repo-relative (e.g. `.ai/hooks/`). An absolute path like `/Users/.../agentic-dev/.ai/hooks/foo.sh` never matches, so `ContractScopeGuard` falsely blocks edits to allowed directories. During this fix the workaround was to temporarily move `.ai/harness/active-plan` and `.claude/.active-plan` aside. Real fix should normalize `FILE_PATH` to a repo-relative path before scope matching (see `pre-edit-guard.sh:53-64`). Tracked as a follow-up.
+
+### Verification
+- `bun test` (431 pass, 6 skip, 0 fail)
+- Manual repro: `echo '{"tool_name":"Edit","tool_input":{"file_path":"_ref/upstream/README.md"}}' | bash .ai/hooks/pre-edit-guard.sh` now exits 2, with `[ExternalReferenceGuard] ...\n  Fix: ...` on stderr and the original telemetry JSON on stdout.
+- `bash scripts/check-deploy-sql-order.sh`, `bash scripts/check-task-sync.sh`, `bash scripts/check-task-workflow.sh --strict`, `bun scripts/inspect-project-state.ts --repo . --format text`, `bash scripts/migrate-project-template.sh --repo . --dry-run`.
+
+## 2026-05-28 Hook File-Path Normalization Fix (ContractScopeGuard / repo-relative pattern matchers)
+
+### Symptom
+- ContractScopeGuard falsely blocked edits to files inside `allowed_paths` directories whenever Claude Code passed an absolute `tool_input.file_path` (the default). `.ai/hooks/` was listed in the contract yet `/Users/.../agentic-dev/.ai/hooks/foo.sh` was still reported as "outside the allowed_paths".
+- ExternalReferenceGuard / OpsPrivateGuard silently failed on absolute paths (e.g. `/repo/_ref/foo.md` did not match the `_ref/*` shell case). post-edit doc-drift / brain-sync matchers had the same silent failure.
+
+### Root Cause
+- `workflow_contract_allows_path` and the `case` patterns in `pre-edit-guard.sh` / `post-edit-guard.sh` are repo-relative (e.g. `.ai/hooks/`, `_ref/*`, `apps/*/src/...`). Hooks read `tool_input.file_path` verbatim from Claude Code, which always sends absolute paths. Shell `==` glob match never matches a repo-relative pattern against an absolute path.
+
+### Fix
+- New helper `hook_normalize_file_path` in `.ai/hooks/hook-input.sh` (mirrored to `assets/hooks/`):
+  - Returns the input unchanged for empty / relative / non-`HOOK_REPO_ROOT` paths.
+  - Strips the repo-root prefix (and the canonical `pwd -P` form for macOS `/var → /private/var` symlinks) when the path lives inside the repo.
+  - Resolves the parent directory's realpath so the canonical prefix still strips even when the target file does not exist yet.
+  - Leaves paths outside the repo absolute so out-of-scope detection still triggers.
+- `hook_get_file_path` now routes every return path through `hook_normalize_file_path`.
+
+### Tests
+- `tests/hook-protocol.test.ts` gained three regression tests:
+  - Absolute path inside the repo to `_ref/...` still triggers ExternalReferenceGuard with exit 2.
+  - Absolute path outside the repo remains absolute and trips ContractScopeGuard with exit 2.
+  - Absolute path under an allowed_paths directory exits 0 (no false block).
+- `bun test` 434 pass / 6 skip / 0 fail.
+
+### Verification
+- Manual repro 1 (was failing): `echo '{"tool_input":{"file_path":"/Users/.../agentic-dev/.ai/hooks/sample.sh"}}' | bash .ai/hooks/pre-edit-guard.sh` → exit 0.
+- Manual repro 2 (regression guard): `echo '{"tool_input":{"file_path":"/Users/ancienttwo/.claude/plans/some-other-file.md"}}' | bash .ai/hooks/pre-edit-guard.sh` → exit 2 with the ContractScopeGuard stderr message intact.
+- `bash scripts/check-deploy-sql-order.sh`, `bash scripts/check-task-sync.sh`, `bash scripts/check-task-workflow.sh --strict`, `bun scripts/inspect-project-state.ts --repo . --format text`, `bash scripts/migrate-project-template.sh --repo . --dry-run`.

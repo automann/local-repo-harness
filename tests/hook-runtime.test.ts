@@ -295,9 +295,10 @@ describe("Hook runtime behavior", () => {
       writeFileSync(join(cwd, ".claude/.require-worktree"), "1\n");
 
       const blockRes = runHook("worktree-guard.sh", cwd);
-      expect(blockRes.status).toBe(1);
+      expect(blockRes.status).toBe(2);
       expect(blockRes.stdout).toContain("Mutation blocked");
       expect(blockRes.stdout).toContain('"failure_class":"state_violation"');
+      expect(blockRes.stderr).toContain("[WorktreeGuard]");
       const failureLog = readFileSync(join(cwd, ".ai/harness/failures/latest.jsonl"), "utf-8");
       expect(failureLog).toContain('"guard":"WorktreeGuard"');
       expect(failureLog).toContain('"run_id":"run-');
@@ -910,7 +911,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "implement it all now" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[PlanStatusGuard]");
       expect(res.stdout).toContain('"guard":"PlanStatusGuard"');
     } finally {
@@ -940,7 +941,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "implement it all now" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[EvidenceContractGuard]");
       expect(res.stdout).toContain('"guard":"EvidenceContractGuard"');
     } finally {
@@ -1300,7 +1301,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "开始实现" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("No active plan found in plans/");
       expect(res.stdout).toContain("capture-plan.sh");
       expect(res.stdout).toContain("ensure-task-workflow.sh");
@@ -1395,7 +1396,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "go ahead with the bug fix" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[PlanStatusGuard]");
       expect(res.stdout).not.toContain("[PlanCaptureGate]");
     } finally {
@@ -1420,7 +1421,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "mark done now" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[ContractGuard]");
       expect(res.stdout).toContain("Missing task contract");
     } finally {
@@ -1502,7 +1503,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "done" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[EvidenceContractGuard]");
       expect(res.stdout).toContain('"guard":"EvidenceContractGuard"');
     } finally {
@@ -1578,7 +1579,7 @@ describe("Hook runtime behavior", () => {
           stdin: JSON.stringify({ user_message: "done" }),
         });
 
-        expect(res.status).toBe(1);
+        expect(res.status).toBe(2);
         expect(res.stdout).toContain("[EvidenceGuard]");
       } finally {
         rmSync(cwd, { recursive: true, force: true });
@@ -1616,7 +1617,7 @@ describe("Hook runtime behavior", () => {
         stdin: JSON.stringify({ user_message: "done" }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[ContractGuard]");
       expect(res.stdout).toContain("Contract verification failed");
     } finally {
@@ -1659,16 +1660,18 @@ describe("Hook runtime behavior", () => {
       const refRes = runHook("pre-edit-guard.sh", cwd, {
         stdin: JSON.stringify({ tool_input: { file_path: "_ref/upstream/README.md" } }),
       });
-      expect(refRes.status).toBe(1);
+      expect(refRes.status).toBe(2);
       expect(refRes.stdout).toContain("[ExternalReferenceGuard]");
       expect(refRes.stdout).toContain('"guard":"ExternalReferenceGuard"');
+      expect(refRes.stderr).toContain("[ExternalReferenceGuard]");
 
       const secretRes = runHook("pre-edit-guard.sh", cwd, {
         stdin: JSON.stringify({ tool_input: { file_path: "_ops/env/.env.production" } }),
       });
-      expect(secretRes.status).toBe(1);
+      expect(secretRes.status).toBe(2);
       expect(secretRes.stdout).toContain("[OpsPrivateGuard]");
       expect(secretRes.stdout).toContain('"guard":"OpsPrivateGuard"');
+      expect(secretRes.stderr).toContain("[OpsPrivateGuard]");
 
       const opsRes = runHook("pre-edit-guard.sh", cwd, {
         stdin: JSON.stringify({ tool_input: { file_path: "deploy/scripts/release.sh" } }),
@@ -1706,7 +1709,7 @@ describe("Hook runtime behavior", () => {
         }),
       });
 
-      expect(res.status).toBe(1);
+      expect(res.status).toBe(2);
       expect(res.stdout).toContain("[PlanTransitionGuard]");
       expect(res.stdout).toContain('"guard":"PlanTransitionGuard"');
     } finally {
@@ -1897,6 +1900,34 @@ describe("Hook runtime behavior", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("[ContractVerify]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("post-bash: preserves verify-sprint evidence in checks latest", () => {
+    const cwd = tmpWorkspace("post-bash-preserve-verify-sprint");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
+      writeValidSprintChecks(cwd);
+
+      const res = runHook("post-bash.sh", cwd, {
+        stdin: JSON.stringify({
+          tool_input: { command: "git status --short" },
+          tool_output: "",
+          exit_code: 0,
+        }),
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("Preserved .ai/harness/checks/latest.json");
+      const latest = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/latest.json"), "utf-8"));
+      const postBash = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/post-bash-latest.json"), "utf-8"));
+      expect(latest.source).toBe("verify-sprint");
+      expect(postBash.source).toBe("post-bash");
+      expect(postBash.command).toBe("git status --short");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
