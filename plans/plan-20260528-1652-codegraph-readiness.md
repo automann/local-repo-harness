@@ -1,6 +1,6 @@
 # Plan: Codegraph Vendoring + Tool Readiness
 
-> **Status**: Draft
+> **Status**: Executing
 > **Created**: 20260528-1652
 > **Slug**: codegraph-readiness
 > **Planning Source**: codex-plan
@@ -34,7 +34,26 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 
 ## Approach
 ### Strategy
-Use the captured planning output below as the execution source of truth.
+Use Option D from the captured consult, with the review corrections below as the authoritative execution guard.
+
+The implementation keeps host adapter installation and tool readiness separate:
+
+```text
+agentic-dev install --target codex|claude|both
+  -> writes host global hook adapters only
+
+agentic-dev tools ensure codegraph
+  -> resolves local/global CodeGraph
+  -> may install/sync project readiness state
+  -> does not write MCP config by default
+
+agentic-dev doctor
+  -> reports readiness only
+  -> prints remediation commands
+  -> does not mutate dependencies, indexes, daemons, or MCP config
+```
+
+Existing `scripts/check-agent-tooling.sh` CodeGraph detection is part of the source path. The implementation must migrate or wrap that logic instead of creating an unrelated second detector.
 
 ### Trade-offs
 | Option | Pros | Cons | Decision |
@@ -45,18 +64,65 @@ Use the captured planning output below as the execution source of truth.
 ### File Changes
 | File | Action | Description |
 |------|--------|-------------|
-| See captured planning output | Follow | Implement only the approved scope named below |
+| `tasks/contracts/codegraph-readiness.contract.md` | Add | Scope and verification contract for this plan |
+| `tasks/notes/codegraph-readiness.notes.md` | Add | Design decisions and review corrections |
+| `tasks/reviews/codegraph-readiness.review.md` | Add | Pending implementation review surface |
+| `package.json`, `bun.lock` | Modify | Add vendored CodeGraph dependency and lockfile |
+| `scripts/check-agent-tooling.sh`, `assets/templates/helpers/check-agent-tooling.sh` | Refactor | Reuse or delegate its current CodeGraph detector and keep generated helper parity |
+| `scripts/ensure-codegraph.sh` | Add | Thin entrypoint for CI/bootstrap and local ensure |
+| `src/cli/**` | Add | Future CLI tools command and doctor integration |
+| `.ai/harness/policy.json`, `assets/workflow-contract.v1.json`, `scripts/ensure-task-workflow.sh`, `scripts/lib/project-init-lib.sh` | Modify | Align generated policy/template surfaces with the vendoring decision or declare a self-host exception |
+| `tests/check-agent-tooling.test.ts`, `tests/create-project-dirs.runtime.test.ts`, `tests/migration-script.test.ts`, `tests/cli/**`, `tests/tooling/**` | Modify/Add | Cover detector migration, generated policy, CLI behavior, and integration |
+| `docs/reference-configs/external-tooling.md`, `docs/architecture/modules/verification/codegraph-readiness.md`, `.ai/context/capabilities.json`, `CLAUDE.md`, `AGENTS.md` | Modify/Add | Document the new readiness model |
 
 ### Code Snippets
 See captured planning output.
 
 ### Data Flow
-See captured planning output.
+```text
+Dependency install path
+  bun install
+    -> package.json devDependency
+    -> node_modules/.bin/codegraph
+    -> scripts/ensure-codegraph.sh / CLI resolver
+
+Read-only check path
+  agentic-dev doctor --json
+    -> checkCodegraph()
+    -> resolve local/global bin
+    -> read MCP/index/daemon status
+    -> print remediation
+    -> no install, no sync, no MCP writes
+
+Mutation path
+  agentic-dev tools ensure codegraph
+    -> ensureCodegraph()
+    -> may run bun install / codegraph init / codegraph sync
+    -> default installMcp=false
+    -> emits structured actions
+
+Compatibility path
+  scripts/check-agent-tooling.sh --strict-readiness
+    -> calls or mirrors the same CodeGraph readiness logic
+    -> preserves existing external-tooling report contract
+```
 
 ## Risk Assessment
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Captured plan lacks enough detail | Medium | Execution may need clarification | Stop before implementation if the captured output contradicts repo rules or lacks concrete file targets |
+| Generated policy still says `do-not-add-package-dependency` | High | Tests or downstream generated repos contradict the vendored strategy | Update `.ai/harness/policy.json`, generator heredocs, and tests, or declare a self-host-only exception |
+| Two CodeGraph detectors drift | High | Doctor and `check-agent-tooling.sh` report different readiness | Migrate existing detector behavior into one reusable implementation |
+| Doctor mutates developer machines | Medium | A read-only diagnostic can unexpectedly install packages or rewrite indexes | Keep `doctor` read-only and move mutations to `tools ensure codegraph` |
+| Global MCP config points at a different binary than the vendored one | Medium | This repo looks ready while the MCP server uses another CodeGraph | Report local/global drift and leave MCP mutation opt-in |
+
+## Plan Review Corrections
+
+- Materialized the missing sprint contract, notes, and review files before any implementation projection.
+- Added generated policy/template/test surfaces to scope because current policy explicitly says CodeGraph should not be a package dependency.
+- Resolved `--strict-readiness` as existing, not an open question.
+- Reframed `doctor` as read-only. `tools ensure codegraph` owns all mutation.
+- Kept `tasks/todo.md` on hook-global runtime until this Draft is approved and projected.
 
 ## Task Contracts
 - Contract file: `tasks/contracts/codegraph-readiness.contract.md`
@@ -108,7 +174,9 @@ Vendor `@colbymchenry/codegraph` as a repo `devDependency` so cross-machine boot
   - `src/cli/commands/doctor.ts`: extend to call `checkCodegraph()` and surface `mcpRegistered / indexFresh / daemonRunning / globalFallbackUsed`
   - `.ai/hooks/lib/codegraph-bin.sh`: shared helper that resolves codegraph bin path (local-first, optional global fallback). Replaces ad-hoc `command -v codegraph` in any hook that needs it.
   - `tests/cli/codegraph.test.ts` + `tests/cli/codegraph-resolver.test.ts` + `tests/tooling/codegraph-integration.test.ts`
-  - `scripts/check-agent-tooling.sh`: change recommendation from `npm install -g codegraph` to `bun install` for this repo; keep global install as fallback for non-vendored repos
+  - `scripts/check-agent-tooling.sh` and `assets/templates/helpers/check-agent-tooling.sh`: migrate or wrap the existing CodeGraph detector so `agentic-dev doctor`, `tools ensure codegraph --check`, and the legacy tooling report share one readiness model while generated helper copies stay aligned
+  - Generated policy/template surfaces currently encoding CodeGraph as global-only tooling: `.ai/harness/policy.json`, `assets/workflow-contract.v1.json`, `scripts/ensure-task-workflow.sh`, `scripts/lib/project-init-lib.sh`, and related tests
+  - Existing generated-policy tests that currently assert `vendoring_policy: do-not-add-package-dependency`: `tests/create-project-dirs.runtime.test.ts` and `tests/migration-script.test.ts`
   - `docs/architecture/modules/verification/codegraph-readiness.md` (new architecture module)
   - `docs/reference-configs/external-tooling.md`: add vendored codegraph section
   - `.ai/context/capabilities.json`: register `verification-codegraph-readiness` capability
@@ -203,6 +271,7 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
 - `scripts/ensure-codegraph.sh` is a thin entry. Once `src/cli/` exists: `exec bun src/cli/index.ts tools ensure codegraph "$@"`.
 - Before Phase 1A CLI scaffold: shell calls temporary `src/cli/tools/codegraph-runner.ts` directly via `bun`. Merged into formal CLI in Phase 1A.
 - Shell never reimplements init/sync/MCP logic. One source of truth.
+- `agentic-dev doctor` never calls the mutating path. It only calls read-only check logic and prints the `tools ensure codegraph` remediation.
 
 ### `tasks/contracts/codegraph-readiness.contract.md` skeleton
 
@@ -213,6 +282,8 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
   - `package.json`, `bun.lock`
   - `scripts/ensure-codegraph.sh`, `scripts/check-agent-tooling.sh`
   - `src/cli/**`, `tests/cli/**`, `tests/tooling/**`
+  - `tests/check-agent-tooling.test.ts`, `tests/create-project-dirs.runtime.test.ts`, `tests/migration-script.test.ts`
+  - `.ai/harness/policy.json`, `assets/workflow-contract.v1.json`, `scripts/ensure-task-workflow.sh`, `scripts/lib/project-init-lib.sh`
   - `docs/architecture/modules/verification/codegraph-readiness.md`
   - `docs/reference-configs/external-tooling.md`
   - `.ai/context/capabilities.json`, `.ai/hooks/lib/codegraph-bin.sh`
@@ -220,24 +291,27 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
   - `tasks/todo.md`
   - `CLAUDE.md`, `AGENTS.md`
 - Verification:
-  - `bun install --frozen-lockfile` (CI variant; local doctor uses plain `bun install`)
+  - `bun install --frozen-lockfile` (CI variant; local `tools ensure codegraph` may use plain `bun install`; `doctor` stays read-only)
   - `bash scripts/ensure-codegraph.sh --check --json`
   - `bun test tests/cli/codegraph*.test.ts tests/tooling/codegraph*.test.ts`
-  - `bash scripts/check-agent-tooling.sh --host both --strict-readiness --json` (NOTE: `--strict-readiness` flag may not exist yet — confirm in Phase 1 of this plan)
+  - `bash scripts/check-agent-tooling.sh --host both --strict-readiness --json` (`--strict-readiness` already exists today)
   - `agentic-dev doctor --json`
 
 ## Rollout Phases
 
 ### Phase 0: Gating
 
-- **MUST NOT START** until `hook-global-runtime` Phase 0 closeout: canary log matrix recorded in `docs/architecture/modules/runtime-harness/global-runtime.md` (note: codex initially suggested `docs/architecture/global-hook-runtime.md`, but repo convention puts module docs under `docs/architecture/modules/runtime-harness/` — confirm path during plan approval)
-- Verify by reading current `tasks/contracts/hook-global-runtime.contract.md` Status field → should be `Done` or `Complete`
+- **MUST NOT START implementation** until this plan has a materialized contract, notes, and review file, and hook-global-runtime Phase 0 acceptance remains recorded in `tasks/reviews/hook-global-runtime.review.md`.
+- Do not require the whole hook-global-runtime contract to be `Done` before this plan exists. That contract stays `Partial` until Phase 1 CLI runtime closes.
+- Do not project this plan into `tasks/todo.md` while hook-global-runtime Phase 1A is the active execution slice, unless the user explicitly switches plans or opens a separate worktree.
 
 ### Phase 1: Dependency slice (no CLI required)
 
 - Add `@colbymchenry/codegraph` to `devDependencies`
 - `bun install` to generate `bun.lock`
 - Write `scripts/ensure-codegraph.sh` + temporary `src/cli/tools/codegraph-runner.ts`
+- Extract current `scripts/check-agent-tooling.sh` CodeGraph semantics into the runner or call path so existing report behavior is preserved
+- Update generated policy/template surfaces or explicitly encode a self-host-only vendoring exception
 - Tests for resolver (local-present, global-present, both-present-with-drift, neither, allowGlobalFallback=false)
 - `scripts/check-agent-tooling.sh` switches default recommendation
 
@@ -246,6 +320,7 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
 - Move runner logic to `src/cli/tools/codegraph.ts` proper
 - Register `src/cli/commands/tools.ts` with subcommand `ensure codegraph`
 - Wire `src/cli/commands/doctor.ts` to call `checkCodegraph()`
+- Add a regression that `doctor --json` is read-only: no `bun install`, `codegraph init`, `codegraph sync`, or MCP writes
 - `.ai/hooks/lib/codegraph-bin.sh` for hook reuse
 
 ### Phase 3: Contract + docs
@@ -260,21 +335,21 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
 - codegraph init/sync smoke on this repo (vendored bin path)
 - Confirm other repos still work with their global codegraph (no global config mutation by us)
 
-## Open Questions (resolve before approving)
+## Resolved Design Decisions
 
-1. **Path convention**: should `docs/architecture/global-hook-runtime.md` be `docs/architecture/modules/runtime-harness/global-runtime.md`? Confirm with active hook-global-runtime contract before Phase 4 of THIS plan writes the new verification module.
-2. **`--strict-readiness` flag**: does `scripts/check-agent-tooling.sh` currently expose this? If not, adding it is in scope of THIS plan or a sub-task.
-3. **`McpStatus` / `ToolFailure` / `ToolAction` types**: do these belong in `src/cli/tools/codegraph.ts` or in a shared `src/cli/tools/types.ts`? Decision affects whether `tools ensure <other-tool>` reuses types from day one.
-4. **Lockfile strategy**: `bun install --frozen-lockfile` in verification — does local doctor downgrade to `bun install` automatically, or do we expose a `--allow-lock-update` flag?
-5. **`tools restart codegraph`**: reserve the verb in Phase 2 CLI or defer to a later plan?
+1. **Architecture path**: keep hook-global runtime evidence in the existing `docs/architecture/global-hook-runtime.md`; add the new CodeGraph module under `docs/architecture/modules/verification/codegraph-readiness.md`.
+2. **`--strict-readiness`**: already exists in `scripts/check-agent-tooling.sh`; this plan must preserve it.
+3. **Shared tool types**: keep `McpStatus`, `ToolFailure`, and `ToolAction` local to the CodeGraph module for the first tool. Move them to `src/cli/tools/types.ts` only when a second tool reuses them.
+4. **Lockfile strategy**: CI verification uses `bun install --frozen-lockfile`; `doctor` never runs install. `tools ensure codegraph` may run plain `bun install` and report lockfile changes as an action.
+5. **Restart verb**: defer `agentic-dev tools restart codegraph`; do not reserve a half-built command in Phase 2.
 
 ## Claude (Sonnet 4.6) micro-adjustments on top of codex design
 
 | Codex said | Claude refinement |
 |---|---|
-| `bun install --frozen-lockfile` as verification check | Fine for CI; local doctor uses plain `bun install` to avoid blocking dev when user changes deps. |
+| `bun install --frozen-lockfile` as verification check | Fine for CI; local `tools ensure codegraph` may use plain `bun install`, but `doctor` stays read-only. |
 | `.ai/hooks/lib/codegraph-bin.sh` helper | Place alongside existing `scripts/lib/workflow-state.sh` convention; one source of bin resolution per host. |
-| `docs/architecture/global-hook-runtime.md` | Use `docs/architecture/modules/runtime-harness/global-runtime.md` to match existing module hierarchy convention (current module at `docs/architecture/modules/runtime-harness/hook-adapters.md`). |
+| `docs/architecture/global-hook-runtime.md` | Keep the existing hook-global runtime evidence path for this plan; only the new CodeGraph module uses `docs/architecture/modules/verification/codegraph-readiness.md`. |
 | `failures: ToolFailure[]` with stdout/stderr | Cap each at ~4KB; overflow points to `~/.codegraph/logs/` via path reference. |
 | `--restart-daemon` flag on ensure | Promote to standalone verb `agentic-dev tools restart codegraph` instead of overloading ensure. |
 
@@ -285,7 +360,43 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): Promise<Codegraph
 - Active plan being protected: `plans/plan-20260528-1436-hook-global-runtime.md` (do not modify Phase 1A `Target` types or `install --target` semantics from this plan)
 
 ## Annotations
-<!-- [NOTE]: prefixed inline. Claude processes all and revises. -->
+
+<!--
+Annotation cycle completed 2026-05-28.
+
+Review corrections were incorporated externally (via plan-eng-review and codex consult)
+rather than through inline annotation markers. The resolved corrections are recorded in
+three places and no outstanding items remain:
+
+  1. This plan body — "Plan Review Corrections" section, the rebuilt File Changes table,
+     "Resolved Design Decisions" (replacing the prior Open Questions), and the Phase 0/1/2
+     Rollout updates.
+  2. tasks/notes/codegraph-readiness.notes.md — "Review Corrections Applied" section.
+  3. tasks/reviews/codegraph-readiness.review.md — Eng Review CLEAR verdict and scorecard.
+
+GSTACK REVIEW REPORT below records the verdict: ENG CLEARED for Draft plan quality.
+
+No remaining annotation items. Plan is ready for Annotating -> Approved transition.
+-->
 
 ## Task Breakdown
-- [ ] Execute captured plan: Codegraph Vendoring + Tool Readiness
+- [x] Materialize `tasks/contracts/codegraph-readiness.contract.md`, `tasks/notes/codegraph-readiness.notes.md`, and `tasks/reviews/codegraph-readiness.review.md`
+- [x] Revise plan scope so generated policy/template/test surfaces are explicit
+- [x] Resolve stale open questions from the first captured consult
+- [x] Execute dependency and detector slice after plan projection
+- [ ] Execute full CLI integration after hook-global runtime Phase 1A lands
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | not run | Not required for this tooling readiness correction |
+| Codex Review | `/codex review` | Independent 2nd opinion | 1 | issues found | Earlier outside voice produced the Option D plan shape |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 2 | CLEAR | Initial 5 findings incorporated into plan, contract, notes, and review; 0 critical gaps open |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | not run | No UI surface |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | not run | Not required for this plan correction |
+
+- **CODEX:** Option D retained: unified CLI surface with separate tool readiness registry.
+- **CROSS-MODEL:** Codex and eng review agree on keeping host adapter install separate from CodeGraph tool readiness.
+- **UNRESOLVED:** 0.
+- **VERDICT:** ENG CLEARED for Draft plan quality. Implementation still requires explicit projection or a separate worktree because `tasks/todo.md` remains on hook-global-runtime.

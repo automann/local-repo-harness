@@ -39,7 +39,7 @@ This repository self-hosts the `agentic-dev` contract, formerly `agentic-dev-ski
 - Route knowledge sync and handoff retrieval to `gbrain`.
 - Register valuable repo-authored docs in `.ai/harness/brain-manifest.json` with `sync.direction=repo-to-brain`; `scripts/sync-brain-docs.sh` and the PostEdit hook mirror only those explicit entries into the default brain vault.
 - Treat Waza as Codex-first: `~/.codex/skills` is the Codex runtime source; `~/.agents/skills` is skills CLI staging/cache only. Update by staging upstream Waza, copying the eight managed `SKILL.md` files into Codex, and verifying with `cmp`.
-- Use `docs/reference-configs/external-tooling.md` and `bash scripts/check-agent-tooling.sh --host both --check-updates` for environment checks; CodeGraph is required Codex agent readiness for code navigation but remains non-vendored.
+- Use `docs/reference-configs/external-tooling.md` and `bash scripts/check-agent-tooling.sh --host both --check-updates` for environment checks; this self-host repo vendors CodeGraph as a dev dependency while generated downstream repos keep the global MCP default unless local policy opts in.
 - When changing `scripts/migrate-project-template.sh` or `scripts/lib/project-init-lib.sh`, verify self-migration of this repo still works.
 - Treat `.codex/hooks.json` as a product hook adapter; do not treat generated backup files or other `.codex/*` runtime residue as product deliverables.
 
