@@ -58,6 +58,41 @@ hook_json_extract_with_bun() {
   ' 2>/dev/null
 }
 
+hook_validate_stdin_json() {
+  if [[ -n "${HOOK_STDIN_JSON_VALID+x}" ]]; then
+    return
+  fi
+
+  if [[ -z "$HOOK_STDIN_JSON" ]]; then
+    HOOK_STDIN_JSON_VALID=""
+    export HOOK_STDIN_JSON_VALID
+    return
+  fi
+
+  if command -v jq >/dev/null 2>&1; then
+    if printf '%s' "$HOOK_STDIN_JSON" | jq -e . >/dev/null 2>&1; then
+      HOOK_STDIN_JSON_VALID="1"
+    else
+      HOOK_STDIN_JSON_VALID=""
+    fi
+  elif command -v bun >/dev/null 2>&1; then
+    if JSON_INPUT="$HOOK_STDIN_JSON" bun -e '
+      try { JSON.parse(process.env.JSON_INPUT ?? ""); }
+      catch { process.exit(1); }
+    ' >/dev/null 2>&1; then
+      HOOK_STDIN_JSON_VALID="1"
+    else
+      HOOK_STDIN_JSON_VALID=""
+    fi
+  else
+    # No validator available — can't tell missing-key from malformed-JSON;
+    # default to silent to avoid noisy false positives.
+    HOOK_STDIN_JSON_VALID="unknown"
+  fi
+
+  export HOOK_STDIN_JSON_VALID
+}
+
 hook_json_get() {
   local path="$1"
   local default_value="${2:-}"
@@ -65,16 +100,23 @@ hook_json_get() {
 
   hook_read_stdin_once
 
-  if [[ -n "$HOOK_STDIN_JSON" ]] && command -v jq >/dev/null 2>&1; then
+  if [[ -z "$HOOK_STDIN_JSON" ]]; then
+    printf '%s' "$default_value"
+    return
+  fi
+
+  hook_validate_stdin_json
+
+  if command -v jq >/dev/null 2>&1; then
     parsed="$(printf '%s' "$HOOK_STDIN_JSON" | jq -r "$path // empty" 2>/dev/null || true)"
   fi
 
-  if [[ -z "$parsed" && -n "$HOOK_STDIN_JSON" ]]; then
+  if [[ -z "$parsed" ]]; then
     parsed="$(hook_json_extract_with_bun "$HOOK_STDIN_JSON" "$path" || true)"
   fi
 
-  if [[ -z "$parsed" && -n "$HOOK_STDIN_JSON" ]]; then
-    echo "[HookInput] WARN: JSON parse failed for path: $path (neither jq nor bun succeeded)" >&2
+  if [[ -z "$parsed" && "${HOOK_STDIN_JSON_VALID:-}" == "" ]]; then
+    echo "[HookInput] WARN: stdin is not valid JSON while requesting path: $path (neither jq nor bun could parse it)" >&2
   fi
 
   if [[ -n "$parsed" ]]; then
