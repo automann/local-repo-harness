@@ -148,6 +148,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
+    expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
     expect(contract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
@@ -284,6 +285,8 @@ describe("Bootstrap Script Contracts", () => {
     expect(settings).toContain("pre-edit-guard.sh");
     expect(settings).toContain("post-edit-guard.sh");
     expect(settings).toContain("prompt-guard.sh");
+    expect(settings).not.toContain("autoresearch-advisory.sh");
+    expect(codexHooks).not.toContain("autoresearch-advisory.sh");
     expect(settings).toContain("finalize-handoff.sh");
     expect(settings).toContain("post-bash.sh");
     expect(settings).toContain("trace-event.sh");

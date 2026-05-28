@@ -415,6 +415,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.agenticDevelopment.routing.designPlan).toBe("gstack:plan-design-review");
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/checks/latest.json");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/checks/latest.json");
+      expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
 
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
@@ -427,6 +428,8 @@ describe("Migration script contract", () => {
 
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
+      expect(gitignore).toContain(".ai/harness/active-plan");
+      expect(gitignore).toContain(".claude/.active-plan");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".codex/*");
       expect(gitignore).toContain("!.codex/hooks.json");
@@ -699,6 +702,7 @@ describe("Migration script contract", () => {
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
       expect(gitignore).toContain(".claude/.task-state.json");
+      expect(gitignore).toContain(".ai/harness/active-plan");
       expect(gitignore).toContain(".claude/.active-plan");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".codex/*");
@@ -707,6 +711,29 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain("_ops/");
       expect(gitignore).not.toContain(".claude/.memory-context.json");
       expect(gitignore).toContain("# END: claude-runtime-temp");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("should migrate legacy active-plan marker to the host-neutral marker", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-active-marker-"));
+    try {
+      mkdirSync(join(repo, ".claude"), { recursive: true });
+      mkdirSync(join(repo, "plans"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+      writeFileSync(join(repo, "plans/plan-20260327-2200-alpha.md"), "# Plan: alpha\n\n> **Status**: Draft\n");
+      writeFileSync(join(repo, ".claude/.active-plan"), "plans/plan-20260327-2200-alpha.md");
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(readFileSync(join(repo, ".ai/harness/active-plan"), "utf-8")).toBe("plans/plan-20260327-2200-alpha.md");
+      expect(readFileSync(join(repo, ".claude/.active-plan"), "utf-8")).toBe("plans/plan-20260327-2200-alpha.md");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

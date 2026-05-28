@@ -59,7 +59,7 @@
       },
       "expectations": [
         "Calls out repo-local task sync as the primary enforcement mechanism.",
-        "Treats plans/ as the single source of truth for the active plan instead of relying on docs/plan.md.",
+        "Treats plans/ as the plan catalog and the host-neutral active marker as the active selector instead of relying on docs/plan.md.",
         "Updates the final response contract to mention changed tasks files.",
         "Avoids treating hooks as the only source of enforcement."
       ]
@@ -555,6 +555,41 @@
         "Keeps the check read-only by default.",
         "Separates tracked deploy assets from ignored private operations state.",
         "Does not print secrets, tokens, or real environment values."
+      ]
+    },
+    {
+      "id": 20,
+      "slug": "repair-codex-hook-workflow",
+      "prompt": "Codex is not detecting this repo's hooks after migration. Audit and repair the hook workflow, and do not make hooks run autoresearch mutations in the background.",
+      "expected_output": "Routes the request as a runtime-harness hook workflow repair, checks .codex/hooks.json, Codex Settings trust, .ai/hooks/run-hook.sh, target hook scripts, trace or events evidence, and keeps autoresearch as an agent-run loop rather than a background hook mutation.",
+      "files": [
+        "evals/fixtures/audit-drift"
+      ],
+      "graders": {
+        "files_exist": [
+          "final-response.md"
+        ],
+        "files_contain": [
+          { "path": "final-response.md", "pattern": "\\.codex/hooks\\.json" },
+          { "path": "final-response.md", "pattern": "Codex Settings|trusted|trust" },
+          { "path": "final-response.md", "pattern": "\\.ai/hooks/run-hook\\.sh" },
+          { "path": "final-response.md", "pattern": "autoresearch" },
+          { "path": "final-response.md", "pattern": "tests/hook-runtime\\.test\\.ts|hook-runtime" }
+        ]
+      },
+      "anti_graders": {
+        "files_not_contain": [
+          { "path": "final-response.md", "pattern": "automatically mutate SKILL\\.md|background.*promote" },
+          { "path": "final-response.md", "pattern": "\\.claude/hooks/.*source of truth" }
+        ]
+      },
+      "expectations": [
+        "Treats the task as runtime-harness hook workflow repair.",
+        "Checks Codex adapter config separately from Codex Settings trust.",
+        "Debugs through .ai/hooks/run-hook.sh and hook-specific trace or events evidence.",
+        "Keeps any autoresearch hook advisory and self-host/dev-only rather than making it a default user-installed hook.",
+        "Keeps hooks as advisory guards over repo-local plans, tasks, contracts, checks, and handoff artifacts.",
+        "Does not silently run a full autoresearch mutation loop from PostEdit or Prompt hooks."
       ]
     }
   ]

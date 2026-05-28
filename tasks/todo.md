@@ -90,3 +90,10 @@
 - [x] Applied autoresearch-style workflow inventory to `plans/plan-*.md` and `tasks/contracts/*.contract.md` generation
 - [x] Preserved approval, review, and worktree gates while replacing latest-plan-first wording with explicit active-marker semantics
 - [x] Verified plan/contract inventory generation with helper, scaffold, assembly, and output parity tests
+- [x] Migrated active-plan marker authority to `.ai/harness/active-plan` with `.claude/.active-plan` legacy fallback
+- [x] Updated active-plan readers, writers, switch, archive, handoff, policy, migration, and generated helper mirrors
+- [x] Added compatibility coverage for legacy marker reads, host-neutral marker reads, dual-write capture, and concurrent plan switch
+- [x] Ran autoresearch for hook workflow routing and promoted the winning `SKILL.md` hook protocol mutation
+- [x] Implemented `autoresearch-advisory.sh` as a long-running hook workflow guard for prompt and post-edit optimization intent
+- [x] Moved local autoresearch run products under ignored `autoresearch/` and preserved advisory hook session readback
+- [x] Kept `autoresearch-advisory.sh` self-host-only by removing it from default hook assets and generated adapter templates

@@ -60,7 +60,7 @@ Generated: 2026-05-24T19:02:47.223Z
 - Final response excerpt: dry-run: no final response captured
 - Expectations:
   - Calls out repo-local task sync as the primary enforcement mechanism.
-  - Treats plans/ as the single source of truth for the active plan instead of relying on docs/plan.md.
+  - Treats plans/ as the plan catalog and the host-neutral active marker as the active selector instead of relying on docs/plan.md.
   - Updates the final response contract to mention changed tasks files.
   - Avoids treating hooks as the only source of enforcement.
 
@@ -303,7 +303,7 @@ Generated: 2026-05-24T19:02:47.223Z
 - Final response excerpt: dry-run: no final response captured
 - Expectations:
   - Calls out repo-local task sync as the primary enforcement mechanism.
-  - Treats plans/ as the single source of truth for the active plan instead of relying on docs/plan.md.
+  - Treats plans/ as the plan catalog and the host-neutral active marker as the active selector instead of relying on docs/plan.md.
   - Updates the final response contract to mention changed tasks files.
   - Avoids treating hooks as the only source of enforcement.
 
@@ -546,7 +546,7 @@ Generated: 2026-05-24T19:02:47.223Z
 - Final response excerpt: dry-run: no final response captured
 - Expectations:
   - Calls out repo-local task sync as the primary enforcement mechanism.
-  - Treats plans/ as the single source of truth for the active plan instead of relying on docs/plan.md.
+  - Treats plans/ as the plan catalog and the host-neutral active marker as the active selector instead of relying on docs/plan.md.
   - Updates the final response contract to mention changed tasks files.
   - Avoids treating hooks as the only source of enforcement.
 
@@ -789,7 +789,7 @@ Generated: 2026-05-24T19:02:47.223Z
 - Final response excerpt: dry-run: no final response captured
 - Expectations:
   - Calls out repo-local task sync as the primary enforcement mechanism.
-  - Treats plans/ as the single source of truth for the active plan instead of relying on docs/plan.md.
+  - Treats plans/ as the plan catalog and the host-neutral active marker as the active selector instead of relying on docs/plan.md.
   - Updates the final response contract to mention changed tasks files.
   - Avoids treating hooks as the only source of enforcement.
 

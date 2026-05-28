@@ -41,6 +41,12 @@
 - Prevention rule: hook intent classifiers must strip injected context blocks before matching plan, implementation, done, or Waza route intent
 - Where to apply next time: `prompt-guard.sh`, generated hook assets, and any future host adapter that receives expanded tool/skill context
 
+- Date: 2026-05-28
+- Triggered by correction: after the user approved an execution-ready `/think` plan, the assistant stopped at the skill's generic approval footer instead of implementing the already-requested slice
+- Mistake pattern: treating "批准" as a pause command even when the surrounding task explicitly said "你来执行" and the repo workflow had a concrete implementation plan
+- Prevention rule: once a decision-complete plan is approved for a user-requested execution task, proceed to implementation; only stop for real repo drift, missing permissions, or unsafe external state
+- Where to apply next time: `/think` follow-through, plan approval handling, and active-plan execution workflow
+
 - Date: 2026-04-19
 - Triggered by correction: repo-local hook defaults had drifted back toward generating `.claude/hooks` shims even though the adapter already dispatches directly into `.ai/hooks/run-hook.sh`
 - Mistake pattern: preserving a second repo-local hook path after the authoritative hook layer is already clear

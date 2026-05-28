@@ -5,7 +5,7 @@ Use this guide for repo-local hook configuration details.
 ## Project Hook Source of Truth
 
 - Repo-local `tasks/` files are the primary cross-agent contract.
-- Repo-local `plans/` files are the sole source of truth for the active plan.
+- Repo-local `plans/` files are the plan catalog. `.ai/harness/active-plan` selects the active plan, with `.claude/.active-plan` as a legacy fallback during transition.
 - Shared hook implementation: `.ai/hooks/`.
 - Team-configurable Claude adapter: `.claude/settings.json` (committable).
 - Team-configurable Codex adapter: `.codex/hooks.json` (committable).
@@ -66,6 +66,13 @@ Bundled hook assets include:
 - `assets/hooks/atomic-pending.sh`
 - `assets/hooks/atomic-commit.sh`
 - `assets/hooks/trace-event.sh`
+
+Maintainer-only self-host hooks:
+
+- `.ai/hooks/autoresearch-advisory.sh` routes this repo's local skill
+  optimization work to the agent-owned autoresearch loop. It is not copied from
+  `assets/hooks/`, is not referenced by the default adapter templates, and is
+  not installed into user projects.
 
 Generated `.claude/hooks/` shims are legacy artifacts. Current migration removes
 known generated shims and preserves only user-authored `.claude/hooks/custom-*.sh`

@@ -162,14 +162,17 @@ cat > tasks/todo.md <<'TODO_EOF'
 - [ ] No active execution checklist
 TODO_EOF
 
-# Clear active-plan marker if it pointed to the archived plan
-if [[ -f ".claude/.active-plan" ]]; then
-  marker_value="$(cat ".claude/.active-plan" 2>/dev/null | xargs)"
-  if [[ "$marker_value" == "$plan_file" || "$marker_value" == "./$plan_file" ]]; then
-    rm -f ".claude/.active-plan"
-    echo "Cleared .claude/.active-plan (archived plan was active)"
+# Clear active-plan markers if they pointed to the archived plan
+for marker_file in ".ai/harness/active-plan" ".claude/.active-plan"; do
+  if [[ ! -f "$marker_file" ]]; then
+    continue
   fi
-fi
+  marker_value="$(cat "$marker_file" 2>/dev/null | xargs)"
+  if [[ "$marker_value" == "$plan_file" || "$marker_value" == "./$plan_file" ]]; then
+    rm -f "$marker_file"
+    echo "Cleared $marker_file (archived plan was active)"
+  fi
+done
 
 # Clean up saved plan state backups
 plan_key="$(basename "$plan_file" .md)"

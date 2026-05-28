@@ -65,7 +65,7 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 ## Passive Plan Capture
 
 - Codex Plan mode and Waza `/think` do not need the user to remember `new-sprint` or `plan-to-todo`.
-- The agent should capture decision-complete planning output with `scripts/capture-plan.sh`; the script sets `.claude/.active-plan` and writes a timestamped `plans/plan-*.md` artifact.
+- The agent should capture decision-complete planning output with `scripts/capture-plan.sh`; the script sets `.ai/harness/active-plan`, mirrors `.claude/.active-plan`, and writes a timestamped `plans/plan-*.md` artifact.
 - Planning capture is allowed before implementation. Contract, review, todo, and worktree artifacts are generated only after explicit implementation approval.
 
 ## Boundaries

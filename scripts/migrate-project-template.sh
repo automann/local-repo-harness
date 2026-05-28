@@ -4,7 +4,7 @@
 # - Claude adapter: .claude/settings.json
 # - Codex adapter: .codex/hooks.json
 # - Stable product truth: docs/spec.md
-# - Active-plan source of truth: plans/
+# - Active-plan selector: .ai/harness/active-plan, with .claude/.active-plan legacy fallback
 # - Sprint artifacts: tasks/contracts/, tasks/reviews/, .ai/context/context-map.json
 # - Harness state: .ai/harness/checks/latest.json, .ai/harness/policy.json,
 #   .ai/harness/brain-manifest.json,
@@ -248,7 +248,6 @@ ensure_runtime_gitignore_block() {
   local file_path="$1"
   local extra_entries
   extra_entries=$(cat <<'EOF_EXTRA'
-.claude/.active-plan
 .claude/.plan-state/
 EOF_EXTRA
 )
@@ -256,6 +255,37 @@ EOF_EXTRA
     extra_entries="${extra_entries}"$'\n'"$(pi_factor_factory_gitignore_entries)"
   fi
   pi_ensure_gitignore_block "$file_path" "" "$extra_entries" "$MODE"
+}
+
+migrate_active_plan_marker() {
+  local repo="$1"
+  local new_marker="$repo/.ai/harness/active-plan"
+  local legacy_marker="$repo/.claude/.active-plan"
+  local new_value=""
+  local legacy_value=""
+
+  if [[ "$MODE" != "apply" ]]; then
+    echo "[dry-run] migrate active-plan marker to .ai/harness/active-plan with .claude/.active-plan compatibility"
+    return 0
+  fi
+
+  if [[ -f "$new_marker" ]]; then
+    new_value="$(cat "$new_marker" 2>/dev/null | xargs)"
+  fi
+  if [[ -f "$legacy_marker" ]]; then
+    legacy_value="$(cat "$legacy_marker" 2>/dev/null | xargs)"
+  fi
+
+  if [[ -n "$new_value" ]]; then
+    mkdir -p "$(dirname "$legacy_marker")"
+    printf '%s' "$new_value" > "$legacy_marker"
+    return 0
+  fi
+
+  if [[ -n "$legacy_value" ]]; then
+    mkdir -p "$(dirname "$new_marker")"
+    printf '%s' "$legacy_value" > "$new_marker"
+  fi
 }
 
 ensure_gitignore_entry() {
@@ -765,6 +795,7 @@ migrate_workflow() {
   run_or_echo "mkdir -p \"$repo/docs/reference-configs\""
   run_or_echo "mkdir -p \"$repo/.ai/harness/checks\""
   run_or_echo "mkdir -p \"$repo/.ai/harness/handoff\""
+  migrate_active_plan_marker "$repo"
 
   install_templates "$repo"
   install_helpers "$repo"

@@ -1,11 +1,12 @@
 {
   "version": 1,
   "active_plan": {
-    "marker_file": ".claude/.active-plan",
+    "marker_file": ".ai/harness/active-plan",
+    "legacy_marker_file": ".claude/.active-plan",
     "directory": "plans",
     "archive_directory": "plans/archive",
     "glob": "plan-*.md",
-    "source_of_truth": "explicit marker or latest non-archived compatibility fallback"
+    "source_of_truth": "host-neutral explicit marker, legacy Claude marker fallback, or latest non-archived compatibility fallback"
   },
   "tasks": {
     "todo_file": "tasks/todo.md",

@@ -85,14 +85,17 @@ safe_repo_file() {
 }
 
 latest_plan() {
-  if [[ -f ".claude/.active-plan" ]]; then
+  for marker_file in ".ai/harness/active-plan" ".claude/.active-plan"; do
+    if [[ ! -f "$marker_file" ]]; then
+      continue
+    fi
     local marker
-    marker="$(cat .claude/.active-plan 2>/dev/null | xargs)"
+    marker="$(cat "$marker_file" 2>/dev/null | xargs)"
     if [[ -n "$marker" && -f "$marker" ]]; then
       printf '%s' "$marker"
       return 0
     fi
-  fi
+  done
 
   find plans -maxdepth 1 -type f -name 'plan-*.md' 2>/dev/null | sort | tail -1
 }

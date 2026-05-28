@@ -44,7 +44,9 @@ describe("workflow contract manifest", () => {
 
   test("hook asset files should stay in parity with self-hosted .ai/hooks", () => {
     const assetFiles = collectFiles(join(ROOT, "assets/hooks")).filter((file) => !["./settings.template.json", "./codex.hooks.template.json"].includes(file));
-    const runtimeFiles = collectFiles(join(ROOT, ".ai/hooks"));
+    const devOnlyRuntimeHooks = new Set(["./autoresearch-advisory.sh"]);
+    const allRuntimeFiles = collectFiles(join(ROOT, ".ai/hooks"));
+    const runtimeFiles = allRuntimeFiles.filter((file) => !devOnlyRuntimeHooks.has(file));
 
     expect(runtimeFiles).toEqual(assetFiles);
 
@@ -53,6 +55,9 @@ describe("workflow contract manifest", () => {
       const runtimeContent = readFileSync(join(ROOT, ".ai/hooks", relPath.slice(2)), "utf-8");
       expect(runtimeContent).toBe(assetContent);
     }
+
+    expect(allRuntimeFiles).toContain("./autoresearch-advisory.sh");
+    expect(assetFiles).not.toContain("./autoresearch-advisory.sh");
   });
 
   test("helper inventory should come from the workflow contract", () => {
@@ -116,6 +121,7 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/checks/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
+    expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/worktrees/");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
     expect(contract.migrations.upgrade?.strategyVersion).toBe(1);
@@ -187,6 +193,7 @@ describe("workflow contract manifest", () => {
     const contract = loadWorkflowContract(join(ROOT, "assets/workflow-contract.v1.json"));
     const runtimeFiles = contract.artifacts.runtimeFiles ?? [];
     expect(runtimeFiles).toContain(".ai/harness/checks/latest.json");
+    expect(runtimeFiles).toContain(".ai/harness/active-plan");
     const placeholderBackedRuntime = new Set([".ai/harness/runs/.gitkeep", ".ai/harness/worktrees/"]);
 
     for (const file of runtimeFiles.filter((name) => !placeholderBackedRuntime.has(name))) {

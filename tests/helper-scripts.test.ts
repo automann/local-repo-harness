@@ -229,7 +229,32 @@ describe("Workflow helper scripts", () => {
       expect(plan).toContain("tasks/contracts/passive-plan.contract.md");
       expect(plan).toContain("## Captured Planning Output");
       expect(plan).toContain("- [ ] Add capture helper");
+      expect(readFileSync(join(cwd, ".ai/harness/active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
       expect(readFileSync(join(cwd, ".claude/.active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("switch-plan should prefer the host-neutral marker and mirror legacy marker", () => {
+    const cwd = tmpWorkspace("helper-switch-plan-active-marker");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      writeFileSync(join(cwd, "plans/plan-20260327-2200-alpha.md"), "# Plan: alpha\n\n> **Status**: Draft\n");
+      writeFileSync(join(cwd, "plans/plan-20260327-2210-beta.md"), "# Plan: beta\n\n> **Status**: Draft\n");
+      writeFileSync(join(cwd, ".ai/harness/active-plan"), "plans/plan-20260327-2200-alpha.md");
+      mkdirSync(join(cwd, ".claude"), { recursive: true });
+      writeFileSync(join(cwd, ".claude/.active-plan"), "plans/plan-20260327-2210-beta.md");
+
+      const list = run("bash", ["scripts/switch-plan.sh", "--list"], cwd);
+      expect(list.status).toBe(0);
+      expect(list.stdout).toContain("[*] plans/plan-20260327-2200-alpha.md");
+
+      const switched = run("bash", ["scripts/switch-plan.sh", "--plan", "plans/plan-20260327-2210-beta.md"], cwd);
+      expect(switched.status).toBe(0);
+      expect(readFileSync(join(cwd, ".ai/harness/active-plan"), "utf-8")).toBe("plans/plan-20260327-2210-beta.md");
+      expect(readFileSync(join(cwd, ".claude/.active-plan"), "utf-8")).toBe("plans/plan-20260327-2210-beta.md");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -1336,6 +1361,7 @@ describe("Workflow helper scripts", () => {
       const plans = readdirSync(join(cwd, "plans")).filter((name) => /^plan-\d{8}-\d{4}-beta-feature\.md$/.test(name));
       expect(plans.length).toBe(1);
       expect(readFileSync(join(cwd, "plans", plans[0]), "utf-8")).toContain("> **Status**: Draft");
+      expect(existsSync(join(cwd, ".ai/harness/active-plan"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/.active-plan"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });

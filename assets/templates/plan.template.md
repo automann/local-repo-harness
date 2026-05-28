@@ -28,7 +28,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{SLUG}}.contract.md` `allowed_paths`
-- Concurrency rule: `.claude/.active-plan` selects the active plan when present; use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
+- Concurrency rule: `.ai/harness/active-plan` selects the active plan when present; `.claude/.active-plan` is a legacy fallback during transition. Use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
 - Execution isolation: approved contract-level work projects through `scripts/plan-to-todo.sh --plan {{PLAN_FILE}}` and may start `scripts/contract-worktree.sh start --plan {{PLAN_FILE}}`.
 
 ## Approach
@@ -55,7 +55,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Implementation notes file: `tasks/notes/{{SLUG}}.notes.md`
 - Template: `.claude/templates/contract.template.md`
 - Verification command: `bash scripts/verify-contract.sh --contract tasks/contracts/{{SLUG}}.contract.md --strict`
-- Active plan rule: `.claude/.active-plan` is authoritative when present; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
+- Active plan rule: `.ai/harness/active-plan` is authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
 
 ## Handoff
 

@@ -187,6 +187,8 @@ describe("Hook contracts", () => {
     expect(codexHooks).toContain("pre-edit-guard.sh");
     expect(settings).toContain("post-edit-guard.sh");
     expect(codexHooks).toContain("post-edit-guard.sh");
+    expect(settings).not.toContain("autoresearch-advisory.sh");
+    expect(codexHooks).not.toContain("autoresearch-advisory.sh");
     expect(settings).toContain("trace-event.sh");
     expect(codexHooks).toContain("trace-event.sh");
     expect(settings).toContain("finalize-handoff.sh");

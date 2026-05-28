@@ -103,15 +103,28 @@ if (Array.isArray(value)) {
   esac
 }
 
-get_active_plan() {
-  if [[ -f ".claude/.active-plan" ]]; then
-    local marker_plan
-    marker_plan="$(cat ".claude/.active-plan" 2>/dev/null | xargs)"
+ACTIVE_PLAN_MARKER=".ai/harness/active-plan"
+LEGACY_ACTIVE_PLAN_MARKER=".claude/.active-plan"
+
+read_active_plan_marker() {
+  local marker_file="$1"
+  local marker_plan
+
+  if [[ -f "$marker_file" ]]; then
+    marker_plan="$(cat "$marker_file" 2>/dev/null | xargs)"
     if [[ -n "$marker_plan" && -f "$marker_plan" ]]; then
       printf '%s' "$marker_plan"
       return 0
     fi
   fi
+
+  return 1
+}
+
+get_active_plan() {
+  read_active_plan_marker "$ACTIVE_PLAN_MARKER" \
+    || read_active_plan_marker "$LEGACY_ACTIVE_PLAN_MARKER" \
+    || {
   local latest
   latest="$(find plans -maxdepth 1 -type f -name 'plan-*.md' 2>/dev/null | sort | tail -1)"
   if [[ -n "$latest" ]]; then
@@ -119,6 +132,7 @@ get_active_plan() {
     return 0
   fi
   return 1
+    }
 }
 
 extract_status() {

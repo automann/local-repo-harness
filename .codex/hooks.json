@@ -20,7 +20,8 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" post-edit-guard.sh" }
+          { "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" post-edit-guard.sh" },
+          { "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" autoresearch-advisory.sh" }
         ]
       },
       {
@@ -42,7 +43,10 @@
     ],
     "UserPromptSubmit": [
       {
-        "hooks": [{ "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" prompt-guard.sh" }]
+        "hooks": [
+          { "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" prompt-guard.sh" },
+          { "type": "command", "command": "repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; HOOK_REPO_ROOT=\"$repo\" bash \"$repo/.ai/hooks/run-hook.sh\" autoresearch-advisory.sh" }
+        ]
       }
     ],
     "Stop": [

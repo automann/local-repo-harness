@@ -6,7 +6,7 @@
 
 ### 2. Annotation Cycle
 - Iterate plan updates directly in `plans/plan-*.md` via inline notes.
-- Treat `.claude/.active-plan` as authoritative when present; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
+- Treat `.ai/harness/active-plan` as authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
 - Switch between concurrent plans with `bash scripts/switch-plan.sh --plan <plan-file>`.
 - Fill the plan/contract workflow inventory before implementation.
 - Do not implement while plan status is `Draft` or `Annotating`.

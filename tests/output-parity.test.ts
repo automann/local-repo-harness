@@ -232,6 +232,7 @@ describe("Output Quality Gates", () => {
     expect(agents).toContain("verify-contract.sh --contract <active-plan-contract> --strict");
     expect(agents).toContain(".ai/harness/checks/latest.json");
     expect(agents).toContain("new plans/plan-{timestamp}-{slug}.md");
+    expect(claude).toContain(".ai/harness/active-plan");
     expect(claude).toContain(".claude/.active-plan");
     expect(claude).toContain("compatibility fallback");
     expect(agents).toContain("workflow inventory before implementation");

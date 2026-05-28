@@ -14,15 +14,28 @@ normalize_slug() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g'
 }
 
-get_active_plan() {
-  if [[ -f ".claude/.active-plan" ]]; then
-    local marker_plan
-    marker_plan="$(cat ".claude/.active-plan" 2>/dev/null | xargs)"
+ACTIVE_PLAN_MARKER=".ai/harness/active-plan"
+LEGACY_ACTIVE_PLAN_MARKER=".claude/.active-plan"
+
+read_active_plan_marker() {
+  local marker_file="$1"
+  local marker_plan
+
+  if [[ -f "$marker_file" ]]; then
+    marker_plan="$(cat "$marker_file" 2>/dev/null | xargs)"
     if [[ -n "$marker_plan" && -f "$marker_plan" ]]; then
       printf '%s' "$marker_plan"
       return 0
     fi
   fi
+
+  return 1
+}
+
+get_active_plan() {
+  read_active_plan_marker "$ACTIVE_PLAN_MARKER" \
+    || read_active_plan_marker "$LEGACY_ACTIVE_PLAN_MARKER" \
+    || {
   local latest
   latest="$(find plans -maxdepth 1 -type f -name 'plan-*.md' 2>/dev/null | sort | tail -1)"
   if [[ -n "$latest" ]]; then
@@ -30,6 +43,7 @@ get_active_plan() {
     return 0
   fi
   return 1
+    }
 }
 
 ensure_templates() {
@@ -129,7 +143,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{SLUG}}.contract.md` `allowed_paths`
-- Concurrency rule: `.claude/.active-plan` selects the active plan when present; use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
+- Concurrency rule: `.ai/harness/active-plan` selects the active plan when present; `.claude/.active-plan` is a legacy fallback during transition. Use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
 - Execution isolation: approved contract-level work projects through `scripts/plan-to-todo.sh --plan {{PLAN_FILE}}` and may start `scripts/contract-worktree.sh start --plan {{PLAN_FILE}}`.
 
 ## Approach
@@ -156,7 +170,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Implementation notes file: `tasks/notes/{{SLUG}}.notes.md`
 - Template: `.claude/templates/contract.template.md`
 - Verification command: `bash scripts/verify-contract.sh --contract tasks/contracts/{{SLUG}}.contract.md --strict`
-- Active plan rule: `.claude/.active-plan` is authoritative when present; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
+- Active plan rule: `.ai/harness/active-plan` is authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
 
 ## Handoff
 
@@ -512,11 +526,12 @@ ARCHITECTURE_INDEX_EOF
 {
   "version": 1,
   "active_plan": {
-    "marker_file": ".claude/.active-plan",
+    "marker_file": ".ai/harness/active-plan",
+    "legacy_marker_file": ".claude/.active-plan",
     "directory": "plans",
     "archive_directory": "plans/archive",
     "glob": "plan-*.md",
-    "source_of_truth": "explicit marker or latest non-archived compatibility fallback"
+    "source_of_truth": "host-neutral explicit marker, legacy Claude marker fallback, or latest non-archived compatibility fallback"
   },
   "tasks": {
     "todo_file": "tasks/todo.md",

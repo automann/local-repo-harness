@@ -20,6 +20,16 @@ normalize_slug() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g'
 }
 
+ACTIVE_PLAN_MARKER=".ai/harness/active-plan"
+LEGACY_ACTIVE_PLAN_MARKER=".claude/.active-plan"
+
+write_active_plan_marker() {
+  local plan_file="$1"
+  mkdir -p "$(dirname "$ACTIVE_PLAN_MARKER")" "$(dirname "$LEGACY_ACTIVE_PLAN_MARKER")"
+  printf '%s' "$plan_file" > "$ACTIVE_PLAN_MARKER"
+  printf '%s' "$plan_file" > "$LEGACY_ACTIVE_PLAN_MARKER"
+}
+
 extract_task_breakdown() {
   local body="$1"
   local section tasks
@@ -187,7 +197,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Current checks: \`.ai/harness/checks/latest.json\`
 - Run snapshots: \`.ai/harness/runs/\`
 - Scope authority: \`tasks/contracts/${slug}.contract.md\` \`allowed_paths\`
-- Concurrency rule: \`.claude/.active-plan\` selects the active plan when present; use \`scripts/switch-plan.sh --plan ${plan_file}\` when multiple plans exist.
+- Concurrency rule: \`.ai/harness/active-plan\` selects the active plan when present; \`.claude/.active-plan\` is a legacy fallback during transition. Use \`scripts/switch-plan.sh --plan ${plan_file}\` when multiple plans exist.
 - Execution isolation: approved contract-level work projects through \`scripts/plan-to-todo.sh --plan ${plan_file}\` and may start \`scripts/contract-worktree.sh start --plan ${plan_file}\`.
 
 ## Approach
@@ -222,7 +232,7 @@ See captured planning output.
 - Implementation notes file: \`tasks/notes/${slug}.notes.md\`
 - Template: \`.claude/templates/contract.template.md\`
 - Verification command: \`bash scripts/verify-contract.sh --contract tasks/contracts/${slug}.contract.md --strict\`
-- Active plan rule: this captured plan is written to \`.claude/.active-plan\` unless --no-active is used; latest non-archived \`plans/plan-*.md\` is a compatibility fallback only.
+- Active plan rule: this captured plan is written to \`.ai/harness/active-plan\` and mirrored to \`.claude/.active-plan\` unless --no-active is used; latest non-archived \`plans/plan-*.md\` is a compatibility fallback only.
 
 ## Handoff
 
@@ -249,7 +259,7 @@ ${tasks}
 PLAN_EOF
 
 if [[ "$set_active" -eq 1 ]]; then
-  printf '%s' "$plan_file" > ".claude/.active-plan"
+  write_active_plan_marker "$plan_file"
 fi
 
 echo "Captured plan: $plan_file"

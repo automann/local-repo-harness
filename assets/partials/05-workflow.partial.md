@@ -13,7 +13,7 @@ PLAN_LOOP:
   SPEC_FILE: docs/spec.md
   PLAN_DIR: plans/
   PLAN_ARCHIVE: plans/archive/
-  ACTIVE_PLAN_RULE: .claude/.active-plan marker if present, otherwise latest timestamped file in plans/
+  ACTIVE_PLAN_RULE: .ai/harness/active-plan marker if present, legacy .claude/.active-plan fallback during transition, otherwise latest timestamped file in plans/
   PLAN_SWITCH: scripts/switch-plan.sh --plan <plan-file> | --list
   PRIMARY_FILE: tasks/todo.md
   TODO_ARCHIVE: tasks/archive/
@@ -51,7 +51,7 @@ PLAN_LOOP:
 Core rules (canonical source: see Workflow Orchestration section below):
 - `docs/spec.md` is product truth; `plans/` is execution truth.
 - `tasks/contracts/`, `tasks/reviews/`, and `tasks/notes/` are done gates; hooks are accelerators only.
-- Treat `.claude/.active-plan` as authoritative when present; latest non-archived `plans/plan-*.md` is a compatibility fallback.
+- Treat `.ai/harness/active-plan` as authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived `plans/plan-*.md` is a compatibility fallback.
 - Require plan/contract workflow inventory before implementation: active plan, contract, review, notes, todo, checks, runs, scope owner, switching rule, and worktree path.
 - Mark done only with verification evidence.
 - Durable progress lives in `tasks/workstreams/`; release history belongs in `docs/CHANGELOG.md`.

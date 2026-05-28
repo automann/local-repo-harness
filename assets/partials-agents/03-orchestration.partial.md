@@ -6,7 +6,7 @@
 
 ### 2. Annotation Cycle
 - Keep active plans in `plans/plan-*.md` and iterate with inline notes.
-- Treat `.claude/.active-plan` as authoritative when present; latest non-archived plan file is a compatibility fallback.
+- Treat `.ai/harness/active-plan` as authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived plan file is a compatibility fallback.
 - Resolve annotations before implementation.
 
 ### 3. Plan Node Default

@@ -50,11 +50,13 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/handoff/resume.md
 .ai/harness/context-budget/latest.json
 .ai/harness/architecture/events.jsonl
+.ai/harness/active-plan
 .ai/harness/worktrees/
 .ai/harness/runs/
 .codex/*
 !.codex/
 !.codex/hooks.json
+.claude/.active-plan
 EOF_RUNTIME
 )
 PI_EXTERNAL_TOOLING_HOSTS_DEFAULT=$(cat <<'EOF_EXTERNAL_TOOLING_HOSTS'
@@ -153,7 +155,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{SLUG}}.contract.md` `allowed_paths`
-- Concurrency rule: `.claude/.active-plan` selects the active plan when present; use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
+- Concurrency rule: `.ai/harness/active-plan` selects the active plan when present; `.claude/.active-plan` is a legacy fallback during transition. Use `scripts/switch-plan.sh --plan {{PLAN_FILE}}` when multiple plans exist.
 - Execution isolation: approved contract-level work projects through `scripts/plan-to-todo.sh --plan {{PLAN_FILE}}` and may start `scripts/contract-worktree.sh start --plan {{PLAN_FILE}}`.
 
 ## Approach
@@ -180,7 +182,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Implementation notes file: `tasks/notes/{{SLUG}}.notes.md`
 - Template: `.claude/templates/contract.template.md`
 - Verification command: `bash scripts/verify-contract.sh --contract tasks/contracts/{{SLUG}}.contract.md --strict`
-- Active plan rule: `.claude/.active-plan` is authoritative when present; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
+- Active plan rule: `.ai/harness/active-plan` is authoritative when present; `.claude/.active-plan` is a legacy fallback during transition; latest non-archived `plans/plan-*.md` is a compatibility fallback only.
 
 ## Handoff
 
@@ -1233,11 +1235,12 @@ pi_write_harness_policy() {
 {
   "version": 1,
   "active_plan": {
-    "marker_file": ".claude/.active-plan",
+    "marker_file": ".ai/harness/active-plan",
+    "legacy_marker_file": ".claude/.active-plan",
     "directory": "plans",
     "archive_directory": "plans/archive",
     "glob": "plan-*.md",
-    "source_of_truth": "explicit marker or latest non-archived compatibility fallback"
+    "source_of_truth": "host-neutral explicit marker, legacy Claude marker fallback, or latest non-archived compatibility fallback"
   },
   "tasks": {
     "todo_file": "tasks/todo.md",

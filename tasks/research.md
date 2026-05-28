@@ -157,9 +157,9 @@
 ### What Changed
 - Added `## Workflow Inventory` to source and runtime plan templates, captured-plan output, contract templates, and fallback heredocs in `new-plan.sh`, `capture-plan.sh`, `plan-to-todo.sh`, `ensure-task-workflow.sh`, and `project-init-lib.sh`.
 - The inventory names active plan, sprint contract, review, implementation notes, `tasks/todo.md`, checks, run snapshots, `allowed_paths` scope authority, `switch-plan.sh`, and contract worktree execution.
-- Replaced latest-plan-first wording with `.claude/.active-plan` as authoritative when present; latest non-archived `plans/plan-*.md` remains a compatibility fallback.
+- Replaced latest-plan-first wording with explicit active-marker semantics; after the 2026-05-28 migration, `.ai/harness/active-plan` is authoritative, `.claude/.active-plan` is a legacy fallback, and latest non-archived `plans/plan-*.md` remains a compatibility fallback.
 - Updated `agentic-dev-plan`, root `SKILL.md`, reference configs, and assembly partials so planning instructions match generated artifacts.
-- Recorded the experiment in `autoresearch-agentic-dev-20260528-120347/`: baseline 14/20, kept candidate 20/20.
+- Recorded the experiment in `autoresearch/autoresearch-agentic-dev-20260528-120347/`: baseline 14/20, kept candidate 20/20.
 
 ### Why
 - The Browserbase Autobrowse article's reusable lesson is not "remove gates for automation"; it is "make the reusable skill artifact carry the shortest reliable path and the state the next agent should not rediscover."
@@ -169,6 +169,47 @@
 ### Verification
 - `bun test tests/helper-scripts.test.ts tests/scaffold-parity.test.ts tests/output-parity.test.ts tests/agents-assembly.test.ts`
 - First targeted run exposed an AGENTS line-budget regression at 263/260 lines; partial wording was compressed and the second targeted run passed 68 tests.
+
+## 2026-05-28 Active Plan Marker Migration Notes
+
+### What Changed
+- `.ai/harness/active-plan` is now the host-neutral active-plan marker named by `.ai/harness/policy.json`.
+- `.claude/.active-plan` remains a transition fallback and mirror target so existing Claude-first projects keep working.
+- Runtime hook state, helper scripts, generated helper templates, handoff resume, archive, switch-plan, workflow checks, and capture-plan now read the new marker first and fall back to the legacy marker before latest-plan compatibility fallback.
+- Plan capture and plan switch write both markers; archive clears both markers when they point at the archived plan.
+- Migration copies a legacy marker into `.ai/harness/active-plan` when the new marker is absent, and syncs legacy back from the new marker when the new marker already exists.
+
+### Why
+- `.claude/.active-plan` was a published compatibility surface, but its name encoded a single host in a workflow contract shared by Claude and Codex.
+- Moving to `.ai/harness/active-plan` preserves the existing file-backed plan model while making the active selector part of the shared harness state.
+- The key invariant remains: `plans/plan-*.md` contains plan content; the marker only selects the active plan. Latest non-archived plan remains a compatibility fallback, not the preferred ownership signal.
+
+### Verification Surface
+- `tests/helper-scripts.test.ts` covers host-neutral marker preference, dual-write capture, legacy-marker handoff compatibility, and concurrent switch mirroring.
+- `tests/hook-runtime.test.ts` covers Codex-only active marker execution and embedded approved-plan capture dual-write.
+- `tests/migration-script.test.ts` covers legacy marker migration and runtime ignore block coverage.
+
+## 2026-05-28 Hook Workflow Autoresearch Notes
+
+### What Changed
+- Ran `autoresearch` against the root `agentic-dev` skill with session artifacts under `autoresearch/autoresearch-agentic-dev-hooks-20260528-131222/`.
+- Baseline hook workflow score was 12/25: the skill preserved the repo-file contract boundary but did not explicitly name Codex Settings trust, safe autoresearch trigger behavior, or hook-specific evidence surfaces.
+- Kept one candidate mutation: added `## Hook Workflow Protocol` to `SKILL.md`.
+- Added regression eval `repair-codex-hook-workflow` to `evals/evals.json`.
+- Implemented `autoresearch-advisory.sh` as a self-host maintainer hook under `.ai/hooks/`, wired only into this repo's local adapters, and kept it advisory-only.
+- Removed `autoresearch-advisory.sh` from `assets/hooks/` and default adapter templates so generated user projects do not install the development-only autoresearch hook.
+- Collected local autoresearch run products under ignored `autoresearch/`; the advisory hook scans both legacy root-level `autoresearch-*` sessions and nested `autoresearch/autoresearch-*` sessions.
+
+### Why
+- Hook tasks are runtime-harness slices, not generic config edits. Agents need the exact route from adapter to `.ai/hooks/run-hook.sh` before changing behavior.
+- Codex adapter generation and Codex Settings trust are separate failure layers; confusing them makes hooks appear installed but inert.
+- Autoresearch must remain agent-driven. Hooks may detect optimization intent or point to a session, but must not silently mutate or promote `SKILL.md` in the background.
+- The hook workflow guard is intentionally small: it detects optimization language, points to the latest root or nested `autoresearch-*/session.json`, and reminds agents to run `record_experiment.py` for candidate edits.
+
+### Verification Surface
+- Autoresearch session: baseline 12/25 -> final 25/25, one kept candidate, no discarded candidates.
+- The hook workflow regression is now represented in `evals/evals.json` rather than only in chat or the local session log.
+- `tests/hook-runtime.test.ts` covers prompt intent detection, session readback, and candidate edit reminders.
 
 ## 2026-05-06 Harness v2 Implementation Notes
 
@@ -404,13 +445,13 @@
 
 ### What Changed
 - Added `scripts/capture-plan.sh` and template mirror `assets/templates/helpers/capture-plan.sh` so Codex Plan mode, Waza `/think`, and `agentic-dev-plan` outputs can be captured as timestamped `plans/plan-*.md` artifacts without requiring the user to remember `new-sprint`.
-- The helper reads planning output from stdin or `--body-file`, fills a concrete Evidence Contract, extracts checkbox task breakdowns when present, writes `.claude/.active-plan` by default, and can run `plan-to-todo.sh` with `--status Approved --execute`.
+- The helper reads planning output from stdin or `--body-file`, fills a concrete Evidence Contract, extracts checkbox task breakdowns when present, writes `.ai/harness/active-plan` and mirrors `.claude/.active-plan` by default, and can run `plan-to-todo.sh` with `--status Approved --execute`.
 - `.ai/harness/policy.json` now has a `plan_capture` section, and the helper is part of `assets/workflow-contract.v1.json`, `.ai/harness/workflow-contract.json`, generated helper installation, and scaffold/migration parity tests.
 - Root `AGENTS.md` / `CLAUDE.md`, generated partials, `agentic-development-flow.md`, and `agentic-dev-plan` now direct planning modes to capture decision-complete plans before implementation.
 
 ### What to Preserve
 - Hooks may start a minimal Draft plan workflow for explicit Waza `/think` / Codex Plan intent, but they must not infer or rewrite the final assistant plan body from transcript text.
-- Planning capture may write `plans/` and `.claude/.active-plan`, but `tasks/todo.md`, `tasks/contracts/`, `tasks/reviews/`, and worktrees should still wait for explicit implementation approval.
+- Planning capture may write `plans/` plus the active-plan marker pair, but `tasks/todo.md`, `tasks/contracts/`, `tasks/reviews/`, and worktrees should still wait for explicit implementation approval.
 - `capture-plan.sh --execute` is the approved fast path only when the user has already approved implementation; otherwise leave the captured plan in `Draft`.
 
 ### 2026-05-27 Plan Approval Guard Regression

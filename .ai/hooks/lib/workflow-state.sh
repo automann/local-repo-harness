@@ -177,26 +177,48 @@ get_latest_plan() {
   return 1
 }
 
-get_active_plan() {
-  if [[ -f ".claude/.active-plan" ]]; then
-    local marker_plan
-    marker_plan="$(cat ".claude/.active-plan" 2>/dev/null | xargs)"
+ACTIVE_PLAN_MARKER=".ai/harness/active-plan"
+LEGACY_ACTIVE_PLAN_MARKER=".claude/.active-plan"
+
+read_active_plan_marker() {
+  local marker_file="$1"
+  local marker_plan
+
+  if [[ -f "$marker_file" ]]; then
+    marker_plan="$(cat "$marker_file" 2>/dev/null | xargs)"
     if [[ -n "$marker_plan" && -f "$marker_plan" ]]; then
       printf '%s' "$marker_plan"
       return 0
     fi
   fi
-  get_latest_plan
+
+  return 1
+}
+
+get_active_plan() {
+  read_active_plan_marker "$ACTIVE_PLAN_MARKER" \
+    || read_active_plan_marker "$LEGACY_ACTIVE_PLAN_MARKER" \
+    || get_latest_plan
+}
+
+write_active_plan_marker() {
+  local plan_file="$1"
+  mkdir -p "$(dirname "$ACTIVE_PLAN_MARKER")" "$(dirname "$LEGACY_ACTIVE_PLAN_MARKER")"
+  printf '%s' "$plan_file" > "$ACTIVE_PLAN_MARKER"
+  printf '%s' "$plan_file" > "$LEGACY_ACTIVE_PLAN_MARKER"
+}
+
+clear_active_plan_marker() {
+  rm -f "$ACTIVE_PLAN_MARKER" "$LEGACY_ACTIVE_PLAN_MARKER"
 }
 
 set_active_plan() {
   local plan_file="$1"
-  mkdir -p .claude
-  printf '%s' "$plan_file" > ".claude/.active-plan"
+  write_active_plan_marker "$plan_file"
 }
 
 clear_active_plan() {
-  rm -f ".claude/.active-plan"
+  clear_active_plan_marker
 }
 
 get_plan_status() {

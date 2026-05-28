@@ -231,6 +231,47 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("self-host autoresearch-advisory: routes optimization intent without background mutation", () => {
+    const cwd = tmpWorkspace("autoresearch-advisory");
+    try {
+      installHooks(cwd);
+      copyFileSync(
+        join(ROOT, ".ai/hooks/autoresearch-advisory.sh"),
+        join(cwd, ".ai/hooks/autoresearch-advisory.sh")
+      );
+      const sessionDir = join(cwd, "autoresearch", "autoresearch-demo-20260528-010203");
+      mkdirSync(sessionDir, { recursive: true });
+      writeFileSync(
+        join(sessionDir, "session.json"),
+        JSON.stringify({ status: "running", target_skill_path: join(cwd, "SKILL.md") }, null, 2) + "\n"
+      );
+      writeFileSync(
+        join(sessionDir, "results.tsv"),
+        "experiment\tscore\tmax_score\tpass_rate\tstatus\tdescription\n0\t12\t25\t48.0%\tbaseline\toriginal\n"
+      );
+
+      const promptRes = runHook("autoresearch-advisory.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "请跑 autoresearch 优化 SKILL.md 的 hook workflow" }),
+      });
+      expect(promptRes.status).toBe(0);
+      expect(promptRes.stdout).toContain("[AutoresearchAdvisory]");
+      expect(promptRes.stdout).toContain("agent-run loop");
+      expect(promptRes.stdout).toContain("baseline -> candidate copy -> binary evals -> record_experiment -> promote only winners");
+      expect(promptRes.stdout).toContain("hooks must not mutate SKILL.md");
+      expect(promptRes.stdout).toContain("autoresearch/autoresearch-demo-20260528-010203/session.json");
+      expect(promptRes.stdout).toContain("0\t12\t25\t48.0%\tbaseline\toriginal");
+
+      const candidateRes = runHook("autoresearch-advisory.sh", cwd, {
+        stdin: JSON.stringify({ file_path: "autoresearch/autoresearch-demo-20260528-010203/candidates/exp-2/SKILL.md" }),
+      });
+      expect(candidateRes.status).toBe(0);
+      expect(candidateRes.stdout).toContain("candidate SKILL.md edited");
+      expect(candidateRes.stdout).toContain("record the experiment");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("worktree-guard: warning by default, block when marker exists", () => {
     const cwd = tmpWorkspace("worktree-guard");
     try {
@@ -1096,6 +1137,7 @@ describe("Hook runtime behavior", () => {
         /^plan-\d{8}-\d{4}-hook-capture-repair\.md$/.test(name)
       );
       expect(plans).toHaveLength(1);
+      expect(readFileSync(join(cwd, ".ai/harness/active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
       expect(readFileSync(join(cwd, ".claude/.active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
       const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
       expect(todo).toContain(`> **Source Plan**: plans/${plans[0]}`);
@@ -1247,10 +1289,10 @@ describe("Hook runtime behavior", () => {
       installHooks(cwd);
       mkdirSync(join(cwd, "docs"), { recursive: true });
       mkdirSync(join(cwd, "plans"), { recursive: true });
-      mkdirSync(join(cwd, ".claude"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
       writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
       const planPath = "plans/plan-20260304-1400-demo.md";
-      writeFileSync(join(cwd, ".claude/.active-plan"), planPath);
+      writeFileSync(join(cwd, ".ai/harness/active-plan"), planPath);
       writeFileSync(
         join(cwd, planPath),
         ["# Plan: demo", "", "> **Status**: Approved", "", planEvidenceContract(), ""].join("\n")

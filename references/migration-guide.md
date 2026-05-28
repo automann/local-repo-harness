@@ -12,7 +12,7 @@ new docs and commands should use `agentic-dev`.
 - Shared hook logic lives in `.ai/hooks/`; Claude project hooks route through `.claude/settings.json`.
 - Generated `.claude/hooks/` shims are legacy cleanup targets. Custom `.claude/hooks/custom-*.sh` files are preserved.
 - Stable product truth lives in `docs/spec.md`.
-- `plans/` is the only source of truth for the active plan; any `docs/plan.md` pointer is legacy drift and should be removed during migration.
+- `plans/` is the timestamped plan catalog; `.ai/harness/active-plan` selects the active plan, `.claude/.active-plan` remains a legacy fallback during transition, and any `docs/plan.md` pointer is legacy drift that should be removed during migration.
 - Sprint done definitions live in `tasks/contracts/` and `tasks/reviews/`.
 - Structured verification and resumable state live in `.ai/harness/checks/latest.json` and `.ai/harness/handoff/current.md`.
 - `docs/TODO.md` is removed; `tasks/todo.md` is the only task contract.
