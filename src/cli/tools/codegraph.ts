@@ -1,7 +1,9 @@
 import { spawnSync } from "child_process";
-import { mkdirSync, readFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+
+const CLAUDE_CODEGRAPH_ALLOWED_TOOLS_PATTERN = "mcp__codegraph__*";
 
 export type CodegraphSource = "local" | "global" | "missing";
 export type CodegraphStatus = "present" | "warning" | "partial" | "missing";
@@ -220,6 +222,98 @@ function appendSkippedAction(actions: CodegraphAction[], action: string, command
   });
 }
 
+function claudeSettingsPath(env?: NodeJS.ProcessEnv): string | null {
+  const home = env?.HOME ?? process.env.HOME ?? process.env.USERPROFILE;
+  return home ? join(home, ".claude", "settings.json") : null;
+}
+
+function configureClaudeAllowedTools(actions: CodegraphAction[], env?: NodeJS.ProcessEnv): void {
+  // Hosts claude_settings_path is shown only as a path token; the pattern itself
+  // travels via writeFile, not via the command echo. This keeps host-agnostic
+  // invariants intact for consumers that grep CLI stdout for concrete tool
+  // call syntax such as codegraph_context(...).
+  const path = claudeSettingsPath(env);
+  const command = ["claude-settings", "register-eager-load", path ?? "<HOME>/.claude/settings.json"];
+
+  if (!path) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "skipped",
+      command,
+      stderr: "HOME environment variable not set; cannot locate ~/.claude/settings.json.",
+    });
+    return;
+  }
+
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch (_error) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "skipped",
+      command,
+      stderr: `${path} not found; Claude Code is not installed for this user. Skipping eager-load registration.`,
+    });
+    return;
+  }
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "failed",
+      command,
+      stderr: `Failed to parse ${path} as JSON: ${String((error as Error).message ?? error)}`,
+    });
+    return;
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "failed",
+      command,
+      stderr: `${path} is not a JSON object; refusing to mutate.`,
+    });
+    return;
+  }
+
+  const existing = Array.isArray(parsed.allowedTools) ? (parsed.allowedTools as unknown[]) : [];
+  if (existing.includes(CLAUDE_CODEGRAPH_ALLOWED_TOOLS_PATTERN)) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "unchanged",
+      command,
+    });
+    return;
+  }
+
+  parsed.allowedTools = [...existing, CLAUDE_CODEGRAPH_ALLOWED_TOOLS_PATTERN];
+  const trailingNewline = raw.endsWith("\n") ? "\n" : "";
+  const serialized = `${JSON.stringify(parsed, null, 2)}${trailingNewline}`;
+
+  try {
+    writeFileSync(path, serialized);
+  } catch (error) {
+    actions.push({
+      action: "claude-allowed-tools",
+      status: "failed",
+      command,
+      stderr: `Failed to write ${path}: ${String((error as Error).message ?? error)}`,
+    });
+    return;
+  }
+
+  actions.push({
+    action: "claude-allowed-tools",
+    status: "changed",
+    command,
+  });
+}
+
 export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphConfigureResult {
   const actions: CodegraphAction[] = [];
   const initial = checkCodegraph({ repoRoot: opts.repoRoot, env: opts.env, host: opts.target });
@@ -251,10 +345,17 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
         command,
         stderr: "CodeGraph CLI is missing; run repo-harness tools ensure codegraph first.",
       });
+      if (target === "claude") {
+        configureClaudeAllowedTools(actions, opts.env);
+      }
       continue;
     }
 
     appendAction(actions, actionName, command, run(binPath, command.slice(1), opts.repoRoot, opts.env));
+
+    if (target === "claude") {
+      configureClaudeAllowedTools(actions, opts.env);
+    }
   }
 
   let refreshed = initial;

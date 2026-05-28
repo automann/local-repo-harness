@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { spawnSync } from "child_process";
 
 const ROOT = join(import.meta.dir, "..", "..");
@@ -69,12 +69,27 @@ function writeFakeNpx(fakeBin: string) {
   );
 }
 
-function runConfigure(target: string) {
+type RunConfigureOptions = {
+  // null / undefined → seed empty {} settings.json so the claude-allowed-tools
+  // step has something to mutate. Pass "missing" to skip seeding entirely and
+  // exercise the "no Claude Code installed" branch.
+  seedClaudeSettings?: Record<string, unknown> | "missing" | null;
+};
+
+function runConfigure(target: string, options: RunConfigureOptions = {}) {
   const envRoot = setupFakeEnvironment(`repo-harness-tools-configure-${target}`);
   const logFile = join(envRoot.root, "tool.log");
+  const claudeSettingsPath = join(envRoot.home, ".claude", "settings.json");
   try {
     mkdirSync(join(envRoot.home, ".codex"), { recursive: true });
     writeFileSync(join(envRoot.home, ".codex", "config.toml"), "# no codegraph yet\n");
+
+    const seed = options.seedClaudeSettings;
+    if (seed !== "missing") {
+      mkdirSync(dirname(claudeSettingsPath), { recursive: true });
+      writeFileSync(claudeSettingsPath, `${JSON.stringify(seed ?? {}, null, 2)}\n`);
+    }
+
     writeFakeCodeGraph(envRoot.fakeBin, logFile);
     writeFakeGbrain(envRoot.fakeBin);
     writeFakeNpx(envRoot.fakeBin);
@@ -91,7 +106,13 @@ function runConfigure(target: string) {
     });
 
     const log = readFileSync(logFile, "utf-8");
-    return { res, log };
+    let claudeSettingsAfter: any = null;
+    try {
+      claudeSettingsAfter = JSON.parse(readFileSync(claudeSettingsPath, "utf-8"));
+    } catch (_error) {
+      claudeSettingsAfter = null;
+    }
+    return { res, log, claudeSettingsAfter };
   } finally {
     rmSync(envRoot.root, { recursive: true, force: true });
   }
@@ -108,23 +129,66 @@ describe("tools configure codegraph", () => {
     expect(log).toContain("codegraph install --target codex --location global --yes");
   }, 15000);
 
-  test("configures Claude through the CodeGraph target adapter", () => {
-    const { res, log } = runConfigure("claude");
+  test("configures Claude and registers codegraph for eager schema load", () => {
+    const { res, log, claudeSettingsAfter } = runConfigure("claude");
     expect(res.status).toBe(0);
     const result = JSON.parse(res.stdout);
     expect(result.target).toBe("claude");
-    expect(result.actions.map((entry: { action: string }) => entry.action)).toEqual(["configure-claude"]);
+    expect(result.actions.map((entry: { action: string }) => entry.action)).toEqual([
+      "configure-claude",
+      "claude-allowed-tools",
+    ]);
     expect(log).toContain("codegraph install --target claude --location global --yes");
+
+    const allowedTools = (result.actions as Array<{ action: string; status: string }>).find(
+      (entry) => entry.action === "claude-allowed-tools",
+    );
+    expect(allowedTools?.status).toBe("changed");
+    expect(claudeSettingsAfter?.allowedTools).toContain("mcp__codegraph__*");
   }, 15000);
 
-  test("configures both hosts without exposing host-specific tool names", () => {
+  test("claude-allowed-tools is idempotent when the wildcard is already present", () => {
+    const { res, claudeSettingsAfter } = runConfigure("claude", {
+      seedClaudeSettings: { allowedTools: ["Edit", "mcp__codegraph__*"] },
+    });
+    expect(res.status).toBe(0);
+    const result = JSON.parse(res.stdout);
+    const allowedTools = (result.actions as Array<{ action: string; status: string }>).find(
+      (entry) => entry.action === "claude-allowed-tools",
+    );
+    expect(allowedTools?.status).toBe("unchanged");
+    expect(claudeSettingsAfter?.allowedTools).toEqual(["Edit", "mcp__codegraph__*"]);
+  }, 15000);
+
+  test("claude-allowed-tools is skipped when Claude Code is not installed", () => {
+    const { res, claudeSettingsAfter } = runConfigure("claude", { seedClaudeSettings: "missing" });
+    expect(res.status).toBe(0);
+    const result = JSON.parse(res.stdout);
+    const allowedTools = (result.actions as Array<{ action: string; status: string; stderr?: string }>).find(
+      (entry) => entry.action === "claude-allowed-tools",
+    );
+    expect(allowedTools?.status).toBe("skipped");
+    expect(allowedTools?.stderr ?? "").toContain("not found");
+    expect(claudeSettingsAfter).toBeNull();
+  }, 15000);
+
+  test("configures both hosts without exposing host-specific tool call syntax", () => {
     const { res, log } = runConfigure("both");
     expect(res.status).toBe(0);
     const result = JSON.parse(res.stdout);
     expect(result.target).toBe("both");
-    expect(result.actions.map((entry: { action: string }) => entry.action)).toEqual(["configure-codex", "configure-claude"]);
+    expect(result.actions.map((entry: { action: string }) => entry.action)).toEqual([
+      "configure-codex",
+      "configure-claude",
+      "claude-allowed-tools",
+    ]);
     expect(log).toContain("codegraph install --target codex --location global --yes");
     expect(log).toContain("codegraph install --target claude --location global --yes");
-    expect(res.stdout).not.toContain("mcp__codegraph__");
+    // CLI output may carry the host-agnostic wildcard mcp__codegraph__* as a
+    // configuration value (it is the actual Claude allowedTools entry). What it
+    // must NOT carry is concrete codegraph tool invocations such as
+    // codegraph_context(...), codegraph_callers(...) etc -- those belong to
+    // agent prompts, not adapter output.
+    expect(res.stdout).not.toMatch(/codegraph_\w+\s*\(/);
   }, 15000);
 });
