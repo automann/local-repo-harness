@@ -36,6 +36,7 @@ describe("create-project-dirs scaffold parity", () => {
       expect(res.status).toBe(0);
       expect(collectFiles(cwd)).toEqual([
         "./.ai/context/capabilities.json",
+        "./.ai/context/capability-source-map.json",
         "./.ai/context/context-map.json",
         "./.ai/harness/architecture/.gitkeep",
         "./.ai/harness/architecture/events.jsonl",

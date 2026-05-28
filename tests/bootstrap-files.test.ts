@@ -149,10 +149,12 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
+    expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/capability-context/");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-worktree");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");

@@ -50,6 +50,7 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/handoff/current.md
 .ai/harness/handoff/resume.md
 .ai/harness/context-budget/latest.json
+.ai/harness/capability-context/
 .ai/harness/architecture/events.jsonl
 .ai/harness/active-plan
 .ai/harness/active-worktree
@@ -1747,6 +1748,7 @@ pi_ensure_harness_state_surface() {
   [[ -f "$target_dir/.ai/harness/handoff/current.md" ]] || printf "# Harness Handoff\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/current.md"
   [[ -f "$target_dir/.ai/harness/handoff/resume.md" ]] || printf "# Codex Resume Packet\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/resume.md"
   [[ -f "$target_dir/.ai/harness/context-budget/latest.json" ]] || printf "{}\n" > "$target_dir/.ai/harness/context-budget/latest.json"
+  [[ -f "$target_dir/.ai/context/capability-source-map.json" ]] || printf '{\n  "version": 1,\n  "capabilities": {}\n}\n' > "$target_dir/.ai/context/capability-source-map.json"
   [[ -f "$target_dir/.ai/harness/events.jsonl" ]] || : > "$target_dir/.ai/harness/events.jsonl"
   [[ -f "$target_dir/.ai/harness/architecture/events.jsonl" ]] || : > "$target_dir/.ai/harness/architecture/events.jsonl"
   [[ -f "$target_dir/.ai/harness/architecture/.gitkeep" ]] || : > "$target_dir/.ai/harness/architecture/.gitkeep"

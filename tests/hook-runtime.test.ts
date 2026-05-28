@@ -436,6 +436,25 @@ describe("Hook runtime behavior", () => {
       installArchitectureHelpers(cwd);
       mkdirSync(join(cwd, "apps/web/src/routes"), { recursive: true });
       mkdirSync(join(cwd, ".ai/context"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/context/capabilities.json"), JSON.stringify({
+        version: 1,
+        capabilities: [
+          {
+            id: "apps-web",
+            domain: "apps-web",
+            name: "web",
+            prefixes: ["apps/web"],
+            contract_files: {
+              agents: "apps/web/AGENTS.md",
+              claude: "apps/web/CLAUDE.md",
+            },
+            architecture_module: "docs/architecture/modules/apps-web/web.md",
+            workstream_dir: "tasks/workstreams/apps-web/web",
+            lsp_profile: "typescript-lsp",
+            verification_hints: ["web checks"],
+          },
+        ],
+      }, null, 2) + "\n");
       writeFileSync(join(cwd, ".ai/context/agent-context-blocks.txt"), "apps/web\n");
       writeFileSync(join(cwd, ".ai/context/context-map.json"), JSON.stringify({
         version: 1,
@@ -445,15 +464,22 @@ describe("Hook runtime behavior", () => {
         discoverable_contexts: [],
       }, null, 2));
       writeFileSync(join(cwd, "apps/web/AGENTS.md"), "# Existing Web Contract\n\n- Keep manual rule.\n");
+      const fakeBin = join(cwd, "bin");
+      mkdirSync(fakeBin, { recursive: true });
+      writeFileSync(join(fakeBin, "repo-harness"), `#!/bin/bash\nexec bun "${join(ROOT, "src/cli/index.ts")}" "$@"\n`);
+      expect(run("chmod", ["+x", join(fakeBin, "repo-harness")], cwd).status).toBe(0);
 
       const res = runHook("post-edit-guard.sh", cwd, {
         stdin: JSON.stringify({ tool_input: { file_path: "apps/web/src/routes/account.tsx" } }),
+        env: { PATH: `${fakeBin}:${process.env.PATH ?? ""}` },
       });
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("[ArchitectureDrift] Request:");
       expect(res.stdout).toContain("[ContextContractSync] Updated apps/web/AGENTS.md and apps/web/CLAUDE.md.");
+      expect(res.stdout).toContain("[CapabilityContext] Queued apps-web");
       expect(existsSync(join(cwd, ".ai/harness/architecture/events.jsonl"))).toBe(true);
+      expect(readFileSync(join(cwd, ".ai/harness/capability-context/requests.jsonl"), "utf-8")).toContain('"capability_id":"apps-web"');
 
       const requestFiles = readdirSync(join(cwd, "docs/architecture/requests")).filter((name) => name.endsWith(".md"));
       expect(requestFiles.length).toBe(1);
@@ -774,6 +800,35 @@ describe("Hook runtime behavior", () => {
       expect(res.stdout).toContain("SessionStart");
       expect(res.stdout).toContain("additionalContext");
       expect(res.stdout).toContain("fresh Codex session");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("session-start-context injects capability-context queue reminders without a resume packet", () => {
+    const cwd = tmpWorkspace("session-start-capability-context");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/capability-context"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/capability-context/requests.jsonl"),
+        `${JSON.stringify({
+          status: "pending",
+          request_id: "apps-web:apps/web/page.tsx:manual",
+          capability_id: "apps-web",
+          path: "apps/web/page.tsx",
+          matched_prefix: "apps/web",
+          ts: "2026-05-29T00:00:00.000Z",
+          source: "cli",
+        })}\n`,
+      );
+
+      const res = runHook("session-start-context.sh", cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("SessionStart");
+      expect(res.stdout).toContain("Capability Context Queue");
+      expect(res.stdout).toContain("repo-harness capability-context sync --pending --apply");
+      expect(res.stdout).toContain("apps-web");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

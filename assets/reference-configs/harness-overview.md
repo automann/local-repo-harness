@@ -64,3 +64,6 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 - Resolve edited paths through `scripts/capability-resolver.ts match --path <path>`; longest prefix wins and equal-length ambiguity fails.
 - Treat `.ai/context/agent-context-blocks.txt`, `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, and existing nested `CLAUDE.md`/`AGENTS.md` files as migration inputs or compatibility fallbacks only.
 - Selected capabilities receive paired `CLAUDE.md` and `AGENTS.md` files so Claude Code and Codex share the same local contract.
+- Use `repo-harness capability-context status|request|sync` to keep paired local context files aligned with the registry. The command writes only the controlled `CAPABILITY CONTEXT` block and preserves hand-authored content plus the separate architecture contract block.
+- `.ai/context/capability-source-map.json` is the optional human-edited source-map manifest for capability positioning and source pointers. Missing entries fall back to registry/architecture/workstream metadata; `--auto-fill-positioning` writes deterministic draft entries explicitly, not from hooks.
+- `.ai/harness/capability-context/` is ignored runtime queue state. Post-edit hooks may enqueue requests, and `SessionStart` only reminds the current agent to run `repo-harness capability-context sync --pending --apply`.

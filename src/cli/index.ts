@@ -16,10 +16,21 @@ import { formatDoctor, runDoctor } from './commands/doctor';
 import { formatMigratePlan, runMigrate } from './commands/migrate';
 import { buildToolsCommand } from './commands/tools';
 import { buildBrainCommand } from './commands/brain';
+import { buildCapabilityContextCommand } from './commands/capability-context';
 import type { Location } from './installer/types';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
-export const SUBCOMMANDS = ['init', 'install', 'hook', 'status', 'doctor', 'migrate', 'tools', 'brain'] as const;
+export const SUBCOMMANDS = [
+  'init',
+  'install',
+  'hook',
+  'status',
+  'doctor',
+  'migrate',
+  'tools',
+  'brain',
+  'capability-context',
+] as const;
 export type Subcommand = (typeof SUBCOMMANDS)[number];
 
 const VALID_TARGETS: readonly InstallTargetSpec[] = ['codex', 'claude', 'both'];
@@ -149,6 +160,7 @@ export function buildProgram(): Command {
 
   program.addCommand(buildToolsCommand());
   program.addCommand(buildBrainCommand());
+  program.addCommand(buildCapabilityContextCommand());
 
   return program;
 }

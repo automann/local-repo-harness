@@ -43,8 +43,10 @@ Hook scope is detect, classify, record, and remind:
 - `scripts/architecture-drift.sh` writes requests/events.
 - `scripts/workstream-sync.sh` maintains durable capability workstreams.
 - `scripts/context-contract-sync.sh` updates only controlled local agent-context blocks.
+- `repo-harness capability-context request` may enqueue ignored runtime work under `.ai/harness/capability-context/`; `SessionStart` reminds the current agent to run `repo-harness capability-context sync --pending --apply`.
 
 Agents, not hooks, author semantic snapshots and diagrams.
+Hooks do not spawn LLM agents in `PostEdit`.
 
 ## Self-Host vs Generated Parity Contract
 

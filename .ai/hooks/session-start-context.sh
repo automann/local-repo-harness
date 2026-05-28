@@ -10,11 +10,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/workflow-state.sh"
 
 resume_file="$(workflow_resume_packet_file)"
-[[ -f "$resume_file" ]] || exit 0
-grep -Fq "<!-- generated-by: project-initializer codex-handoff-resume v1 -->" "$resume_file" || exit 0
-grep -Fq "## Resume Prompt" "$resume_file" || exit 0
+
+resume_available() {
+  [[ -f "$resume_file" ]] || return 1
+  grep -Fq "<!-- generated-by: project-initializer codex-handoff-resume v1 -->" "$resume_file" || return 1
+  grep -Fq "## Resume Prompt" "$resume_file"
+}
 
 resume_reason() {
+  resume_available || return 1
   awk '/^\> \*\*Reason\*\*:/ {sub(/^.*\> \*\*Reason\*\*: */, ""); gsub(/\r/, ""); print; exit}' "$resume_file" | xargs
 }
 
@@ -93,16 +97,58 @@ resume_reason_active() {
   return 1
 }
 
-if ! context_budget_active \
-  && ! active_plan_exists \
-  && ! active_todo_exists \
-  && ! handoff_section_has_signal "## Blockers" \
-  && ! handoff_section_has_signal "## Changed Files" \
-  && ! resume_reason_active; then
-  exit 0
+capability_context_pending() {
+  local queue_file=".ai/harness/capability-context/requests.jsonl"
+  local pending_lines=""
+  local pending_count="0"
+
+  [[ -s "$queue_file" ]] || return 1
+
+  if command -v jq >/dev/null 2>&1; then
+    pending_count="$(jq -r 'select(.status == "pending") | .request_id' "$queue_file" 2>/dev/null | wc -l | xargs)"
+    pending_lines="$(jq -r 'select(.status == "pending") | "- " + .capability_id + " <- `" + .path + "`"' "$queue_file" 2>/dev/null | sort -u | head -10 || true)"
+  else
+    pending_count="$(grep -c '"status":"pending"' "$queue_file" 2>/dev/null || true)"
+    pending_lines="$(grep '"status":"pending"' "$queue_file" 2>/dev/null | head -10 | sed -E 's/^/- /' || true)"
+  fi
+
+  [[ "${pending_count:-0}" != "0" && -n "$pending_lines" ]] || return 1
+
+  cat <<EOF_CONTEXT
+# Capability Context Queue
+
+Pending capability context requests detected (${pending_count}). Run:
+
+\`\`\`bash
+repo-harness capability-context sync --pending --apply
+\`\`\`
+
+Queued capabilities:
+${pending_lines}
+EOF_CONTEXT
+}
+
+context=""
+if resume_available; then
+  if context_budget_active \
+    || active_plan_exists \
+    || active_todo_exists \
+    || handoff_section_has_signal "## Blockers" \
+    || handoff_section_has_signal "## Changed Files" \
+    || resume_reason_active; then
+    context="$(awk 'length(total) < 12000 { total = total $0 "\n" } END { printf "%s", total }' "$resume_file")"
+  fi
 fi
 
-context="$(awk 'length(total) < 12000 { total = total $0 "\n" } END { printf "%s", total }' "$resume_file")"
+pending_context="$(capability_context_pending || true)"
+if [[ -n "$pending_context" ]]; then
+  if [[ -n "$context" ]]; then
+    context="${context}"$'\n'"${pending_context}"
+  else
+    context="$pending_context"
+  fi
+fi
+
 [[ -n "$context" ]] || exit 0
 
 if command -v jq >/dev/null 2>&1; then

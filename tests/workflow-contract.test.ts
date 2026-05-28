@@ -93,6 +93,7 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
+    expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-resolver.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/architecture-event.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
@@ -119,6 +120,7 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
+    expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/capability-context/");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/checks/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
