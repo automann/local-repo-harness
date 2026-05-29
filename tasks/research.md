@@ -1,6 +1,6 @@
 # Project — Research Notes
 
-> **Last Updated**: 2026-05-27
+> **Last Updated**: 2026-05-29
 > **Scope**: workflow contract manifest, inspection-first migration, progressive context/policy surfaces, harness state externalization, and DX polish for docs + hook operations
 > **Usage**: Store deep codebase findings and hidden contracts here, not in chat-only summaries.
 
@@ -97,6 +97,24 @@
 - Whether `ensure-task-workflow.sh` should auto-install a fallback runtime contract manifest when run in a partially migrated repo.
 - Whether future template assembly should expose a first-class “skill/tooling repo” preset instead of relying on hand-authored root routing docs.
 - Whether future work should unify `.ai/hooks/` and `assets/hooks/` through generation or parity tests instead of manual sync.
+
+## 2026-05-29 Codex Hook Output Protocol Notes
+
+### Finding
+- Codex accepts the `SessionStart` resume path when stdout is a `hookSpecificOutput.additionalContext` JSON object.
+- Codex rejects ordinary human-readable stdout from `UserPromptSubmit` and `PostToolUse` hooks with `invalid ... JSON output`.
+- The noisy new-session context came from a stale generated resume packet older than `.ai/harness/handoff/current.md`, combined with red context budget state and a pending capability-context queue.
+
+### Decision
+- Mark Codex adapter routes with `HOOK_HOST=codex`.
+- Keep `SessionStart` stdout JSON behavior unchanged.
+- In `run-hook.sh`, suppress successful stdout for Codex non-`SessionStart` hooks and mirror stdout to stderr only on failing hooks, so advisory text cannot poison Codex's JSON parser.
+- Skip generated resume packets older than the current handoff; capability-context queue reminders may still inject on their own.
+
+### Verification Surface
+- Reproduce `prompt-guard.sh` and `post-bash.sh` through `run-hook.sh` with `HOOK_HOST=codex`; stdout must be empty on success.
+- Reproduce `session-start-context.sh` with a newer handoff than resume; stale resume text must not be injected.
+- Keep `.ai/hooks/` and `assets/hooks/` in parity.
 
 ## 2026-05-27 Prompt Intent Context Strip Notes
 

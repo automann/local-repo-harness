@@ -181,13 +181,21 @@ X 的 event-only loop **会 cross-fire**: `PostToolUse Edit` 触发时会跑 `po
 |-------|-------|---------|-------------------|
 | SessionStart | default | (none) | session-start-context.sh |
 | PreToolUse | edit | `Edit\|Write` | worktree-guard.sh + pre-edit-guard.sh |
-| PostToolUse | edit | `Edit\|Write` | post-edit-guard.sh + autoresearch-advisory.sh |
+| PostToolUse | edit | `Edit\|Write` | post-edit-guard.sh |
 | PostToolUse | bash | `Bash` | post-bash.sh |
 | PostToolUse | always | (none) | trace-event.sh + context-pressure-hook.sh |
-| UserPromptSubmit | default | (none) | prompt-guard.sh + autoresearch-advisory.sh |
+| UserPromptSubmit | default | (none) | prompt-guard.sh |
 | Stop | default | (none) | finalize-handoff.sh |
 
 = **7 routes / 7 adapter entries / 7 Codex trust hashes** (vs current shim 11; vs naive X 5 错触发)
+
+### Route asset boundary correction (2026-05-29)
+
+Observed symptom: after migrating `/Users/ancienttwo/AIMPACT-new`, `UserPromptSubmit.default` failed with `repo-harness hook: script not found at .../.ai/hooks/autoresearch-advisory.sh`.
+
+Root cause: `src/cli/hook/route-registry.ts` treated `autoresearch-advisory.sh` as a public route script, but `tests/workflow-contract.test.ts` intentionally marks it as self-host-only and excludes it from `assets/hooks`. Migrated repos receive only installable assets, so every non-self-host opt-in repo would fail the route.
+
+Decision: public `repo-harness hook` routes may reference only scripts that exist in `assets/hooks`. Keep self-host autoresearch advisory directly testable, but do not route downstream repos through a dev-only script. Regression guard lives in `tests/cli/route-registry.test.ts` and asserts every route script is installable from `assets/hooks`.
 
 ### Contract surface (Codex add-ons, must hold)
 

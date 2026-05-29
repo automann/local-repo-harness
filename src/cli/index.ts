@@ -52,8 +52,10 @@ export function buildProgram(): Command {
     .option('--target <target>', `Host target for adapters and external skills: ${VALID_TARGETS.join('|')}`, 'both')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
     .option('--no-host-adapters', 'Skip writing global Codex/Claude hook adapters')
-    .option('--no-external-skills', 'Skip Waza and diagram-design skill bootstrap')
+    .option('--no-external-skills', 'Skip Waza, diagram-design, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-verify', 'Skip repo workflow verification after apply')
+    .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
+    .option('--configure-codegraph', 'Auto-register the CodeGraph MCP server for Codex and Claude (global)')
     .option('--json', 'Output JSON instead of human-readable text')
     .action((rawOpts: {
       repo?: string;
@@ -63,6 +65,8 @@ export function buildProgram(): Command {
       hostAdapters?: boolean;
       externalSkills?: boolean;
       verify?: boolean;
+      codegraph?: boolean;
+      configureCodegraph?: boolean;
       json?: boolean;
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
@@ -79,6 +83,8 @@ export function buildProgram(): Command {
         hostAdapters: rawOpts.hostAdapters !== false,
         externalSkills: rawOpts.externalSkills !== false,
         verify: rawOpts.verify !== false,
+        codegraph: rawOpts.codegraph !== false,
+        configureCodegraphMcp: rawOpts.configureCodegraph === true,
       });
       if (rawOpts.json === true) {
         console.log(JSON.stringify(result, null, 2));

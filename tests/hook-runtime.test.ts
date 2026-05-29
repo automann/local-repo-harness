@@ -10,6 +10,7 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
@@ -548,6 +549,52 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("post-edit-guard: skips unmatched low source-change root requests", () => {
+    const cwd = tmpWorkspace("architecture-drift-unmatched-source");
+    try {
+      installHooks(cwd);
+      installArchitectureHelpers(cwd);
+      mkdirSync(join(cwd, "apps/landing/src/pages"), { recursive: true });
+      mkdirSync(join(cwd, "packages/landing-video"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/context"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/context/capabilities.json"), JSON.stringify({
+        version: 1,
+        capabilities: [
+          {
+            id: "packages-landing-video",
+            domain: "packages-landing-video",
+            name: "landing-video",
+            prefixes: ["packages/landing-video"],
+            contract_files: {
+              agents: "packages/landing-video/AGENTS.md",
+              claude: "packages/landing-video/CLAUDE.md",
+            },
+            architecture_module: "docs/architecture/modules/packages-landing-video/landing-video.md",
+            workstream_dir: "tasks/workstreams/packages-landing-video/landing-video",
+            lsp_profile: "typescript-lsp",
+            verification_hints: ["landing video checks"],
+          },
+        ],
+      }, null, 2) + "\n");
+
+      const res = runHook("post-edit-guard.sh", cwd, {
+        stdin: JSON.stringify({ tool_input: { file_path: "apps/landing/src/pages/about.astro" } }),
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("[DocDrift] App source changed");
+      expect(res.stdout).toContain("[ArchitectureDrift] No architecture drift request for apps/landing/src/pages/about.astro (unmatched source-change).");
+      expect(res.stdout).not.toContain("[ArchitectureDrift] Request:");
+      const requestsDir = join(cwd, "docs/architecture/requests");
+      const requestFiles = existsSync(requestsDir)
+        ? readdirSync(requestsDir).filter((name) => name.endsWith(".md"))
+        : [];
+      expect(requestFiles).toHaveLength(0);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("architecture drift uses the most specific domain/capability functional block", () => {
     const cwd = tmpWorkspace("architecture-nested-block");
     try {
@@ -904,6 +951,42 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("session-start-context skips resume packets older than current handoff", () => {
+    const cwd = tmpWorkspace("session-start-stale-resume");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
+
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/resume.md"),
+        [
+          "# Codex Resume Packet",
+          "<!-- generated-by: project-initializer codex-handoff-resume v1 -->",
+          "",
+          "> **Reason**: context-red-zone",
+          "",
+          "## Resume Prompt",
+          "",
+          "Old resume packet that must not be injected.",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), JSON.stringify({ zone: "red" }) + "\n");
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\nnewer handoff\n");
+
+      const oldTime = new Date("2026-05-25T09:00:00Z");
+      const newTime = new Date("2026-05-29T09:00:00Z");
+      utimesSync(join(cwd, ".ai/harness/handoff/resume.md"), oldTime, oldTime);
+      utimesSync(join(cwd, ".ai/harness/handoff/current.md"), newTime, newTime);
+
+      const res = runHook("session-start-context.sh", cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout.trim()).toBe("");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("session-start-context injects capability-context queue reminders without a resume packet", () => {
     const cwd = tmpWorkspace("session-start-capability-context");
     try {
@@ -954,6 +1037,26 @@ describe("Hook runtime behavior", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("[WorktreeGuard]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("run-hook keeps Codex non-SessionStart stdout empty", () => {
+    const cwd = tmpWorkspace("run-hook-codex-stdout");
+    try {
+      installHooks(cwd);
+      writeFileSync(join(cwd, ".ai/hooks/stdout-probe.sh"), "#!/bin/bash\necho codex-noise\n");
+
+      const res = spawnSync("bash", [join(cwd, ".ai/hooks/run-hook.sh"), "stdout-probe.sh"], {
+        cwd,
+        encoding: "utf-8",
+        env: { ...process.env, HOOK_HOST: "codex", HOOK_REPO_ROOT: cwd },
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe("");
+      expect(res.stderr).toBe("");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

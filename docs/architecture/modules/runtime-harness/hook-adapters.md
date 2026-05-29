@@ -1,7 +1,7 @@
 # Architecture Module: runtime-harness/hook-adapters
 
 > **Capability ID**: `runtime-harness-hook-adapters`
-> **Matched Prefixes**: `assets/hooks`, `.ai/hooks`, `.claude/settings.json`, `.codex/hooks.json`, `scripts/run-skill-hook.ts`
+> **Matched Prefixes**: `assets/hooks`, `.ai/hooks`, `src/cli/installer`, `src/cli/hook`, `scripts/run-skill-hook.ts`
 > **Local Contracts**: `AGENTS.md`, `CLAUDE.md`
 
 ## P1 Map
@@ -13,10 +13,11 @@ Authoritative split:
 
 - `assets/hooks/`: installable shared hook source.
 - `.ai/hooks/`: self-host runtime hook implementation.
-- `.claude/settings.json`: committed Claude adapter that dispatches into `.ai/hooks/run-hook.sh`.
-- `.codex/hooks.json`: committed Codex adapter that dispatches into `.ai/hooks/run-hook.sh`.
-- Repo-local `.codex/*` beyond `hooks.json`: ignored Codex runtime state.
-- Codex Settings trust state: user-controlled runtime approval required before Codex executes the repo hook.
+- `src/cli/installer/targets/*`: user-level adapter writers for `~/.claude/settings.json` and `~/.codex/hooks.json`.
+- `src/cli/hook/*`: runtime bridge that checks repo opt-in and dispatches into `.ai/hooks/run-hook.sh`.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json`: retired legacy project-level adapters cleaned by migration.
+- Repo-local `.codex/*`: ignored Codex runtime residue.
+- Codex Settings trust state: user-controlled runtime approval required before Codex executes `~/.codex/hooks.json`.
 - `scripts/run-skill-hook.ts`: skill lifecycle hook runner for pre/post migration events.
 
 Runtime state is stored under ignored `.ai/harness/*` paths and `.claude` runtime
@@ -25,12 +26,13 @@ files. It is not a product deliverable.
 ## P2 Trace
 
 Concrete route: Claude or Codex `PreToolUse` for edit/write -> host adapter
-runs `.ai/hooks/run-hook.sh` -> dispatcher resolves repo root -> invokes
-`worktree-guard.sh` and `pre-edit-guard.sh` -> guards inspect policy, active
-plan state, protected paths, and task workflow expectations -> warning or block
-is returned to the agent.
-After adapter configuration, Codex still requires the user to trust the repo
-hook in Codex Settings before that route executes.
+runs `repo-harness hook` from user-level config -> CLI checks the current repo's
+`.ai/harness/workflow-contract.json` opt-in marker -> dispatcher runs
+`.ai/hooks/run-hook.sh` -> invokes `worktree-guard.sh` and `pre-edit-guard.sh`
+-> guards inspect policy, active plan state, protected paths, and task workflow
+expectations -> warning or block is returned to the agent.
+After adapter configuration, Codex still requires the user to trust
+`~/.codex/hooks.json` in Codex Settings before that route executes.
 
 Post-edit route: edit/write -> `post-edit-guard.sh` -> architecture-sensitive
 paths call `architecture-drift.sh` -> capability resolver binds the changed file
@@ -47,7 +49,8 @@ Error paths:
 
 The shared `.ai/hooks` layer exists to avoid maintaining separate Claude and
 Codex hook implementations. The invariant is single implementation, adapter-only
-host config.
+host config. The adapter now lives at user level so new repos only opt in by
+carrying repo-local workflow contract files and hook implementation.
 
 At 10x hook events, the first failure would be duplicated host-specific
 implementation logic. The invariant is that host adapters point at `.ai/hooks`
@@ -55,6 +58,6 @@ instead of creating separate per-host implementation trees.
 
 ## Optimization Backlog
 
-- Keep `.codex/hooks.json` generated and committed while ignoring other local `.codex/` residue.
-- Remind users to trust `.codex/hooks.json` in Codex Settings after configuration.
+- Keep `repo-harness init` and migration from regenerating repo-local `.claude/settings.json` / `.codex/hooks.json` adapters.
+- Remind users to trust `~/.codex/hooks.json` in Codex Settings after user-level adapter installation.
 - Keep hook asset parity test coverage whenever `.ai/hooks` or `assets/hooks` changes.

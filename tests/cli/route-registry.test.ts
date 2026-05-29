@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import {
   ROUTES,
   allEvents,
@@ -28,10 +30,10 @@ describe('route registry (Phase 1B Z design)', () => {
   test('getRoute returns the expected ordered scripts for each route', () => {
     expect(getRoute('SessionStart', 'default')?.scripts).toEqual(['session-start-context.sh']);
     expect(getRoute('PreToolUse', 'edit')?.scripts).toEqual(['worktree-guard.sh', 'pre-edit-guard.sh']);
-    expect(getRoute('PostToolUse', 'edit')?.scripts).toEqual(['post-edit-guard.sh', 'autoresearch-advisory.sh']);
+    expect(getRoute('PostToolUse', 'edit')?.scripts).toEqual(['post-edit-guard.sh']);
     expect(getRoute('PostToolUse', 'bash')?.scripts).toEqual(['post-bash.sh']);
     expect(getRoute('PostToolUse', 'always')?.scripts).toEqual(['trace-event.sh', 'context-pressure-hook.sh']);
-    expect(getRoute('UserPromptSubmit', 'default')?.scripts).toEqual(['prompt-guard.sh', 'autoresearch-advisory.sh']);
+    expect(getRoute('UserPromptSubmit', 'default')?.scripts).toEqual(['prompt-guard.sh']);
     expect(getRoute('Stop', 'default')?.scripts).toEqual(['finalize-handoff.sh']);
   });
 
@@ -57,7 +59,6 @@ describe('route registry (Phase 1B Z design)', () => {
       'worktree-guard.sh',
       'pre-edit-guard.sh',
       'post-edit-guard.sh',
-      'autoresearch-advisory.sh',
       'post-bash.sh',
       'trace-event.sh',
       'context-pressure-hook.sh',
@@ -66,6 +67,14 @@ describe('route registry (Phase 1B Z design)', () => {
     ]);
     for (const r of ROUTES) {
       for (const s of r.scripts) expect(KNOWN.has(s)).toBe(true);
+    }
+  });
+
+  test('every public route script is installable from assets/hooks', () => {
+    for (const route of ROUTES) {
+      for (const script of route.scripts) {
+        expect(existsSync(join(import.meta.dir, '../..', 'assets/hooks', script))).toBe(true);
+      }
     }
   });
 

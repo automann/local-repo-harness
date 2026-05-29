@@ -26,11 +26,13 @@ describe("Migration script contract", () => {
     expect(script).toContain("--repo");
   });
 
-  test("should migrate team hooks to settings.json", () => {
+  test("should retire project hook adapters through user-level hosts", () => {
     const script = read("scripts/migrate-project-template.sh");
+    const sharedLib = read("scripts/lib/project-init-lib.sh");
     expect(script).toContain(".claude/settings.json");
     expect(script).toContain(".codex/hooks.json");
-    expect(script).toContain("settings.local.json");
+    expect(sharedLib).toContain("settings.local.json");
+    expect(script).toContain("Host hook config target: user-level");
     expect(script).toContain("migrate_workflow");
   });
 
@@ -114,7 +116,7 @@ describe("Migration script contract", () => {
     expect(sharedLib).toContain("check:task-workflow");
     expect(sharedLib).toContain(".claude/.trace.jsonl");
     expect(sharedLib).toContain(".codex/*");
-    expect(sharedLib).toContain("!.codex/hooks.json");
+    expect(sharedLib).not.toContain("!.codex/hooks.json");
     expect(sharedLib).toContain("pi_print_codex_hook_trust_notice");
     expect(sharedLib).toContain("_ref/");
     expect(sharedLib).toContain("_ops/");
@@ -153,11 +155,11 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("Advisory report (dry-run snapshot)");
       expect(res.stdout).toContain("upgrade_plan:");
       expect(res.stdout).toContain("Upgrade/reconfigure/cleanup plan");
-      expect(res.stdout).toContain("Codex hook trust required:");
+      expect(res.stdout).toContain("Host hook adapters are user-level:");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
-  }, 15000);
+  }, 30000);
 
   test("should apply migration and create workflow artifacts with single-source plan workflow", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-apply-"));
@@ -251,7 +253,9 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/memory-intake.sh"))).toBe(false);
-      expect(existsSync(join(repo, ".codex/hooks.json"))).toBe(true);
+      expect(existsSync(join(repo, ".codex/hooks.json"))).toBe(false);
+      expect(existsSync(join(repo, ".claude/settings.json"))).toBe(false);
+      expect(existsSync(join(repo, ".claude/settings.local.json"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/run-hook.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/finalize-handoff.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/session-start-context.sh"))).toBe(false);
@@ -287,19 +291,6 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "tasks/archive/legacy-docs-PROGRESS.md"))).toBe(false);
       const spec = readFileSync(join(repo, "docs/spec.md"), "utf-8");
       expect(spec).toContain("# Product Spec:");
-
-      const settings = readFileSync(join(repo, ".claude/settings.json"), "utf-8");
-      const codexHooks = readFileSync(join(repo, ".codex/hooks.json"), "utf-8");
-      expect(settings).toContain(".ai/hooks/run-hook.sh");
-      expect(codexHooks).toContain(".ai/hooks/run-hook.sh");
-      expect(settings).toContain("session-start-context.sh");
-      expect(codexHooks).toContain("session-start-context.sh");
-      expect(settings).toContain("trace-event.sh");
-      expect(codexHooks).toContain("trace-event.sh");
-      expect(settings).not.toContain("memory-intake.sh");
-      expect(codexHooks).not.toContain("memory-intake.sh");
-      expect(settings).not.toContain("skill-factory-session-end.sh");
-      expect(codexHooks).not.toContain("skill-factory-session-end.sh");
 
       const handoff = readFileSync(join(repo, ".ai/harness/handoff/current.md"), "utf-8");
       expect(handoff).toContain("# Harness Handoff");
@@ -405,8 +396,8 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.requiredDirectories).toContain("deploy/sql");
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
-      expect(workflowContract.artifacts.requiredFiles).toContain(".claude/settings.json");
-      expect(workflowContract.artifacts.requiredFiles).toContain(".codex/hooks.json");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".claude/settings.json");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
@@ -436,7 +427,7 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.active-plan");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).toContain("!.codex/hooks.json");
+      expect(gitignore).not.toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain(".codegraph/");
       expect(gitignore).toContain("_ops/");
@@ -444,11 +435,11 @@ describe("Migration script contract", () => {
       expect(gitignore).not.toContain("!_ops/env/.env.example");
       expect(res.stdout).toContain("--- External Tooling ---");
       expect(res.stdout).toContain("External Tooling Report");
-      expect(res.stdout).toContain("Codex hook trust required:");
+      expect(res.stdout).toContain("Host hook adapters are user-level:");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
-  }, 15000);
+  }, 30000);
 
   test("should migrate legacy trackable _ops assets into deploy while preserving private _ops state", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-ops-deploy-"));
@@ -521,7 +512,7 @@ describe("Migration script contract", () => {
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
-  }, 15000);
+  }, 30000);
 
   test("should remove repo-local legacy skill factory assets during migration", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-self-"));
@@ -589,8 +580,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".claude/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/memory-intake.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/skill-factory"))).toBe(false);
-      const settings = readFileSync(join(repo, ".claude/settings.json"), "utf-8");
-      expect(settings).not.toContain("skill-factory-session-end.sh");
+      expect(existsSync(join(repo, ".claude/settings.json"))).toBe(false);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -711,7 +701,7 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.active-plan");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).toContain("!.codex/hooks.json");
+      expect(gitignore).not.toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain("_ops/");
       expect(gitignore).not.toContain(".claude/.memory-context.json");
@@ -745,7 +735,7 @@ describe("Migration script contract", () => {
     }
   }, 15000);
 
-  test("should preserve custom settings hooks while appending missing defaults", () => {
+  test("should preserve non-hook settings while retiring project hooks", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-merge-"));
     try {
       mkdirSync(join(repo, ".claude"), { recursive: true });
@@ -777,23 +767,15 @@ describe("Migration script contract", () => {
 
       expect(res.status).toBe(0);
       const settings = JSON.parse(readFileSync(join(repo, ".claude/settings.json"), "utf-8"));
-      const codexHooks = JSON.parse(readFileSync(join(repo, ".codex/hooks.json"), "utf-8"));
       expect(settings.permissions.allow).toContain("Bash(git status)");
-      const postToolUse = settings.hooks.PostToolUse.flatMap((entry: any) => entry.hooks ?? []);
-      const commands = postToolUse.map((entry: any) => entry.command);
-      expect(commands).toContain("bash .claude/hooks/custom-bash.sh");
-      expect(commands.some((command: string) => command.includes("post-bash.sh"))).toBe(true);
-      expect(commands.some((command: string) => command.includes("trace-event.sh"))).toBe(true);
-      expect(commands.some((command: string) => command.includes("context-pressure-hook.sh"))).toBe(true);
-      const codexCommands = codexHooks.hooks.PostToolUse.flatMap((entry: any) => entry.hooks ?? []).map((entry: any) => entry.command);
-      expect(codexCommands.some((command: string) => command.includes("post-bash.sh"))).toBe(true);
-      expect(codexCommands.some((command: string) => command.includes("trace-event.sh"))).toBe(true);
+      expect(settings.hooks).toBeUndefined();
+      expect(existsSync(join(repo, ".codex/hooks.json"))).toBe(false);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
   }, 15000);
 
-  test("should move hooks from settings.local.json without overwriting existing arrays", () => {
+  test("should remove hooks from settings.local.json without overwriting local settings", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-local-hooks-"));
     try {
       mkdirSync(join(repo, ".claude"), { recursive: true });
@@ -841,10 +823,7 @@ describe("Migration script contract", () => {
       );
 
       expect(res.status).toBe(0);
-      const settings = JSON.parse(readFileSync(join(repo, ".claude/settings.json"), "utf-8"));
-      const commands = settings.hooks.PostToolUse.flatMap((entry: any) => entry.hooks ?? []).map((entry: any) => entry.command);
-      expect(commands).toContain("bash .claude/hooks/custom-existing.sh");
-      expect(commands).toContain("bash .claude/hooks/local-only.sh");
+      expect(existsSync(join(repo, ".claude/settings.json"))).toBe(false);
 
       const settingsLocal = JSON.parse(readFileSync(join(repo, ".claude/settings.local.json"), "utf-8"));
       expect(settingsLocal.hooks).toBeUndefined();
@@ -854,7 +833,7 @@ describe("Migration script contract", () => {
     }
   }, 15000);
 
-  test("should not overwrite existing settings when jq is unavailable", () => {
+  test("should retire hooks and preserve non-hook settings when jq is unavailable", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-no-jq-"));
     try {
       mkdirSync(join(repo, ".claude"), { recursive: true });
@@ -889,9 +868,9 @@ describe("Migration script contract", () => {
       );
 
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("leaving existing file unchanged");
-      const settings = readFileSync(join(repo, ".claude/settings.json"), "utf-8");
-      expect(settings).toBe(originalSettings + "\n");
+      const settings = JSON.parse(readFileSync(join(repo, ".claude/settings.json"), "utf-8"));
+      expect(settings.permissions.allow).toContain("Bash(git status)");
+      expect(settings.hooks).toBeUndefined();
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

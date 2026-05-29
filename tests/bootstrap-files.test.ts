@@ -33,11 +33,12 @@ describe("Bootstrap Script Contracts", () => {
     expect(metadata).toContain("default_prompt:");
   });
 
-  test("repo root should include Claude and Codex routing docs", () => {
+  test("repo root should include routing docs and self-host hook implementation", () => {
     expect(existsSync(join(ROOT, "CLAUDE.md"))).toBe(true);
     expect(existsSync(join(ROOT, "AGENTS.md"))).toBe(true);
-    expect(existsSync(join(ROOT, ".claude/settings.json"))).toBe(true);
-    expect(existsSync(join(ROOT, ".codex/hooks.json"))).toBe(true);
+    expect(existsSync(join(ROOT, ".claude/settings.json"))).toBe(false);
+    expect(existsSync(join(ROOT, ".codex/hooks.json"))).toBe(false);
+    expect(existsSync(join(ROOT, ".ai/hooks/run-hook.sh"))).toBe(true);
 
     const claude = read("CLAUDE.md");
     const agents = read("AGENTS.md");
@@ -134,9 +135,10 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain('pi_install_hook_adapters "$PWD" "$ASSETS_HOOKS_DIR" "apply"');
     expect(content).toContain("pi_print_codex_hook_trust_notice");
     expect(content).toContain("mkdir -p .ai/hooks");
-    expect(content).toContain("mkdir -p .codex");
-    expect(sharedLib).toContain("settings.template.json");
-    expect(sharedLib).toContain("codex.hooks.template.json");
+    expect(content).not.toContain("mkdir -p .codex");
+    expect(sharedLib).toContain("pi_retire_project_hook_adapter");
+    expect(sharedLib).toContain(".claude/settings.json");
+    expect(sharedLib).toContain(".codex/hooks.json");
     expect(contract.helpers.scripts).toContain("switch-plan.sh");
     expect(contract.helpers.scripts).toContain("capability-resolver.ts");
     expect(contract.helpers.scripts).toContain("architecture-event.ts");
@@ -146,7 +148,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
-    expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
+    expect(contract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
@@ -240,10 +242,11 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
     expect(content).toContain('pi_install_hook_adapters "$PWD" "$ASSETS_HOOKS_DIR" "apply"');
     expect(content).toContain("pi_print_codex_hook_trust_notice");
-    expect(sharedLib).toContain("settings.template.json");
-    expect(sharedLib).toContain("codex.hooks.template.json");
+    expect(sharedLib).toContain("pi_retire_project_hook_adapter");
+    expect(sharedLib).toContain(".claude/settings.json");
+    expect(sharedLib).toContain(".codex/hooks.json");
     expect(content).toContain("mkdir -p .ai/hooks");
-    expect(content).toContain("mkdir -p .codex");
+    expect(content).not.toContain("mkdir -p .codex");
     expect(sharedLib).not.toContain(".skill-factory-state.json");
     expect(sharedLib).not.toContain(".memory-context.json");
     expect(sharedLib).not.toContain(".memory-snapshot.json");

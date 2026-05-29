@@ -22,7 +22,7 @@ Authoritative surfaces:
 - Public command facades: `assets/skill-commands/*/SKILL.md` plus `assets/skill-commands/manifest.json`.
 - Engine: `scripts/inspect-project-state.ts`, `scripts/migrate-project-template.sh`, `scripts/migrate-workflow-docs.ts`, `scripts/create-project-dirs.sh`, `scripts/lib/project-init-lib.sh`.
 - Contract assets: `assets/workflow-contract.v1.json`, `.ai/harness/workflow-contract.json`, `.ai/harness/policy.json`, `.ai/context/context-map.json`, `.ai/context/capabilities.json`.
-- Runtime harness: `assets/hooks/`, `.ai/hooks/`, `.claude/settings.json`, and ignored `.ai/harness/*` runtime state.
+- Runtime harness: `assets/hooks/`, `.ai/hooks/`, user-level host adapters, and ignored `.ai/harness/*` runtime state.
 - Verification: `tests/`, `evals/`, `scripts/check-task-workflow.sh`, `scripts/check-task-sync.sh`, `scripts/check-agent-tooling.sh`, `scripts/ensure-codegraph.sh`, `scripts/check-brain-manifest.sh`, `scripts/sync-brain-docs.sh`.
 
 Out of scope:
@@ -54,7 +54,7 @@ Project
 
 - [Public Surface](domains/public-surface.md): root router, README, root agent docs, and action command facades.
 - [Workflow Engine](domains/workflow-engine.md): inspection, migration, template install, contract assets, and policy/context generation.
-- [Runtime Harness](domains/runtime-harness.md): generated hook implementation, adapter settings, handoff, and runtime event state.
+- [Runtime Harness](domains/runtime-harness.md): generated hook implementation, user-level adapter settings, handoff, and runtime event state.
 - [Verification](domains/verification.md): unit tests, smoke checks, eval fixtures, CodeGraph readiness, and advisory tooling probes.
 
 ## Architecture Drift Flow
@@ -82,7 +82,7 @@ Project
 
 ## Review Backlog
 
-- Treat `.codex/hooks.json` as the repo-local Codex hook adapter. Keep hook implementation under `.ai/hooks/`, keep `.claude/settings.json` and `.codex/hooks.json` as adapter config only, and reserve `~/.codex` plus other repo-local `.codex/*` files for runtime state.
+- Treat user-level `~/.codex/hooks.json` and `~/.claude/settings.json` as host adapters. Keep hook implementation under `.ai/hooks/`, and treat repo-local `.claude/settings.json` / `.codex/hooks.json` hook adapters as retired legacy config.
 - Consider adding `bun scripts/capability-resolver.ts validate --format text` to the strict workflow gate after the architecture registry has been used through one more real slice.
 - [ ] 2026-05-28T15:47:40+0800 [high] `.ai/hooks/hook-input.sh` -> [20260528-154740-ai-hooks-ai-hooks-hook-input-sh](requests/20260528-154740-ai-hooks-ai-hooks-hook-input-sh.md)
 - [ ] 2026-05-28T15:48:16+0800 [high] `assets/hooks/hook-input.sh` -> [20260528-154816-assets-hooks-assets-hooks-hook-input-sh](requests/20260528-154816-assets-hooks-assets-hooks-hook-input-sh.md)
@@ -107,3 +107,9 @@ Project
 - [ ] 2026-05-28T23:36:38+0800 [high] `assets/hooks/prompt-guard.sh` -> [20260528-233638-assets-hooks-assets-hooks-prompt-guard-sh](requests/20260528-233638-assets-hooks-assets-hooks-prompt-guard-sh.md)
 - [ ] 2026-05-29T00:03:22+0800 [medium] `package.json` -> [20260529-000322-root-package-json](requests/20260529-000322-root-package-json.md)
 - [ ] 2026-05-29T00:42:38+0800 [high] `.ai/hooks/lib/workflow-state.sh` -> [20260529-004238-ai-hooks-ai-hooks-lib-workflow-state-sh](requests/20260529-004238-ai-hooks-ai-hooks-lib-workflow-state-sh.md)
+- [ ] 2026-05-29T09:42:36+0800 [high] `.ai/hooks/prompt-guard.sh` -> [20260529-094236-ai-hooks-ai-hooks-prompt-guard-sh](requests/20260529-094236-ai-hooks-ai-hooks-prompt-guard-sh.md)
+- [ ] 2026-05-29T09:43:23+0800 [high] `assets/hooks/prompt-guard.sh` -> [20260529-094323-assets-hooks-assets-hooks-prompt-guard-sh](requests/20260529-094323-assets-hooks-assets-hooks-prompt-guard-sh.md)
+- [ ] 2026-05-29T09:43:31+0800 [high] `.ai/hooks/prompt-guard.sh` -> [20260529-094331-ai-hooks-ai-hooks-prompt-guard-sh](requests/20260529-094331-ai-hooks-ai-hooks-prompt-guard-sh.md)
+- [ ] 2026-05-29T09:43:39+0800 [high] `assets/hooks/prompt-guard.sh` -> [20260529-094339-assets-hooks-assets-hooks-prompt-guard-sh](requests/20260529-094339-assets-hooks-assets-hooks-prompt-guard-sh.md)
+- [ ] 2026-05-29T09:44:30+0800 [high] `assets/hooks/session-start-context.sh` -> [20260529-094430-assets-hooks-assets-hooks-session-start-context-sh](requests/20260529-094430-assets-hooks-assets-hooks-session-start-context-sh.md)
+- [ ] 2026-05-29T09:44:46+0800 [high] `.ai/hooks/session-start-context.sh` -> [20260529-094446-ai-hooks-ai-hooks-session-start-context-sh](requests/20260529-094446-ai-hooks-ai-hooks-session-start-context-sh.md)

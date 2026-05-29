@@ -23,4 +23,18 @@ fi
 export HOOK_REPO_ROOT="$REPO_ROOT"
 cd "$REPO_ROOT"
 
+if [[ "${HOOK_HOST:-}" == "codex" && "$HOOK_NAME" != "session-start-context.sh" ]]; then
+  tmp_stdout="$(mktemp)"
+  if bash "$HOOK_PATH" "$@" >"$tmp_stdout"; then
+    rm -f "$tmp_stdout"
+    exit 0
+  fi
+  hook_status=$?
+  if [[ -s "$tmp_stdout" ]]; then
+    cat "$tmp_stdout" >&2
+  fi
+  rm -f "$tmp_stdout"
+  exit "$hook_status"
+fi
+
 exec bash "$HOOK_PATH" "$@"

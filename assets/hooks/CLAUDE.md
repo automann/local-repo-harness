@@ -11,3 +11,29 @@ Keep this file focused on the local contract for this primary functional block.
 - Treat `.ai/context/context-map.json` as the index of discoverable context files.
 - Do not keep pushing context files deeper by default; add lower-level files only for a separately owned functional block with its own commands and invariants.
 - Prefer repo-local workflow artifacts over tool-specific chat memory.
+
+<!-- BEGIN CAPABILITY CONTEXT -->
+## Capability Context
+
+- Capability ID: `runtime-harness-hook-adapters`
+- Domain: `runtime-harness`
+- Name: `hook-adapters`
+- Primary prefix: `assets/hooks`
+- Architecture module: `docs/architecture/modules/runtime-harness/hook-adapters.md`
+- Workstream: `tasks/workstreams/runtime-harness/hook-adapters`
+
+## Positioning
+
+Owns the runtime-harness-hook-adapters capability boundary declared in .ai/context/capabilities.json.
+
+## Source Map
+
+- Primary prefix: `assets/hooks` (entrypoint)
+- Architecture module: `docs/architecture/modules/runtime-harness/hook-adapters.md` (design-source)
+- Workstream: `tasks/workstreams/runtime-harness/hook-adapters` (durable-progress)
+
+## Refresh Hints
+
+- `bun test tests/hook-runtime.test.ts tests/hook-contracts.test.ts tests/workflow-contract.test.ts`
+- `bash scripts/check-task-workflow.sh --strict`
+<!-- END CAPABILITY CONTEXT -->

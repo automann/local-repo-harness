@@ -194,6 +194,7 @@ describe("Hook contracts", () => {
     expect(settings).toContain(".ai/hooks/run-hook.sh");
     expect(codexHooks).toContain("run-hook.sh");
     expect(codexHooks).toContain(".ai/hooks/run-hook.sh");
+    expect(codexHooks).toContain("HOOK_HOST=codex");
     expect(settings).toContain("SessionStart");
     expect(codexHooks).toContain("SessionStart");
     expect(settings).toContain("session-start-context.sh");

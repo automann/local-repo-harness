@@ -51,7 +51,7 @@ create_contract_directories() {
 }
 
 install_hook_assets() {
-  mkdir -p .ai/hooks .codex
+  mkdir -p .ai/hooks
 
   if [[ -d "$ASSETS_HOOKS_DIR" ]]; then
     find "$ASSETS_HOOKS_DIR" -mindepth 1 -maxdepth 1 \( -type f -name '*.sh' -o -type d -name 'lib' \) | while read -r asset; do
@@ -64,9 +64,6 @@ install_hook_assets() {
   fi
 
   find .ai/hooks -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
-  if [[ -f "$ASSETS_HOOKS_DIR/codex.hooks.template.json" ]]; then
-    cp "$ASSETS_HOOKS_DIR/codex.hooks.template.json" .codex/hooks.json
-  fi
 }
 
 ensure_task_sync_package_script() {
@@ -93,7 +90,6 @@ fi
 mkdir -p scripts
 mkdir -p .ai/hooks
 mkdir -p .ai/context
-mkdir -p .codex
 mkdir -p .ai/harness/checks
 mkdir -p .ai/harness/handoff
 mkdir -p .ai/harness/context-budget

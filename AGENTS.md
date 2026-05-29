@@ -21,7 +21,7 @@ This repository self-hosts the `repo-harness` contract, formerly `repo-harness-s
 
 - Sync `tasks/` whenever substantive repo changes are made.
 - Use `tasks/notes/<slug>.notes.md` only for non-obvious slice decisions, deviations, tradeoffs, and open questions; do not use notes as durable memory or a task log, and archive/promote them deliberately when the slice closes.
-- Treat `.ai/hooks/` as the shared hook implementation, `.claude/settings.json` as the Claude adapter, and `.codex/hooks.json` as the Codex adapter.
+- Treat `.ai/hooks/` as the shared repo-local hook implementation; user-level `~/.claude/settings.json` and `~/.codex/hooks.json` are the host adapters.
 - Keep the umbrella hierarchy explicit: architecture owns stable truth, capability contracts own local agent context, `tasks/workstreams/<domain>/<capability>/` owns durable progress, and `tasks/todo.md` owns only deferred medium/long-term goals with tradeoff and revisit trigger.
 - Treat `.ai/context/capabilities.json` as the source of truth for capability prefixes; `agent-context-blocks.txt` and nested agent files are compatibility inputs only.
 - Keep architecture drift handling split: `architecture-drift.sh` writes architecture requests/events, `workstream-sync.sh` maintains durable capability workstreams, and `context-contract-sync.sh` only updates controlled local `CLAUDE.md`/`AGENTS.md` architecture blocks.
@@ -41,7 +41,7 @@ This repository self-hosts the `repo-harness` contract, formerly `repo-harness-s
 - Treat Waza as Codex-first: `~/.codex/skills` is the Codex runtime source; `~/.agents/skills` is skills CLI staging/cache only. Update by staging upstream Waza, copying the eight managed `SKILL.md` files into Codex, and verifying with `cmp`.
 - Use `docs/reference-configs/external-tooling.md` and `bash scripts/check-agent-tooling.sh --host both --check-updates` for environment checks; this self-host repo vendors CodeGraph as a dev dependency while generated downstream repos keep the global MCP default unless local policy opts in.
 - When changing `scripts/migrate-project-template.sh` or `scripts/lib/project-init-lib.sh`, verify self-migration of this repo still works.
-- Treat `.codex/hooks.json` as a product hook adapter; do not treat generated backup files or other `.codex/*` runtime residue as product deliverables.
+- Treat repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters as retired legacy config; migration may back them up locally, but they are not product deliverables.
 
 ## Required Checks
 
@@ -63,8 +63,8 @@ bash scripts/migrate-project-template.sh --repo . --dry-run
 - Architecture domain: `runtime-harness`
 - Architecture capability: `hook-adapters`
 - Architecture module: `docs/architecture/modules/runtime-harness/hook-adapters.md`
-- Last architecture event: 2026-05-29T00:42:38+0800
-- Last changed path: `.ai/hooks/lib/workflow-state.sh`
+- Last architecture event: 2026-05-29T09:44:46+0800
+- Last changed path: `.ai/hooks/session-start-context.sh`
 - Severity: high
 - Change type: workflow-surface
 - Module responsibility: Keep this block aligned with the local boundary described by surrounding human-owned context.
@@ -77,7 +77,7 @@ bash scripts/migrate-project-template.sh --repo . --dry-run
 - Latest snapshot: `(none yet)`
 - Semantic diagram source: `docs/architecture/modules/runtime-harness/hook-adapters.md`
 - Latest human diagram: `(none yet)`
-- Pending architecture request: `docs/architecture/requests/20260529-004238-ai-hooks-ai-hooks-lib-workflow-state-sh.md`
+- Pending architecture request: `docs/architecture/requests/20260529-094446-ai-hooks-ai-hooks-session-start-context-sh.md`
 
 ## Active Workstreams
 

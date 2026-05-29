@@ -90,7 +90,7 @@ describe("workflow contract manifest", () => {
     expect(contract.agenticDevelopment?.routing.bugOrRegression).toBe("waza:hunt");
     expect(contract.agenticDevelopment?.dueDiligence.levels).toContain("P2_DATA_FLOW_TRACE");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
-    expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
+    expect(contract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
@@ -102,9 +102,9 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
     expect(contract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
-    expect(contract.artifacts.requiredFiles).toContain(".claude/settings.json");
-    expect(contract.artifacts.requiredFiles).toContain(".codex/hooks.json");
-    expect(contract.artifacts.requiredDirectories).toContain(".codex");
+    expect(contract.artifacts.requiredFiles).not.toContain(".claude/settings.json");
+    expect(contract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
+    expect(contract.artifacts.requiredDirectories).not.toContain(".codex");
     expect(contract.artifacts.requiredDirectories).toContain("tasks/notes");
     expect(contract.artifacts.requiredDirectories).toContain("tasks/workstreams");
     expect(contract.artifacts.requiredDirectories).toContain("docs/architecture/domains");

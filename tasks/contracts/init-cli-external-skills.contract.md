@@ -48,7 +48,6 @@ allowed_paths:
   - .ai/harness/policy.json
   - .ai/harness/workflow-contract.json
   - .ai/hooks/
-  - .codex/hooks.json
   - tasks/todo.md
   - tasks/research.md
   - tasks/notes/init-cli-external-skills.notes.md

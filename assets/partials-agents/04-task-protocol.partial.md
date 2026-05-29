@@ -42,7 +42,7 @@ RULES:
   - Do not use implementation notes as durable memory or task logs; archive them on close and promote only after evidence shows the rule should outlive the sprint
   - Promote implementation-ready follow-up work into a new plans/plan-{timestamp}-{slug}.md file; keep deferred goals in tasks/todo.md only when intentionally postponed
   - Treat `.ai/hooks/` as the shared automation entrypoint when repo scripts reference hook-backed workflow checks
-  - Treat `.claude/settings.json` and `.codex/hooks.json` as host-specific adapters, not the cross-agent source of truth
+  - Treat user-level `~/.claude/settings.json` and `~/.codex/hooks.json` as host adapters; do not add repo-local project hook adapters unless explicitly migrating legacy config
   - For Codex sessions, treat `bash scripts/check-task-sync.sh` and `bash scripts/check-task-workflow.sh --strict` as required repo-local checks
   - Before ending a session, refresh `.ai/harness/handoff/current.md` when the task state changed
   - Update `tasks/workstreams/` only when durable capability progress changes

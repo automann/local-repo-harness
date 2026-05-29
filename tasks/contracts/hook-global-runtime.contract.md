@@ -34,7 +34,7 @@ Build the `agentic-dev` global CLI (类 codegraph install pattern, 但其为 hoo
   - Approach B (sealed hooks: `.ai/hooks/*` + `lib/workflow-state.sh` 下沉到 CLI bundle)
   - Cross-repo task aggregation (`agentic-dev status --all` 跨 repo 视图)
   - MCP server 暴露 workflow state
-  - 强制删除项目级 `.codex/hooks.json` (Phase 1 仅标记 deprecated, 经 `agentic-dev migrate` 可选清理)
+  - 兼容保留项目级 hook adapter；Phase 1 通过迁移清理 legacy `.codex/hooks.json` 和 `.claude/settings.json` hook 段
   - Bun → Rust/Go 语言迁移 (Phase 2+ 视分发需求)
   - 加 cursor/opencode/gemini 等额外 target (留 registry 扩展点即可)
 
@@ -67,7 +67,6 @@ allowed_paths:
   - .ai/context/capabilities.json
   - .ai/harness/workflow-contract.json
   - .ai/harness/policy.json
-  - .codex/hooks.json
   - assets/templates/helpers/check-task-workflow.sh
   - assets/workflow-contract.v1.json
   # Scripts (Phase 0 canary + Phase 1D template/check updates)
@@ -137,7 +136,7 @@ exit_criteria:
     - "新项目 init 不再生成 .codex/hooks.json 或 .claude/settings.json hook 段"
     - "agentic-dev hook PreToolUse Edit 在 opt-in repo (有 .ai/harness/workflow-contract.json) 调用 .ai/hooks/pre-edit-guard.sh; 在 non-opt-in repo 静默 exit 0"
     - "agentic-dev doctor 正确报告 CLI version + 两 host install 状态 + trust state + fallback paths"
-    - "agentic-dev migrate <repo> 把旧 .codex/hooks.json 改为 fallback shim 或删除"
+    - "agentic-dev migrate <repo> 删除旧 .codex/hooks.json，并从 .claude/settings.json / settings.local.json 去掉 hooks 段"
     - "自迁移 agentic-dev 自身后, 现有 hook 行为 (PreToolUse/PostToolUse/SessionStart/UserPromptSubmit/Stop) 仍然触发, .ai/harness/* 仍正常写入"
     - "tasks/reviews/hook-global-runtime.review.md 记录 evaluator pass"
 ```

@@ -77,9 +77,8 @@ without creating an application stack.
 The command should end with `=== Migration Report ===` and summarize:
 
 - `Project hooks synced from:` to show where generated hook behavior comes from
-- `Claude hook config target: .claude/settings.json` to show the Claude adapter entry
-- `Codex hook config target: .codex/hooks.json` to show the Codex adapter entry
-- `Codex hook trust required:` to remind the user to trust the repo hook in Codex Settings
+- `Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json` to show the adapter layer
+- `Host hook adapters are user-level:` to remind the user to install global adapters and trust `~/.codex/hooks.json`
 - `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
 - `Helper scripts:` to show the operational toolchain you get after apply
 - `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
@@ -98,10 +97,11 @@ before applying anything.
 ## Hook Authority Map
 
 - `.ai/hooks/` is the only shared hook implementation you should edit first.
-- `.claude/settings.json` is the Claude adapter that dispatches into `.ai/hooks/run-hook.sh`.
-- `.codex/hooks.json` is the Codex adapter that dispatches into the same runner.
-- Codex must mark this repo hook as trusted in Codex Settings before those hooks run.
-- Debug in this order: adapter config -> `run-hook.sh` -> `.ai/hooks/*`.
+- `~/.claude/settings.json` is the user-level Claude adapter that dispatches into opted-in repos.
+- `~/.codex/hooks.json` is the user-level Codex adapter that dispatches into the same runner.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
+- Codex must mark `~/.codex/hooks.json` as trusted in Codex Settings before those hooks run.
+- Debug in this order: user-level adapter config -> `repo-harness hook` -> `.ai/hooks/run-hook.sh` -> `.ai/hooks/*`.
 
 ## Hook Failure Playbook
 
@@ -123,8 +123,7 @@ Most common guards:
 
 - Root routing docs: `CLAUDE.md`, `AGENTS.md`
 - Shared hook layer: `.ai/hooks/`
-- Claude adapter layer: `.claude/settings.json`
-- Codex adapter layer: `.codex/hooks.json`
+- User-level adapter layer: `~/.claude/settings.json`, `~/.codex/hooks.json`
 - Active execution surface: `tasks/`
 - Plan source of truth: `plans/`
 - Durable progress: `tasks/workstreams/`

@@ -30,14 +30,15 @@ export interface HookEntry {
 }
 
 export type HooksByEvent = Record<string, HookEntry[]>;
+export type HookHost = 'claude' | 'codex';
 
-export function buildHookCommand(route: Route): string {
-  return `command -v repo-harness >/dev/null 2>&1 || exit 0; exec repo-harness hook ${route.event} --route ${route.routeId}`;
+export function buildHookCommand(route: Route, host: HookHost): string {
+  return `command -v repo-harness >/dev/null 2>&1 || exit 0; HOOK_HOST=${host} exec repo-harness hook ${route.event} --route ${route.routeId}`;
 }
 
-export function buildHookEntry(route: Route): HookEntry {
+export function buildHookEntry(route: Route, host: HookHost): HookEntry {
   const entry: HookEntry = {
-    hooks: [{ type: 'command', command: buildHookCommand(route) }],
+    hooks: [{ type: 'command', command: buildHookCommand(route, host) }],
   };
   if (route.matcher !== undefined) entry.matcher = route.matcher;
   return entry;
@@ -48,11 +49,11 @@ export function isManagedEntry(entry: HookEntry): boolean {
   return entry.hooks.some((h) => typeof h?.command === 'string' && h.command.includes(MANAGED_TAG));
 }
 
-export function buildManagedHooks(): HooksByEvent {
+export function buildManagedHooks(host: HookHost): HooksByEvent {
   const out: HooksByEvent = {};
   for (const route of ROUTES) {
     if (!out[route.event]) out[route.event] = [];
-    out[route.event].push(buildHookEntry(route));
+    out[route.event].push(buildHookEntry(route, host));
   }
   return out;
 }

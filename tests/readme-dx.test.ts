@@ -29,7 +29,8 @@ describe("README DX contract", () => {
     expect(firstFive).not.toContain("bun scripts/assemble-template.ts");
     expect(firstFive).toContain("=== Migration Report ===");
     expect(firstFive).toContain("Project hooks synced from:");
-    expect(firstFive).toContain("Codex hook trust required:");
+    expect(firstFive).toContain("Host hook config target:");
+    expect(firstFive).toContain("Host hook adapters are user-level:");
     expect(hookAuthority).toContain(".ai/hooks/");
     expect(hookAuthority).toContain(".ai/hooks/run-hook.sh");
     expect(maintainer).toContain("bun scripts/assemble-template.ts --plan C --name \"MyProject\"");
@@ -64,8 +65,7 @@ describe("README DX contract", () => {
     expect(res.stdout).toContain("Project hooks synced from:");
     expect(res.stdout).toContain("Workflow migration:");
     expect(res.stdout).toContain("Helper scripts:");
-    expect(res.stdout).toContain("Claude hook config target: .claude/settings.json");
-    expect(res.stdout).toContain("Codex hook config target: .codex/hooks.json");
-    expect(res.stdout).toContain("Codex hook trust required:");
+    expect(res.stdout).toContain("Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json");
+    expect(res.stdout).toContain("Host hook adapters are user-level:");
   }, 15000);
 });

@@ -19,7 +19,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execFileSync, spawnSync } from 'child_process';
+import { execFileSync, spawnSync, type StdioOptions } from 'child_process';
 import { getRoute, type HookEvent, type RouteId } from '../hook/route-registry';
 
 const OPT_IN_MARKER = '.ai/harness/workflow-contract.json';
@@ -86,7 +86,13 @@ export function runHook(opts: RunHookOptions): RunHookResult {
   }
 
   const hooksDir = opts.hooksDir ?? path.join(repoRoot, '.ai/hooks');
-  const stdio = opts.stdio ?? 'inherit';
+  const codexQuietStdout =
+    process.env.HOOK_HOST === 'codex' &&
+    opts.event !== 'SessionStart' &&
+    opts.stdio === undefined;
+  const stdio: StdioOptions = codexQuietStdout
+    ? ['inherit', 'pipe', 'inherit']
+    : (opts.stdio ?? 'inherit');
 
   for (const script of route.scripts) {
     const scriptPath = path.join(hooksDir, script);
@@ -109,6 +115,23 @@ export function runHook(opts: RunHookOptions): RunHookResult {
       stdio,
       env: { ...process.env, HOOK_REPO_ROOT: repoRoot },
     });
+
+    if (child.error) {
+      process.stderr.write(
+        `repo-harness hook: failed to run ${scriptPath}: ${child.error.message}\n`,
+      );
+      return {
+        exitCode: 1,
+        reason: 'script-failed',
+        repoRoot,
+        scriptsRun,
+        failedScript: script,
+      };
+    }
+
+    if (codexQuietStdout && child.status !== 0 && child.stdout) {
+      process.stderr.write(child.stdout);
+    }
 
     if (child.status !== 0) {
       return {

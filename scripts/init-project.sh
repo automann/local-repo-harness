@@ -64,8 +64,8 @@ ensure_gitignore_entry() {
 install_hook_assets() {
     if [ ! -d "$ASSETS_HOOKS_DIR" ]; then
         echo -e "${YELLOW}Warning: Hook scripts not found at $ASSETS_HOOKS_DIR${NC}"
-        echo -e "${YELLOW}  .claude/settings.json references hooks that don't exist yet.${NC}"
-        echo -e "${YELLOW}  Add shared hook scripts to .ai/hooks/ or remove references from settings.json.${NC}"
+        echo -e "${YELLOW}  User-level host adapters need repo-local .ai/hooks/ scripts to dispatch into.${NC}"
+        echo -e "${YELLOW}  Add shared hook scripts to .ai/hooks/ or refresh repo-harness assets.${NC}"
         return
     fi
 
@@ -220,7 +220,6 @@ create_structure() {
     mkdir -p tasks/notes
     mkdir -p plans/archive
     mkdir -p .ai/context
-    mkdir -p .codex
     mkdir -p .ai/harness/checks
     mkdir -p .ai/harness/handoff
     mkdir -p .ai/harness/context-budget

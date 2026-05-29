@@ -90,7 +90,7 @@ class CodexTarget implements AgentTarget {
     const filePath = globalConfigPath();
     const data = readJsonOrEmpty<HooksFile>(filePath);
     const cleaned = stripManagedEntries(data.hooks);
-    const managed = buildManagedHooks();
+    const managed = buildManagedHooks('codex');
     const merged = mergeHooks(cleaned, managed);
     const next: HooksFile = { ...data, hooks: merged };
     const nextContent = formatJson(next);

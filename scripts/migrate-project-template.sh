@@ -1,8 +1,7 @@
 #!/bin/bash
 # Migrate an existing project to the repo-harness tasks-first harness model.
 # - Shared hook source of truth: .ai/hooks/
-# - Claude adapter: .claude/settings.json
-# - Codex adapter: .codex/hooks.json
+# - User-level host adapters: ~/.claude/settings.json and ~/.codex/hooks.json
 # - Stable product truth: docs/spec.md
 # - Active-plan selector: .ai/harness/active-plan, with .claude/.active-plan legacy fallback
 # - Sprint artifacts: tasks/contracts/, tasks/reviews/, .ai/context/context-map.json
@@ -674,14 +673,9 @@ inspect_project_state() {
 migrate_hooks() {
   local repo="$1"
   local project_claude_dir="$repo/.claude"
-  local project_codex_dir="$repo/.codex"
   local project_ai_hooks_dir="$repo/.ai/hooks"
-  local project_settings="$project_claude_dir/settings.json"
-  local project_settings_local="$project_claude_dir/settings.local.json"
-  local codex_hooks_template="$HOOK_ASSETS_DIR/codex.hooks.template.json"
-  local project_codex_hooks="$project_codex_dir/hooks.json"
 
-  run_or_echo "mkdir -p \"$project_claude_dir\" \"$project_codex_dir\" \"$project_ai_hooks_dir\""
+  run_or_echo "mkdir -p \"$project_claude_dir\" \"$project_ai_hooks_dir\""
 
   while IFS= read -r hook; do
     local rel_path dest_dir hook_name
@@ -696,75 +690,7 @@ migrate_hooks() {
   done < <(find "$HOOK_ASSETS_DIR" -type f -name '*.sh' | sort)
 
   cleanup_removed_workflow_assets "$repo"
-
-  if [[ "$MODE" == "apply" ]]; then
-    if [[ -f "$project_settings" ]]; then
-      if has_jq && command -v node >/dev/null 2>&1; then
-        backup_if_exists "$project_settings"
-        merge_hook_settings_json "$project_settings" "$HOOK_ASSETS_DIR/settings.template.json" "$project_settings.tmp"
-        mv "$project_settings.tmp" "$project_settings"
-        prune_removed_hook_commands "$project_settings"
-        log "Merged hook template into .claude/settings.json"
-      else
-        log "Skipping automatic merge for .claude/settings.json because jq or node is unavailable; leaving existing file unchanged"
-      fi
-    else
-      if command -v node >/dev/null 2>&1; then
-        merge_hook_settings_json "$HOOK_ASSETS_DIR/settings.template.json" "$HOOK_ASSETS_DIR/settings.template.json" "$project_settings.tmp"
-        mv "$project_settings.tmp" "$project_settings"
-      else
-        cp "$HOOK_ASSETS_DIR/settings.template.json" "$project_settings"
-      fi
-      log "Wrote .claude/settings.json from template"
-    fi
-  else
-    echo "[dry-run] merge/copy \"$HOOK_ASSETS_DIR/settings.template.json\" -> \"$project_settings\""
-  fi
-
-  if [[ "$MODE" == "apply" ]]; then
-    if [[ -f "$codex_hooks_template" ]]; then
-      if [[ -f "$project_codex_hooks" ]]; then
-        if command -v node >/dev/null 2>&1; then
-          backup_if_exists "$project_codex_hooks"
-          merge_hook_settings_json "$project_codex_hooks" "$codex_hooks_template" "$project_codex_hooks.tmp"
-          mv "$project_codex_hooks.tmp" "$project_codex_hooks"
-          prune_removed_hook_commands "$project_codex_hooks"
-          log "Merged hook template into .codex/hooks.json"
-        else
-          log "Skipping automatic merge for .codex/hooks.json because node is unavailable; leaving existing file unchanged"
-        fi
-      else
-        if command -v node >/dev/null 2>&1; then
-          merge_hook_settings_json "$codex_hooks_template" "$codex_hooks_template" "$project_codex_hooks"
-        else
-          cp "$codex_hooks_template" "$project_codex_hooks"
-        fi
-        log "Wrote .codex/hooks.json from template"
-      fi
-    fi
-  else
-    echo "[dry-run] merge/copy \"$codex_hooks_template\" -> \"$project_codex_hooks\""
-  fi
-
-  if [[ -f "$project_settings_local" ]]; then
-    if [[ "$MODE" == "apply" ]]; then
-      if has_jq && command -v node >/dev/null 2>&1; then
-        if "$JQ_BIN" -e '.hooks != null' "$project_settings_local" >/dev/null 2>&1; then
-          backup_if_exists "$project_settings_local"
-          merge_hook_settings_json "$project_settings" "$project_settings_local" "$project_settings.tmp"
-          mv "$project_settings.tmp" "$project_settings"
-          prune_removed_hook_commands "$project_settings"
-          "$JQ_BIN" 'del(.hooks)' "$project_settings_local" > "$project_settings_local.tmp"
-          mv "$project_settings_local.tmp" "$project_settings_local"
-          log "Moved hooks from settings.local.json into settings.json"
-        fi
-      else
-        log "Skipping hooks migration from settings.local.json because jq or node is unavailable; leaving files unchanged"
-      fi
-    else
-      echo "[dry-run] inspect and migrate hooks from \"$project_settings_local\" into \"$project_settings\""
-    fi
-  fi
+  pi_install_hook_adapters "$repo" "$HOOK_ASSETS_DIR" "$MODE"
 }
 
 migrate_docs() {
@@ -859,8 +785,7 @@ print_report() {
     printf '%s\n' "$INSPECT_OUTPUT"
   fi
   echo "- Project hooks synced from: $HOOK_ASSETS_DIR"
-  echo "- Claude hook config target: .claude/settings.json"
-  echo "- Codex hook config target: .codex/hooks.json"
+  echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
   echo "- $(pi_print_codex_hook_trust_notice)"
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"
   echo "- Workflow migration: docs/spec.md + plans/ + tasks/contracts + tasks/reviews + .ai/context/context-map.json + .ai/harness/*"

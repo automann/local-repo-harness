@@ -260,10 +260,17 @@ matched_prefix="root"
 capability_id="root"
 contract_agents=""
 contract_claude=""
+capability_resolved="false"
 if [[ -n "$capability_match" ]] && [[ "$(json_get "$capability_match" "matched" || true)" == "true" ]]; then
   functional_block="$(json_get "$capability_match" "functional_block")"
   matched_prefix="$(json_get "$capability_match" "matched_prefix")"
   capability_id="$(json_get "$capability_match" "capability_id")"
+  capability_resolved="true"
+fi
+
+if [[ "$capability_resolved" != "true" && "$severity" == "low" && "$change_type" == "source-change" ]]; then
+  echo "[ArchitectureDrift] No architecture drift request for $rel_path (unmatched source-change)."
+  exit 0
 fi
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 iso_timestamp="$(date '+%Y-%m-%dT%H:%M:%S%z')"

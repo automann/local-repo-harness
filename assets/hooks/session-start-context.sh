@@ -22,6 +22,32 @@ resume_reason() {
   awk '/^\> \*\*Reason\*\*:/ {sub(/^.*\> \*\*Reason\*\*: */, ""); gsub(/\r/, ""); print; exit}' "$resume_file" | xargs
 }
 
+file_mtime() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  if stat -f '%m' "$file" >/dev/null 2>&1; then
+    stat -f '%m' "$file"
+    return 0
+  fi
+
+  stat -c '%Y' "$file" 2>/dev/null
+}
+
+resume_current_for_handoff() {
+  local handoff_file resume_mtime handoff_mtime
+  resume_available || return 1
+
+  handoff_file="$(workflow_handoff_file)"
+  [[ -f "$handoff_file" ]] || return 0
+
+  resume_mtime="$(file_mtime "$resume_file" || true)"
+  handoff_mtime="$(file_mtime "$handoff_file" || true)"
+  [[ -n "$resume_mtime" && -n "$handoff_mtime" ]] || return 0
+
+  [[ "$resume_mtime" -ge "$handoff_mtime" ]]
+}
+
 context_budget_active() {
   local budget_file zone
   budget_file="$(workflow_context_budget_status_file)"
@@ -129,7 +155,7 @@ EOF_CONTEXT
 }
 
 context=""
-if resume_available; then
+if resume_current_for_handoff; then
   if context_budget_active \
     || active_plan_exists \
     || active_todo_exists \

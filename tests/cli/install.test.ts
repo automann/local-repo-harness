@@ -63,6 +63,7 @@ describe('install command (Phase 1B)', () => {
         for (const entry of entries) {
           const cmd = entry.hooks[0].command;
           expect(cmd).toContain('command -v repo-harness');
+          expect(cmd).toContain('HOOK_HOST=codex');
           expect(cmd).toContain('exec repo-harness hook ');
         }
       }
@@ -89,6 +90,11 @@ describe('install command (Phase 1B)', () => {
       );
       const total = Object.values(data.hooks as Record<string, unknown[]>).flat().length;
       expect(total).toBe(7);
+      for (const entries of Object.values(data.hooks) as { hooks: { command: string }[] }[][]) {
+        for (const entry of entries) {
+          expect(entry.hooks[0].command).toContain('HOOK_HOST=claude');
+        }
+      }
     });
   });
 

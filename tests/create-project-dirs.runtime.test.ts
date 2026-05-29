@@ -15,7 +15,7 @@ describe("create-project-dirs runtime smoke", () => {
         encoding: "utf-8",
       });
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Codex hook trust required:");
+      expect(res.stdout).toContain("Host hook adapters are user-level:");
 
       expect(existsSync(join(cwd, "interfaces/types.ts"))).toBe(true);
       expect(existsSync(join(cwd, "contracts"))).toBe(false);
@@ -109,7 +109,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/skill-factory-check.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(true);
+      expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
+      expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/finalize-handoff.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
@@ -127,17 +128,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, ".claude/skill-factory/rubric.template.json"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/skill-factory/registry.json"))).toBe(false);
 
-      const settings = readFileSync(join(cwd, ".claude/settings.json"), "utf-8");
-      const codexHooks = readFileSync(join(cwd, ".codex/hooks.json"), "utf-8");
-      const settingsTemplate = readFileSync(join(ROOT, "assets/hooks/settings.template.json"), "utf-8");
-      const codexHooksTemplate = readFileSync(join(ROOT, "assets/hooks/codex.hooks.template.json"), "utf-8");
-      expect(settings).toBe(settingsTemplate);
-      expect(codexHooks).toBe(codexHooksTemplate);
-      expect(settings).toContain("trace-event.sh");
-      expect(settings).toContain("session-start-context.sh");
-      expect(settings).toContain("finalize-handoff.sh");
-      expect(settings).not.toContain("memory-intake.sh");
-      expect(settings).not.toContain("skill-factory-session-end.sh");
+      expect(existsSync(join(cwd, ".ai/hooks/trace-event.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/finalize-handoff.sh"))).toBe(true);
 
       expect(existsSync(join(cwd, "docs/PROGRESS.md"))).toBe(false);
       const workflowContract = JSON.parse(readFileSync(join(cwd, ".ai/harness/workflow-contract.json"), "utf-8"));
@@ -158,6 +151,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.scripts).toContain("workstream-sync.sh");
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".claude/settings.json");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
@@ -166,8 +161,6 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
-      expect(workflowContract.artifacts.requiredFiles).toContain(".claude/settings.json");
-      expect(workflowContract.artifacts.requiredFiles).toContain(".codex/hooks.json");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/capability-resolver.ts");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/architecture-event.ts");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");

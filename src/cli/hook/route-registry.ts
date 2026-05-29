@@ -55,7 +55,7 @@ export const ROUTES: readonly Route[] = Object.freeze([
     event: 'PostToolUse' as const,
     routeId: 'edit' as const,
     matcher: 'Edit|Write',
-    scripts: Object.freeze(['post-edit-guard.sh', 'autoresearch-advisory.sh']),
+    scripts: Object.freeze(['post-edit-guard.sh']),
   }),
   Object.freeze({
     event: 'PostToolUse' as const,
@@ -71,7 +71,7 @@ export const ROUTES: readonly Route[] = Object.freeze([
   Object.freeze({
     event: 'UserPromptSubmit' as const,
     routeId: 'default' as const,
-    scripts: Object.freeze(['prompt-guard.sh', 'autoresearch-advisory.sh']),
+    scripts: Object.freeze(['prompt-guard.sh']),
   }),
   Object.freeze({
     event: 'Stop' as const,

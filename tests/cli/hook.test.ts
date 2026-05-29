@@ -2,8 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { runHook } from '../../src/cli/commands/hook';
+
+const ROOT = path.join(import.meta.dir, '../..');
+const CLI = path.join(ROOT, 'src/cli/index.ts');
 
 function withTempRepo(
   opts: { optIn: boolean; scripts?: Record<string, string> },
@@ -139,6 +142,56 @@ describe('hook command (Phase 1B)', () => {
           stdio: 'ignore',
         });
         expect(result.exitCode).toBe(0);
+      },
+    );
+  });
+
+  test('CLI dispatcher keeps Codex non-SessionStart stdout empty on success', () => {
+    withTempRepo(
+      {
+        optIn: true,
+        scripts: {
+          'prompt-guard.sh': '#!/bin/bash\necho codex-noise\n',
+        },
+      },
+      (repoRoot) => {
+        const res = spawnSync(
+          process.execPath,
+          [CLI, 'hook', 'UserPromptSubmit', '--route', 'default'],
+          {
+            cwd: repoRoot,
+            encoding: 'utf-8',
+            env: { ...process.env, HOOK_HOST: 'codex' },
+          },
+        );
+        expect(res.status).toBe(0);
+        expect(res.stdout).toBe('');
+        expect(res.stderr).toBe('');
+      },
+    );
+  });
+
+  test('CLI dispatcher moves Codex failure stdout to stderr', () => {
+    withTempRepo(
+      {
+        optIn: true,
+        scripts: {
+          'prompt-guard.sh': '#!/bin/bash\necho failure-context\nexit 9\n',
+        },
+      },
+      (repoRoot) => {
+        const res = spawnSync(
+          process.execPath,
+          [CLI, 'hook', 'UserPromptSubmit', '--route', 'default'],
+          {
+            cwd: repoRoot,
+            encoding: 'utf-8',
+            env: { ...process.env, HOOK_HOST: 'codex' },
+          },
+        );
+        expect(res.status).toBe(9);
+        expect(res.stdout).toBe('');
+        expect(res.stderr).toContain('failure-context');
       },
     );
   });

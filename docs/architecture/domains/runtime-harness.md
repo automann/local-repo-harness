@@ -1,7 +1,7 @@
 # Architecture Domain: Runtime Harness
 
 > **Source**: `.ai/context/capabilities.json`
-> **Owner**: Hook implementation, adapter settings, runtime event files, handoff, and context-pressure state.
+> **Owner**: Hook implementation, user-level adapter settings, runtime event files, handoff, and context-pressure state.
 
 ## Purpose
 
@@ -16,8 +16,8 @@ instead of becoming separate hook sources of truth.
 ## Stable Rules
 
 - `.ai/hooks/` is the shared hook implementation.
-- `.claude/settings.json` is the Claude adapter surface.
-- `.codex/hooks.json` is the Codex adapter surface. Use `.ai/hooks/` for repo-local implementation and reserve `~/.codex` for global Codex runtime state.
+- User-level `~/.claude/settings.json` and `~/.codex/hooks.json` are the host adapter surfaces.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are retired legacy config, not required contract files.
 - Other repo-local `.codex/*` files are runtime residue unless promoted by an explicit contract change.
 - Runtime files under `.ai/harness/checks`, `.ai/harness/handoff`, `.ai/harness/failures`, `.ai/harness/context-budget`, `.ai/harness/architecture/events.jsonl`, `.ai/harness/worktrees`, and `.ai/harness/runs` are ignored state, not durable deliverables.
 

@@ -57,8 +57,6 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/worktrees/
 .ai/harness/runs/
 .codex/*
-!.codex/
-!.codex/hooks.json
 .claude/.active-plan
 EOF_RUNTIME
 )
@@ -419,20 +417,68 @@ pi_copy_file_if_apply() {
 
 pi_install_hook_adapters() {
   local repo="$1"
-  local hooks_dir="$2"
+  local _hooks_dir="$2"
   local mode="${3:-apply}"
-  local codex_hooks_template="$hooks_dir/codex.hooks.template.json"
 
-  pi_copy_file_if_apply "$mode" "$hooks_dir/settings.template.json" "$repo/.claude/settings.json"
-  if [[ -f "$codex_hooks_template" ]]; then
-    pi_copy_file_if_apply "$mode" "$codex_hooks_template" "$repo/.codex/hooks.json"
-  else
-    pi_copy_file_if_apply "$mode" "$hooks_dir/settings.template.json" "$repo/.codex/hooks.json"
+  pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.json"
+  pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.local.json"
+  pi_retire_project_hook_adapter "$mode" "$repo/.codex/hooks.json"
+}
+
+pi_retire_project_hook_adapter() {
+  local mode="${1:-apply}"
+  local file_path="$2"
+
+  if [[ ! -f "$file_path" ]]; then
+    return 0
   fi
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] retire project hook adapter $file_path"
+    return 0
+  fi
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo "[project-init] Skipping project hook adapter retirement for $file_path because node is unavailable" >&2
+    return 0
+  fi
+
+  node - "$file_path" <<'NODE_EOF'
+const fs = require("fs");
+const path = process.argv[2];
+
+function writeJson(file, value) {
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+let data;
+try {
+  const raw = fs.readFileSync(path, "utf8");
+  data = raw.trim() ? JSON.parse(raw) : {};
+} catch (err) {
+  console.error(`[project-init] Skipping invalid JSON while retiring project hook adapter: ${path}`);
+  process.exit(0);
+}
+
+if (!Object.prototype.hasOwnProperty.call(data, "hooks")) {
+  if (Object.keys(data).length === 0) fs.rmSync(path, { force: true });
+  process.exit(0);
+}
+
+const backup = `${path}.repo-harness-migrate-backup`;
+if (!fs.existsSync(backup)) fs.copyFileSync(path, backup);
+delete data.hooks;
+
+if (Object.keys(data).length === 0) {
+  fs.rmSync(path, { force: true });
+} else {
+  writeJson(path, data);
+}
+NODE_EOF
 }
 
 pi_print_codex_hook_trust_notice() {
-  echo "Codex hook trust required: open Codex Settings and mark this repo's .codex/hooks.json as trusted before relying on hooks."
+  echo "Host hook adapters are user-level: run repo-harness install --target both --location global, then trust ~/.codex/hooks.json in Codex Settings."
 }
 
 pi_ensure_executable_if_apply() {

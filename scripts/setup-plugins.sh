@@ -2,7 +2,7 @@
 # Claude Code Plugin Auto-Setup Script
 # Part of project-initializer skill
 # Installs global plugins and configures global hooks in ~/.claude/settings.json.
-# Project-local hooks (.claude/settings.json in a repo) are configured separately.
+# Project-local hook adapters are legacy; repo opt-in lives in the workflow contract.
 # Default runtime profile:
 #   - Plan + Permissionless
 #   - Codex full access (danger-full-access + approval_policy=never semantics)
@@ -919,7 +919,7 @@ main() {
     # Configure hooks (global ~/.claude/settings.json)
     echo ""
     echo -e "${CYAN}ℹ${NC} Configuring global hooks in ~/.claude/settings.json"
-    echo -e "${CYAN}ℹ${NC} Project-local hooks are configured separately in each repo (.claude/settings.json)"
+    echo -e "${CYAN}ℹ${NC} Project-local hook adapters are legacy; repo-harness now uses user-level host adapters"
     configure_hooks "$hook_type"
 
     # Add permissions

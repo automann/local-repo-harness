@@ -70,14 +70,12 @@ describe("create-project-dirs scaffold parity", () => {
         "./.ai/hooks/tdd-guard-hook.sh",
         "./.ai/hooks/trace-event.sh",
         "./.ai/hooks/worktree-guard.sh",
-        "./.claude/settings.json",
         "./.claude/templates/contract.template.md",
         "./.claude/templates/implementation-notes.template.md",
         "./.claude/templates/plan.template.md",
         "./.claude/templates/research.template.md",
         "./.claude/templates/review.template.md",
         "./.claude/templates/spec.template.md",
-        "./.codex/hooks.json",
         "./.gitignore",
         "./AGENTS.md",
         "./CLAUDE.md",
@@ -153,7 +151,7 @@ describe("create-project-dirs scaffold parity", () => {
       const gitignore = readFileSync(join(cwd, ".gitignore"), "utf-8");
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).toContain("!.codex/hooks.json");
+      expect(gitignore).not.toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain(".codegraph/");
       expect(gitignore).toContain("_ops/");

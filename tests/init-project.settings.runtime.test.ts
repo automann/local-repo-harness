@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { spawnSync } from "child_process";
@@ -7,7 +7,7 @@ import { spawnSync } from "child_process";
 const ROOT = join(import.meta.dir, "..");
 
 describe("init-project settings runtime", () => {
-  test("create_structure should materialize the canonical hook settings template", () => {
+  test("create_structure should keep hook adapters user-level", () => {
     const cwd = mkdtempSync(join(tmpdir(), "init-project-settings-"));
     try {
       const res = spawnSync(
@@ -27,17 +27,13 @@ describe("init-project settings runtime", () => {
       );
 
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Codex hook trust required:");
-      const settings = readFileSync(join(cwd, ".claude/settings.json"), "utf-8");
-      const codexHooks = readFileSync(join(cwd, ".codex/hooks.json"), "utf-8");
-      const template = readFileSync(join(ROOT, "assets/hooks/settings.template.json"), "utf-8");
-      expect(settings).toBe(template);
-      expect(codexHooks).toBe(template);
-      expect(settings).toContain("trace-event.sh");
-      expect(settings).toContain("session-start-context.sh");
-      expect(settings).not.toContain("memory-intake.sh");
+      expect(res.stdout).toContain("Host hook adapters are user-level:");
+      expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
+      expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  });
+  }, 15000);
 });
