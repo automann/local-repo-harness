@@ -13,6 +13,7 @@ root prompt concise; this file owns the detailed routing.
 | Small or medium feature/fix plan | Waza `/think` | Concise approved plan, then implementation on request |
 | Bug, regression, error, crash, failing test | Waza `/hunt` | Root cause sentence with evidence before any fix |
 | Implemented diff, pre-merge, release follow-through | Waza `/check` | Review findings, safe fixes, verification, and shipment state |
+| Independent cross-model second opinion (spec, tests, hard bug, pre-merge diff) | `codex-review` in Claude / `claude-review` in Codex (gstack `/codex`, `gstack-claude` are the superset when installed) | Verbatim peer-model review with `[P1]`/`[P2]` gate; non-overlapping blind spots |
 | Architecture diagram or system-flow diagram | Markdown Mermaid first, `diagram-design` for human HTML | Semantic Mermaid in architecture docs plus optional rendered HTML grounded in repo context |
 
 ## repo-harness Command Surface
@@ -72,6 +73,6 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 
 - Do not route large architecture decisions through Waza `/think` by default.
 - Do not use gstack plan review for routine local edits where `/think` or direct execution is enough.
-- Hooks may emit advisory Waza `/check` and `/health` route hints on prompt submit, but must not block, mutate files, or auto-run skills based on semantic intent; plan capture is an agent action after a planning mode produces a concrete plan.
+- Hooks may emit advisory Waza `/check` and `/health` route hints on prompt submit, and an advisory `[CrossReview]` hint suggesting `codex-review`/`claude-review` at pre-merge, debug, and spec/test moments, but must not block, mutate files, or auto-run skills based on semantic intent; the agent decides whether to act. Plan capture is an agent action after a planning mode produces a concrete plan.
 - Keep `office-hours` for product-demand shaping; use `plan-eng-review` when engineering execution needs to be locked.
 - Treat subagent and parallel-agent execution as a main-agent decision based on task breadth, context impact, raw-log volume, and callable tools. Do not ask the user for spawn confirmation; if no runner is callable or spawning is not worth the context cost, complete the same P1/P2/P3 trace in the main thread and persist evidence-backed conclusions in `tasks/research.md`.

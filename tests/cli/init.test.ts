@@ -10,7 +10,7 @@ import {
 } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runInit } from "../../src/cli/commands/init";
+import { runInit, syncCrossReviewSkills } from "../../src/cli/commands/init";
 
 function makeExecutable(path: string, body: string): void {
   writeFileSync(path, body);
@@ -56,6 +56,16 @@ function setupFakeSource(root: string): void {
       "echo migrate \"$repo\"",
       "",
     ].join("\n"),
+  );
+  mkdirSync(join(root, "assets", "skills", "codex-review"), { recursive: true });
+  writeFileSync(
+    join(root, "assets", "skills", "codex-review", "SKILL.md"),
+    "---\nname: codex-review\n---\n",
+  );
+  mkdirSync(join(root, "assets", "skills", "claude-review"), { recursive: true });
+  writeFileSync(
+    join(root, "assets", "skills", "claude-review", "SKILL.md"),
+    "---\nname: claude-review\n---\n",
   );
 }
 
@@ -127,6 +137,11 @@ describe("init command", () => {
       );
       expect(existsSync(join(home, ".codex", "skills", "diagram-design", "SKILL.md"))).toBe(true);
       expect(existsSync(join(home, ".claude", "skills", "diagram-design", "SKILL.md"))).toBe(true);
+      // Cross-review skills install host-aware: codex-review on Claude, claude-review on Codex.
+      expect(existsSync(join(home, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "skills", "codex-review", "SKILL.md"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "skills", "claude-review", "SKILL.md"))).toBe(false);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -185,6 +200,84 @@ describe("init command", () => {
       expect(result.steps.find((step) => step.step === "sync repo-harness skills")?.stdout).toContain(
         "sync link=0",
       );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("syncCrossReviewSkills", () => {
+  function makeSource(root: string): void {
+    mkdirSync(join(root, "assets", "skills", "codex-review"), { recursive: true });
+    writeFileSync(
+      join(root, "assets", "skills", "codex-review", "SKILL.md"),
+      "---\nname: codex-review\n---\n",
+    );
+    mkdirSync(join(root, "assets", "skills", "claude-review"), { recursive: true });
+    writeFileSync(
+      join(root, "assets", "skills", "claude-review", "SKILL.md"),
+      "---\nname: claude-review\n---\n",
+    );
+  }
+
+  test("installs host-aware: codex-review to Claude, claude-review to Codex", () => {
+    const tmp = join(tmpdir(), `cross-review-both-${Date.now()}`);
+    const source = join(tmp, "source");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      makeSource(source);
+
+      const steps = syncCrossReviewSkills(source, "both", { ...process.env, HOME: home });
+
+      expect(steps.every((s) => s.status === "ok")).toBe(true);
+      expect(existsSync(join(home, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "skills", "codex-review", "SKILL.md"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "skills", "claude-review", "SKILL.md"))).toBe(false);
+
+      const again = syncCrossReviewSkills(source, "both", { ...process.env, HOME: home });
+      expect(again.some((s) => /already present/.test(s.detail ?? ""))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("respects target=claude (only codex-review) and target=codex (only claude-review)", () => {
+    const tmp = join(tmpdir(), `cross-review-target-${Date.now()}`);
+    const source = join(tmp, "source");
+    const claudeHome = join(tmp, "home-claude");
+    const codexHome = join(tmp, "home-codex");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(claudeHome, { recursive: true });
+      mkdirSync(codexHome, { recursive: true });
+      makeSource(source);
+
+      syncCrossReviewSkills(source, "claude", { ...process.env, HOME: claudeHome });
+      expect(existsSync(join(claudeHome, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(claudeHome, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(false);
+
+      syncCrossReviewSkills(source, "codex", { ...process.env, HOME: codexHome });
+      expect(existsSync(join(codexHome, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(codexHome, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("skips (does not fail) when the bundled source is missing", () => {
+    const tmp = join(tmpdir(), `cross-review-missing-${Date.now()}`);
+    const source = join(tmp, "source");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(home, { recursive: true });
+
+      const steps = syncCrossReviewSkills(source, "both", { ...process.env, HOME: home });
+      expect(steps.every((s) => s.status !== "failed")).toBe(true);
+      expect(steps.some((s) => s.status === "skipped")).toBe(true);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

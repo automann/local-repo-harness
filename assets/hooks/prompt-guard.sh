@@ -383,7 +383,31 @@ emit_waza_route_hint() {
 
   if echo "$PROMPT_INTENT_TEXT" | grep -qEi "(review|check|pre-merge|before merge|release|publish|push|验收|检查|提交|发布|推送|合并前)"; then
     echo "[WazaRoute] Review/release intent detected. Default route: Waza /check."
+    emit_cross_review_hint merge
   fi
+}
+
+# Cross-review advisory: nudge the agent to consider an independent second
+# opinion from a different-vendor model. Advisory only (echo, exit 0); the agent
+# decides whether to act. Host-aware: in Codex suggest claude-review, otherwise
+# (Claude) suggest codex-review. On Codex the dispatcher swallows success stdout,
+# so this primarily surfaces on the Claude host; the Codex-side availability note
+# is delivered once by session-start-context.sh.
+emit_cross_review_hint() {
+  local skill peer
+  if [ "${HOOK_HOST:-claude}" = "codex" ]; then
+    skill="claude-review"; peer="Claude"
+  else
+    skill="codex-review"; peer="Codex"
+  fi
+  case "${1:-}" in
+    merge)
+      echo "[CrossReview] Pre-merge moment — consider an independent ${peer} review of the diff via ${skill}: a different training distribution has non-overlapping blind spots. Skip if the change is trivial."
+      ;;
+    debug)
+      echo "[CrossReview] Hard bug — ${skill} can give an independent ${peer} root-cause diagnosis. Agreeing diagnoses raise confidence; divergence shows where to dig."
+      ;;
+  esac
 }
 
 strip_prompt_context_blocks() {
@@ -733,6 +757,7 @@ fi
 if echo "$PROMPT_TEXT" | grep -qEi "(fix|patch|bug|修复|修bug|修 bug|改bug)"; then
   echo "[TDD] Bug-fix intent detected. Reproduce with a failing test first."
   echo "  检测到修复请求：先写失败测试复现问题，再重写实现。"
+  emit_cross_review_hint debug
 fi
 if ! is_diagnostic_question_intent && echo "$PROMPT_TEXT" | grep -qEi "(new feature|feature|implement|build|新功能|实现|开发功能|执行)"; then
   echo "[BDD] Feature intent detected. Define Given-When-Then acceptance scenarios first."

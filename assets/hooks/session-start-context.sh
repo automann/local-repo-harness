@@ -149,6 +149,19 @@ if [[ -n "$pending_context" ]]; then
   fi
 fi
 
+# Cross-review availability note for Codex. On the Codex host the hook dispatcher
+# swallows prompt-guard's success stdout, so the per-moment [CrossReview] nudges
+# emitted there never surface; deliver a one-time availability note here instead.
+# On the Claude host prompt-guard handles the contextual nudges, so skip it.
+if [[ "${HOOK_HOST:-}" == "codex" ]]; then
+  cross_review_note="[CrossReview] For an independent cross-model second opinion (a different training distribution has non-overlapping blind spots), run /claude-review on a diff before merging, on a hard bug, or after writing a spec or tests. The agent decides when it is worth it."
+  if [[ -n "$context" ]]; then
+    context="${context}"$'\n'"${cross_review_note}"
+  else
+    context="$cross_review_note"
+  fi
+fi
+
 [[ -n "$context" ]] || exit 0
 
 if command -v jq >/dev/null 2>&1; then

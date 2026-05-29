@@ -182,6 +182,51 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("prompt-guard: emits host-aware [CrossReview] advisory at merge and debug moments", () => {
+    const cwd = tmpWorkspace("cross-review-hint");
+    try {
+      installHooks(cwd);
+
+      // Pre-merge / review intent on the Claude host suggests codex-review.
+      const mergeClaude = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "验收一下当前改动，然后提交推送" }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(mergeClaude.status).toBe(0);
+      expect(mergeClaude.stdout).toContain("[CrossReview]");
+      expect(mergeClaude.stdout).toContain("codex-review");
+      expect(mergeClaude.stdout).not.toContain("claude-review");
+
+      // The same intent on the Codex host suggests claude-review instead.
+      const mergeCodex = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "验收一下当前改动，然后提交推送" }),
+        env: { HOOK_HOST: "codex" },
+      });
+      expect(mergeCodex.status).toBe(0);
+      expect(mergeCodex.stdout).toContain("[CrossReview]");
+      expect(mergeCodex.stdout).toContain("claude-review");
+
+      // Bug-fix intent gets the debug-flavored cross-review hint.
+      const bug = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "这个登录 bug 报错了，帮我修复" }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(bug.status).toBe(0);
+      expect(bug.stdout).toContain("[CrossReview]");
+      expect(bug.stdout).toContain("codex-review");
+
+      // A neutral prompt must not nag for a cross-review.
+      const neutral = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "现在几点了" }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(neutral.status).toBe(0);
+      expect(neutral.stdout).not.toContain("[CrossReview]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("prompt-guard: emits host-neutral Codegraph route hints for structural code navigation", () => {
     const cwd = tmpWorkspace("codegraph-route-hint");
     try {

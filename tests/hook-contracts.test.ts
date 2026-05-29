@@ -109,9 +109,20 @@ describe("Hook contracts", () => {
     expect(script).toContain("scripts/verify-contract.sh");
     expect(script).toContain("HarnessMaintenance");
     expect(script).toContain("has_changes_glob");
+    expect(script).toContain("emit_cross_review_hint");
+    expect(script).toContain("[CrossReview]");
+    expect(script).toContain("codex-review");
+    expect(script).toContain("claude-review");
     expect(script).not.toContain("📋");
     expect(script).not.toContain("🧠");
     expect(script).not.toContain("📎");
+  });
+
+  test("session-start should deliver the Codex-host cross-review availability note", () => {
+    const script = read("assets/hooks/session-start-context.sh");
+    expect(script).toContain("[CrossReview]");
+    expect(script).toContain("claude-review");
+    expect(script).toContain('"${HOOK_HOST:-}" == "codex"');
   });
 
   test("post-edit guard should retain doc-drift coverage for apps/*/src/** and wrangler*.toml", () => {
