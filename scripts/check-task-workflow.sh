@@ -265,6 +265,7 @@ policy_get() {
 }
 
 todo_file="$(policy_get '.tasks.todo_file' 'tasks/todo.md')"
+current_status_file="$(policy_get '.tasks.current_status_file' 'tasks/current.md')"
 lessons_file="$(policy_get '.tasks.lessons_file' 'tasks/lessons.md')"
 research_file="$(policy_get '.tasks.research_file' 'tasks/research.md')"
 contracts_dir="$(policy_get '.tasks.contracts_dir' 'tasks/contracts')"
@@ -304,6 +305,7 @@ check_required_file "scripts/new-plan.sh"
 check_required_file "scripts/plan-to-todo.sh"
 check_required_file "scripts/contract-worktree.sh"
 check_required_file "scripts/archive-workflow.sh"
+check_required_file "scripts/refresh-current-status.sh"
 check_required_file "scripts/prepare-handoff.sh"
 check_required_file "scripts/verify-contract.sh"
 check_required_file "scripts/verify-sprint.sh"
@@ -322,6 +324,7 @@ check_required_file "scripts/ensure-task-workflow.sh"
 check_required_file "scripts/check-task-workflow.sh"
 check_required_file "scripts/maintenance-triage.sh"
 check_required_file "$todo_file"
+check_required_file "$current_status_file"
 check_required_file "$lessons_file"
 check_required_file "$research_file"
 check_required_file "$context_map_file"
@@ -389,6 +392,15 @@ if [[ -f "$todo_file" ]]; then
     elif ! ledger_error="$(todo_deferred_ledger_error "$todo_file")"; then
       report_issue "${todo_file} deferred ledger is incomplete: ${ledger_error//$'\n'/; }"
     fi
+  fi
+fi
+
+if [[ -f "$current_status_file" ]]; then
+  if ! grep -Eq '^# Current Status Snapshot[[:space:]]*$' "$current_status_file"; then
+    report_issue "${current_status_file} is missing '# Current Status Snapshot' heading."
+  fi
+  if grep -Eq '^[[:space:]]*-[[:space:]]\[[ xX]\][[:space:]]+' "$current_status_file"; then
+    report_issue "${current_status_file} must remain a read model, not a checklist."
   fi
 fi
 

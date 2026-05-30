@@ -195,6 +195,65 @@ printf '%s\n' '<approved plan body>' | bash scripts/capture-plan.sh --slug ${pro
 EOF_CONTEXT
 }
 
+current_status_field() {
+  local file="$1"
+  local label="$2"
+  [[ -f "$file" ]] || return 1
+  awk -v label="$label" '
+    $0 ~ "^> \\*\\*" label "\\*\\*:" {
+      sub("^> \\*\\*" label "\\*\\*: *", "")
+      gsub(/\r/, "")
+      print
+      exit
+    }
+  ' "$file" | xargs
+}
+
+current_status_snapshot_context() {
+  local current_file="tasks/current.md"
+  local target branch status updated source_commit target_status target_updated
+
+  target="$(workflow_target_branch)"
+  branch="$(workflow_current_branch)"
+  status="$(current_status_field "$current_file" "Status" 2>/dev/null || true)"
+  updated="$(current_status_field "$current_file" "Updated At" 2>/dev/null || true)"
+  source_commit="$(current_status_field "$current_file" "Source Commit" 2>/dev/null || true)"
+
+  if [[ -z "$status" ]]; then
+    if [[ "$branch" != "$target" ]] && git rev-parse --verify --quiet "$target" >/dev/null 2>&1 \
+      && git show "${target}:tasks/current.md" >/dev/null 2>&1; then
+      :
+    else
+      return 1
+    fi
+  fi
+
+  if [[ -z "$status" && "$branch" == "$target" ]]; then
+    return 1
+  fi
+  if [[ "$status" == "Idle" && "$branch" == "$target" ]]; then
+    return 1
+  fi
+
+  cat <<EOF_CONTEXT
+# Current Status Snapshot
+
+- Local snapshot: \`${current_file}\` status=${status:-"(missing)"} updated=${updated:-"(unknown)"} source_commit=${source_commit:-"(unknown)"}
+- Target branch snapshot: \`git show ${target}:tasks/current.md\`
+- Rule: this is a tracked read model only; verify stale or surprising state against plans, workstreams, handoff, and checks before acting.
+EOF_CONTEXT
+
+  if [[ "$branch" != "$target" ]] && git rev-parse --verify --quiet "$target" >/dev/null 2>&1; then
+    target_status="$(git show "${target}:tasks/current.md" 2>/dev/null | awk '/^> \*\*Status\*\*:/ {sub(/^> \*\*Status\*\*: */, ""); print; exit}' | xargs || true)"
+    target_updated="$(git show "${target}:tasks/current.md" 2>/dev/null | awk '/^> \*\*Updated At\*\*:/ {sub(/^> \*\*Updated At\*\*: */, ""); print; exit}' | xargs || true)"
+    if [[ -n "$target_status" ]]; then
+      cat <<EOF_CONTEXT
+- Target snapshot metadata: status=${target_status} updated=${target_updated:-"(unknown)"}
+EOF_CONTEXT
+    fi
+  fi
+}
+
 context=""
 if resume_current_for_handoff; then
   if context_budget_active \
@@ -222,6 +281,15 @@ if [[ -n "$pending_capture_context" ]]; then
     context="${context}"$'\n'"${pending_capture_context}"
   else
     context="$pending_capture_context"
+  fi
+fi
+
+current_status_context="$(current_status_snapshot_context || true)"
+if [[ -n "$current_status_context" ]]; then
+  if [[ -n "$context" ]]; then
+    context="${context}"$'\n'"${current_status_context}"
+  else
+    context="$current_status_context"
   fi
 fi
 

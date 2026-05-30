@@ -379,6 +379,35 @@ TODO_EOF
   fi
 }
 
+ensure_current_status_snapshot() {
+  mkdir -p tasks
+  if [[ -x "scripts/refresh-current-status.sh" ]]; then
+    bash "scripts/refresh-current-status.sh" --clear --write --reason "ensure-task-workflow" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  if [[ ! -f "tasks/current.md" ]]; then
+    cat > tasks/current.md <<'CURRENT_STATUS_EOF'
+# Current Status Snapshot
+
+<!-- generated-by: repo-harness refresh-current-status v1 -->
+<!-- updated_at: bootstrap -->
+<!-- stale_after: 24h -->
+
+> **Status**: Idle
+> **Updated At**: bootstrap
+> **Source Branch**: main
+> **Source Commit**: bootstrap
+> **Target Branch**: main
+> **Stale After**: 24h
+> **Reason**: bootstrap
+> **Derived From**: active-plan, workstreams, handoff, checks, git status
+
+This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
+CURRENT_STATUS_EOF
+  fi
+}
+
 ensure_auxiliary_files() {
   mkdir -p plans plans/archive tasks/archive tasks/contracts tasks/reviews tasks/notes tasks/workstreams docs/architecture/domains docs/architecture/modules docs/architecture/requests docs/architecture/snapshots docs/architecture/diagrams scripts .ai/context .ai/harness/checks .ai/harness/handoff .ai/harness/context-budget .ai/harness/failures .ai/harness/planning .ai/harness/architecture .ai/harness/worktrees .ai/harness/runs
 
@@ -553,6 +582,7 @@ ARCHITECTURE_INDEX_EOF
   },
   "tasks": {
     "todo_file": "tasks/todo.md",
+    "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "research_file": "tasks/research.md",
     "workstreams_dir": "tasks/workstreams",
@@ -870,6 +900,7 @@ BRAIN_MANIFEST_EOF
     "CLAUDE.md",
     "AGENTS.md",
     "docs/spec.md",
+    "tasks/current.md",
     "tasks/todo.md",
     "tasks/lessons.md",
     ".ai/context/capabilities.json",
@@ -933,6 +964,7 @@ done
 ensure_templates
 ensure_auxiliary_files
 ensure_idle_todo
+ensure_current_status_snapshot
 
 active_plan="$(get_active_plan || true)"
 if [[ -n "$active_plan" && "$new_plan" -eq 0 ]]; then

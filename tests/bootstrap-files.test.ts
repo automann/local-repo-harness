@@ -99,6 +99,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain(".ai/context/context-map.json");
     expect(contract.helpers.scripts).toContain("maintenance-triage.sh");
     expect(contract.helpers.scripts).toContain("capture-plan.sh");
+    expect(contract.helpers.scripts).toContain("refresh-current-status.sh");
     expect(contract.helpers.scripts).toContain("context-budget.ts");
     expect(contract.helpers.scripts).toContain("architecture-drift.sh");
     expect(contract.helpers.scripts).toContain("archive-architecture-request.sh");
@@ -145,7 +146,9 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capture-plan.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
+    expect(contract.artifacts.requiredFiles).toContain("tasks/current.md");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/workflow-contract.json");
     expect(contract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
@@ -215,6 +218,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain(".ai/context/context-map.json");
     expect(contract.helpers.scripts).toContain("maintenance-triage.sh");
     expect(contract.helpers.scripts).toContain("capture-plan.sh");
+    expect(contract.helpers.scripts).toContain("refresh-current-status.sh");
     expect(contract.helpers.scripts).toContain("context-budget.ts");
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");

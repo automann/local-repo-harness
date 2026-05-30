@@ -13,20 +13,21 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 1. `docs/spec.md` captures stable product intent.
 2. `plans/plan-*.md` captures a concrete execution approach.
 3. `tasks/contracts/<slug>.contract.md` defines done for the active sprint.
-4. `tasks/todo.md` is the execution projection for the active sprint.
-5. `tasks/notes/<slug>.notes.md` records design decisions, deviations, tradeoffs, open questions, and promotion candidates for this sprint only.
-6. `tasks/reviews/<slug>.review.md` records evaluator judgment.
-7. `.ai/harness/policy.json` is the machine-readable workflow contract.
-8. `information_lifecycle` inside `.ai/harness/policy.json` separates notes, raw evidence, reusable assets, advisory memory, and external knowledge.
-9. `agentic_development` inside `.ai/harness/policy.json` captures product, engineering, design, bug-hunt, and review routing.
-10. `external_tooling` inside `.ai/harness/policy.json` captures host install/update defaults for gstack, Waza, gbrain, and required CodeGraph readiness.
-11. `.ai/context/capabilities.json` declares capability prefixes, contract files, architecture modules, and workstream directories.
-12. `.ai/context/context-map.json` indexes stable root context and discoverable capability context derived from the registry.
-13. `documentation` inside `.ai/harness/policy.json` keeps generated docs minimal and moves optional docs to agent-created, evidence-backed output.
-14. `lsp_profiles` inside policy and context-map files select tooling hints per capability.
-15. `worktree_strategy` inside policy tells agents when to isolate contract-level work in `codex/<slug>` worktrees, start execution through `scripts/contract-worktree.sh start --plan <plan>`, and finish with Waza `/check` plus `scripts/contract-worktree.sh finish`.
-16. `.ai/harness/handoff/current.md` preserves resumable state across sessions.
-17. `.ai/harness/events.jsonl` and `.ai/harness/runs/*.json` retain lightweight execution traces.
+4. `tasks/current.md` is a tracked mainline status snapshot derived from workflow artifacts; it is not a live lock, kanban board, or implementation gate.
+5. `tasks/todo.md` is the execution projection for the active sprint.
+6. `tasks/notes/<slug>.notes.md` records design decisions, deviations, tradeoffs, open questions, and promotion candidates for this sprint only.
+7. `tasks/reviews/<slug>.review.md` records evaluator judgment.
+8. `.ai/harness/policy.json` is the machine-readable workflow contract.
+9. `information_lifecycle` inside `.ai/harness/policy.json` separates notes, raw evidence, reusable assets, advisory memory, and external knowledge.
+10. `agentic_development` inside `.ai/harness/policy.json` captures product, engineering, design, bug-hunt, and review routing.
+11. `external_tooling` inside `.ai/harness/policy.json` captures host install/update defaults for gstack, Waza, gbrain, and required CodeGraph readiness.
+12. `.ai/context/capabilities.json` declares capability prefixes, contract files, architecture modules, and workstream directories.
+13. `.ai/context/context-map.json` indexes stable root context and discoverable capability context derived from the registry.
+14. `documentation` inside `.ai/harness/policy.json` keeps generated docs minimal and moves optional docs to agent-created, evidence-backed output.
+15. `lsp_profiles` inside policy and context-map files select tooling hints per capability.
+16. `worktree_strategy` inside policy tells agents when to isolate contract-level work in `codex/<slug>` worktrees, start execution through `scripts/contract-worktree.sh start --plan <plan>`, and finish with Waza `/check` plus `scripts/contract-worktree.sh finish`.
+17. `.ai/harness/handoff/current.md` preserves resumable state across sessions.
+18. `.ai/harness/events.jsonl` and `.ai/harness/runs/*.json` retain lightweight execution traces.
 
 ## Session Boundaries
 
@@ -35,6 +36,8 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 - Implementation should prefer `docs/spec.md`, an approved plan, and an active sprint contract.
 - Claiming completion should include contract verification evidence, a run snapshot, implementation notes, and a passing Waza `/check` review artifact.
 - Stopping a session should refresh `.ai/harness/handoff/current.md` for easier resume.
+- Refresh `tasks/current.md` with `scripts/refresh-current-status.sh --write --reason <reason>` only at explicit lifecycle boundaries or as a deliberate maintainer action; ordinary hooks should not dirty tracked files.
+- In non-target worktrees, read the target branch snapshot with `git show <target>:tasks/current.md` and verify stale or surprising state against the source artifacts before acting.
 - Use `docs/reference-configs/agentic-development-flow.md` for skill routing and `docs/reference-configs/external-tooling.md` for install/update commands.
 - Use `docs/reference-configs/global-working-rules.md` as the user-level Claude/Codex rule template; keep repo-local workflow contracts in repo files.
 - Externalized reference docs are indexed by `.ai/harness/brain-manifest.json` and checked by `scripts/check-brain-manifest.sh`. Valuable repo docs can opt into default-brain mirroring with `sync.direction=repo-to-brain`; `post-edit-guard.sh` then calls `scripts/sync-brain-docs.sh --changed <path>` for that specific file.
@@ -51,6 +54,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 ## Information Lifecycle
 
 - Notes: `tasks/notes/<slug>.notes.md` is task-local and auditable. It should not be treated as durable knowledge by default.
+- Current status: `tasks/current.md` is a tracked derived snapshot for orientation only. It must be regenerated from source artifacts and must not contain hand-written kanban/checklist state.
 - Evidence: `.ai/harness/checks/latest.json` is the current gate, while `.ai/harness/runs/*.json` keeps immutable verification snapshots for later audit.
 - Memory: `tasks/research.md`, `tasks/lessons.md`, and gbrain are advisory. Current repo state and evidence override summaries.
 - External knowledge: `icloud/brain/<project>/*` stores long-form explanations, runbooks, decisions, and patterns. Hooks may write only explicitly opted-in `repo-to-brain` manifest entries; checks must not require gbrain or MCP.

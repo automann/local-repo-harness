@@ -761,7 +761,7 @@ pi_install_helpers() {
   local target_dir="$1"
   local helpers_dir="$2"
   local mode="${3:-apply}"
-  local helper_names="${4:-new-plan.sh capture-plan.sh plan-to-todo.sh archive-workflow.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-deploy-sql-order.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh context-budget.ts capability-resolver.ts architecture-event.ts capability-config.ts architecture-drift.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
+  local helper_names="${4:-new-plan.sh capture-plan.sh plan-to-todo.sh archive-workflow.sh refresh-current-status.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-deploy-sql-order.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh context-budget.ts capability-resolver.ts architecture-event.ts capability-config.ts architecture-drift.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
   local scripts_dir="$target_dir/scripts"
   local helper_name
 
@@ -787,7 +787,7 @@ pi_install_helpers() {
         cp "$helpers_dir/$helper_name" "$scripts_dir/$helper_name"
       fi
     done
-    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/capture-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/archive-architecture-request.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/prepare-codex-handoff.sh "$scripts_dir"/codex-handoff-resume.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-deploy-sql-order.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/check-context-files.sh "$scripts_dir"/check-brain-manifest.sh "$scripts_dir"/sync-brain-docs.sh "$scripts_dir"/select-agent-context-blocks.sh "$scripts_dir"/architecture-drift.sh "$scripts_dir"/context-contract-sync.sh "$scripts_dir"/workstream-sync.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh "$scripts_dir"/migrate-project-template.sh
+    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/capture-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/refresh-current-status.sh "$scripts_dir"/archive-architecture-request.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/prepare-codex-handoff.sh "$scripts_dir"/codex-handoff-resume.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-deploy-sql-order.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/check-context-files.sh "$scripts_dir"/check-brain-manifest.sh "$scripts_dir"/sync-brain-docs.sh "$scripts_dir"/select-agent-context-blocks.sh "$scripts_dir"/architecture-drift.sh "$scripts_dir"/context-contract-sync.sh "$scripts_dir"/workstream-sync.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh "$scripts_dir"/migrate-project-template.sh
     return 0
   fi
 
@@ -1308,6 +1308,7 @@ pi_write_harness_policy() {
   },
   "tasks": {
     "todo_file": "tasks/todo.md",
+    "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "research_file": "tasks/research.md",
     "workstreams_dir": "tasks/workstreams",
@@ -1665,6 +1666,7 @@ pi_write_context_map() {
     "CLAUDE.md",
     "AGENTS.md",
     "docs/spec.md",
+    "tasks/current.md",
     "tasks/todo.md",
     "tasks/lessons.md",
     ".ai/context/capabilities.json",
@@ -1690,7 +1692,7 @@ This is the root routing contract for Claude Code and Codex.
 ## Root Workflow Contract
 
 - Keep sibling `CLAUDE.md` and `AGENTS.md` files aligned. Claude Code consumes `CLAUDE.md`; Codex consumes `AGENTS.md`.
-- Treat `docs/spec.md` as stable product truth and `tasks/todo.md` as the deferred-goal ledger; current execution stays in the active plan's `## Task Breakdown`.
+- Treat `docs/spec.md` as stable product truth, `tasks/current.md` as a derived status snapshot, and `tasks/todo.md` as the deferred-goal ledger; current execution stays in the active plan's `## Task Breakdown`.
 - Treat `tasks/lessons.md`, `tasks/research.md`, and `.ai/harness/policy.json` as durable workflow context.
 - Use `.ai/context/context-map.json` and `.ai/context/capabilities.json` to discover functional-block contracts.
 - Do not infer local `CLAUDE.md` or `AGENTS.md` files from broad physical layouts such as `apps/*`, `packages/*`, or `services/*`.
@@ -1821,6 +1823,26 @@ pi_ensure_harness_state_surface() {
   [[ -f "$target_dir/.ai/harness/worktrees/.gitkeep" ]] || : > "$target_dir/.ai/harness/worktrees/.gitkeep"
   [[ -f "$target_dir/.ai/harness/runs/.gitkeep" ]] || : > "$target_dir/.ai/harness/runs/.gitkeep"
   [[ -f "$target_dir/tasks/workstreams/.gitkeep" ]] || : > "$target_dir/tasks/workstreams/.gitkeep"
+  if [[ ! -f "$target_dir/tasks/current.md" ]]; then
+    cat > "$target_dir/tasks/current.md" <<'CURRENT_STATUS_EOF'
+# Current Status Snapshot
+
+<!-- generated-by: repo-harness refresh-current-status v1 -->
+<!-- updated_at: bootstrap -->
+<!-- stale_after: 24h -->
+
+> **Status**: Idle
+> **Updated At**: bootstrap
+> **Source Branch**: main
+> **Source Commit**: bootstrap
+> **Target Branch**: main
+> **Stale After**: 24h
+> **Reason**: bootstrap
+> **Derived From**: active-plan, workstreams, handoff, checks, git status
+
+This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
+CURRENT_STATUS_EOF
+  fi
   [[ -f "$target_dir/docs/architecture/domains/.gitkeep" ]] || : > "$target_dir/docs/architecture/domains/.gitkeep"
   [[ -f "$target_dir/docs/architecture/modules/.gitkeep" ]] || : > "$target_dir/docs/architecture/modules/.gitkeep"
   [[ -f "$target_dir/docs/architecture/requests/.gitkeep" ]] || : > "$target_dir/docs/architecture/requests/.gitkeep"

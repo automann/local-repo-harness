@@ -60,13 +60,15 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 4. When Codex Plan mode, Waza `/think`, or `repo-harness-plan` produces a decision-complete plan, capture it into `plans/` with `scripts/capture-plan.sh --slug <slug> --title <title>` and the plan text on stdin.
 5. Approved plans must include `## Evidence Contract` with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before execution. `capture-plan.sh` supplies this contract for captured planning output.
 6. Convert approved plans to execution scaffolding with `scripts/plan-to-todo.sh --plan <plan>`; if approval is already explicit, use `scripts/capture-plan.sh --status Approved --execute ...`. The plan's own `## Task Breakdown` remains the execution checklist; `tasks/todo.md` remains a deferred-goal ledger. Contract-level plans are projected into a linked `codex/<slug>` worktree when the policy enables it.
-7. After substantive changes, run project checks and record evidence in `tasks/`. For contract worktrees, run Waza `/check`, start host-aware external acceptance in parallel, fill the review artifact from both verdicts, then run `scripts/contract-worktree.sh finish`.
+7. Use `scripts/refresh-current-status.sh` for an explicit `tasks/current.md` preview or `--write` snapshot. In non-target worktrees, `git show <target>:tasks/current.md` reads the mainline snapshot, but it never replaces source artifacts.
+8. After substantive changes, run project checks and record evidence in `tasks/`. For contract worktrees, run Waza `/check`, start host-aware external acceptance in parallel, fill the review artifact from both verdicts, then run `scripts/contract-worktree.sh finish`.
 
 ## Passive Plan Capture
 
 - Codex Plan mode and Waza `/think` do not need the user to remember `new-sprint` or `plan-to-todo`.
 - The agent should capture decision-complete planning output with `scripts/capture-plan.sh`; the script sets `.ai/harness/active-plan`, writes `.ai/harness/active-worktree`, mirrors `.claude/.active-plan`, and writes a timestamped `plans/plan-*.md` artifact.
 - Planning capture is allowed before implementation. Contract, review, notes, and worktree artifacts are generated only after explicit implementation approval; `tasks/todo.md` is not a duplicate of plan tasks.
+- Current-status capture is separate from planning capture: `tasks/current.md` is regenerated from artifacts for orientation, not edited as a plan or task list.
 
 ## Boundaries
 
@@ -75,3 +77,4 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 - Hooks may emit advisory Waza `/check` and `/health` route hints on prompt submit. Review/release prompts emit a host-aware `[ExternalAcceptance]` prompt telling the main agent to run the peer reviewer in parallel and paste `## External Acceptance Advice` into the review file; done/finish gates block only on that recorded evidence. Hooks must not mutate files or auto-run peer CLIs based on semantic intent. `[CrossReview]` remains a lightweight debug/spec/test advisory. Plan capture is an agent action after a planning mode produces a concrete plan.
 - Keep `office-hours` for product-demand shaping; use `plan-eng-review` when engineering execution needs to be locked.
 - Treat subagent and parallel-agent execution as a main-agent decision based on task breadth, context impact, raw-log volume, and callable tools. Do not ask the user for spawn confirmation; if no runner is callable or spawning is not worth the context cost, complete the same P1/P2/P3 trace in the main thread and persist evidence-backed conclusions in `tasks/research.md`.
+- Do not turn `tasks/current.md` into a hand-written kanban or memo. Use plans, workstreams, notes, reviews, checks, and handoff files as the authoritative surfaces.

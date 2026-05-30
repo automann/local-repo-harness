@@ -1102,6 +1102,39 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("session-start-context points non-target worktrees at target current status snapshot", () => {
+    const cwd = tmpWorkspace("session-start-current-status");
+    try {
+      installHooks(cwd);
+      initGitRepo(cwd);
+      expect(run("git", ["branch", "-M", "main"], cwd).status).toBe(0);
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      writeFileSync(
+        join(cwd, "tasks/current.md"),
+        [
+          "# Current Status Snapshot",
+          "",
+          "> **Status**: Active",
+          "> **Updated At**: 2026-03-04T16:00:00+0000",
+          "> **Source Commit**: base",
+          "",
+        ].join("\n")
+      );
+      expect(run("git", ["add", "tasks/current.md"], cwd).status).toBe(0);
+      expect(run("git", ["commit", "-m", "add current status"], cwd).status).toBe(0);
+      expect(run("git", ["checkout", "-b", "feature/current-status"], cwd).status).toBe(0);
+
+      const res = runHook("session-start-context.sh", cwd);
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("Current Status Snapshot");
+      expect(res.stdout).toContain("git show main:tasks/current.md");
+      expect(res.stdout).toContain("Target snapshot metadata: status=Active");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("run-hook dispatcher resolves repo root from nested cwd", () => {
     const cwd = tmpWorkspace("run-hook-dispatch");
     try {

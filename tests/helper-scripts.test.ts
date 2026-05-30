@@ -1114,6 +1114,92 @@ describe("Workflow helper scripts", () => {
       expect(resetTodo).toContain("## Deferred Goals");
       expect(resetTodo).toContain("Revisit Trigger");
       expect(resetTodo).not.toContain("## Review Section");
+
+      const current = readFileSync(join(cwd, "tasks/current.md"), "utf-8");
+      expect(current).toContain("# Current Status Snapshot");
+      expect(current).toContain("> **Status**: Idle");
+      expect(current).toContain("> **Reason**: archive-workflow");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("refresh-current-status should preview and write an idle tracked snapshot", () => {
+    const cwd = tmpWorkspace("helper-current-idle");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+
+      const preview = run("bash", ["scripts/refresh-current-status.sh"], cwd);
+      expect(preview.status).toBe(0);
+      expect(preview.stdout).toContain("# Current Status Snapshot");
+      expect(preview.stdout).toContain("> **Status**: Idle");
+      expect(existsSync(join(cwd, "tasks/current.md"))).toBe(false);
+
+      const write = run("bash", ["scripts/refresh-current-status.sh", "--write", "--reason", "unit-test"], cwd);
+      expect(write.status).toBe(0);
+      expect(write.stdout).toContain("[CurrentStatus] Wrote tasks/current.md.");
+      const current = readFileSync(join(cwd, "tasks/current.md"), "utf-8");
+      expect(current).toContain("> **Status**: Idle");
+      expect(current).toContain("> **Reason**: unit-test");
+      expect(current).toContain("<!-- stale_after: 24h -->");
+      expect(current).toContain("git show main:tasks/current.md");
+      expect(current).not.toContain("- [ ]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("refresh-current-status should derive active plan next task", () => {
+    const cwd = tmpWorkspace("helper-current-active");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1600-demo.md"),
+        [
+          "# Plan: demo",
+          "",
+          "> **Status**: Executing",
+          "",
+          "## Task Breakdown",
+          "",
+          "- [x] Finished setup",
+          "- [ ] Ship current status snapshot",
+          "",
+        ].join("\n")
+      );
+      writeActivePlan(cwd, "plans/plan-20260304-1600-demo.md");
+
+      const res = run("bash", ["scripts/refresh-current-status.sh", "--write", "--reason", "active-test"], cwd);
+      expect(res.status).toBe(0);
+      const current = readFileSync(join(cwd, "tasks/current.md"), "utf-8");
+      expect(current).toContain("> **Status**: Active");
+      expect(current).toContain("- Active Plan: plans/plan-20260304-1600-demo.md");
+      expect(current).toContain("- Plan Status: Executing");
+      expect(current).toContain("- Next Task: Ship current status snapshot");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("refresh-current-status clear should not write Idle while active work exists", () => {
+    const cwd = tmpWorkspace("helper-current-clear-active");
+    try {
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1610-demo.md"),
+        "# Plan: demo\n\n> **Status**: Executing\n\n## Task Breakdown\n\n- [ ] Continue\n"
+      );
+      writeActivePlan(cwd, "plans/plan-20260304-1610-demo.md");
+
+      const res = run("bash", ["scripts/refresh-current-status.sh", "--clear", "--write", "--reason", "manual"], cwd);
+      expect(res.status).toBe(0);
+      const current = readFileSync(join(cwd, "tasks/current.md"), "utf-8");
+      expect(current).toContain("> **Status**: ManualClearedWithActiveWork");
+      expect(current).toContain("Idle was not written");
+      expect(current).not.toContain("> **Status**: Idle");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

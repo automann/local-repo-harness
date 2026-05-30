@@ -88,6 +88,7 @@ describe("Migration script contract", () => {
     expect(workflowContract).toContain("plan-to-todo.sh");
     expect(workflowContract).toContain("contract-worktree.sh");
     expect(workflowContract).toContain("archive-workflow.sh");
+    expect(workflowContract).toContain("refresh-current-status.sh");
     expect(workflowContract).toContain("prepare-handoff.sh");
     expect(workflowContract).toContain("verify-contract.sh");
     expect(workflowContract).toContain("summarize-failures.sh");
@@ -226,6 +227,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/plan-to-todo.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/contract-worktree.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/archive-workflow.sh"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/refresh-current-status.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/prepare-handoff.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/verify-contract.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/summarize-failures.sh"))).toBe(true);
@@ -387,6 +389,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
       expect(workflowContract.helpers.scripts).toContain("switch-plan.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
+      expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("check-context-files.sh");
       expect(workflowContract.helpers.scripts).toContain("maintenance-triage.sh");
       expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
@@ -396,6 +399,8 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("archive-architecture-request.sh");
       expect(workflowContract.helpers.scripts).toContain("workstream-sync.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
+      expect(workflowContract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
+      expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/worktrees");
       expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/planning");
       expect(workflowContract.artifacts.requiredDirectories).toContain("deploy/sql");

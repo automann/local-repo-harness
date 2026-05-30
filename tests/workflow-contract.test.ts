@@ -73,6 +73,7 @@ describe("workflow contract manifest", () => {
     expect(contract.helpers.scripts).toContain("archive-architecture-request.sh");
     expect(contract.helpers.scripts).toContain("context-contract-sync.sh");
     expect(contract.helpers.scripts).toContain("workstream-sync.sh");
+    expect(contract.helpers.scripts).toContain("refresh-current-status.sh");
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("select-agent-context-blocks.sh");
@@ -99,7 +100,9 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capture-plan.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
+    expect(contract.artifacts.requiredFiles).toContain("tasks/current.md");
     expect(contract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
     expect(contract.artifacts.requiredFiles).not.toContain(".claude/settings.json");

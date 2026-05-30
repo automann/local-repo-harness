@@ -190,6 +190,10 @@ rm -f ".claude/.plan-state/${plan_key}.todo.md.bak"
 rm -f ".claude/.plan-state/${plan_key}.task-state.json.bak"
 rm -f ".claude/.plan-state/${plan_key}.task-handoff.md.bak"
 
+if [[ -x "scripts/refresh-current-status.sh" ]]; then
+  bash "scripts/refresh-current-status.sh" --clear --write --reason "archive-workflow" || true
+fi
+
 echo "Archived plan to: $archive_plan_path"
 if [[ -f "docs/reference-configs/handoff-protocol.md" ]]; then
   echo "Next: refresh or prune long-running workflow rules using docs/reference-configs/handoff-protocol.md"

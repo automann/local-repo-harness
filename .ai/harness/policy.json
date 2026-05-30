@@ -11,6 +11,7 @@
   },
   "tasks": {
     "todo_file": "tasks/todo.md",
+    "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "research_file": "tasks/research.md",
     "workstreams_dir": "tasks/workstreams",

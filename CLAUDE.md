@@ -4,9 +4,10 @@ This repository self-hosts the `repo-harness` contract, formerly `repo-harness-s
 
 ## Canonical Workflow Files
 
-- `tasks/todo.md` for the current execution checklist and verification notes
+- `tasks/current.md` for the tracked current-status snapshot derived from workflow artifacts
+- `tasks/todo.md` for deferred medium/long-term goals, not active execution checklists
 - `.ai/context/capabilities.json` for the capability registry and longest-prefix context boundaries
-- `tasks/workstreams/` for capability long-running workstreams that project the current slice into `tasks/todo.md`
+- `tasks/workstreams/` for capability long-running workstreams that project durable progress into local contracts
 - `tasks/lessons.md` for correction-derived rules
 - `tasks/research.md` for deep repo knowledge
 - `tasks/notes/` for task-local implementation decisions, deviations, tradeoffs, and open questions
@@ -86,5 +87,6 @@ bash scripts/migrate-project-template.sh --repo . --dry-run
 ## Current Session Projection
 
 - Durable progress lives under `tasks/workstreams/runtime-harness/hook-adapters`.
+- `tasks/current.md` is the tracked derived status snapshot; it is not a live lock or task source.
 - `tasks/todo.md` is the deferred-goal ledger; current execution slices stay in the active plan's `## Task Breakdown`.
 <!-- END ARCHITECTURE CONTRACT -->

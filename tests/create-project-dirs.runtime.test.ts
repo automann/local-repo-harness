@@ -141,6 +141,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
       expect(workflowContract.helpers.scripts).toContain("check-task-workflow.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
+      expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("select-agent-context-blocks.sh");
       expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-resolver.ts");
@@ -162,6 +163,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-worktree");
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
+      expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
+      expect(workflowContract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/capability-resolver.ts");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/architecture-event.ts");
