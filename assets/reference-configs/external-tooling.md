@@ -205,6 +205,20 @@ For this repo, do not treat `codegraph affected` as an authoritative test
 selector. Many tests execute scripts by path or subprocess rather than import
 edges, so run the repo verification commands instead.
 
+### Bash Output Evidence and RTK
+
+`repo-harness` treats Bash output as runtime evidence, not durable task state.
+`PostToolUse:Bash` records command metadata in `.ai/harness/checks/` and stores
+large or failed command output under ignored `.ai/harness/runs/bash-output/` with
+the byte count, SHA-256 digest, and relative evidence path.
+
+RTK can be useful as a user-level compression tool for noisy successful shell
+commands, but it is optional and advisory-only. Hooks may suggest `rtk` when it
+is already on `PATH`, the command is broad, and the command succeeded; hooks must
+not rewrite Bash commands, require RTK, or suggest compression for failed
+commands. Failed command output stays raw so test, build, and review evidence is
+not hidden by a compressor.
+
 ## Update
 
 ### gstack

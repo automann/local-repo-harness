@@ -3051,6 +3051,11 @@ describe("Hook runtime behavior", () => {
       expect(latest.source).toBe("verify-sprint");
       expect(postBash.source).toBe("post-bash");
       expect(postBash.command).toBe("git status --short");
+      expect(postBash.verbosity_class).toBe("inline");
+      expect(postBash.suggested_runner).toBe("inline");
+      expect(postBash.raw_output_path).toBeNull();
+      expect(postBash.raw_output_bytes).toBe(0);
+      expect(postBash.raw_output_sha256).toBeNull();
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -3074,6 +3079,12 @@ describe("Hook runtime behavior", () => {
       expect(broadJson.broad_command).toBe(true);
       expect(broadJson.output_line_count).toBe(2);
       expect(broadJson.recommended_next_tool).toBe("codegraph_context");
+      expect(broadJson.verbosity_class).toBe("inline");
+      expect(broadJson.suggested_runner).toBe("inline");
+      expect(broadJson.raw_output_path).toBeNull();
+      expect(broadJson.raw_output_bytes).toBe(Buffer.byteLength("src/a.ts:foo\nsrc/b.ts:foo\n"));
+      expect(broadJson.raw_output_sha256).toBeNull();
+      expect(typeof broadJson.rtk_available).toBe("boolean");
 
       const precise = runHook("post-bash.sh", cwd, {
         stdin: JSON.stringify({
@@ -3087,6 +3098,101 @@ describe("Hook runtime behavior", () => {
       expect(preciseJson.broad_command).toBe(false);
       expect(preciseJson.output_line_count).toBe(1);
       expect(preciseJson.recommended_next_tool).toBe("");
+      expect(preciseJson.verbosity_class).toBe("inline");
+      expect(preciseJson.suggested_runner).toBe("inline");
+      expect(preciseJson.failure_signal).toBe(false);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("post-bash: stores long output evidence and suggests RTK only as advisory", () => {
+    const cwd = tmpWorkspace("post-bash-long-output");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      const fakeBin = join(cwd, "fake-bin");
+      mkdirSync(fakeBin, { recursive: true });
+      writeFileSync(join(fakeBin, "rtk"), "#!/bin/sh\necho rtk-stub\n");
+      expect(run("chmod", ["+x", join(fakeBin, "rtk")], cwd).status).toBe(0);
+
+      const output = Array.from({ length: 201 }, (_, i) => `src/file${i}.ts:foo`).join("\n");
+      const res = runHook("post-bash.sh", cwd, {
+        stdin: JSON.stringify({
+          tool_input: { command: "rg foo" },
+          tool_output: output,
+          exit_code: 0,
+        }),
+        env: { PATH: `${fakeBin}:${process.env.PATH ?? ""}` },
+      });
+
+      expect(res.status).toBe(0);
+      const latest = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/latest.json"), "utf-8"));
+      expect(latest.broad_command).toBe(true);
+      expect(latest.output_line_count).toBe(201);
+      expect(latest.verbosity_class).toBe("long");
+      expect(latest.suggested_runner).toBe("rtk");
+      expect(latest.rtk_available).toBe(true);
+      expect(latest.raw_output_bytes).toBe(Buffer.byteLength(output));
+      expect(latest.raw_output_path).toMatch(/^\.ai\/harness\/runs\/bash-output\/post-bash-.+\.log$/);
+      expect(latest.raw_output_sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(readFileSync(join(cwd, latest.raw_output_path), "utf-8")).toBe(output);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("post-bash: preserves failed command output as raw evidence", () => {
+    const cwd = tmpWorkspace("post-bash-failure-output");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+
+      const output = "FAIL tests/hook-runtime.test.ts\nexpected pass\n";
+      const res = runHook("post-bash.sh", cwd, {
+        stdin: JSON.stringify({
+          tool_input: { command: "bun test tests/hook-runtime.test.ts" },
+          tool_output: output,
+          exit_code: 1,
+        }),
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("[PostBash] Tests failed");
+      const latest = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/latest.json"), "utf-8"));
+      expect(latest.status).toBe("fail");
+      expect(latest.verbosity_class).toBe("failure");
+      expect(latest.suggested_runner).toBe("raw");
+      expect(latest.failure_signal).toBe(true);
+      expect(latest.raw_output_path).toMatch(/^\.ai\/harness\/runs\/bash-output\/post-bash-.+\.log$/);
+      expect(readFileSync(join(cwd, latest.raw_output_path), "utf-8")).toBe(output);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("post-bash: failure signals do not turn successful commands into failures", () => {
+    const cwd = tmpWorkspace("post-bash-failure-signal");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+
+      const res = runHook("post-bash.sh", cwd, {
+        stdin: JSON.stringify({
+          tool_input: { command: "rg Traceback" },
+          tool_output: "docs/debug.md:Traceback appears in this example\n",
+          exit_code: 0,
+        }),
+        env: { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" },
+      });
+
+      expect(res.status).toBe(0);
+      const latest = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/latest.json"), "utf-8"));
+      expect(latest.status).toBe("pass");
+      expect(latest.verbosity_class).toBe("inline");
+      expect(latest.failure_signal).toBe(true);
+      expect(latest.suggested_runner).toBe("inline");
+      expect(latest.raw_output_path).toBeNull();
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

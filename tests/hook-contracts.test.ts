@@ -242,4 +242,22 @@ describe("Hook contracts", () => {
     expect(script).toContain('"run_id"');
     expect(script).toContain("session_state_resolve_key");
   });
+
+  test("post-bash should keep Bash output evidence additive and advisory-only", () => {
+    const script = read("assets/hooks/post-bash.sh");
+    expect(script).toContain("verbosity_class");
+    expect(script).toContain("suggested_runner");
+    expect(script).toContain("raw_output_path");
+    expect(script).toContain("raw_output_bytes");
+    expect(script).toContain("raw_output_sha256");
+    expect(script).toContain("failure_signal");
+    expect(script).toContain("rtk_available");
+    expect(script).toContain("workflow_runs_dir");
+    expect(script).toContain("bash-output");
+    expect(script).toContain("command -v rtk");
+    expect(script).toContain("recommended_next_tool");
+    expect(script).toContain("codegraph_context");
+    expect(script).not.toContain("rtk $COMMAND_TEXT");
+    expect(script).not.toContain("exec rtk");
+  });
 });

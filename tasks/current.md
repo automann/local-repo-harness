@@ -1,27 +1,27 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-05-30T15:55:24+0800 -->
+<!-- updated_at: 2026-05-30T20:32:56+0800 -->
 <!-- stale_after: 24h -->
 
-> **Status**: ManualClearedWithActiveWork
-> **Updated At**: 2026-05-30T15:55:24+0800
-> **Source Branch**: codex/think-users-ancienttwo-agents-skillsthink-skill-md
-> **Source Commit**: 9d2f713
+> **Status**: Active
+> **Updated At**: 2026-05-30T20:32:56+0800
+> **Source Branch**: main
+> **Source Commit**: 654601a
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: archive-workflow
+> **Reason**: rtk-aware-bash-evidence
 > **Derived From**: active-plan, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
 
 ## Current Focus
 
-- Status: ManualClearedWithActiveWork
+- Status: Active
 - Active Plan: (none)
 - Plan Status: (none)
 - Next Task: inspect active worktree marker(s)
-- Clear Note: Manual clear requested, but active work markers still exist. Idle was not written.
+- Clear Note: (none)
 
 ## Mainline Snapshot Reading
 
@@ -40,7 +40,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 - `tasks/workstreams/workflow-engine/contract-assets/cleanup-script-policy.md`: status=completed, current_slice=todo-01, source_plan=(none)
 ## Handoff
 
-- Exact Next Step: External acceptance section is missing from tasks/reviews/think-users-ancienttwo-agents-skillsthink-skill-md.review.md. Run external acceptance via codex-review and record ## External Acceptance Advice in tasks/reviews/think-users-ancienttwo-agents-skillsthink-skill-md.review.md. Command: /check
+- Exact Next Step: Clean up merged contract worktree codex/readme-acknowledgements. Command: bash scripts/contract-worktree.sh cleanup --slug readme-acknowledgements --target main
 
 ## Checks
 
@@ -48,24 +48,18 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 15 changed/untracked path(s)
+- Summary: 9 changed/untracked path(s)
 
 ```
- M .ai/hooks/lib/session-state.sh
  M .ai/hooks/post-bash.sh
- M .ai/hooks/prompt-guard.sh
- M .ai/hooks/trace-event.sh
- M assets/hooks/lib/session-state.sh
  M assets/hooks/post-bash.sh
- M assets/hooks/prompt-guard.sh
- M assets/hooks/trace-event.sh
- M tasks/contracts/think-users-ancienttwo-agents-skillsthink-skill-md.contract.md
- M tasks/reviews/think-users-ancienttwo-agents-skillsthink-skill-md.review.md
+ M assets/reference-configs/external-tooling.md
+ M docs/reference-configs/external-tooling.md
+ M tasks/current.md
+ M tests/hook-contracts.test.ts
  M tests/hook-runtime.test.ts
-?? plans/archive/plan-20260530-1529-think-users-ancienttwo-agents-skillsthink-skill-md.md
-?? tasks/.current.md.tmp.7YMgOX
-?? tasks/archive/notes-20260530-1555-think-users-ancienttwo-agents-skillsthink-skill-md.md
-?? tasks/archive/todo-20260530-1555-think-users-ancienttwo-agents-skillsthink-skill-md.md
+?? plans/plan-20260530-2005-think-headroom-caveman-codegraph-cbm.md
+?? tasks/.current.md.tmp.IFpkBa
 ```
 
 ## Source Artifacts
