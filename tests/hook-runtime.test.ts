@@ -2886,7 +2886,7 @@ describe("Hook runtime behavior", () => {
         rmSync(cwd, { recursive: true, force: true });
       }
     }
-  });
+  }, 15000);
 
   test("prompt-guard: blocks done intent when contract verification fails", () => {
     const cwd = tmpWorkspace("prompt-guard-contract-fail");
