@@ -112,10 +112,10 @@ npx -y repo-harness init
 ```
 
 npm package release line 是 `0.1.x`；生成的 workflow compatibility model line
-单独以 `5.x` 追踪。`repo-harness@0.1.3` 发布的是改名后的 CLI、Claude/Codex
+单独以 `5.x` 追踪。`repo-harness@0.1.4` 发布的是改名后的 CLI、Claude/Codex
 user-level hook adapter bootstrap、AI-native scaffold overlays、typed prompt-guard
-decision engine、Waza runtime skill sync、`diagram-design` sync，以及 maintainer
-发布 npm 前使用的 release gate。
+decision engine、plan-stem task artifact 命名、Waza runtime skill sync、
+`diagram-design` sync，以及 maintainer 发布 npm 前使用的 release gate。
 
 如果从源码 checkout 工作：
 
@@ -235,7 +235,7 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 
 ## 当前 Release
 
-- npm package：`repo-harness@0.1.3`
+- npm package：`repo-harness@0.1.4`
 - Generated workflow compatibility：`5.2.3`
 - GitHub repository：`Ancienttwo/repo-harness`
 - Release history：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)

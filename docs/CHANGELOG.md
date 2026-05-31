@@ -4,6 +4,8 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-31
+
 ### Changed
 
 - Switched generated plan task artifacts from slug-only names to the active plan stem (`YYYYMMDD-HHMM-<slug>`) for `tasks/contracts/`, `tasks/reviews/`, and `tasks/notes/`.
