@@ -27,6 +27,34 @@ normalize_slug() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g'
 }
 
+is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+artifact_stem_for_capture() {
+  local plan_file="$1"
+  local slug="$2"
+  local title="$3"
+  local stem stamp title_slug
+
+  stem="$(basename "$plan_file" .md | sed -E 's/^plan-//')"
+  if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]] && is_transient_plan_slug "$slug"; then
+    title_slug="$(normalize_slug "$title")"
+    if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+      stamp="$(printf '%s' "$stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+      printf '%s-%s' "$stamp" "$title_slug"
+      return 0
+    fi
+  fi
+
+  printf '%s' "$stem"
+}
+
 ACTIVE_PLAN_MARKER=".ai/harness/active-plan"
 LEGACY_ACTIVE_PLAN_MARKER=".claude/.active-plan"
 ACTIVE_WORKTREE_MARKER=".ai/harness/active-worktree"
@@ -180,7 +208,7 @@ while [[ -f "$plan_file" ]]; do
   plan_file="plans/plan-${timestamp}-${slug}-v${counter}.md"
   counter=$((counter + 1))
 done
-artifact_stem="$(basename "$plan_file" .md | sed -E 's/^plan-//')"
+artifact_stem="$(artifact_stem_for_capture "$plan_file" "$slug" "$title")"
 
 tasks="$(extract_task_breakdown "$body" || true)"
 if [[ -z "$tasks" ]]; then

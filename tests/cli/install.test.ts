@@ -32,6 +32,8 @@ describe('install command (Phase 1B)', () => {
       expect(result.exitCode).toBe(0);
       const filePath = path.join(home, '.codex/hooks.json');
       expect(fs.existsSync(filePath)).toBe(true);
+      const tomlPath = path.join(home, '.codex/config.toml');
+      expect(fs.readFileSync(tomlPath, 'utf-8')).toContain('default_mode_request_user_input = true');
 
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       const entries = data.hooks;
@@ -80,6 +82,31 @@ describe('install command (Phase 1B)', () => {
       const second = runInstall({ target: 'codex', location: 'global' });
       expect(second.exitCode).toBe(0);
       expect(second.lines.some((l) => l.includes('unchanged'))).toBe(true);
+    });
+  });
+
+  test('codex install updates existing config.toml to enable request-user-input popups', () => {
+    withTempHome((home) => {
+      const tomlPath = path.join(home, '.codex/config.toml');
+      fs.mkdirSync(path.dirname(tomlPath), { recursive: true });
+      fs.writeFileSync(
+        tomlPath,
+        [
+          'model = "gpt-5"',
+          'default_mode_request_user_input = false',
+          '',
+          '[features]',
+          'hooks = true',
+          '',
+        ].join('\n'),
+      );
+
+      const result = runInstall({ target: 'codex', location: 'global' });
+      expect(result.exitCode).toBe(0);
+      const config = fs.readFileSync(tomlPath, 'utf-8');
+      expect(config).toContain('default_mode_request_user_input = true');
+      expect(config).not.toContain('default_mode_request_user_input = false');
+      expect(config).toContain('[features]');
     });
   });
 

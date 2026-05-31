@@ -108,12 +108,58 @@ plan_slug_from_path() {
   printf '%s' "$slug"
 }
 
-plan_artifact_stem_from_path() {
+plan_original_artifact_stem_from_path() {
   local plan_file="$1"
   local base stem
   base="$(basename "$plan_file")"
   stem="$(printf '%s' "$base" | sed -E 's/^plan-//; s/\.md$//')"
   if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    printf '%s' "$stem"
+  else
+    plan_slug_from_path "$plan_file"
+  fi
+}
+
+is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+plan_title_slug_from_file() {
+  local plan_file="$1"
+  local title slug
+  [[ -f "$plan_file" ]] || return 1
+  title="$(awk '
+    /^# Plan:[[:space:]]*/ {
+      sub(/^# Plan:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$plan_file" | xargs)"
+  [[ -n "$title" ]] || return 1
+  slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g')"
+  [[ -n "$slug" ]] || return 1
+  printf '%s' "$slug"
+}
+
+plan_artifact_stem_from_path() {
+  local plan_file="$1"
+  local stem stamp slug title_slug
+  stem="$(plan_original_artifact_stem_from_path "$plan_file")"
+  if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    stamp="$(printf '%s' "$stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+    slug="$(printf '%s' "$stem" | sed -E 's/^[0-9]{8}-[0-9]{4}-//')"
+    if is_transient_plan_slug "$slug"; then
+      title_slug="$(plan_title_slug_from_file "$plan_file" || true)"
+      if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+        printf '%s-%s' "$stamp" "$title_slug"
+        return 0
+      fi
+    fi
     printf '%s' "$stem"
   else
     plan_slug_from_path "$plan_file"
@@ -180,6 +226,10 @@ cat > "$resume_file" <<EOF_RESUME
 ## Resume Prompt
 
 You are starting a fresh Codex session for an existing long-running task. Do not rely on prior chat history or Codex auto-compact. First read the source artifacts listed below, then continue from the exact next step in the repo handoff.
+
+Current prompt files first:
+- If the current user message lists files under \`# Files mentioned by the user\`, references \`pasted-text.txt\`, or includes an explicit attachment/file path, read those current-input files before the repo recovery artifacts below.
+- Use handoff, resume, and \`tasks/current.md\` as recovery context only; they do not outrank the current user message.
 
 Required first reads:
 - AGENTS.md

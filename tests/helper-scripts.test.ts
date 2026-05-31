@@ -323,6 +323,53 @@ describe("Workflow helper scripts", () => {
     }
   });
 
+  test("capture-plan should name transient plan artifacts from the task title", () => {
+    const cwd = tmpWorkspace("helper-capture-transient-artifact-name");
+    try {
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      copyHelpers(cwd);
+      writeFileSync(
+        join(cwd, "captured.md"),
+        [
+          "## Approved design summary",
+          "- Building: batch digest repository",
+          "- Verification: helper tests",
+          "",
+          "## Task Breakdown",
+          "- [ ] Add repository path",
+        ].join("\n")
+      );
+
+      const res = run("bash", [
+        "scripts/capture-plan.sh",
+        "--slug",
+        "think-plan-224448",
+        "--title",
+        "Batch Digest Repository",
+        "--source",
+        "waza-think",
+        "--body-file",
+        "captured.md",
+      ], cwd);
+
+      expect(res.status).toBe(0);
+      const planName = readdirSync(join(cwd, "plans")).find((name) =>
+        /^plan-\d{8}-\d{4}-think-plan-224448\.md$/.test(name)
+      );
+      expect(planName).toBeDefined();
+      const timestampStem = planName!.match(/^plan-(\d{8}-\d{4})-/)![1];
+      const semanticStem = `${timestampStem}-batch-digest-repository`;
+      const transientStem = planName!.replace(/^plan-/, "").replace(/\.md$/, "");
+      const plan = readFileSync(join(cwd, "plans", planName!), "utf-8");
+      expect(plan).toContain(`tasks/contracts/${semanticStem}.contract.md`);
+      expect(plan).toContain(`tasks/reviews/${semanticStem}.review.md`);
+      expect(plan).toContain(`tasks/notes/${semanticStem}.notes.md`);
+      expect(plan).not.toContain(`tasks/contracts/${transientStem}.contract.md`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("switch-plan should prefer the host-neutral marker and mirror legacy marker", () => {
     const cwd = tmpWorkspace("helper-switch-plan-active-marker");
     try {
@@ -616,6 +663,57 @@ describe("Workflow helper scripts", () => {
       const updatedPlan = readFileSync(planFile, "utf-8");
       expect(updatedPlan).toContain("**Status**: Executing");
       expect(existsSync(join(cwd, ".ai/harness/planning/pending.json"))).toBe(false);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("plan-to-todo should name transient plan artifacts from the task title", () => {
+    const cwd = tmpWorkspace("helper-plan-to-todo-transient-artifact-name");
+    try {
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      mkdirSync(join(cwd, "tasks/archive"), { recursive: true });
+      copyHelpers(cwd);
+
+      const planFile = join(cwd, "plans/plan-20260304-1400-think-plan-224448.md");
+      writeFileSync(
+        planFile,
+        [
+          "# Plan: Batch Digest Repository",
+          "",
+          "> **Status**: Approved",
+          "> **Sprint Contract**: `tasks/contracts/20260304-1400-think-plan-224448.contract.md`",
+          "> **Sprint Review**: `tasks/reviews/20260304-1400-think-plan-224448.review.md`",
+          "> **Implementation Notes**: `tasks/notes/20260304-1400-think-plan-224448.notes.md`",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Step one",
+          "",
+          "## Task Contracts",
+          "- Contract file: `tasks/contracts/20260304-1400-think-plan-224448.contract.md`",
+          "- Review file: `tasks/reviews/20260304-1400-think-plan-224448.review.md`",
+          "- Implementation notes file: `tasks/notes/20260304-1400-think-plan-224448.notes.md`",
+        ].join("\n")
+      );
+
+      const res = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1400-think-plan-224448.md"], cwd);
+      expect(res.status).toBe(0);
+
+      const semanticStem = "20260304-1400-batch-digest-repository";
+      const transientStem = "20260304-1400-think-plan-224448";
+      expect(existsSync(join(cwd, `tasks/contracts/${semanticStem}.contract.md`))).toBe(true);
+      expect(existsSync(join(cwd, `tasks/reviews/${semanticStem}.review.md`))).toBe(true);
+      expect(existsSync(join(cwd, `tasks/notes/${semanticStem}.notes.md`))).toBe(true);
+      expect(existsSync(join(cwd, `tasks/contracts/${transientStem}.contract.md`))).toBe(false);
+
+      const updatedPlan = readFileSync(planFile, "utf-8");
+      expect(updatedPlan).toContain(`tasks/contracts/${semanticStem}.contract.md`);
+      expect(updatedPlan).toContain(`tasks/reviews/${semanticStem}.review.md`);
+      expect(updatedPlan).toContain(`tasks/notes/${semanticStem}.notes.md`);
+      expect(updatedPlan).not.toContain(`tasks/contracts/${transientStem}.contract.md`);
+      expect(updatedPlan).toContain("**Status**: Executing");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -1905,11 +2003,17 @@ describe("Workflow helper scripts", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("fresh Codex session");
+      expect(res.stdout).toContain("Current prompt files first:");
+      expect(res.stdout).toContain("# Files mentioned by the user");
+      expect(res.stdout).toContain("pasted-text.txt");
       expect(res.stdout).toContain("Required first reads:");
+      expect(res.stdout.indexOf("Current prompt files first:") < res.stdout.indexOf("Required first reads:")).toBe(true);
       const resume = readFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "utf-8");
       expect(resume).toContain("**Reason**: unit-test");
       expect(resume).toContain(`**Working Directory**: ${cwd}`);
       expect(resume).toContain("generated-by: repo-harness codex-handoff-resume v1");
+      expect(resume).toContain("Current prompt files first:");
+      expect(resume.indexOf("Current prompt files first:") < resume.indexOf("Required first reads:")).toBe(true);
       expect(resume).toContain(".ai/harness/context-budget/latest.json");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

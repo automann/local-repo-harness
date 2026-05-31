@@ -218,6 +218,7 @@ describe("workflow contract manifest", () => {
     expect(gitignore).toContain(".ai/harness/checks/latest.json");
     expect(gitignore).toContain(".ai/harness/handoff/current.md");
     expect(gitignore).toContain(".ai/harness/planning/");
+    expect(gitignore).toContain("!.ai/harness/planning/.gitkeep");
     expect(gitignore).toContain(".ai/harness/worktrees/");
   });
 });

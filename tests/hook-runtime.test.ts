@@ -1035,6 +1035,11 @@ describe("Hook runtime behavior", () => {
       expect(res.stdout).toContain("SessionStart");
       expect(res.stdout).toContain("additionalContext");
       expect(res.stdout).toContain("fresh Codex session");
+      expect(res.stdout).toContain("Input Priority");
+      expect(res.stdout).toContain("# Files mentioned by the user");
+      expect(res.stdout).toContain("pasted-text.txt");
+      expect(res.stdout.indexOf("Input Priority") >= 0).toBe(true);
+      expect(res.stdout.indexOf("Input Priority") < res.stdout.indexOf("fresh Codex session")).toBe(true);
       expect(res.stdout).toContain("[CrossReview]");
       expect(res.stdout).toContain("/claude-review");
       expect(res.stdout).toContain("worth the tokens");
@@ -1143,6 +1148,8 @@ describe("Hook runtime behavior", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("Pending Plan Capture");
+      expect(res.stdout).toContain("Input Priority");
+      expect(res.stdout.indexOf("Input Priority") < res.stdout.indexOf("Pending Plan Capture")).toBe(true);
       expect(res.stdout).toContain("dynamic-workflow");
       expect(res.stdout).toContain("capture-plan.sh");
       expect(res.stdout).toContain("do not edit implementation files");
@@ -1177,6 +1184,8 @@ describe("Hook runtime behavior", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("Current Status Snapshot");
+      expect(res.stdout).toContain("Input Priority");
+      expect(res.stdout.indexOf("Input Priority") < res.stdout.indexOf("Current Status Snapshot")).toBe(true);
       expect(res.stdout).toContain("git show main:tasks/current.md");
       expect(res.stdout).toContain("Target snapshot metadata: status=Active");
     } finally {

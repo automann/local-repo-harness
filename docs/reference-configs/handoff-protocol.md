@@ -25,13 +25,14 @@ Handoffs make long-running work resumable without trusting chat history.
 ## Restore Flow
 
 1. Start a fresh Codex session instead of relying on auto-compact or `codex resume` when the old session is near the limit.
-2. Read `.ai/harness/handoff/resume.md`.
-3. Read `.ai/harness/handoff/current.md`.
-4. Read `tasks/current.md` as an orientation snapshot only; in a non-target worktree, compare it with `git show <target>:tasks/current.md`.
-5. Read the active plan and sprint contract.
-6. Read the latest review file if one exists.
-7. Read `.ai/harness/checks/latest.json` and `.ai/harness/context-budget/latest.json`.
-8. Resume from the exact next step.
+2. If the current user message lists files under `# Files mentioned by the user`, references `pasted-text.txt`, or includes an explicit attachment/file path, read those current-input files before repo recovery artifacts.
+3. Read `.ai/harness/handoff/resume.md`.
+4. Read `.ai/harness/handoff/current.md`.
+5. Read `tasks/current.md` as an orientation snapshot only; in a non-target worktree, compare it with `git show <target>:tasks/current.md`.
+6. Read the active plan and sprint contract.
+7. Read the latest review file if one exists.
+8. Read `.ai/harness/checks/latest.json` and `.ai/harness/context-budget/latest.json`.
+9. Resume from the exact next step.
 
 ## Context Budget Policy
 

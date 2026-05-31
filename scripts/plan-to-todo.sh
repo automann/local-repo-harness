@@ -93,12 +93,58 @@ plan_slug_from_path() {
   printf '%s' "$slug"
 }
 
-plan_artifact_stem_from_path() {
+plan_original_artifact_stem_from_path() {
   local plan_file="$1"
   local base stem
   base="$(basename "$plan_file")"
   stem="$(printf '%s' "$base" | sed -E 's/^plan-//; s/\.md$//')"
   if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    printf '%s' "$stem"
+  else
+    plan_slug_from_path "$plan_file"
+  fi
+}
+
+is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+plan_title_slug_from_file() {
+  local plan_file="$1"
+  local title slug
+  [[ -f "$plan_file" ]] || return 1
+  title="$(awk '
+    /^# Plan:[[:space:]]*/ {
+      sub(/^# Plan:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$plan_file" | xargs)"
+  [[ -n "$title" ]] || return 1
+  slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g')"
+  [[ -n "$slug" ]] || return 1
+  printf '%s' "$slug"
+}
+
+plan_artifact_stem_from_path() {
+  local plan_file="$1"
+  local stem stamp slug title_slug
+  stem="$(plan_original_artifact_stem_from_path "$plan_file")"
+  if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    stamp="$(printf '%s' "$stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+    slug="$(printf '%s' "$stem" | sed -E 's/^[0-9]{8}-[0-9]{4}-//')"
+    if is_transient_plan_slug "$slug"; then
+      title_slug="$(plan_title_slug_from_file "$plan_file" || true)"
+      if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+        printf '%s-%s' "$stamp" "$title_slug"
+        return 0
+      fi
+    fi
     printf '%s' "$stem"
   else
     plan_slug_from_path "$plan_file"
@@ -191,6 +237,23 @@ unique_archive_path() {
     candidate="${stem}-v${counter}.md"
   done
   printf '%s' "$candidate"
+}
+
+rewrite_plan_artifact_references() {
+  local plan_file="$1"
+  local from_stem="$2"
+  local to_stem="$3"
+  local tmp_file
+
+  [[ -n "$from_stem" && -n "$to_stem" && "$from_stem" != "$to_stem" ]] || return 0
+
+  tmp_file="$(mktemp)"
+  sed \
+    -e "s|tasks/contracts/${from_stem}\\.contract\\.md|tasks/contracts/${to_stem}.contract.md|g" \
+    -e "s|tasks/reviews/${from_stem}\\.review\\.md|tasks/reviews/${to_stem}.review.md|g" \
+    -e "s|tasks/notes/${from_stem}\\.notes\\.md|tasks/notes/${to_stem}.notes.md|g" \
+    "$plan_file" > "$tmp_file"
+  mv "$tmp_file" "$plan_file"
 }
 
 render_contract_file() {
@@ -500,6 +563,7 @@ timestamp="$(date +%Y%m%d-%H%M)"
 timestamp_human="$(date '+%Y-%m-%d %H:%M')"
 plan_base="$(basename "$plan_file")"
 slug="$(plan_slug_from_path "$plan_file")"
+original_artifact_stem="$(plan_original_artifact_stem_from_path "$plan_file")"
 artifact_stem="$(plan_artifact_stem_from_path "$plan_file")"
 contract_file="tasks/contracts/${artifact_stem}.contract.md"
 review_file="tasks/reviews/${artifact_stem}.review.md"
@@ -508,6 +572,8 @@ previous_source_plan="$(get_todo_source_plan || true)"
 parent_run_id="${HOOK_RUN_ID:-${CLAUDE_RUN_ID:-${CODEX_RUN_ID:-run-${timestamp}}}}"
 capability_id="$(extract_capability_id "$plan_file")"
 capability_id="${capability_id:-root}"
+
+rewrite_plan_artifact_references "$plan_file" "$original_artifact_stem" "$artifact_stem"
 
 if [[ -f "tasks/todo.md" ]] \
   && grep -q '[^[:space:]]' tasks/todo.md \

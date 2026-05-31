@@ -257,6 +257,14 @@ EOF_CONTEXT
   fi
 }
 
+input_priority_context() {
+  cat <<'EOF_CONTEXT'
+# Input Priority
+
+If the current user message mentions `# Files mentioned by the user`, `pasted-text.txt`, or an explicit attachment/file path, read those current-input files first. Treat handoff, resume, and `tasks/current.md` as recovery context only.
+EOF_CONTEXT
+}
+
 context=""
 if resume_current_for_handoff; then
   if context_budget_active \
@@ -294,6 +302,10 @@ if [[ -n "$current_status_context" ]]; then
   else
     context="$current_status_context"
   fi
+fi
+
+if [[ -n "$context" ]]; then
+  context="$(input_priority_context)"$'\n'"${context}"
 fi
 
 # Cross-review availability for Codex. The dispatcher swallows prompt-guard's

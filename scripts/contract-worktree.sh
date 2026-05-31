@@ -61,12 +61,58 @@ derive_slug_from_plan() {
   normalize_slug "${slug:-contract-task}"
 }
 
-derive_artifact_stem_from_plan() {
+derive_original_artifact_stem_from_plan() {
   local plan_file="$1"
   local plan_base stem
   plan_base="$(basename "$plan_file")"
   stem="$(printf '%s' "$plan_base" | sed -E 's/^plan-//; s/\.md$//')"
   if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    printf '%s' "$stem"
+  else
+    derive_slug_from_plan "$plan_file"
+  fi
+}
+
+is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+derive_title_slug_from_plan() {
+  local plan_file="$1"
+  local title slug
+  [[ -f "$plan_file" ]] || return 1
+  title="$(awk '
+    /^# Plan:[[:space:]]*/ {
+      sub(/^# Plan:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$plan_file" | xargs)"
+  [[ -n "$title" ]] || return 1
+  slug="$(normalize_slug "$title")"
+  [[ -n "$slug" ]] || return 1
+  printf '%s' "$slug"
+}
+
+derive_artifact_stem_from_plan() {
+  local plan_file="$1"
+  local stem stamp slug title_slug
+  stem="$(derive_original_artifact_stem_from_plan "$plan_file")"
+  if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    stamp="$(printf '%s' "$stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+    slug="$(printf '%s' "$stem" | sed -E 's/^[0-9]{8}-[0-9]{4}-//')"
+    if is_transient_plan_slug "$slug"; then
+      title_slug="$(derive_title_slug_from_plan "$plan_file" || true)"
+      if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+        printf '%s-%s' "$stamp" "$title_slug"
+        return 0
+      fi
+    fi
     printf '%s' "$stem"
   else
     derive_slug_from_plan "$plan_file"
