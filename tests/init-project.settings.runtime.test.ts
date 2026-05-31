@@ -15,7 +15,7 @@ describe("init-project settings runtime", () => {
         [
           "-lc",
           `
-            export PROJECT_INITIALIZER_SOURCE_ONLY=1
+            export REPO_HARNESS_SOURCE_ONLY=1
             source "${join(ROOT, "scripts/init-project.sh")}" demo vite-tanstack bun >/dev/null
             create_structure
           `,

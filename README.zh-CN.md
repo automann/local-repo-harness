@@ -264,7 +264,7 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 公共 command skill facades 在 `assets/skill-commands/`：
 
 - Planning / review：`repo-harness-plan`、`repo-harness-review`、`repo-harness-autoplan`
-- Repo workflow actions：`repo-harness-init`、`repo-harness-migrate`、`repo-harness-upgrade`、`repo-harness-capability`、`repo-harness-architecture`、`repo-harness-handoff`、`repo-harness-deploy`、`repo-harness-repair`、`repo-harness-check`
+- Repo workflow actions：`repo-harness-ship`、`repo-harness-init`、`repo-harness-migrate`、`repo-harness-upgrade`、`repo-harness-capability`、`repo-harness-architecture`、`repo-harness-handoff`、`repo-harness-deploy`、`repo-harness-repair`、`repo-harness-check`
 - Project creation：`repo-harness-scaffold`
 
 `repo-harness-init` 用于已有仓库；`repo-harness-scaffold` 用于创建新项目或模块。

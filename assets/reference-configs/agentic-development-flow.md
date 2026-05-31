@@ -24,7 +24,8 @@ migrating, repairing, or verifying this repo-local harness:
 |-----------|---------|----------|
 | Decision-complete harness plan | `repo-harness-plan` | Plans only; no repo mutation by default |
 | Review an existing harness plan | `repo-harness-review` | Product, engineering, design, and DevEx review dimensions |
-| Automatic planning pipeline | `repo-harness-autoplan` | Plan -> review -> decision summary with final gates only |
+| Automatic workflow pipeline | `repo-harness-autoplan` | Plan -> two self-review passes -> implementation -> `/check` -> `repo-harness-ship` |
+| Ship finished work | `repo-harness-ship` | Validates finished worktrees, pushes branches, and creates PRs by default |
 | Add harness to an existing repo | `repo-harness-init` | Uses inspector and migration engine; does not create an app stack |
 | Create a new app or module scaffold | `repo-harness-scaffold` | Uses plan catalog A-K, then attaches the harness |
 | Convert legacy workflow surfaces | `repo-harness-migrate` | Archives or preserves user-authored legacy docs |
@@ -61,7 +62,7 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 5. Approved plans must include `## Evidence Contract` with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before execution. `capture-plan.sh` supplies this contract for captured planning output.
 6. Convert approved plans to execution scaffolding with `scripts/plan-to-todo.sh --plan <plan>`; if approval is already explicit, use `scripts/capture-plan.sh --status Approved --execute ...`. The plan's own `## Task Breakdown` remains the execution checklist; `tasks/todo.md` remains a deferred-goal ledger. Contract-level plans are projected into a linked `codex/<slug>` worktree when the policy enables it.
 7. Use `scripts/refresh-current-status.sh` for an explicit `tasks/current.md` preview or `--write` snapshot. In non-target worktrees, `git show <target>:tasks/current.md` reads the mainline snapshot, but it never replaces source artifacts.
-8. After substantive changes, run project checks and record evidence in `tasks/`. For contract worktrees, run Waza `/check`, start host-aware external acceptance in parallel, fill the review artifact from both verdicts, then run `scripts/contract-worktree.sh finish`.
+8. After substantive changes, run project checks and record evidence in `tasks/`. For contract worktrees, run Waza `/check`, start host-aware external acceptance in parallel, fill the review artifact from both verdicts, then use `repo-harness-ship` for default PR closeout. It calls `scripts/contract-worktree.sh finish --no-merge`, pushes the `codex/<slug>` branch, and opens a draft PR. Use `repo-harness-ship --local-merge` only when an explicit maintainer workflow wants the older fast-forward merge and cleanup path.
 
 ## Passive Plan Capture
 

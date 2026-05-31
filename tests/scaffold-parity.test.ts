@@ -67,6 +67,7 @@ describe("create-project-dirs scaffold parity", () => {
         "./.ai/hooks/prompt-guard.sh",
         "./.ai/hooks/run-hook.sh",
         "./.ai/hooks/session-start-context.sh",
+        "./.ai/hooks/stop-orchestrator.sh",
         "./.ai/hooks/tdd-guard-hook.sh",
         "./.ai/hooks/trace-event.sh",
         "./.ai/hooks/worktree-guard.sh",
@@ -135,6 +136,7 @@ describe("create-project-dirs scaffold parity", () => {
         "./scripts/refresh-current-status.sh",
         "./scripts/regenerate.sh",
         "./scripts/select-agent-context-blocks.sh",
+        "./scripts/ship-worktrees.sh",
         "./scripts/summarize-failures.sh",
         "./scripts/switch-plan.sh",
         "./scripts/sync-brain-docs.sh",
@@ -151,7 +153,7 @@ describe("create-project-dirs scaffold parity", () => {
       ]);
 
       const gitignore = readFileSync(join(cwd, ".gitignore"), "utf-8");
-      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
+      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");
       expect(gitignore).not.toContain("!.codex/hooks.json");
@@ -184,12 +186,18 @@ describe("create-project-dirs scaffold parity", () => {
         join(ROOT, "assets/project-structures/ai-native-product-copilot.txt"),
         "utf-8"
       );
+      const collaborativeEditor = readFileSync(
+        join(ROOT, "assets/project-structures/ai-native-collaborative-editor.txt"),
+        "utf-8"
+      );
       const sidecarKernel = readFileSync(
         join(ROOT, "assets/project-structures/ai-native-sidecar-kernel.txt"),
         "utf-8"
       );
       expect(runtimeConsole).toContain("Bun/Hono");
       expect(productCopilot).toContain("business action");
+      expect(collaborativeEditor).toContain("Plate");
+      expect(collaborativeEditor).toContain("Loro");
       expect(sidecarKernel).toContain("MCP/HTTP");
       expect(agents).not.toContain("AI-native Runtime Console Overlay");
     } finally {

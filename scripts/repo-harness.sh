@@ -35,7 +35,7 @@
 #                    → trace-event.sh (no matcher, all tools)
 #                    → context-pressure-hook.sh (no matcher, all tools)
 #   UserPromptSubmit → prompt-guard.sh + autoresearch-advisory.sh
-#   Stop             → finalize-handoff.sh
+#   Stop             → stop-orchestrator.sh
 
 set -euo pipefail
 
@@ -93,7 +93,7 @@ build_hooks_json() {
   ],
   "Stop": [
     { "hooks": [
-        { "type": "command", "command": "bash ${SHIM_PATH} finalize-handoff.sh" }
+        { "type": "command", "command": "bash ${SHIM_PATH} stop-orchestrator.sh" }
     ]}
   ]
 }

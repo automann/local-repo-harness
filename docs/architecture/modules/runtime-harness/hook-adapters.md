@@ -82,7 +82,8 @@ flowchart TD
     Route -->|unknown| Exit2["exit 2 unknown route"]
     Route -->|ok| Spawn["spawn bash .ai/hooks/SCRIPT<br/>set HOOK_REPO_ROOT"]
     Spawn --> Quiet{"HOOK_HOST=codex and event != SessionStart?"}
-    Quiet -->|yes| QuietStdout["stdout piped/emptied on success<br/>failure stdout moved to stderr"]
+    Quiet -->|Stop decision JSON| StopDecision["forward decision JSON<br/>suppress success stderr"]
+    Quiet -->|other success stdout| QuietStdout["stdout piped/emptied on success<br/>failure stdout moved to stderr"]
     Quiet -->|no| Inherit["stdio inherited"]
   end
 
@@ -108,7 +109,7 @@ flowchart TD
     Prompt --> PromptGuard["prompt-guard.sh"]
 
     Route --> Stop["Stop.default"]
-    Stop --> Finalize["finalize-handoff.sh"]
+    Stop --> StopOrchestrator["stop-orchestrator.sh"]
   end
 
   subgraph Shared["Shared Hook Libraries"]
@@ -133,7 +134,8 @@ flowchart TD
   Pressure -. uses .-> Workflow
   PromptGuard -. uses .-> Input
   PromptGuard -. uses .-> Workflow
-  Finalize -. uses .-> Workflow
+  StopOrchestrator -. uses .-> Input
+  StopOrchestrator -. uses .-> Workflow
 
   subgraph Effects["Side Effects / Outputs"]
     SSC --> AddCtx["SessionStart additionalContext JSON"]
@@ -147,7 +149,8 @@ flowchart TD
     Pressure --> Budget["context-budget + handoff on orange/red"]
     PromptGuard --> PlanGate["plan start/capture/execution/done/archive gates"]
     PromptGuard --> Hints["Waza / CodeGraph / CrossReview / TDD / BDD hints"]
-    Finalize --> StopHandoff["workflow_write_handoff(session-stop)"]
+    StopOrchestrator --> StopHandoff["workflow_write_handoff(session-stop)"]
+    StopOrchestrator --> Completeness["one-shot pending plan completeness Stop block"]
   end
 
   subgraph Compat["Legacy / Template Compatibility"]

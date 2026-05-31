@@ -20,10 +20,17 @@
     },
     {
       "name": "repo-harness-autoplan",
-      "class": "automated-planning",
-      "mutatesRepoByDefault": false,
-      "engine": "plan then review then decision summary",
-      "summary": "Runs the full planning and review pipeline automatically, surfacing only final decision gates."
+      "class": "automated-workflow",
+      "mutatesRepoByDefault": true,
+      "engine": "plan, two self-review passes, execution, check, then repo-harness-ship",
+      "summary": "Runs the full repo-harness workflow automatically and delegates final PR closeout to repo-harness-ship."
+    },
+    {
+      "name": "repo-harness-ship",
+      "class": "ship-closeout",
+      "mutatesRepoByDefault": true,
+      "engine": "ship-worktrees default PR mode",
+      "summary": "Validates finished worktrees, commits through finish --no-merge, pushes branches, and creates GitHub PRs by default."
     },
     {
       "name": "repo-harness-init",

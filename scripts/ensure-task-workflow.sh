@@ -612,7 +612,8 @@ ARCHITECTURE_INDEX_EOF
     "functional_block_selector": {
       "script": "scripts/select-agent-context-blocks.sh",
       "config_file": ".ai/context/agent-context-blocks.txt",
-      "env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
+      "env": "REPO_HARNESS_CONTEXT_BLOCKS",
+      "legacy_env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
       "rule": "compatibility selector; capability registry is the source of truth"
     }
   },
@@ -889,7 +890,8 @@ BRAIN_MANIFEST_EOF
   "functional_block_selector": {
     "script": "scripts/select-agent-context-blocks.sh",
     "config_file": ".ai/context/agent-context-blocks.txt",
-    "env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
+    "env": "REPO_HARNESS_CONTEXT_BLOCKS",
+    "legacy_env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
     "rule": "compatibility selector; capability registry is the source of truth"
   },
   "lsp_profiles": {

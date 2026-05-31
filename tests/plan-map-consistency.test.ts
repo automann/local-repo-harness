@@ -31,6 +31,7 @@ describe("Plan map consistency", () => {
     expect(planCodes).not.toContain("L");
     expect(overlayDefaults.C?.defaultProfile).toBe("none");
     expect(overlayDefaults.C?.recommendedProfiles).toContain("runtime-console");
+    expect(overlayDefaults.C?.recommendedProfiles).toContain("collaborative-editor");
     expect(overlayDefaults.D?.recommendedProfiles).toContain("sidecar-kernel");
     expect(overlayDefaults.E?.recommendedProfiles).toContain("product-copilot");
   });

@@ -22,6 +22,11 @@ mark the user-level hook config as trusted; otherwise Codex will not execute it.
 Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are
 legacy project-level config and should be retired during migration.
 
+`Stop.default` routes through `stop-orchestrator.sh`. On Codex, dispatcher
+stdout stays quiet for ordinary successful hooks, but valid Stop decision JSON
+is forwarded so Codex can honor a one-shot planning completeness block; success
+stderr such as handoff refresh noise remains suppressed.
+
 ## Hook Failure Playbook
 
 When a hook blocks work:

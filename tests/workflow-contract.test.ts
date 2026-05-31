@@ -63,6 +63,7 @@ describe("workflow contract manifest", () => {
   test("helper inventory should come from the workflow contract", () => {
     const contract = loadWorkflowContract(join(ROOT, "assets/workflow-contract.v1.json"));
     expect(contract.helpers.scripts).toContain("contract-worktree.sh");
+    expect(contract.helpers.scripts).toContain("ship-worktrees.sh");
     expect(contract.helpers.scripts).toContain("capture-plan.sh");
     expect(contract.helpers.scripts).toContain("switch-plan.sh");
     expect(contract.helpers.scripts).toContain("context-budget.ts");
@@ -99,6 +100,7 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).toContain("scripts/architecture-event.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/ship-worktrees.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capture-plan.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");

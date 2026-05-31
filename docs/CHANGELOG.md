@@ -4,6 +4,11 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Added `REPO_HARNESS_*` environment variable aliases for scaffold, migration, context-block selection, external-tooling checks, and contract-worktree controls while preserving `PROJECT_INITIALIZER_*` as legacy fallbacks.
+- Switched new runtime `.gitignore` and Codex resume generated markers to `repo-harness` while keeping dual-read compatibility for legacy `project-initializer` markers.
+
 ## [0.1.4] - 2026-05-31
 
 ### Changed

@@ -389,6 +389,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
       expect(workflowContract.helpers.scripts).toContain("switch-plan.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
+      expect(workflowContract.helpers.scripts).toContain("ship-worktrees.sh");
       expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("check-context-files.sh");
       expect(workflowContract.helpers.scripts).toContain("maintenance-triage.sh");
@@ -399,6 +400,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("archive-architecture-request.sh");
       expect(workflowContract.helpers.scripts).toContain("workstream-sync.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
+      expect(workflowContract.artifacts.requiredFiles).toContain("scripts/ship-worktrees.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/worktrees");
@@ -432,7 +434,7 @@ describe("Migration script contract", () => {
       expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");
 
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
-      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
+      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
       expect(gitignore).toContain(".ai/harness/active-plan");
       expect(gitignore).toContain(".ai/harness/active-worktree");
       expect(gitignore).toContain(".ai/harness/planning/");
@@ -707,7 +709,8 @@ describe("Migration script contract", () => {
 
       expect(res.status).toBe(0);
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
-      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
+      expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
+      expect(gitignore).not.toContain("# BEGIN: claude-runtime-temp (managed by project-initializer)");
       expect(gitignore).toContain(".claude/.task-state.json");
       expect(gitignore).toContain(".ai/harness/active-plan");
       expect(gitignore).toContain(".ai/harness/active-worktree");
@@ -877,7 +880,7 @@ describe("Migration script contract", () => {
           encoding: "utf-8",
           env: {
             ...process.env,
-            PROJECT_INITIALIZER_JQ_BIN: "/nonexistent/jq",
+            REPO_HARNESS_JQ_BIN: "/nonexistent/jq",
           },
         }
       );

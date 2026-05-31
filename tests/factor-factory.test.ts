@@ -27,7 +27,7 @@ function bootstrapRepo(prefix: string, env: Record<string, string> = {}) {
 
 describe("Factor Factory", () => {
   test("Plan G scaffolding installs factor artifacts and Plan C does not", () => {
-    const planGCwd = bootstrapRepo("factor-plan-g", { PROJECT_INITIALIZER_PLAN_TYPE: "G" });
+    const planGCwd = bootstrapRepo("factor-plan-g", { REPO_HARNESS_PLAN_TYPE: "G" });
     const planCCwd = bootstrapRepo("factor-plan-c");
 
     try {

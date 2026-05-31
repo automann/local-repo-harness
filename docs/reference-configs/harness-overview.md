@@ -35,7 +35,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 - Before implementation, the plan and contract should both expose a concrete workflow inventory so the agent does not rediscover or guess active artifacts.
 - Implementation should prefer `docs/spec.md`, an approved plan, and an active sprint contract.
 - Claiming completion should include contract verification evidence, a run snapshot, implementation notes, and a passing Waza `/check` review artifact.
-- Stopping a session should refresh `.ai/harness/handoff/current.md` for easier resume.
+- Stopping a session should refresh `.ai/harness/handoff/current.md` for easier resume; while pending planning orchestration is open, Stop may block once to force a plan completeness self-review before execution.
 - Refresh `tasks/current.md` with `scripts/refresh-current-status.sh --write --reason <reason>` only at explicit lifecycle boundaries or as a deliberate maintainer action; ordinary hooks should not dirty tracked files.
 - In non-target worktrees, read the target branch snapshot with `git show <target>:tasks/current.md` and verify stale or surprising state against the source artifacts before acting.
 - Use `docs/reference-configs/agentic-development-flow.md` for skill routing and `docs/reference-configs/external-tooling.md` for install/update commands.
@@ -66,7 +66,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 - Declare capabilities in `.ai/context/capabilities.json`; each capability owns prefixes, paired contract files, an architecture module, a workstream directory, and local verification hints.
 - Add selected capabilities with `repo-harness-capability` or `bun scripts/capability-config.ts add --prefix <path>` when the harness already exists and a full init/migrate/upgrade pass would be too broad.
 - Resolve edited paths through `scripts/capability-resolver.ts match --path <path>`; longest prefix wins and equal-length ambiguity fails.
-- Treat `.ai/context/agent-context-blocks.txt`, `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, and existing nested `CLAUDE.md`/`AGENTS.md` files as migration inputs or compatibility fallbacks only.
+- Treat `.ai/context/agent-context-blocks.txt`, `REPO_HARNESS_CONTEXT_BLOCKS`, legacy `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, and existing nested `CLAUDE.md`/`AGENTS.md` files as migration inputs or compatibility fallbacks only.
 - Selected capabilities receive paired `CLAUDE.md` and `AGENTS.md` files so Claude Code and Codex share the same local contract.
 - Use `repo-harness capability-context status|request|sync` to keep paired local context files aligned with the registry. The command writes only the controlled `CAPABILITY CONTEXT` block and preserves hand-authored content plus the separate architecture contract block.
 - `.ai/context/capability-source-map.json` is the optional human-edited source-map manifest for capability positioning and source pointers. Missing entries fall back to registry/architecture/workstream metadata; `--auto-fill-positioning` writes deterministic draft entries explicitly, not from hooks.

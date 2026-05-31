@@ -45,7 +45,7 @@ installations.
 
 Use `bash scripts/check-agent-tooling.sh` for a read-only tooling report.
 Init and migration reports run the detector without update checks by default;
-set `AGENTIC_DEV_CHECK_TOOLING_UPDATES=1` when that advisory pass should
+set `REPO_HARNESS_CHECK_TOOLING_UPDATES=1` when that advisory pass should
 also compare upstream versions.
 
 Supported flags:

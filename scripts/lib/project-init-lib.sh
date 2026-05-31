@@ -1,7 +1,8 @@
 #!/bin/bash
-# Shared install helpers for project-initializer scaffolding scripts.
+# Shared install helpers for repo-harness scaffolding scripts.
 
-PI_RUNTIME_BLOCK_BEGIN="# BEGIN: claude-runtime-temp (managed by project-initializer)"
+PI_RUNTIME_BLOCK_BEGIN="# BEGIN: claude-runtime-temp (managed by repo-harness)"
+PI_RUNTIME_BLOCK_BEGIN_LEGACY="# BEGIN: claude-runtime-temp (managed by project-initializer)"
 PI_RUNTIME_BLOCK_END="# END: claude-runtime-temp"
 PI_DEFAULT_GITIGNORE_CONTENT=$(cat <<'EOF_GITIGNORE'
 # Dependencies
@@ -517,6 +518,16 @@ pi_default_runtime_block() {
   printf '%s\n%s\n%s\n' "$PI_RUNTIME_BLOCK_BEGIN" "$runtime_entries" "$PI_RUNTIME_BLOCK_END"
 }
 
+pi_is_runtime_block_begin() {
+  local line="$1"
+  [[ "$line" == "$PI_RUNTIME_BLOCK_BEGIN" || "$line" == "$PI_RUNTIME_BLOCK_BEGIN_LEGACY" ]]
+}
+
+pi_has_runtime_block() {
+  local file_path="$1"
+  grep -Fq "$PI_RUNTIME_BLOCK_BEGIN" "$file_path" || grep -Fq "$PI_RUNTIME_BLOCK_BEGIN_LEGACY" "$file_path"
+}
+
 pi_ensure_gitignore_block() {
   local file_path="$1"
   local prelude="${2:-}"
@@ -540,7 +551,7 @@ pi_ensure_gitignore_block() {
     fi
   fi
 
-  if ! grep -Fq "$PI_RUNTIME_BLOCK_BEGIN" "$file_path"; then
+  if ! pi_has_runtime_block "$file_path"; then
     printf '\n%s\n' "$block" >> "$file_path"
     return 0
   fi
@@ -550,7 +561,7 @@ pi_ensure_gitignore_block() {
   tmp_file="$(mktemp)"
 
   while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" == "$PI_RUNTIME_BLOCK_BEGIN" ]]; then
+    if pi_is_runtime_block_begin "$line"; then
       if [[ "$block_written" -eq 0 ]]; then
         printf '%s\n' "$block" >> "$tmp_file"
         block_written=1
@@ -762,7 +773,7 @@ pi_install_helpers() {
   local target_dir="$1"
   local helpers_dir="$2"
   local mode="${3:-apply}"
-  local helper_names="${4:-new-plan.sh capture-plan.sh plan-to-todo.sh archive-workflow.sh refresh-current-status.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-deploy-sql-order.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh context-budget.ts capability-resolver.ts architecture-event.ts capability-config.ts architecture-drift.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
+  local helper_names="${4:-new-plan.sh capture-plan.sh plan-to-todo.sh contract-worktree.sh ship-worktrees.sh archive-workflow.sh refresh-current-status.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh check-task-sync.sh check-deploy-sql-order.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh context-budget.ts capability-resolver.ts architecture-event.ts capability-config.ts architecture-drift.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
   local scripts_dir="$target_dir/scripts"
   local helper_name
 
@@ -788,7 +799,7 @@ pi_install_helpers() {
         cp "$helpers_dir/$helper_name" "$scripts_dir/$helper_name"
       fi
     done
-    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/capture-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/refresh-current-status.sh "$scripts_dir"/archive-architecture-request.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/prepare-codex-handoff.sh "$scripts_dir"/codex-handoff-resume.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-deploy-sql-order.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/check-context-files.sh "$scripts_dir"/check-brain-manifest.sh "$scripts_dir"/sync-brain-docs.sh "$scripts_dir"/select-agent-context-blocks.sh "$scripts_dir"/architecture-drift.sh "$scripts_dir"/context-contract-sync.sh "$scripts_dir"/workstream-sync.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh "$scripts_dir"/migrate-project-template.sh
+    pi_ensure_executable_if_apply "$mode" "$scripts_dir"/new-spec.sh "$scripts_dir"/new-sprint.sh "$scripts_dir"/new-plan.sh "$scripts_dir"/capture-plan.sh "$scripts_dir"/plan-to-todo.sh "$scripts_dir"/contract-worktree.sh "$scripts_dir"/ship-worktrees.sh "$scripts_dir"/archive-workflow.sh "$scripts_dir"/refresh-current-status.sh "$scripts_dir"/archive-architecture-request.sh "$scripts_dir"/prepare-handoff.sh "$scripts_dir"/prepare-codex-handoff.sh "$scripts_dir"/codex-handoff-resume.sh "$scripts_dir"/verify-contract.sh "$scripts_dir"/summarize-failures.sh "$scripts_dir"/verify-sprint.sh "$scripts_dir"/check-task-sync.sh "$scripts_dir"/check-deploy-sql-order.sh "$scripts_dir"/check-agent-tooling.sh "$scripts_dir"/check-context-files.sh "$scripts_dir"/check-brain-manifest.sh "$scripts_dir"/sync-brain-docs.sh "$scripts_dir"/select-agent-context-blocks.sh "$scripts_dir"/architecture-drift.sh "$scripts_dir"/context-contract-sync.sh "$scripts_dir"/workstream-sync.sh "$scripts_dir"/ensure-task-workflow.sh "$scripts_dir"/check-task-workflow.sh "$scripts_dir"/switch-plan.sh "$scripts_dir"/migrate-project-template.sh
     return 0
   fi
 
@@ -800,39 +811,65 @@ echo "Missing helper template: $helper_name"
 exit 1
 EOF_STUB
   done
-  pi_ensure_executable_if_apply "$mode" "$scripts_dir"/*.sh
+pi_ensure_executable_if_apply "$mode" "$scripts_dir"/*.sh
+}
+
+pi_env_value() {
+  local primary="$1"
+  local legacy="$2"
+  local default_value="${3:-}"
+  local value
+
+  value="${!primary-}"
+  if [[ -n "$value" ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  value="${!legacy-}"
+  if [[ -n "$value" ]]; then
+    printf '%s' "$value"
+    return 0
+  fi
+
+  printf '%s' "$default_value"
+}
+
+pi_plan_type() {
+  local default_value="${1:-}"
+  pi_env_value "REPO_HARNESS_PLAN_TYPE" "PROJECT_INITIALIZER_PLAN_TYPE" "$default_value"
 }
 
 pi_context_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_CONTEXT_PROFILE:-$PI_CONTEXT_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_CONTEXT_PROFILE" "PROJECT_INITIALIZER_CONTEXT_PROFILE" "$PI_CONTEXT_PROFILE_DEFAULT"
 }
 
 pi_recovery_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_RECOVERY_PROFILE:-$PI_RECOVERY_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_RECOVERY_PROFILE" "PROJECT_INITIALIZER_RECOVERY_PROFILE" "$PI_RECOVERY_PROFILE_DEFAULT"
 }
 
 pi_state_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_STATE_PROFILE:-$PI_STATE_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_STATE_PROFILE" "PROJECT_INITIALIZER_STATE_PROFILE" "$PI_STATE_PROFILE_DEFAULT"
 }
 
 pi_orchestration_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_ORCHESTRATION_PROFILE:-$PI_ORCHESTRATION_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_ORCHESTRATION_PROFILE" "PROJECT_INITIALIZER_ORCHESTRATION_PROFILE" "$PI_ORCHESTRATION_PROFILE_DEFAULT"
 }
 
 pi_evaluation_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_EVALUATION_PROFILE:-$PI_EVALUATION_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_EVALUATION_PROFILE" "PROJECT_INITIALIZER_EVALUATION_PROFILE" "$PI_EVALUATION_PROFILE_DEFAULT"
 }
 
 pi_handoff_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_HANDOFF_PROFILE:-$PI_HANDOFF_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_HANDOFF_PROFILE" "PROJECT_INITIALIZER_HANDOFF_PROFILE" "$PI_HANDOFF_PROFILE_DEFAULT"
 }
 
 pi_documentation_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_DOCUMENTATION_PROFILE:-$PI_DOCUMENTATION_PROFILE_DEFAULT}"
+  pi_env_value "REPO_HARNESS_DOCUMENTATION_PROFILE" "PROJECT_INITIALIZER_DOCUMENTATION_PROFILE" "$PI_DOCUMENTATION_PROFILE_DEFAULT"
 }
 
 pi_lsp_profile() {
-  printf '%s' "${PROJECT_INITIALIZER_LSP_PROFILE:-$PI_DEFAULT_LSP_PROFILE}"
+  pi_env_value "REPO_HARNESS_LSP_PROFILE" "PROJECT_INITIALIZER_LSP_PROFILE" "$PI_DEFAULT_LSP_PROFILE"
 }
 
 pi_should_generate_full_docs() {
@@ -847,11 +884,11 @@ pi_should_generate_full_docs() {
 }
 
 pi_external_tooling_hosts_json() {
-  printf '%s' "${PROJECT_INITIALIZER_EXTERNAL_TOOLING_HOSTS_JSON:-$PI_EXTERNAL_TOOLING_HOSTS_DEFAULT}"
+  pi_env_value "REPO_HARNESS_EXTERNAL_TOOLING_HOSTS_JSON" "PROJECT_INITIALIZER_EXTERNAL_TOOLING_HOSTS_JSON" "$PI_EXTERNAL_TOOLING_HOSTS_DEFAULT"
 }
 
 pi_external_tooling_gbrain_mcp() {
-  printf '%s' "${PROJECT_INITIALIZER_EXTERNAL_TOOLING_GBRAIN_MCP:-candidate-disabled}"
+  pi_env_value "REPO_HARNESS_EXTERNAL_TOOLING_GBRAIN_MCP" "PROJECT_INITIALIZER_EXTERNAL_TOOLING_GBRAIN_MCP" "candidate-disabled"
 }
 
 pi_external_tooling_defaults_summary() {
@@ -903,7 +940,8 @@ pi_print_external_tooling_report() {
   fi
 
   local detector_args=(--host both)
-  if [[ "${AGENTIC_DEV_CHECK_TOOLING_UPDATES:-${PROJECT_INITIALIZER_CHECK_TOOLING_UPDATES:-0}}" == "1" ]]; then
+  local check_tooling_updates="${REPO_HARNESS_CHECK_TOOLING_UPDATES:-${AGENTIC_DEV_CHECK_TOOLING_UPDATES:-${PROJECT_INITIALIZER_CHECK_TOOLING_UPDATES:-0}}}"
+  if [[ "$check_tooling_updates" == "1" ]]; then
     detector_args+=(--check-updates)
   fi
 
@@ -986,7 +1024,7 @@ pi_json_string_array_from_lines() {
 
 pi_context_block_config_file() {
   local target_dir="$1"
-  printf '%s' "${PROJECT_INITIALIZER_CONTEXT_BLOCKS_FILE:-$target_dir/.ai/context/agent-context-blocks.txt}"
+  pi_env_value "REPO_HARNESS_CONTEXT_BLOCKS_FILE" "PROJECT_INITIALIZER_CONTEXT_BLOCKS_FILE" "$target_dir/.ai/context/agent-context-blocks.txt"
 }
 
 pi_capability_registry_file() {
@@ -1005,8 +1043,10 @@ pi_legacy_context_block_candidates() {
   local target_dir="$1"
   local config_file
 
-  if [[ -n "${PROJECT_INITIALIZER_CONTEXT_BLOCKS:-}" ]]; then
-    printf '%s\n' "$PROJECT_INITIALIZER_CONTEXT_BLOCKS" | tr ',:' '\n'
+  local env_blocks
+  env_blocks="$(pi_env_value "REPO_HARNESS_CONTEXT_BLOCKS" "PROJECT_INITIALIZER_CONTEXT_BLOCKS")"
+  if [[ -n "$env_blocks" ]]; then
+    printf '%s\n' "$env_blocks" | tr ',:' '\n'
     return 0
   fi
 
@@ -1052,7 +1092,7 @@ JS_EOF
     fi
   fi
 
-  selector="${PROJECT_INITIALIZER_CONTEXT_BLOCK_SELECTOR:-}"
+  selector="$(pi_env_value "REPO_HARNESS_CONTEXT_BLOCK_SELECTOR" "PROJECT_INITIALIZER_CONTEXT_BLOCK_SELECTOR")"
   if [[ -n "$selector" && -x "$selector" ]]; then
     (cd "$target_dir" && "$selector" "$target_dir")
     return 0
@@ -1340,7 +1380,8 @@ pi_write_harness_policy() {
     "functional_block_selector": {
       "script": "scripts/select-agent-context-blocks.sh",
       "config_file": ".ai/context/agent-context-blocks.txt",
-      "env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
+      "env": "REPO_HARNESS_CONTEXT_BLOCKS",
+      "legacy_env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
       "rule": "compatibility selector; capability registry is the source of truth"
     }
   },
@@ -1656,7 +1697,8 @@ pi_write_context_map() {
   "functional_block_selector": {
     "script": "scripts/select-agent-context-blocks.sh",
     "config_file": ".ai/context/agent-context-blocks.txt",
-    "env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
+    "env": "REPO_HARNESS_CONTEXT_BLOCKS",
+    "legacy_env": "PROJECT_INITIALIZER_CONTEXT_BLOCKS",
     "rule": "compatibility selector; capability registry is the source of truth"
   },
   "lsp_profiles": {
@@ -2075,8 +2117,9 @@ pi_factor_factory_gitignore_entries() {
 }
 
 pi_should_enable_factor_factory() {
-  local plan_type="${1:-${PROJECT_INITIALIZER_PLAN_TYPE:-}}"
-  local explicit="${PROJECT_INITIALIZER_FACTOR_FACTORY:-0}"
+  local plan_type="${1:-$(pi_plan_type)}"
+  local explicit
+  explicit="$(pi_env_value "REPO_HARNESS_FACTOR_FACTORY" "PROJECT_INITIALIZER_FACTOR_FACTORY" "0")"
 
   case "$explicit" in
     1|true|TRUE|yes|YES) return 0 ;;

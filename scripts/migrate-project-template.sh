@@ -30,7 +30,7 @@ TEMPLATE_ASSETS_DIR="$SKILL_ROOT/assets/templates"
 HELPER_ASSETS_DIR="$TEMPLATE_ASSETS_DIR/helpers"
 FACTOR_FACTORY_ASSETS_DIR="$TEMPLATE_ASSETS_DIR/factor-factory"
 WORKFLOW_CONTRACT_ASSET="$SKILL_ROOT/assets/workflow-contract.v1.json"
-JQ_BIN="${PROJECT_INITIALIZER_JQ_BIN:-jq}"
+JQ_BIN="${REPO_HARNESS_JQ_BIN:-${PROJECT_INITIALIZER_JQ_BIN:-jq}}"
 
 MODE="dry-run"
 TARGET_REPO=""
@@ -250,7 +250,7 @@ ensure_runtime_gitignore_block() {
 .claude/.plan-state/
 EOF_EXTRA
 )
-  if pi_should_enable_factor_factory "${PROJECT_INITIALIZER_PLAN_TYPE:-}"; then
+  if pi_should_enable_factor_factory "$(pi_plan_type)"; then
     extra_entries="${extra_entries}"$'\n'"$(pi_factor_factory_gitignore_entries)"
   fi
   pi_ensure_gitignore_block "$file_path" "" "$extra_entries" "$MODE"
@@ -747,7 +747,7 @@ migrate_workflow() {
   install_templates "$repo"
   install_helpers "$repo"
   install_workflow_contract "$repo"
-  if pi_should_enable_factor_factory "${PROJECT_INITIALIZER_PLAN_TYPE:-}"; then
+  if pi_should_enable_factor_factory "$(pi_plan_type)"; then
     pi_install_factor_factory "$repo" "$FACTOR_FACTORY_ASSETS_DIR" "$SKILL_ROOT/scripts" "$MODE"
   fi
   install_reference_configs "$repo"

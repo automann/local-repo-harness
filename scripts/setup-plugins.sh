@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code Plugin Auto-Setup Script
-# Part of project-initializer skill
+# Part of repo-harness
 # Installs global plugins and configures global hooks in ~/.claude/settings.json.
 # Project-local hook adapters are legacy; repo opt-in lives in the workflow contract.
 # Default runtime profile:

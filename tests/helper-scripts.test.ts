@@ -831,6 +831,189 @@ describe("Workflow helper scripts", () => {
     }
   }, 15000);
 
+  test("ship-worktrees default mode should finish without merging, push branch, and create draft PR", () => {
+    const cwd = tmpWorkspace("helper-ship-pr");
+    const worktreePath = `${cwd}-wt-demo`;
+    const remotePath = `${cwd}-remote.git`;
+    const fakeBin = `${cwd}-fake-bin`;
+    const ghLog = `${cwd}-gh.log`;
+    try {
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".claude/templates"), { recursive: true });
+      for (const file of readdirSync(TEMPLATE_DIR).filter((name) => name.endsWith(".md"))) {
+        copyFileSync(join(TEMPLATE_DIR, file), join(cwd, ".claude/templates", file));
+      }
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      copyFileSync(
+        join(ROOT, "assets/hooks/lib/workflow-state.sh"),
+        join(cwd, ".ai/hooks/lib/workflow-state.sh")
+      );
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify(
+          {
+            worktree_strategy: {
+              auto_for_contract_tasks: true,
+              branch_prefix: "codex/",
+              base_branch: "main",
+              merge_back: { target: "main" },
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      );
+      writeFileSync(
+        join(cwd, ".gitignore"),
+        [
+          ".claude/.task-state.json",
+          ".ai/harness/checks/latest.json",
+          ".ai/harness/runs/",
+          ".ai/harness/worktrees/",
+        ].join("\n") + "\n"
+      );
+      writeFileSync(
+        join(cwd, "package.json"),
+        JSON.stringify({ scripts: { typecheck: "test -f src/modules/demo/index.ts" } }, null, 2) + "\n"
+      );
+      writeFileSync(join(cwd, "docs/spec.md"), "# Spec\n");
+      initGitRepo(cwd);
+      commitAll(cwd, "init workflow");
+      expect(run("git", ["init", "--bare", remotePath], cwd).status).toBe(0);
+      expect(run("git", ["remote", "add", "origin", remotePath], cwd).status).toBe(0);
+      expect(run("git", ["push", "-u", "origin", "main"], cwd).status).toBe(0);
+
+      mkdirSync(fakeBin, { recursive: true });
+      writeFileSync(
+        join(fakeBin, "gh"),
+        [
+          "#!/bin/sh",
+          "echo \"$@\" >> \"$GH_LOG\"",
+          "state=\"${GH_LOG}.state\"",
+          "if [ \"$1\" = \"pr\" ] && [ \"$2\" = \"list\" ]; then [ -f \"$state\" ] && echo \"https://example.test/pr/1\"; exit 0; fi",
+          "if [ \"$1\" = \"pr\" ] && [ \"$2\" = \"create\" ]; then touch \"$state\"; echo \"race: already created\" >&2; exit 1; fi",
+          "exit 1",
+        ].join("\n") + "\n"
+      );
+      expect(run("chmod", ["+x", join(fakeBin, "gh")], cwd).status).toBe(0);
+
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1450-demo.md"),
+        [
+          "# Plan: demo",
+          "",
+          "> **Status**: Approved",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Build demo",
+        ].join("\n")
+      );
+
+      const start = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1450-demo.md"], cwd);
+      expect(start.status).toBe(0);
+      expect(existsSync(worktreePath)).toBe(true);
+
+      mkdirSync(join(worktreePath, "src/modules/demo"), { recursive: true });
+      mkdirSync(join(worktreePath, "tests/unit"), { recursive: true });
+      writeFileSync(join(worktreePath, "src/modules/demo/index.ts"), "export const demo = true;\n");
+      writeFileSync(
+        join(worktreePath, "tests/unit/demo.test.ts"),
+        'import { test, expect } from "bun:test";\n' +
+          'test("demo", () => { expect(true).toBe(true); });\n'
+      );
+      writeFileSync(
+        join(worktreePath, "tasks/reviews/20260304-1450-demo.review.md"),
+        [
+          "# Sprint Review: demo",
+          "",
+          "> **Recommendation**: pass",
+          "",
+          "## Scorecard",
+          "",
+          "| Dimension | Score | Notes |",
+          "|-----------|-------|-------|",
+          "| Functionality | 8/10 | verified |",
+          "",
+          "## Verification Evidence",
+          "- Unit test and typecheck covered by verify-sprint.",
+          "",
+          externalAcceptanceAdvice(),
+          "",
+        ].join("\n")
+      );
+
+      const ship = run("bash", ["scripts/ship-worktrees.sh"], worktreePath, {
+        HOOK_HOST: "claude",
+        GH_LOG: ghLog,
+        PATH: `${fakeBin}:${process.env.PATH}`,
+      });
+      expect(ship.status).toBe(0);
+      expect(ship.stdout).toContain("contract-worktree.sh finish --no-merge");
+      expect(ship.stdout).toContain("PR already exists for codex/demo after create failure");
+      expect(ship.stdout).toContain("https://example.test/pr/1");
+      expect(ship.stdout).not.toContain("Merged codex/demo into main");
+      expect(existsSync(join(cwd, "src/modules/demo/index.ts"))).toBe(false);
+      expect(run("git", ["ls-remote", "--heads", "origin", "codex/demo"], cwd).stdout).toContain("refs/heads/codex/demo");
+      expect(readFileSync(ghLog, "utf-8")).toContain("pr create --base main --head codex/demo");
+      expect(readFileSync(ghLog, "utf-8")).toContain("--draft");
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(remotePath, { recursive: true, force: true });
+      rmSync(fakeBin, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 20000);
+
+  test("ship-worktrees should put dirty main closeout on a PR branch", () => {
+    const cwd = tmpWorkspace("helper-ship-main-closeout");
+    const remotePath = `${cwd}-remote.git`;
+    const fakeBin = `${cwd}-fake-bin`;
+    const ghLog = `${cwd}-gh.log`;
+    try {
+      copyHelpers(cwd);
+      initGitRepo(cwd);
+      writeFileSync(join(cwd, "README.md"), "# demo\n");
+      commitAll(cwd, "init main closeout");
+      expect(run("git", ["init", "--bare", remotePath], cwd).status).toBe(0);
+      expect(run("git", ["remote", "add", "origin", remotePath], cwd).status).toBe(0);
+      expect(run("git", ["push", "-u", "origin", "main"], cwd).status).toBe(0);
+
+      mkdirSync(fakeBin, { recursive: true });
+      writeFileSync(
+        join(fakeBin, "gh"),
+        [
+          "#!/bin/sh",
+          "echo \"$@\" >> \"$GH_LOG\"",
+          "if [ \"$1\" = \"pr\" ] && [ \"$2\" = \"list\" ]; then exit 0; fi",
+          "if [ \"$1\" = \"pr\" ] && [ \"$2\" = \"create\" ]; then echo \"https://example.test/pr/2\"; exit 0; fi",
+          "exit 1",
+        ].join("\n") + "\n"
+      );
+      expect(run("chmod", ["+x", join(fakeBin, "gh")], cwd).status).toBe(0);
+
+      writeFileSync(join(cwd, "main-dirty.txt"), "closeout\n");
+      const ship = run("bash", ["scripts/ship-worktrees.sh", "--slug", "demo"], cwd, {
+        GH_LOG: ghLog,
+        PATH: `${fakeBin}:${process.env.PATH}`,
+      });
+      expect(ship.status).toBe(0);
+      expect(run("git", ["branch", "--show-current"], cwd).stdout.trim()).toBe("codex/demo-main-closeout");
+      expect(run("git", ["show", "main:main-dirty.txt"], cwd).status).not.toBe(0);
+      expect(run("git", ["ls-remote", "--heads", "origin", "codex/demo-main-closeout"], cwd).stdout).toContain("refs/heads/codex/demo-main-closeout");
+      expect(readFileSync(ghLog, "utf-8")).toContain("pr create --base main --head codex/demo-main-closeout");
+    } finally {
+      rmSync(remotePath, { recursive: true, force: true });
+      rmSync(fakeBin, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 15000);
+
   test("prompt-guard done intent in a contract worktree emits finish next action without archiving", () => {
     const cwd = tmpWorkspace("helper-contract-done-next-action");
     const worktreePath = `${cwd}-wt-demo`;
@@ -1726,7 +1909,7 @@ describe("Workflow helper scripts", () => {
       const resume = readFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "utf-8");
       expect(resume).toContain("**Reason**: unit-test");
       expect(resume).toContain(`**Working Directory**: ${cwd}`);
-      expect(resume).toContain("generated-by: project-initializer codex-handoff-resume v1");
+      expect(resume).toContain("generated-by: repo-harness codex-handoff-resume v1");
       expect(resume).toContain(".ai/harness/context-budget/latest.json");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

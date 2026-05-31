@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo="${1:-.}"
 repo="$(cd "$repo" && pwd)"
-config_file="${PROJECT_INITIALIZER_CONTEXT_BLOCKS_FILE:-$repo/.ai/context/agent-context-blocks.txt}"
+config_file="${REPO_HARNESS_CONTEXT_BLOCKS_FILE:-${PROJECT_INITIALIZER_CONTEXT_BLOCKS_FILE:-$repo/.ai/context/agent-context-blocks.txt}}"
 registry_file="$repo/.ai/context/capabilities.json"
 
 emit_lines() {
@@ -45,8 +45,9 @@ JS_EOF
   fi
 fi
 
-if [[ -n "${PROJECT_INITIALIZER_CONTEXT_BLOCKS:-}" ]]; then
-  printf '%s\n' "$PROJECT_INITIALIZER_CONTEXT_BLOCKS" | tr ',:' '\n' | emit_lines | emit_existing_dirs
+context_blocks="${REPO_HARNESS_CONTEXT_BLOCKS:-${PROJECT_INITIALIZER_CONTEXT_BLOCKS:-}}"
+if [[ -n "$context_blocks" ]]; then
+  printf '%s\n' "$context_blocks" | tr ',:' '\n' | emit_lines | emit_existing_dirs
   exit 0
 fi
 

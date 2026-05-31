@@ -46,6 +46,7 @@ describe("Initializer question pack", () => {
       "browser-agent",
       "chat-agent",
       "coding-agent",
+      "collaborative-editor",
       "enterprise-agent-platform",
       "generative-ui-agent",
       "none",
@@ -71,6 +72,6 @@ describe("Initializer question pack", () => {
     expect(summary.decisionCount).toBe(14);
     expect(summary.requiredDecisionCount).toBeGreaterThan(0);
     expect(summary.aiNativeProfileDefault).toBe("none");
-    expect(summary.aiNativeProfileCount).toBe(12);
+    expect(summary.aiNativeProfileCount).toBe(13);
   });
 });

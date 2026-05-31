@@ -141,6 +141,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
       expect(workflowContract.helpers.scripts).toContain("check-task-workflow.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
+      expect(workflowContract.helpers.scripts).toContain("ship-worktrees.sh");
       expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("select-agent-context-blocks.sh");
       expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
@@ -294,6 +295,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
       expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");
       expect(existsSync(join(cwd, "scripts/contract-worktree.sh"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/ship-worktrees.sh"))).toBe(true);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -1007,7 +1007,7 @@ describe("Hook runtime behavior", () => {
         join(cwd, ".ai/harness/handoff/resume.md"),
         [
           "# Codex Resume Packet",
-          "<!-- generated-by: project-initializer codex-handoff-resume v1 -->",
+          "<!-- generated-by: repo-harness codex-handoff-resume v1 -->",
           "",
           "> **Reason**: acceptance-complete",
           "",
@@ -1224,6 +1224,50 @@ describe("Hook runtime behavior", () => {
 
       expect(res.status).toBe(0);
       expect(res.stdout).toBe("");
+      expect(res.stderr).toBe("");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("run-hook forwards Codex Stop decision JSON while suppressing handoff noise", () => {
+    const cwd = tmpWorkspace("run-hook-codex-stop-decision");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/planning"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/planning/pending.json"),
+        JSON.stringify({
+          version: 1,
+          kind: "codex-plan",
+          host: "codex",
+          prompt_slug: "codex-stop-decision",
+          source_ref: "thread://codex-stop-decision",
+          expected_artifact: "plans/plan-*.md",
+          cwd,
+          created_at: "2026-06-01T09:00:00+0800",
+        }) + "\n"
+      );
+
+      const lastAssistantMessage =
+        "## Approved design summary\n" +
+        "Building a Codex Stop block contract with P1 map, P2 trace, P3 decision rationale, tests, rollback, and risk handling. ".repeat(4);
+      const res = spawnSync("bash", [join(cwd, ".ai/hooks/run-hook.sh"), "stop-orchestrator.sh"], {
+        cwd,
+        input: JSON.stringify({
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+          last_assistant_message: lastAssistantMessage,
+        }),
+        encoding: "utf-8",
+        env: { ...process.env, HOOK_HOST: "codex", HOOK_REPO_ROOT: cwd },
+      });
+
+      expect(res.status).toBe(0);
+      const decision = JSON.parse(res.stdout);
+      expect(decision.decision).toBe("block");
+      expect(decision.reason).toContain("[PlanCompletenessGate]");
       expect(res.stderr).toBe("");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
@@ -1669,6 +1713,123 @@ describe("Hook runtime behavior", () => {
       expect(res.stdout).toContain("[PlanCaptureGate] Implementation requested while a pending plan/orchestration discussion has not been captured.");
       expect(res.stdout).toContain("capture-plan.sh");
       expect(res.stdout).not.toContain('"guard":"PlanStatusGuard"');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("stop-orchestrator: blocks once to force pending plan completeness review", () => {
+    const cwd = tmpWorkspace("stop-orchestrator-plan-completeness");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/planning"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/planning/pending.json"),
+        JSON.stringify(
+          {
+            version: 1,
+            kind: "waza-think",
+            host: "claude",
+            prompt_slug: "plan-completeness",
+            draft_plan_path: "",
+            source_ref: "thread://plan-completeness",
+            expected_artifact: "plans/plan-*.md",
+            cwd,
+            created_at: "2026-06-01T09:00:00+0800",
+          },
+          null,
+          2
+        ) + "\n"
+      );
+
+      const lastAssistantMessage = [
+        "## Approved design summary",
+        "- Building: add a Stop hook planning completeness pass for pending orchestration.",
+        "- Not building: implementation execution or plan capture.",
+        "- Approach: route Stop through an orchestrator and block once with a review instruction.",
+        "- Key decisions: keep plans/ authority, do not alter UserPromptSubmit, keep the gate one-shot.",
+        "- Unknowns: host support is verified through the Stop JSON contract.",
+      ].join("\n");
+
+      const first = runHook("stop-orchestrator.sh", cwd, {
+        stdin: JSON.stringify({
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+          last_assistant_message: lastAssistantMessage,
+        }),
+        env: { HOOK_HOST: "claude" },
+      });
+
+      expect(first.status).toBe(0);
+      expect(first.stderr).toContain("[FinalizeHandoff]");
+      const decision = JSON.parse(first.stdout);
+      expect(decision.decision).toBe("block");
+      expect(decision.reason).toContain("[PlanCompletenessGate]");
+      expect(decision.reason).toContain("Do not implement");
+      expect(existsSync(join(cwd, ".ai/harness/handoff/current.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/planning/plan-completeness.json"))).toBe(true);
+
+      const second = runHook("stop-orchestrator.sh", cwd, {
+        stdin: JSON.stringify({
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+          last_assistant_message: lastAssistantMessage,
+        }),
+        env: { HOOK_HOST: "claude" },
+      });
+
+      expect(second.status).toBe(0);
+      expect(second.stdout).toBe("");
+      expect(second.stderr).toContain("[FinalizeHandoff]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("stop-orchestrator: skips recursive Stop continuations and supports Codex block JSON", () => {
+    const cwd = tmpWorkspace("stop-orchestrator-no-recursion");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/planning"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/planning/pending.json"),
+        JSON.stringify({
+          version: 1,
+          kind: "waza-think",
+          prompt_slug: "plan-completeness",
+          created_at: "2026-06-01T09:00:00+0800",
+        }) + "\n"
+      );
+
+      const lastAssistantMessage =
+        "## Approved design summary\n" +
+        "Building a plan completeness gate with P1 map, P2 trace, P3 decision rationale, tests, rollback, and risk handling. ".repeat(4);
+
+      const recursive = runHook("stop-orchestrator.sh", cwd, {
+        stdin: JSON.stringify({
+          hook_event_name: "Stop",
+          stop_hook_active: true,
+          last_assistant_message: lastAssistantMessage,
+        }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(recursive.status).toBe(0);
+      expect(recursive.stdout).toBe("");
+
+      const codex = runHook("stop-orchestrator.sh", cwd, {
+        stdin: JSON.stringify({
+          hook_event_name: "Stop",
+          stop_hook_active: false,
+          last_assistant_message: lastAssistantMessage,
+        }),
+        env: { HOOK_HOST: "codex" },
+      });
+      expect(codex.status).toBe(0);
+      const decision = JSON.parse(codex.stdout);
+      expect(decision.decision).toBe("block");
+      expect(decision.reason).toContain("[PlanCompletenessGate]");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

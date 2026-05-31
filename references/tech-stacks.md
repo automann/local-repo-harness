@@ -15,7 +15,7 @@ Start → Project Type?
 │
 ├─ Modern B2B SaaS (Internal Tools)?
 │  └─ Yes → Plan C: Vite + TanStack Router ⭐
-│      └─ AI-native overlay: runtime-console, product-copilot, or chat-agent
+│      └─ AI-native overlay: runtime-console, product-copilot, chat-agent, or collaborative-editor
 │
 ├─ Monorepo (Multi-project)?
 │  └─ Yes → Plan D: Bun + Turborepo
@@ -55,6 +55,7 @@ observability boundaries.
 |---------|----------|------------------|
 | `none` | Normal app | Use the selected A-K plan unchanged |
 | `chat-agent` | AI chat, RAG, or help assistant | assistant-ui or AI SDK stream over the existing API |
+| `collaborative-editor` | AI-aware documents, CMS, or knowledge workspace | Vite 8 + React 19 + Plate + Loro CRDT behind app-owned sync contracts |
 | `runtime-console` | Trace/replay/prompt playground/approval console | Vite 8 + assistant-ui + AG-UI + Bun/Hono gateway |
 | `product-copilot` | SaaS in-app copilot | CopilotKit or assistant-ui headless + AG-UI business actions |
 | `workflow-agent` | Workflow/DAG builder | React Flow/xyflow + Monaco + AG-UI workflow events |
@@ -74,15 +75,27 @@ Default policy:
 - Bun/Hono owns the app-facing agent gateway unless an existing backend already
   owns that boundary.
 - AG-UI is the event transport for complex agent runtime UIs.
-- assistant-ui is the default React chat/agent UI runtime.
+- assistant-ui is the default React chat/agent UI runtime, while AI SDK is a
+  stream/UI helper and not a complete orchestration layer by itself.
+- Mastra is a TypeScript agent runtime candidate when the product needs
+  memory, tools, workflows, evals, or tracing behind a Bun/Hono boundary. It is
+  not a replacement for app-domain contracts.
+- Plate + Loro is the preferred collaborative-document overlay when the product
+  needs rich text plus local-first CRDT sync. Keep Loro document state separate
+  from TanStack Query server cache and Zustand UI chrome.
 - CopilotKit is scoped to `product-copilot`, not a general runtime-console
   default.
 - A2UI is experimental payload/schema material across trust boundaries; do not
   present it as the production default.
 - Python is for model frameworks, eval jobs, data pipelines, and research
-  tooling; Go is for workers and infra adapters; Rust is for low-latency
-  parsing, indexing, sandboxing, and native kernels. Keep all three behind MCP
-  tools or narrow HTTP jobs unless a product-specific plan says otherwise.
+  tooling; Google ADK/FastAPI belongs here when the agent framework is
+  Python-owned. Go/Gin is for workers, sync fan-out, and infra adapters; Rust is
+  for low-latency parsing, indexing, sandboxing, and native kernels. Keep all
+  three behind MCP tools or narrow HTTP jobs unless a product-specific plan says
+  otherwise.
+- Supabase REST/PostgREST is useful for fast CRUD and admin surfaces, but the
+  scaffold should still model Postgres/RLS/schema ownership explicitly instead
+  of hiding domain authority behind a generated REST endpoint.
 - Postgres + Drizzle is the default data baseline in generated guidance.
   Redis, object storage, OpenTelemetry, pgvector/Qdrant, ClickHouse,
   Temporal/Inngest/BullMQ/Trigger.dev are opt-in capabilities, not mandatory
@@ -92,6 +105,7 @@ Generated structure overlays currently exist for:
 
 - `assets/project-structures/ai-native-runtime-console.txt`
 - `assets/project-structures/ai-native-product-copilot.txt`
+- `assets/project-structures/ai-native-collaborative-editor.txt`
 - `assets/project-structures/ai-native-sidecar-kernel.txt`
 
 ---
@@ -198,7 +212,7 @@ bun add -d vitest @testing-library/react @testing-library/jest-dom jsdom
 ```
 assistant-ui for agent/chat UI
 + AG-UI lite or AI SDK UI stream
-+ Bun/Hono or existing API boundary
++ Bun/Hono or Mastra/Hono behind existing API boundary
 + TanStack Query + Zustand for run/session state
 ```
 
@@ -211,6 +225,34 @@ assistant-ui for agent/chat UI
 **Additional Commands:**
 ```bash
 bun add @assistant-ui/react ai
+bun add hono zod
+```
+
+---
+
+## Plan C Collaborative Editor Extension
+
+Use this extension only when the product surface is document/CMS/knowledge
+editing, not for ordinary dashboards.
+
+**Additional Stack:**
+```
+Plate for rich-text editor components
++ Loro CRDT for local-first document replicas
++ Bun/Hono sync gateway or existing API boundary
++ TanStack Query for server cache
++ Zustand for editor chrome state
+```
+
+**Best For:**
+- AI-assisted document editors
+- CMS authoring surfaces
+- Knowledge-base workspaces
+- Offline-capable collaborative notes
+
+**Additional Commands:**
+```bash
+bun add platejs loro-crdt
 bun add hono zod
 ```
 

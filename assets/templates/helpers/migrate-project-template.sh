@@ -3,7 +3,7 @@
 #
 # Generated projects keep installed workflow runtime state under .ai/. The
 # template source lives in AGENTIC_DEV_ROOT, AGENTIC_DEV_SKILL_ROOT, or
-# ~/Projects/repo-harness. The retired project-initializer install paths are not
+# ~/Projects/repo-harness. Retired legacy install paths are not
 # searched.
 
 set -euo pipefail

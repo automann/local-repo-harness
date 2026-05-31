@@ -309,4 +309,20 @@ describe("Output Quality Gates", () => {
     expect(output).toContain("Bun/Hono `/api/agent/run`");
     expect(output).toContain("A2UI optional experiment, not production default");
   });
+
+  test("should include collaborative editor overlay when selected", () => {
+    const output = assembleTemplate({
+      planType: "C",
+      variables: {
+        PROJECT_NAME: "DocWorkspace",
+        AI_NATIVE_PROFILE: "collaborative-editor",
+      },
+    });
+
+    expect(output).toContain("AI-native Collaborative Editor Overlay");
+    expect(output).toContain("Profile: collaborative-editor");
+    expect(output).toContain("Plate");
+    expect(output).toContain("Loro CRDT");
+    expect(output).toContain("Bun/Hono sync");
+  });
 });

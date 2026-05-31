@@ -420,8 +420,8 @@
     {
       "id": 15,
       "slug": "route-repo-harness-autoplan",
-      "prompt": "Autoplan the repo-harness command change: read the repo, make the planning decisions for me, run the review pipeline automatically, and surface only final decision gates.",
-      "expected_output": "Routes the request to repo-harness-autoplan, runs plan then review then decision summary, and reports unresolved taste decisions without mutating files by default.",
+      "prompt": "Autoplan the repo-harness command change: read the repo, make the planning decisions for me, run the workflow automatically, and ship through the default PR closeout.",
+      "expected_output": "Routes the request to repo-harness-autoplan, runs plan then two self-review passes, executes the approved plan, runs check gates, and delegates PR closeout to repo-harness-ship.",
       "files": [
         "evals/fixtures/audit-drift"
       ],
@@ -431,14 +431,14 @@
         ],
         "files_contain": [
           { "path": "final-response.md", "pattern": "repo-harness-autoplan" },
-          { "path": "final-response.md", "pattern": "plan.*review.*decision" },
-          { "path": "final-response.md", "pattern": "final decision" }
+          { "path": "final-response.md", "pattern": "self-review|self review" },
+          { "path": "final-response.md", "pattern": "repo-harness-ship" }
         ]
       },
       "expectations": [
-        "Runs the full planning and review sequence automatically.",
+        "Runs the full planning, self-review, execution, check, and ship sequence automatically.",
         "Surfaces only material final decision gates.",
-        "Does not redirect into long interactive review unless automatic planning is unsafe."
+        "Does not redirect into long interactive review unless automatic workflow execution is unsafe."
       ]
     },
     {

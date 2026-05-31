@@ -32,6 +32,18 @@ export interface RunHookResult {
   failedScript?: string;
 }
 
+function looksLikeHookDecisionJson(output: Buffer | string | null | undefined): boolean {
+  if (!output) return false;
+  const text = output.toString().trim();
+  if (!text.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(text) as { decision?: unknown };
+    return parsed.decision === 'block' || parsed.decision === 'allow';
+  } catch {
+    return false;
+  }
+}
+
 export function resolveRepoRoot(cwd: string): string | null {
   try {
     const out = execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
@@ -70,11 +82,18 @@ export function runHook(opts: RunHookOptions): RunHookResult {
   }
 
   const hooksDir = opts.hooksDir ?? path.join(repoRoot, '.ai/hooks');
+  const codexStopDecisionStdout =
+    process.env.HOOK_HOST === 'codex' &&
+    opts.event === 'Stop' &&
+    opts.stdio === undefined;
   const codexQuietStdout =
     process.env.HOOK_HOST === 'codex' &&
     opts.event !== 'SessionStart' &&
+    !codexStopDecisionStdout &&
     opts.stdio === undefined;
-  const stdio: StdioOptions = codexQuietStdout
+  const stdio: StdioOptions = codexStopDecisionStdout
+    ? ['inherit', 'pipe', 'pipe']
+    : codexQuietStdout
     ? ['inherit', 'pipe', 'inherit']
     : (opts.stdio ?? 'inherit');
 
@@ -113,7 +132,23 @@ export function runHook(opts: RunHookOptions): RunHookResult {
       };
     }
 
-    if (codexQuietStdout && child.status !== 0 && child.stdout) {
+    if (
+      codexStopDecisionStdout &&
+      child.status === 0 &&
+      looksLikeHookDecisionJson(child.stdout)
+    ) {
+      process.stdout.write(child.stdout);
+    }
+
+    if (codexStopDecisionStdout && child.status !== 0 && child.stderr) {
+      process.stderr.write(child.stderr);
+    }
+
+    if (
+      (codexQuietStdout || codexStopDecisionStdout) &&
+      child.status !== 0 &&
+      child.stdout
+    ) {
       process.stderr.write(child.stdout);
     }
 

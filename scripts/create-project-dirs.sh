@@ -23,7 +23,7 @@ ASSETS_WORKFLOW_CONTRACT="$SCRIPT_DIR/../assets/workflow-contract.v1.json"
 
 write_runtime_gitignore_block() {
   local extra_entries=""
-  if pi_should_enable_factor_factory "${PROJECT_INITIALIZER_PLAN_TYPE:-}"; then
+  if pi_should_enable_factor_factory "$(pi_plan_type)"; then
     extra_entries="$(pi_factor_factory_gitignore_entries)"
   fi
   pi_ensure_gitignore_block ".gitignore" "$PI_DEFAULT_GITIGNORE_CONTENT" "$extra_entries" "apply"
@@ -196,7 +196,7 @@ write_templates
 install_workflow_helpers
 install_workflow_contract
 install_hook_assets
-if pi_should_enable_factor_factory "${PROJECT_INITIALIZER_PLAN_TYPE:-}"; then
+if pi_should_enable_factor_factory "$(pi_plan_type)"; then
   pi_install_factor_factory "$PWD" "$ASSETS_FACTOR_FACTORY_DIR" "$SCRIPT_DIR" "apply"
 fi
 ensure_task_sync_package_script

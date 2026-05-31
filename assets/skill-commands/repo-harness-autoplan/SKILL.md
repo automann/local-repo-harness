@@ -1,19 +1,23 @@
 ---
 name: repo-harness-autoplan
-description: Fully automated planning pipeline for repo-harness workflow work. Reads repo state and existing docs, drafts a plan, reviews it, and surfaces only final decision gates.
-when_to_use: "repo-harness-autoplan, auto plan repo-harness work, automatic review harness plan, run all repo-harness reviews, make the workflow planning decisions"
+description: Full repo-harness workflow orchestrator. Reads repo state, drafts a plan, self-reviews twice, executes the approved plan, runs review/check gates, and delegates final PR closeout to repo-harness-ship.
+when_to_use: "repo-harness-autoplan, auto plan repo-harness work, automatic review harness plan, run all repo-harness reviews, make the workflow planning decisions, full repo-harness workflow"
 ---
 
 # repo-harness-autoplan
 
-Use this command when the user wants the planning and review pipeline handled automatically.
+Use this command when the user wants the whole repo-harness workflow handled automatically.
 
 ## Protocol
 
 1. Confirm the working repo and inspect state with `bun scripts/inspect-project-state.ts --repo <repo> --format text` when available.
 2. Draft the action plan with `repo-harness-plan` rules.
-3. Review the draft with `repo-harness-review` rules.
-4. Return the final plan, unresolved taste decisions, and the next action command.
+3. Run self-review 1, the completeness pass: goal, scope, P1/P2/P3, interfaces, tests, rollback, no placeholders.
+4. Revise the plan once from the completeness findings.
+5. Run self-review 2, the adversarial and shipability pass: failing gates, unsafe automation, permission boundaries, 10x breakpoints, and PR closeout readiness.
+6. Execute the approved plan without re-litigating decisions unless live repo drift makes it unsafe.
+7. Run Waza `/check` semantics and record the sprint review, external acceptance, and `verify-sprint` evidence.
+8. Call `repo-harness-ship` for the final default PR closeout.
 
 ## Reusable Workflow Packaging Rubric
 
@@ -34,8 +38,11 @@ or existing command extension:
 
 ## Boundaries
 
-- Does not edit files or run mutating scripts by default.
-- Never aborts into a long interactive review unless the repo state makes automatic planning unsafe.
+- Mutates repo files by default only after the user explicitly invokes `repo-harness-autoplan`.
+- Runs exactly two plan self-review passes; do not recurse into open-ended self critique.
+- Stops for the user only when the remaining ambiguity would change product intent, safety boundaries, or ship mode.
+- Never aborts into a long interactive review unless the repo state makes automatic workflow execution unsafe.
 - Surfaces only decisions that materially change scope, risk, or command selection.
 - Does not create skills, subagents, automations, or command assets until the
   user approves the plan.
+- Delegates default branch push and PR creation to `repo-harness-ship`; `repo-harness-autoplan` does not merge PRs or publish releases.

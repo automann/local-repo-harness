@@ -22,6 +22,9 @@ describe("AI-native scaffold architecture profile", () => {
     expect(planMap.plans.C.aiNativeOverlayDefaults?.recommendedProfiles).toContain(
       "runtime-console"
     );
+    expect(planMap.plans.C.aiNativeOverlayDefaults?.recommendedProfiles).toContain(
+      "collaborative-editor"
+    );
     expect(planMap.plans.D.aiNativeOverlayDefaults?.recommendedProfiles).toContain(
       "sidecar-kernel"
     );
@@ -34,6 +37,9 @@ describe("AI-native scaffold architecture profile", () => {
     expect(pack.aiNativeProfiles["runtime-console"].backend).toBe("Bun/Hono agent gateway");
     expect(pack.aiNativeProfiles["runtime-console"].runtimeProtocol).toBe("AG-UI required");
     expect(pack.aiNativeProfiles["runtime-console"].uiSchema).toContain("A2UI optional");
+    expect(pack.aiNativeProfiles["collaborative-editor"].projectStructureFile).toBe(
+      "assets/project-structures/ai-native-collaborative-editor.txt"
+    );
   });
 
   test("emits runtime-console project and tech-stack overlay only when selected", () => {

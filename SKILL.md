@@ -103,7 +103,8 @@ the same engine. Use action-style names for discoverability:
 
 - `repo-harness-plan`: interactive planning; no repo mutation by default
 - `repo-harness-review`: plan review across product, engineering, design, and DevEx
-- `repo-harness-autoplan`: automatic plan -> review -> decision summary pipeline
+- `repo-harness-autoplan`: automatic plan -> self-review twice -> implementation -> check -> ship pipeline
+- `repo-harness-ship`: validate finished worktrees, push branches, and create PRs by default
 - `repo-harness-init`: install or refresh the harness in an existing repo
 - `repo-harness-scaffold`: create a new project or module scaffold, then attach the harness
 - `repo-harness-migrate`: migrate legacy workflow docs and stale harness artifacts

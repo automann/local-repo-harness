@@ -54,7 +54,7 @@
 - `summarize-failures.sh` is Bun-first for repo consistency, but it now needs an explicit Node fallback because generated repos may not have Bun on PATH.
 - Hook failures write to `.ai/harness/failures/latest.jsonl`, while `.claude/.trace.jsonl` captures surrounding tool activity. They complement each other; neither replaces the other.
 - The progressive-loading contract should not infer functional boundaries from physical layout globs like `apps/*`, `packages/*`, or `services/*`; those directories can be too broad in large repos.
-- Functional-block context files are selected by `scripts/select-agent-context-blocks.sh`, `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, `.ai/context/agent-context-blocks.txt`, or pre-existing nested `CLAUDE.md`/`AGENTS.md` files.
+- Functional-block context files are selected by `scripts/select-agent-context-blocks.sh`, preferred `REPO_HARNESS_CONTEXT_BLOCKS`, legacy `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, `.ai/context/agent-context-blocks.txt`, or pre-existing nested `CLAUDE.md`/`AGENTS.md` files.
 - Once helper installation moves behind `assets/workflow-contract.v1.json`, regression tests should assert helper presence via the manifest instead of string-matching explicit shell argument lists.
 - `SessionStart` context injection should only emit a real generated resume packet containing `## Resume Prompt`; a bootstrap placeholder must stay silent to avoid context pollution.
 - `workflow_write_handoff()` runs under `set -euo pipefail` via `prepare-handoff.sh`, so optional grep-based event extraction must tolerate no-match pipelines.
@@ -63,6 +63,28 @@
 - Handoff changed-file summaries must include untracked files and must not silently hide the files most likely to be missing after an interrupted long task.
 - `.claude/skill-factory` is a feature sidecar, not a reliable signal that the repo should route into Skill Factory mode; initialized repos also contain it.
 - Partially migrated repos may already have a legacy `tasks/todo.md`; migration must normalize that file instead of only handling missing files and `docs/TODO.md`.
+
+## 2026-05-31 Laper Stack Scaffold Borrow Boundary
+
+### Source Stack
+- Laper-Agent: Python 3.13, Google ADK + FastAPI.
+- Laper-App: TypeScript, React 19 + Vite + Plate + Loro CRDT.
+- Laper-backend: Go, Gin + Supabase REST, goroutine pool.
+- Laper-Chat: TypeScript/Bun, Mastra + Hono + AI SDK.
+- Laper-CMS-admin: JavaScript, React 19 + Vite + shadcn/ui.
+
+### External Signals
+- Google ADK is now documented as a production agent framework across Python, TypeScript, Go, Java, and Kotlin, with Python install path `google-adk` and FastAPI streaming examples (`https://adk.dev/`, `https://google.github.io/adk-docs/get-started/streaming/quickstart-streaming/`).
+- Mastra positions itself as a TypeScript framework for agents, memory, tools, workflows, evals, and tracing, and documents integration with Hono plus deployment on Bun-compatible runtimes (`https://mastra.ai/ai-agent-framework`).
+- Plate is a React rich-text editor framework with shadcn-style owned components and MCP/AI-ready surface area (`https://platejs.org/docs`).
+- Loro is a JavaScript/TypeScript CRDT library for local-first collaboration, with explicit peer identity and document sync constraints (`https://www.loro.dev/docs/api/js`).
+- Supabase REST remains useful as a PostgREST CRUD layer, but still reflects database schema authority; it should not hide domain ownership in scaffold guidance (`https://supabase.com/docs/guides/api`).
+
+### Decision
+- Borrow Plate + Loro as a first-class `collaborative-editor` AI-native scaffold profile for document/CMS/knowledge-workspace products.
+- Borrow Mastra as an optional TypeScript agent runtime inside `chat-agent` and `workflow-agent` profiles when the product needs memory, tools, workflows, evals, or tracing.
+- Keep ADK/FastAPI and Go/Gin behind `sidecar-kernel`; they are good capability kernels, not global app-facing defaults.
+- Do not change the A-K plan catalog or default `AI_NATIVE_PROFILE=none`. The Laper stack is product-profile evidence, not a new plan code.
 
 ## 2026-05-31 Approved Plan Projection Prompt Boundary
 
@@ -324,7 +346,7 @@
 - `docs/reference-configs/document-generation.md` is the reference for the new document boundary: generate the smallest skeleton, let the Agent decide when a domain doc is warranted, and keep generated placeholders out of default repos.
 - `lsp_profiles` became explicit policy/context metadata. The root default is `typescript-lsp`; selected functional-block context entries can carry `lsp_profile`, `doc_scope`, and `verification_hint` without expanding root context.
 - `worktree_strategy` became explicit policy. If the current repo state conflicts with the task, the agent should open an isolated `codex/<task-slug>` worktree, complete there, run Waza `/check`-style validation, and only merge back to `main` after checks pass.
-- Init/migration external-tooling reports now skip update checks unless `PROJECT_INITIALIZER_CHECK_TOOLING_UPDATES=1`; update checks remain available but should be an explicit advisory action, not part of every scaffold/migration verification path.
+- Init/migration external-tooling reports now skip update checks unless `REPO_HARNESS_CHECK_TOOLING_UPDATES=1` or the legacy `PROJECT_INITIALIZER_CHECK_TOOLING_UPDATES=1` is set; update checks remain available but should be an explicit advisory action, not part of every scaffold/migration verification path.
 
 ### What to Preserve
 - Keep `assets/workflow-contract.v1.json` and `.ai/harness/workflow-contract.json` in sync whenever required files change.
@@ -348,7 +370,7 @@
 
 ### What Changed
 - `.ai/context/capabilities.json` is now the explicit source of truth for capability prefixes, local contract files, architecture modules, workstream directories, LSP profile, and verification hints.
-- `scripts/capability-resolver.ts` owns longest-prefix matching. `agent-context-blocks.txt`, `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, and existing nested `AGENTS.md` / `CLAUDE.md` files are compatibility inputs only when the registry is absent.
+- `scripts/capability-resolver.ts` owns longest-prefix matching. `agent-context-blocks.txt`, preferred `REPO_HARNESS_CONTEXT_BLOCKS`, legacy `PROJECT_INITIALIZER_CONTEXT_BLOCKS`, and existing nested `AGENTS.md` / `CLAUDE.md` files are compatibility inputs only when the registry is absent.
 - `architecture-drift.sh`, `context-contract-sync.sh`, and `workstream-sync.sh` now carry `capability_id` and `matched_prefix` fields while preserving `functional_block` for one compatibility cycle.
 - Workstream sync writes to `.ai/harness/events.jsonl`; the separate `.ai/harness/workstreams/events.jsonl` surface was removed to keep event state atomic.
 - Slice contracts now include `Capability ID`, while capability contracts remain the paired local `AGENTS.md` / `CLAUDE.md` files.
@@ -833,3 +855,19 @@
 
 ### Verification
 - `tests/hook-runtime.test.ts` includes a file-prefix workstream-sync fixture for `.ai/harness/policy.json`, checking the generated workstream and projected local contract block.
+
+## 2026-05-31 Repo Harness Env Alias Migration
+
+### Boundary
+- `REPO_HARNESS_*` is now the preferred runtime environment prefix for scaffold, migration, context-block, external-tooling, and contract-worktree control knobs.
+- Existing `PROJECT_INITIALIZER_*` variables remain compatibility fallbacks so installed repos and old automation do not break during the rename window.
+- Upstream root discovery is unchanged: `AGENTIC_DEV_ROOT` remains canonical and `AGENTIC_DEV_SKILL_ROOT` remains the compatibility root env; retired `PROJECT_INITIALIZER_ROOT` stays out of runtime resolution.
+
+### Trace
+- Shell scaffold/migration paths read env through `pi_env_value` and `pi_plan_type`, then flow into `create-project-dirs.sh`, `init-project.sh`, `migrate-project-template.sh`, `plan-to-todo.sh`, and `contract-worktree.sh`.
+- Context selection paths read `REPO_HARNESS_CONTEXT_BLOCKS*` before `PROJECT_INITIALIZER_CONTEXT_BLOCKS*` in both shell selectors and `scripts/capability-resolver.ts`.
+- Generated context maps now advertise `REPO_HARNESS_CONTEXT_BLOCKS` plus `legacy_env=PROJECT_INITIALIZER_CONTEXT_BLOCKS` instead of presenting the legacy env as the primary selector.
+
+### Preserve
+- New generated `.gitignore` runtime blocks and Codex resume packets write `repo-harness` markers.
+- Keep dual-read support for old generated markers such as `managed by project-initializer` and `generated-by: project-initializer` until downstream repos have migrated.

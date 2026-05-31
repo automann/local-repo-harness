@@ -47,6 +47,7 @@ describe("Skill eval assets", () => {
       "repo-harness-plan",
       "repo-harness-review",
       "repo-harness-autoplan",
+      "repo-harness-ship",
       "repo-harness-init",
       "repo-harness-scaffold",
       "repo-harness-migrate",

@@ -34,7 +34,7 @@ describe('route registry (Phase 1B Z design)', () => {
     expect(getRoute('PostToolUse', 'bash')?.scripts).toEqual(['post-bash.sh']);
     expect(getRoute('PostToolUse', 'always')?.scripts).toEqual(['trace-event.sh', 'context-pressure-hook.sh']);
     expect(getRoute('UserPromptSubmit', 'default')?.scripts).toEqual(['prompt-guard.sh']);
-    expect(getRoute('Stop', 'default')?.scripts).toEqual(['finalize-handoff.sh']);
+    expect(getRoute('Stop', 'default')?.scripts).toEqual(['stop-orchestrator.sh']);
   });
 
   test('getRoute returns undefined for unknown (event, route) tuples', () => {
@@ -64,6 +64,7 @@ describe('route registry (Phase 1B Z design)', () => {
       'context-pressure-hook.sh',
       'prompt-guard.sh',
       'finalize-handoff.sh',
+      'stop-orchestrator.sh',
     ]);
     for (const r of ROUTES) {
       for (const s of r.scripts) expect(KNOWN.has(s)).toBe(true);

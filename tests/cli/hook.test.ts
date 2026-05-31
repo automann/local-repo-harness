@@ -258,6 +258,50 @@ describe('hook command (Phase 1B)', () => {
     );
   });
 
+  test('CLI dispatcher forwards Codex Stop decision JSON and suppresses success stderr', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      installAssetHooks(repoRoot);
+      fs.mkdirSync(path.join(repoRoot, '.ai/harness/planning'), { recursive: true });
+      fs.writeFileSync(
+        path.join(repoRoot, '.ai/harness/planning/pending.json'),
+        `${JSON.stringify({
+          version: 1,
+          kind: 'codex-plan',
+          host: 'codex',
+          prompt_slug: 'codex-stop-decision',
+          source_ref: 'thread://codex-stop-decision',
+          expected_artifact: 'plans/plan-*.md',
+          cwd: repoRoot,
+          created_at: '2026-06-01T09:00:00+0800',
+        })}\n`,
+      );
+
+      const lastAssistantMessage =
+        '## Approved design summary\n' +
+        'Building a Codex Stop decision contract with P1 map, P2 trace, P3 decision rationale, tests, rollback, and risk handling. '.repeat(4);
+      const res = spawnSync(
+        process.execPath,
+        [CLI, 'hook', 'Stop', '--route', 'default'],
+        {
+          cwd: repoRoot,
+          input: JSON.stringify({
+            hook_event_name: 'Stop',
+            stop_hook_active: false,
+            last_assistant_message: lastAssistantMessage,
+          }),
+          encoding: 'utf-8',
+          env: { ...process.env, HOOK_HOST: 'codex' },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      const decision = JSON.parse(res.stdout);
+      expect(decision.decision).toBe('block');
+      expect(decision.reason).toContain('[PlanCompletenessGate]');
+      expect(res.stderr).toBe('');
+    });
+  });
+
   test('CLI dispatcher moves Codex failure stdout to stderr', () => {
     withTempRepo(
       {

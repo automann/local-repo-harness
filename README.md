@@ -322,7 +322,7 @@ the public surface action-style while sharing the same router, contract, scripts
 and tests:
 
 - Planning and review: `repo-harness-plan`, `repo-harness-review`, `repo-harness-autoplan`
-- Repo workflow actions: `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
+- Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Project creation: `repo-harness-scaffold`
 
 `repo-harness-init` is for an existing repo; `repo-harness-scaffold` creates a new

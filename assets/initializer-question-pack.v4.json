@@ -50,7 +50,7 @@
       "title": "AI-Native Profile",
       "batch": 2,
       "questions": [
-        "Choose AI-native overlay: none (default), chat-agent, runtime-console, product-copilot, workflow-agent, generative-ui-agent, browser-agent, research-agent, coding-agent, enterprise-agent-platform, voice-agent, or sidecar-kernel",
+        "Choose AI-native overlay: none (default), chat-agent, collaborative-editor, runtime-console, product-copilot, workflow-agent, generative-ui-agent, browser-agent, research-agent, coding-agent, enterprise-agent-platform, voice-agent, or sidecar-kernel",
         "Confirm whether generated structure should add AG-UI, assistant-ui or CopilotKit, Bun/Hono gateway, MCP/tool, sidecar, and observability boundaries"
       ],
       "required": false
@@ -278,15 +278,33 @@
       "description": "Ordinary AI chat, RAG, or help assistant inside the selected app plan.",
       "frontend": "Vite 8 + assistant-ui or the selected plan UI",
       "runtimeProtocol": "AI SDK UI stream or AG-UI lite",
-      "backend": "Bun/Hono gateway or existing API boundary",
+      "backend": "Bun/Hono gateway or Mastra/Hono runtime behind the existing API boundary",
       "stateDefault": "TanStack Query + Zustand",
       "sidecarPolicy": "Python only when the model framework needs it",
       "uiSchema": "Hardcoded React components",
       "techStackRows": [
         "| AI UI | assistant-ui chat surface |",
         "| Agent stream | AI SDK UI stream or AG-UI lite |",
-        "| Agent gateway | Bun/Hono or existing API |",
+        "| Agent runtime | Bun/Hono by default; Mastra when TS agents need memory, tools, workflows, or evals |",
         "| Agent state | TanStack Query + Zustand |"
+      ]
+    },
+    "collaborative-editor": {
+      "label": "Collaborative editor",
+      "description": "AI-aware document, CMS, or knowledge workspace with local-first collaboration and explicit sync ownership.",
+      "frontend": "Vite 8 + React 19 + Plate + shadcn/ui",
+      "runtimeProtocol": "Loro CRDT document events; AI SDK or AG-UI only for user-visible agent runs",
+      "backend": "Bun/Hono sync and agent gateway, or existing API boundary",
+      "stateDefault": "Loro document state + TanStack Query server cache + Zustand UI state",
+      "sidecarPolicy": "None by default; Python or Go sidecars only for extraction, indexing, or heavy sync workers",
+      "uiSchema": "Plate node/plugin schema plus app-owned document contracts",
+      "projectStructureFile": "assets/project-structures/ai-native-collaborative-editor.txt",
+      "techStackRows": [
+        "| Editor UI | Plate + shadcn/ui in a Vite 8 React surface |",
+        "| Collaboration | Loro CRDT document state and sync contracts |",
+        "| Agent runtime | AI SDK or AG-UI only for user-visible assistant/document actions |",
+        "| Sync gateway | Bun/Hono or existing API boundary owns persistence and auth |",
+        "| State split | Loro for document replicas; TanStack Query for server cache; Zustand for UI chrome |"
       ]
     },
     "runtime-console": {
@@ -332,12 +350,12 @@
       "runtimeProtocol": "AG-UI",
       "backend": "Bun/Hono gateway",
       "stateDefault": "Jotai + Zustand + TanStack Query",
-      "sidecarPolicy": "LangGraph, Temporal, Inngest, or BullMQ only when execution needs them",
+      "sidecarPolicy": "Mastra, LangGraph, Temporal, Inngest, or BullMQ only when execution needs workflow durability or orchestration",
       "uiSchema": "A2UI optional experiment",
       "techStackRows": [
         "| Workflow UI | React Flow/xyflow + Monaco |",
         "| Agent protocol | AG-UI workflow/run events |",
-        "| Executor | Bun/Hono gateway with optional workflow engine |",
+        "| Executor | Bun/Hono gateway with optional Mastra or durable workflow engine |",
         "| Agent state | Jotai + Zustand + TanStack Query |"
       ]
     },
@@ -444,14 +462,14 @@
       "runtimeProtocol": "AG-UI when user-visible agent runs exist; MCP/HTTP for sidecars",
       "backend": "Bun/Hono gateway owns app-facing API",
       "stateDefault": "TanStack Query + Zustand, plus domain stores as needed",
-      "sidecarPolicy": "Python for model/eval/data pipelines, Go for workers, Rust for low-latency parsing/indexing/sandboxing",
+      "sidecarPolicy": "Python ADK/FastAPI for model/eval/data pipelines, Go/Gin for high-concurrency workers or infra adapters, Rust for low-latency parsing/indexing/sandboxing",
       "uiSchema": "None by default",
       "projectStructureFile": "assets/project-structures/ai-native-sidecar-kernel.txt",
       "techStackRows": [
         "| App gateway | Bun/Hono owns app-facing API |",
         "| Sidecar protocol | MCP tools or narrow HTTP jobs |",
-        "| Python sidecar | Model frameworks, evals, data science |",
-        "| Go sidecar | High-concurrency workers and infra adapters |",
+        "| Python sidecar | Google ADK/FastAPI, model frameworks, evals, data science |",
+        "| Go sidecar | Gin workers, Supabase REST adapters, high-concurrency infra jobs |",
         "| Rust sidecar | Parsing, indexing, sandboxing, native kernels |"
       ]
     }

@@ -12,6 +12,7 @@ They expose user-facing verbs without duplicating the engine:
 - `repo-harness-plan`
 - `repo-harness-review`
 - `repo-harness-autoplan`
+- `repo-harness-ship`
 - `repo-harness-init`
 - `repo-harness-scaffold`
 - `repo-harness-migrate`
@@ -28,15 +29,21 @@ catalog. The root `SKILL.md` remains the router over the same engine.
 
 ## P2 Trace
 
-Concrete route: user selects `repo-harness-check` -> command facade confirms repo
+Concrete route: user selects `repo-harness-ship` -> command facade confirms repo
+path, dirty boundaries, linked worktrees, review/check evidence, and remote PR
+tooling -> `scripts/ship-worktrees.sh` runs `contract-worktree.sh finish
+--no-merge` for finished contract worktrees -> pushes `codex/<slug>` branches
+-> creates draft PRs without fast-forwarding `main`.
+
+Concrete verification route: user selects `repo-harness-check` -> command facade confirms repo
 path and dirty boundaries -> runs `bun test`, task sync, workflow strict check,
 inspector, and migration dry-run where available -> returns pass/fail readiness
 instead of mutating the repo.
 
 Command shape is prose plus exact commands. Ownership crosses from public
 command docs into repo-local scripts only when the command protocol calls the
-engine. Planning/review/autoplan are non-mutating by default; init/scaffold/
-migrate/upgrade/repair are mutating by design.
+engine. Planning/review are non-mutating by default; autoplan/ship/init/scaffold/
+migrate/upgrade/repair are mutating by design after explicit command invocation.
 
 Error paths:
 

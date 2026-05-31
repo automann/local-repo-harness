@@ -22,6 +22,8 @@ describe("Hook contracts", () => {
     expect(script).toContain("HOOK_REPO_ROOT");
     expect(script).toContain("HookRunner");
     expect(script).toContain(".ai/hooks");
+    expect(script).toContain('"$HOOK_NAME" == "stop-orchestrator.sh"');
+    expect(script).toContain('"decision"[[:space:]]*:');
   });
 
   test("hook input parser should support current Claude Code prompt and memory fields", () => {
@@ -133,6 +135,16 @@ describe("Hook contracts", () => {
     expect(script).toContain("worth the tokens");
   });
 
+  test("stop orchestrator should own Stop JSON control and handoff refresh", () => {
+    const script = read("assets/hooks/stop-orchestrator.sh");
+    expect(script).toContain("PlanCompletenessGate");
+    expect(script).toContain("last_assistant_message");
+    expect(script).toContain("stop_hook_active");
+    expect(script).toContain("workflow_write_handoff");
+    expect(script).toContain("decision:\"block\"");
+    expect(script).not.toContain('HOOK_HOST:-claude}" != "codex"');
+  });
+
   test("post-edit guard should retain doc-drift coverage for apps/*/src/** and wrangler*.toml", () => {
     const script = read("assets/hooks/post-edit-guard.sh");
     expect(script).toContain("apps/[^/]+/src/.+");
@@ -215,8 +227,8 @@ describe("Hook contracts", () => {
     expect(codexHooks).not.toContain("autoresearch-advisory.sh");
     expect(settings).toContain("trace-event.sh");
     expect(codexHooks).toContain("trace-event.sh");
-    expect(settings).toContain("finalize-handoff.sh");
-    expect(codexHooks).toContain("finalize-handoff.sh");
+    expect(settings).toContain("stop-orchestrator.sh");
+    expect(codexHooks).toContain("stop-orchestrator.sh");
     expect(settings).toContain("post-bash.sh");
     expect(codexHooks).toContain("post-bash.sh");
     expect(settings).toContain("context-pressure-hook.sh");

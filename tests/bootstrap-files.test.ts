@@ -106,6 +106,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("context-contract-sync.sh");
     expect(contract.helpers.scripts).toContain("workstream-sync.sh");
     expect(contract.helpers.scripts).toContain("contract-worktree.sh");
+    expect(contract.helpers.scripts).toContain("ship-worktrees.sh");
     expect(contract.externalTooling.codexAutomationProfile.requiredSkills).toEqual(["health", "check", "diagram-design"]);
     expect(contract.externalTooling.codexAutomationProfile.vendoringPolicy).toBe("do-not-vendor-skill-body");
     expect(contract.externalTooling.diagramDesign.vendoringPolicy).toBe("do-not-vendor");
@@ -145,6 +146,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("architecture-event.ts");
     expect(contract.helpers.scripts).toContain("capability-config.ts");
     expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/ship-worktrees.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/capture-plan.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
     expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
@@ -331,7 +333,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(settings).toContain("prompt-guard.sh");
     expect(settings).not.toContain("autoresearch-advisory.sh");
     expect(codexHooks).not.toContain("autoresearch-advisory.sh");
-    expect(settings).toContain("finalize-handoff.sh");
+    expect(settings).toContain("stop-orchestrator.sh");
     expect(settings).toContain("post-bash.sh");
     expect(settings).toContain("trace-event.sh");
     expect(settings).toContain("context-pressure-hook.sh");

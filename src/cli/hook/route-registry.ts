@@ -76,7 +76,7 @@ export const ROUTES: readonly Route[] = Object.freeze([
   Object.freeze({
     event: 'Stop' as const,
     routeId: 'default' as const,
-    scripts: Object.freeze(['finalize-handoff.sh']),
+    scripts: Object.freeze(['stop-orchestrator.sh']),
   }),
 ]);
 

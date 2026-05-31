@@ -8,6 +8,7 @@ const COMMANDS = [
   "repo-harness-plan",
   "repo-harness-review",
   "repo-harness-autoplan",
+  "repo-harness-ship",
   "repo-harness-init",
   "repo-harness-scaffold",
   "repo-harness-migrate",
@@ -51,11 +52,21 @@ describe("repo-harness action command skills", () => {
     }
   });
 
-  test("plan, review, and autoplan are non-mutating by default", () => {
-    for (const command of ["repo-harness-plan", "repo-harness-review", "repo-harness-autoplan"]) {
+  test("plan and review are non-mutating by default", () => {
+    for (const command of ["repo-harness-plan", "repo-harness-review"]) {
       expect(readCommand(command)).toContain("Does not edit");
     }
     expect(readCommand("repo-harness-plan")).toContain("capture-plan.sh");
+  });
+
+  test("autoplan runs full workflow with bounded self-review and delegates ship", () => {
+    const autoplan = readCommand("repo-harness-autoplan");
+
+    expect(autoplan).toContain("self-review 1");
+    expect(autoplan).toContain("self-review 2");
+    expect(autoplan).toContain("Execute the approved plan");
+    expect(autoplan).toContain("Call `repo-harness-ship`");
+    expect(autoplan).toContain("Runs exactly two plan self-review passes");
   });
 
   test("autoplan packages repeated workflows only through an evidence-first approval gate", () => {
@@ -69,6 +80,18 @@ describe("repo-harness action command skills", () => {
     expect(autoplan).toContain("Prefer extending an existing skill");
     expect(autoplan).toContain("Does not create skills, subagents, automations");
     expect(autoplan).toContain("user approves the plan");
+  });
+
+  test("ship defaults to PR closeout and keeps local merge explicit", () => {
+    const ship = readCommand("repo-harness-ship");
+
+    expect(ship).toContain("scripts/ship-worktrees.sh");
+    expect(ship).toContain("finish --no-merge");
+    expect(ship).toContain("gh pr create --base main --head codex/<slug>");
+    expect(ship).toContain("--local-merge");
+    expect(ship).toContain("--cleanup-merged");
+    expect(ship).toContain("Default mode creates PRs");
+    expect(ship).toContain("Does not run `git reset --hard`, `git clean`, or automatic stash");
   });
 
   test("init and scaffold keep existing-repo adoption separate from app scaffolding", () => {
