@@ -49,6 +49,41 @@ function globalConfigPath(): string {
   return path.join(process.env.HOME ?? os.homedir(), '.codex', 'hooks.json');
 }
 
+function globalTomlConfigPath(): string {
+  return path.join(process.env.HOME ?? os.homedir(), '.codex', 'config.toml');
+}
+
+function ensureRequestUserInputToml(): WriteResult['files'][number] {
+  const filePath = globalTomlConfigPath();
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+  const desiredLine = 'default_mode_request_user_input = true';
+  if (!fs.existsSync(filePath)) {
+    atomicWriteFileSync(filePath, `${desiredLine}\n`);
+    return { path: filePath, action: 'created' };
+  }
+
+  const current = fs.readFileSync(filePath, 'utf-8');
+  if (/^default_mode_request_user_input\s*=\s*true\s*$/m.test(current)) {
+    return { path: filePath, action: 'unchanged' };
+  }
+
+  let next: string;
+  if (/^default_mode_request_user_input\s*=/m.test(current)) {
+    next = current.replace(/^default_mode_request_user_input\s*=.*$/m, desiredLine);
+  } else if (/^\[/m.test(current)) {
+    next = current.replace(/^\[/m, `${desiredLine}\n\n[`);
+  } else {
+    next = `${current.replace(/\s*$/, '')}\n${desiredLine}\n`;
+  }
+
+  if (next === current) {
+    return { path: filePath, action: 'unchanged' };
+  }
+  atomicWriteFileSync(filePath, next);
+  return { path: filePath, action: 'updated' };
+}
+
 class CodexTarget implements AgentTarget {
   readonly id = 'codex' as const;
   readonly displayName = 'Codex CLI';
@@ -94,17 +129,18 @@ class CodexTarget implements AgentTarget {
     const merged = mergeHooks(cleaned, managed);
     const next: HooksFile = { ...data, hooks: merged };
     const nextContent = formatJson(next);
+    const tomlResult = ensureRequestUserInputToml();
 
     const created = !fs.existsSync(filePath);
     if (!created) {
       const current = fs.readFileSync(filePath, 'utf-8');
       if (current === nextContent) {
-        return { files: [{ path: filePath, action: 'unchanged' }] };
+        return { files: [{ path: filePath, action: 'unchanged' }, tomlResult] };
       }
     }
     atomicWriteFileSync(filePath, nextContent);
     return {
-      files: [{ path: filePath, action: created ? 'created' : 'updated' }],
+      files: [{ path: filePath, action: created ? 'created' : 'updated' }, tomlResult],
       notes: created
         ? ['Restart Codex to register new hook trust hashes.']
         : ['Existing hash entries stay trusted; only new (command, key) tuples re-prompt.'],
@@ -131,7 +167,7 @@ class CodexTarget implements AgentTarget {
   }
 
   describePaths(loc: Location): string[] {
-    return loc === 'global' ? [globalConfigPath()] : [];
+    return loc === 'global' ? [globalConfigPath(), globalTomlConfigPath()] : [];
   }
 }
 

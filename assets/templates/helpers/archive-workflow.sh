@@ -47,6 +47,57 @@ unique_archive_path() {
   printf '%s' "$candidate"
 }
 
+normalize_slug() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g'
+}
+
+is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+plan_title_slug_from_file() {
+  local plan_file="$1"
+  local title slug
+  [[ -f "$plan_file" ]] || return 1
+  title="$(awk '
+    /^# Plan:[[:space:]]*/ {
+      sub(/^# Plan:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$plan_file" | xargs)"
+  [[ -n "$title" ]] || return 1
+  slug="$(normalize_slug "$title")"
+  [[ -n "$slug" ]] || return 1
+  printf '%s' "$slug"
+}
+
+plan_artifact_stem_from_parts() {
+  local plan_file="$1"
+  local original_stem="$2"
+  local slug="$3"
+  local stamp title_slug
+
+  if [[ "$original_stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    stamp="$(printf '%s' "$original_stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+    if is_transient_plan_slug "$slug"; then
+      title_slug="$(plan_title_slug_from_file "$plan_file" || true)"
+      if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+        printf '%s-%s' "$stamp" "$title_slug"
+        return 0
+      fi
+    fi
+    printf '%s' "$original_stem"
+  else
+    printf '%s' "$slug"
+  fi
+}
+
 plan_file=""
 outcome=""
 
@@ -106,7 +157,8 @@ timestamp="$(date +%Y%m%d-%H%M)"
 timestamp_human="$(date '+%Y-%m-%d %H:%M')"
 plan_base="$(basename "$plan_file")"
 slug="$(echo "$plan_base" | sed -E 's/^plan-[0-9]{8}-[0-9]{4}-//; s/\.md$//')"
-artifact_stem="$(printf '%s' "$plan_base" | sed -E 's/^plan-//; s/\.md$//')"
+original_artifact_stem="$(printf '%s' "$plan_base" | sed -E 's/^plan-//; s/\.md$//')"
+artifact_stem="$(plan_artifact_stem_from_parts "$plan_file" "$original_artifact_stem" "$slug")"
 parent_run_id="${HOOK_RUN_ID:-${CLAUDE_RUN_ID:-${CODEX_RUN_ID:-run-${timestamp}}}}"
 todo_source_plan="$(awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todo.md 2>/dev/null | xargs)"
 

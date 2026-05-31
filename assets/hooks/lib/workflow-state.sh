@@ -289,13 +289,63 @@ workflow_plan_slug_from_path() {
   printf '%s' "$slug"
 }
 
-workflow_plan_artifact_stem_from_path() {
+workflow_plan_original_artifact_stem_from_path() {
   local plan_file="$1"
   local base stem
 
   base="$(basename "$plan_file")"
   stem="$(printf '%s' "$base" | sed -E 's/^plan-//; s/\.md$//')"
   if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    printf '%s' "$stem"
+    return 0
+  fi
+
+  workflow_plan_slug_from_path "$plan_file"
+}
+
+workflow_is_transient_plan_slug() {
+  case "$1" in
+    think-plan-[0-9]*|codex-plan-[0-9]*|approved-plan-[0-9]*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+workflow_plan_title_slug_from_file() {
+  local plan_file="$1"
+  local title slug
+
+  [[ -f "$plan_file" ]] || return 1
+  title="$(awk '
+    /^# Plan:[[:space:]]*/ {
+      sub(/^# Plan:[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$plan_file" | xargs)"
+  [[ -n "$title" ]] || return 1
+
+  slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-{2,}/-/g')"
+  [[ -n "$slug" ]] || return 1
+  printf '%s' "$slug"
+}
+
+workflow_plan_artifact_stem_from_path() {
+  local plan_file="$1"
+  local stem stamp slug title_slug
+
+  stem="$(workflow_plan_original_artifact_stem_from_path "$plan_file" || true)"
+  if [[ "$stem" =~ ^[0-9]{8}-[0-9]{4}-.+ ]]; then
+    stamp="$(printf '%s' "$stem" | sed -E 's/^([0-9]{8}-[0-9]{4})-.+$/\1/')"
+    slug="$(printf '%s' "$stem" | sed -E 's/^[0-9]{8}-[0-9]{4}-//')"
+    if workflow_is_transient_plan_slug "$slug"; then
+      title_slug="$(workflow_plan_title_slug_from_file "$plan_file" || true)"
+      if [[ -n "$title_slug" && "$title_slug" != "$slug" ]]; then
+        printf '%s-%s' "$stamp" "$title_slug"
+        return 0
+      fi
+    fi
     printf '%s' "$stem"
     return 0
   fi
