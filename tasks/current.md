@@ -1,26 +1,26 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-05-31T02:26:13+0800 -->
+<!-- updated_at: 2026-05-31T19:43:04+0800 -->
 <!-- stale_after: 24h -->
 
-> **Status**: Idle
-> **Updated At**: 2026-05-31T02:26:13+0800
-> **Source Branch**: codex/ai-native-scaffold-architecture-profile
-> **Source Commit**: d2304e1
+> **Status**: Active
+> **Updated At**: 2026-05-31T19:43:04+0800
+> **Source Branch**: main
+> **Source Commit**: f06980c
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: archive-workflow
+> **Reason**: prompt-guard-ts-decision-engine
 > **Derived From**: active-plan, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
 
 ## Current Focus
 
-- Status: Idle
+- Status: Active
 - Active Plan: (none)
 - Plan Status: (none)
-- Next Task: (none)
+- Next Task: inspect active worktree marker(s)
 - Clear Note: (none)
 
 ## Mainline Snapshot Reading
@@ -31,13 +31,18 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Active Work
 
-- (none)
+- /Users/ancienttwo/Projects/agentic-dev-wt-attachment-context-priority: plans/plan-20260531-0326-codex-attachment-context-priority.md
+- /Users/ancienttwo/Projects/agentic-dev-wt-attachment-context-priority: active-worktree owner -> /Users/ancienttwo/Projects/agentic-dev-wt-attachment-context-priority
+- /Users/ancienttwo/Projects/agentic-dev-wt-codex: plans/plan-20260531-0326-codex.md
+- /Users/ancienttwo/Projects/agentic-dev-wt-codex: active-worktree owner -> /Users/ancienttwo/Projects/agentic-dev-wt-codex
+- /Users/ancienttwo/Projects/agentic-dev-wt-prompt-guard-cli-rewrite-plan: plans/plan-20260531-1847-prompt-guard-cli-rewrite-plan.md
+- /Users/ancienttwo/Projects/agentic-dev-wt-prompt-guard-cli-rewrite-plan: active-worktree owner -> /Users/ancienttwo/Projects/agentic-dev-wt-prompt-guard-cli-rewrite-plan
 ## Workstreams
 
 - `tasks/workstreams/workflow-engine/contract-assets/cleanup-script-policy.md`: status=completed, current_slice=todo-01, source_plan=(none)
 ## Handoff
 
-- Exact Next Step: Extend question-pack schema and loader with `ai_native_profile` profiles.
+- Exact Next Step: Clean up merged contract worktree codex/attachment-context-priority. Command: bash scripts/contract-worktree.sh cleanup --slug attachment-context-priority --target main
 
 ## Checks
 
@@ -45,34 +50,26 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 25 changed/untracked path(s)
+- Summary: 17 changed/untracked path(s)
 
 ```
- M README.md
- M SKILL.md
- M assets/initializer-question-pack.v4.json
- M assets/initializer-question-pack.v4.schema.json
- M assets/partials/04-project-structure.partial.md
- M assets/plan-map.json
- M assets/skill-commands/repo-harness-scaffold/SKILL.md
- M assets/templates/tech-stack.template.md
- M references/tech-stacks.md
- M scripts/assemble-template.ts
- M scripts/initializer-question-pack.ts
- M tests/initializer-question-pack.test.ts
- M tests/output-parity.test.ts
- M tests/plan-map-consistency.test.ts
- M tests/scaffold-parity.test.ts
-?? assets/project-structures/ai-native-product-copilot.txt
-?? assets/project-structures/ai-native-runtime-console.txt
-?? assets/project-structures/ai-native-sidecar-kernel.txt
-?? plans/archive/plan-20260531-0032-ai-native-scaffold-architecture-profile.md
-?? tasks/.current.md.tmp.5Ah0eE
-?? tasks/archive/notes-20260531-0226-ai-native-scaffold-architecture-profile.md
-?? tasks/archive/todo-20260531-0226-ai-native-scaffold-architecture-profile.md
-?? tasks/contracts/ai-native-scaffold-architecture-profile.contract.md
-?? tasks/reviews/ai-native-scaffold-architecture-profile.review.md
-?? tests/unit/
+ M .ai/hooks/prompt-guard.sh
+ M assets/hooks/prompt-guard.sh
+ M assets/templates/helpers/plan-to-todo.sh
+ M scripts/plan-to-todo.sh
+ M scripts/refresh-current-status.sh
+ M src/cli/hook-entry.ts
+ M src/cli/index.ts
+ M tasks/current.md
+ M tasks/research.md
+ M tests/cli/hook.test.ts
+ M tests/helper-scripts.test.ts
+ M tests/hook-protocol.test.ts
+ M tests/hook-runtime.test.ts
+?? plans/plan-20260531-0216-think-external-acceptance-contract-worktree-finish-sprint-verifi.md
+?? src/cli/commands/prompt-guard-decision.ts
+?? src/cli/hook/prompt-guard-decision.ts
+?? tests/cli/prompt-guard-decision.test.ts
 ```
 
 ## Source Artifacts

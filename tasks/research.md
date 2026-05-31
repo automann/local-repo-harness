@@ -1,6 +1,6 @@
 # Project — Research Notes
 
-> **Last Updated**: 2026-05-29
+> **Last Updated**: 2026-05-31
 > **Scope**: workflow contract manifest, inspection-first migration, progressive context/policy surfaces, harness state externalization, and DX polish for docs + hook operations
 > **Usage**: Store deep codebase findings and hidden contracts here, not in chat-only summaries.
 
@@ -58,10 +58,43 @@
 - Once helper installation moves behind `assets/workflow-contract.v1.json`, regression tests should assert helper presence via the manifest instead of string-matching explicit shell argument lists.
 - `SessionStart` context injection should only emit a real generated resume packet containing `## Resume Prompt`; a bootstrap placeholder must stay silent to avoid context pollution.
 - `workflow_write_handoff()` runs under `set -euo pipefail` via `prepare-handoff.sh`, so optional grep-based event extraction must tolerate no-match pipelines.
+
 - Policy-sourced harness output paths must stay repo-relative; absolute paths or `..` segments should fall back to the default workflow surface before any hook writes files.
 - Handoff changed-file summaries must include untracked files and must not silently hide the files most likely to be missing after an interrupted long task.
 - `.claude/skill-factory` is a feature sidecar, not a reliable signal that the repo should route into Skill Factory mode; initialized repos also contain it.
 - Partially migrated repos may already have a legacy `tasks/todo.md`; migration must normalize that file instead of only handling missing files and `docs/TODO.md`.
+
+## 2026-05-31 Approved Plan Projection Prompt Boundary
+
+### Symptom
+- A user approved `plans/plan-20260531-0032-ai-native-scaffold-architecture-profile.md`, then sent `implement this plan`.
+- `UserPromptSubmit -> .ai/hooks/run-hook.sh -> .ai/hooks/prompt-guard.sh` classified the prompt as implementation intent but not approval/projection intent, so the Approved plan reached `ContractGuard` and hard-blocked on the missing sprint contract.
+
+### Fix Boundary
+- Exact active-plan execution prompts such as `implement this plan`, `implement the plan`, and `执行这个方案` now route to the existing non-blocking `PlanExecutionGate` when the active plan is already `Approved` and the contract scaffold is missing.
+- Draft or Annotating plans still hard-block under `PlanStatusGuard`; broad bug-fix prompts without a plan contract still hard-block under `ContractGuard`.
+- `.ai/hooks/prompt-guard.sh` and `assets/hooks/prompt-guard.sh` remain byte-equivalent for generated repo parity.
+- `plan-to-todo.sh` must create `.ai/harness/planning/` in linked contract worktrees before clearing pending orchestration; otherwise strict workflow verification fails on a directory that existed only as untracked local state in the primary worktree.
+- After projection, main worktree follow-up prompts that paste the linked worktree path or `codex/<slug>` branch should route to non-blocking `WorktreeExecutionGate`; the primary active marker is intentionally empty, so `PlanStatusGuard` would be the wrong remediation.
+- `下一刀` summaries are planning/report context, even when they contain implementation, finish, commit, or merge vocabulary. They should stay out of `PlanStatusGuard` and BDD injection unless a separate line is an explicit execution command such as `执行这个方案`.
+
+## 2026-05-31 Prompt Guard TS Decision Engine Notes
+
+### Decision
+- Keep `UserPromptSubmit -> repo-harness-hook --route default -> .ai/hooks/prompt-guard.sh` as the public host adapter contract.
+- Keep shell responsible for hook JSON parsing, regex intent facts, workflow file reads, side effects such as `maybe_capture_embedded_approved_plan`, and host-safe rendering.
+- Move the fragile `intent x plan/workflow state -> action` decision into a pure TypeScript table in `src/cli/hook/prompt-guard-decision.ts`.
+- Expose the table through the lightweight hook entry command `repo-harness-hook prompt-guard-decide`; `repo-harness prompt-guard-decide` remains an internal fallback.
+
+### Why
+- The missed Draft-plan projection bug came from manually reusing two shell integer flags across separate branches.
+- TypeScript `Record<PlanState, Record<ExecutionIntent, DecisionFn>>` makes plan-state/action coverage explicit and testable, while avoiding a full shell-to-TS rewrite of file I/O and renderer behavior.
+- Shell renderers preserve the existing Claude/Codex hook output contract: blocks still exit 2 with human-readable stderr via `hook_structured_error`, and Codex non-`SessionStart` success stdout remains quiet through the dispatcher.
+
+### Verification
+- `tests/cli/prompt-guard-decision.test.ts` covers table coverage, Draft + `implement this plan`, no-active-plan projection, approved-plan scaffold advice, passive intents, done quality-gate actions, and both full CLI and lightweight hook-entry command paths.
+- `tests/cli/hook.test.ts` covers the public `UserPromptSubmit --route default` chain through real `prompt-guard.sh` assets and the lightweight TS decision command.
+- `tests/hook-runtime.test.ts` remains the end-to-end behavior surface for generated hook copies, including `active Draft plan + implement this plan`, `active Draft plan + 执行这个方案`, pending plan capture, passive reports, and done gates.
 
 ## Technical Debt / Risks
 - `ensure-task-workflow.sh` still assumes the workflow surface already exists; it does not yet synthesize a fallback runtime contract manifest for partially migrated repos.

@@ -34,6 +34,17 @@ function withTempRepo(
   }
 }
 
+function installAssetHooks(repoRoot: string): void {
+  const src = path.join(ROOT, 'assets/hooks');
+  const dest = path.join(repoRoot, '.ai/hooks');
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.cpSync(src, dest, { recursive: true });
+  execSync(`find "${dest}" -type f -name '*.sh' -exec chmod +x {} +`, {
+    cwd: repoRoot,
+    stdio: 'ignore',
+  });
+}
+
 describe('hook command (Phase 1B)', () => {
   test('minimal hook entry delegates to shared runtime instead of copying the route table', () => {
     const content = fs.readFileSync(HOOK_ENTRY, 'utf-8');
@@ -176,6 +187,50 @@ describe('hook command (Phase 1B)', () => {
         expect(result.scriptsRun).toEqual(['post-bash.sh']);
       },
     );
+  });
+
+  test('UserPromptSubmit route runs prompt-guard through the TS decision engine', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      installAssetHooks(repoRoot);
+      fs.mkdirSync(path.join(repoRoot, 'docs'), { recursive: true });
+      fs.mkdirSync(path.join(repoRoot, 'plans'), { recursive: true });
+      fs.mkdirSync(path.join(repoRoot, '.claude'), { recursive: true });
+      fs.writeFileSync(path.join(repoRoot, 'docs/spec.md'), '# Spec\n');
+      const planPath = 'plans/plan-20260531-1200-demo.md';
+      fs.writeFileSync(
+        path.join(repoRoot, planPath),
+        [
+          '# Demo Plan',
+          '',
+          '> **Status**: Draft',
+          '',
+          '## Summary',
+          '- demo',
+        ].join('\n') + '\n',
+      );
+      fs.writeFileSync(path.join(repoRoot, '.ai/harness/active-plan'), planPath);
+      fs.writeFileSync(path.join(repoRoot, '.claude/.active-plan'), planPath);
+      fs.writeFileSync(path.join(repoRoot, '.ai/harness/active-worktree'), `${repoRoot}\n`);
+
+      const res = spawnSync(
+        process.execPath,
+        [HOOK_ENTRY, 'UserPromptSubmit', '--route', 'default'],
+        {
+          cwd: repoRoot,
+          input: JSON.stringify({ prompt: 'implement this plan' }),
+          encoding: 'utf-8',
+          env: {
+            ...process.env,
+            REPO_HARNESS_HOOK_CLI: HOOK_ENTRY,
+          },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain('[PlanCaptureGate]');
+      expect(res.stdout).toContain('plan-to-todo.sh --plan');
+      expect(res.stderr).toBe('');
+    });
   });
 
   test('CLI dispatcher keeps Codex non-SessionStart stdout empty on success', () => {

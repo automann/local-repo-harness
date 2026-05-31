@@ -8,6 +8,7 @@
  */
 
 import { runHook as runHookRuntime, type RunHookOptions, type RunHookResult } from './hook/runtime';
+import { runPromptGuardDecisionFromEnv } from './commands/prompt-guard-decision';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
 export type RunHookEntryOptions = RunHookOptions;
@@ -26,7 +27,13 @@ function parseCliArgs(argv: readonly string[]): { event: HookEvent; routeId: Rou
 }
 
 if (import.meta.main) {
-  const parsed = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  if (argv[0] === 'prompt-guard-decide') {
+    console.log(runPromptGuardDecisionFromEnv());
+    process.exit(0);
+  }
+
+  const parsed = parseCliArgs(argv);
   if (!parsed) {
     process.stderr.write('repo-harness-hook: usage: repo-harness-hook <event> --route <route>\n');
     process.exit(2);

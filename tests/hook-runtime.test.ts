@@ -131,6 +131,8 @@ function runHook(
     encoding: "utf-8",
     env: {
       ...process.env,
+      REPO_HARNESS_CLI: join(ROOT, "src/cli/index.ts"),
+      REPO_HARNESS_HOOK_CLI: join(ROOT, "src/cli/hook-entry.ts"),
       ...(options?.env ?? {}),
     },
   });
@@ -1442,6 +1444,41 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("prompt-guard: routes explicit plan execution on Draft plan to capture gate", () => {
+    const cwd = tmpWorkspace("prompt-guard-draft-plan-execution-approval");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+
+      const planPath = "plans/plan-20260304-1300-demo.md";
+      writeFileSync(
+        join(cwd, planPath),
+        "# Plan: demo\n\n> **Status**: Draft\n"
+      );
+      writeActivePlan(cwd, planPath);
+
+      expect(run("git", ["add", "."], cwd).status).toBe(0);
+      expect(run("git", ["commit", "-m", "seed draft plan"], cwd).status).toBe(0);
+
+      for (const prompt of ["implement this plan", "执行这个方案"]) {
+        const res = runHook("prompt-guard.sh", cwd, {
+          stdin: JSON.stringify({ user_message: prompt }),
+        });
+
+        expect(res.status).toBe(0);
+        expect(res.stdout).toContain(`[PlanCaptureGate] Approval detected for Draft plan: ${planPath}`);
+        expect(res.stdout).toContain(`bash scripts/plan-to-todo.sh --plan ${planPath}`);
+        expect(res.stdout).not.toContain("[PlanStatusGuard]");
+        expect(res.stdout).not.toContain('"guard":"PlanStatusGuard"');
+      }
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("prompt-guard: blocks implement intent when approved plan lacks evidence contract", () => {
     const cwd = tmpWorkspace("prompt-guard-evidence-contract");
     try {
@@ -1986,6 +2023,30 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("prompt-guard: routes explicit plan execution approval to capture gate without active plan", () => {
+    const cwd = tmpWorkspace("prompt-guard-missing-plan-execution-approval");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+
+      for (const prompt of ["implement this plan", "implement the plan", "execute this plan"]) {
+        const res = runHook("prompt-guard.sh", cwd, {
+          stdin: JSON.stringify({ user_message: prompt }),
+        });
+
+        expect(res.status).toBe(0);
+        expect(res.stdout).toContain("[PlanCaptureGate] Approval detected before an active plan artifact exists.");
+        expect(res.stdout).toContain("capture-plan.sh");
+        expect(res.stdout).not.toContain("[PlanStatusGuard] No active plan found");
+        expect(res.stdout).not.toContain('"guard":"PlanStatusGuard"');
+      }
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("prompt-guard: stale pending plan marker does not bypass missing active-plan guard", () => {
     const cwd = tmpWorkspace("prompt-guard-stale-pending-plan");
     try {
@@ -2220,6 +2281,7 @@ describe("Hook runtime behavior", () => {
 
   test("prompt-guard: treats copied worktree status as passive context", () => {
     const cwd = tmpWorkspace("prompt-guard-passive-worktree-status");
+    const worktreePath = `${cwd}-wt-demo`;
     try {
       initGitRepo(cwd);
       installHooks(cwd);
@@ -2240,6 +2302,123 @@ describe("Hook runtime behavior", () => {
 
       const explicitRes = runHook("prompt-guard.sh", cwd, {
         stdin: JSON.stringify({ user_message: "开始实现" }),
+      });
+
+      expect(explicitRes.status).toBe(2);
+      expect(explicitRes.stdout).toContain("[PlanStatusGuard] No active plan found");
+
+      expect(run("git", ["worktree", "add", worktreePath, "-b", "codex/demo"], cwd).status).toBe(0);
+      mkdirSync(join(worktreePath, "plans"), { recursive: true });
+      writeActivePlan(worktreePath, "plans/plan-20260304-1400-demo.md");
+      writeFileSync(join(worktreePath, "plans/plan-20260304-1400-demo.md"), "# Plan: demo\n\n> **Status**: Executing\n");
+
+      const linkedWorktreePrompt = [
+        "下一刀",
+        `建议切 linked worktree 的计划实现。入口是 ${worktreePath}。`,
+        "",
+        "执行这个方案",
+      ].join("\n");
+      const linkedRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ user_message: linkedWorktreePrompt }),
+      });
+
+      expect(linkedRes.status).toBe(0);
+      expect(linkedRes.stdout).toContain("[WorktreeExecutionGate]");
+      expect(linkedRes.stdout).toContain(worktreePath);
+      expect(linkedRes.stdout).not.toContain("[PlanStatusGuard] No active plan found");
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prompt-guard: treats retrospective completion reports as passive evidence", () => {
+    const cwd = tmpWorkspace("prompt-guard-retrospective-completion-report");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+
+      const report = [
+        "项目是用BUN，为什么使用了NPM？",
+        "你问得对，是我漏了。",
+        "原因不是技术限制，是流程收口没做完：第一次 PRD 产出时还在 Plan Mode，我只返回了 <proposed_plan>；后面实现时我补了代码和 README，但没有把 PRD 单独归档成文档。",
+        "现在已补：",
+        "Repo 内归档：docs/PRD.md",
+        "gstack 本地归档：/Users/ancienttwo/.gstack/projects/loan-agent/ancienttwo-unknown-prd-20260531-archived.md",
+        "并已复跑：",
+        "npm run build 通过",
+        "npm run lint 通过",
+      ].join("\n");
+
+      const res = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ user_message: report }),
+        env: { HOOK_HOST: "codex" },
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).not.toContain("[PlanStatusGuard] No active plan found");
+      expect(res.stdout).not.toContain('"guard":"PlanStatusGuard"');
+      expect(res.stdout).not.toContain("[BDD] Feature intent detected");
+
+      const explicitRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ user_message: "实现这个功能，README 已经有了" }),
+        env: { HOOK_HOST: "codex" },
+      });
+
+      expect(explicitRes.status).toBe(2);
+      expect(explicitRes.stdout).toContain("[PlanStatusGuard] No active plan found");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prompt-guard: treats next-slice reports as planning context", () => {
+    const cwd = tmpWorkspace("prompt-guard-next-slice-plan-context");
+    try {
+      initGitRepo(cwd);
+      installHooks(cwd);
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+
+      const prompts = [
+        [
+          "继续下一刀的方案",
+          "下一刀",
+          "建议切 external acceptance + contract-worktree finish。理由是实现和 sprint verification 已过，但 linked worktree 仍未 commit/merge，scripts/contract-worktree.sh finish 会被 external acceptance gate 拦住。入口是 tasks/reviews/ai-native-scaffold-architecture-profile.review.md (line 1) 和 bash scripts/contract-worktree.sh finish。",
+        ].join("\n"),
+        [
+          "继续下一刀 Think",
+          "已在 linked worktree 完成实现，未提交、未 merge。",
+          "P1",
+          "范围落在 scaffold 权威链路。",
+          "P2",
+          "已验证路径：AI_NATIVE_PROFILE=runtime-console -> assembleTemplate() -> getAiNativeTemplateVariables()。",
+          "P3",
+          "没有新增 Plan code。AI-native 是 overlay 轴。",
+          "验证结果：",
+          "bun test：514 pass, 6 skip, 0 fail",
+        ].join("\n"),
+        "下一刀，明显就是Plan呀",
+      ];
+
+      for (const prompt of prompts) {
+        const res = runHook("prompt-guard.sh", cwd, {
+          stdin: JSON.stringify({ user_message: prompt }),
+          env: { HOOK_HOST: "codex" },
+        });
+
+        expect(res.status).toBe(0);
+        expect(res.stdout).not.toContain("[PlanStatusGuard] No active plan found");
+        expect(res.stdout).not.toContain('"guard":"PlanStatusGuard"');
+        expect(res.stdout).not.toContain("[BDD] Feature intent detected");
+      }
+
+      const explicitRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ user_message: ["下一刀", "执行这个方案"].join("\n") }),
+        env: { HOOK_HOST: "codex" },
       });
 
       expect(explicitRes.status).toBe(2);
@@ -2336,7 +2515,7 @@ describe("Hook runtime behavior", () => {
         ["# Plan: demo", "", "> **Status**: Approved", "", planEvidenceContract(), ""].join("\n")
       );
 
-      for (const prompt of ["GO", "go ahead with it", "可以干了"]) {
+      for (const prompt of ["GO", "go ahead with it", "implement this plan", "implement the plan", "执行这个方案", "可以干了"]) {
         const res = runHook("prompt-guard.sh", cwd, {
           stdin: JSON.stringify({ user_message: prompt }),
         });

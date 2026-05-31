@@ -17,6 +17,7 @@ import { formatMigratePlan, runMigrate } from './commands/migrate';
 import { buildToolsCommand } from './commands/tools';
 import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
+import { runPromptGuardDecisionFromEnv } from './commands/prompt-guard-decision';
 import type { Location } from './installer/types';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
@@ -167,6 +168,15 @@ export function buildProgram(): Command {
   program.addCommand(buildToolsCommand());
   program.addCommand(buildBrainCommand());
   program.addCommand(buildCapabilityContextCommand());
+  for (const name of ['prompt-guard-decide', 'prompt-guard-decision']) {
+    program
+      .command(name, { hidden: true })
+      .description('Internal prompt-guard intent/state decision engine')
+      .action(() => {
+        console.log(runPromptGuardDecisionFromEnv());
+        process.exit(0);
+      });
+  }
 
   return program;
 }

@@ -75,7 +75,12 @@ function runHook(script: string, cwd: string, stdin: string, env?: NodeJS.Proces
     cwd,
     input: stdin,
     encoding: "utf-8",
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      REPO_HARNESS_CLI: join(ROOT, "src/cli/index.ts"),
+      REPO_HARNESS_HOOK_CLI: join(ROOT, "src/cli/hook-entry.ts"),
+      ...env,
+    },
   });
 }
 
@@ -666,6 +671,7 @@ describe("Workflow helper scripts", () => {
       expect(worktreeTodo).toContain("# Deferred Goal Ledger");
       expect(worktreeTodo).toContain("**Status**: Backlog");
       expect(worktreeTodo).not.toContain("- [ ] Step one");
+      expect(existsSync(join(worktreePath, ".ai/harness/planning"))).toBe(true);
       expect(readFileSync(join(worktreePath, ".ai/harness/worktrees/demo.json"), "utf-8")).toContain('"branch": "codex/demo"');
     } finally {
       run("git", ["worktree", "remove", "--force", worktreePath], cwd);
@@ -1144,6 +1150,7 @@ describe("Workflow helper scripts", () => {
       expect(current).toContain("> **Reason**: unit-test");
       expect(current).toContain("<!-- stale_after: 24h -->");
       expect(current).toContain("git show main:tasks/current.md");
+      expect(current).not.toContain(".current.md.tmp");
       expect(current).not.toContain("- [ ]");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

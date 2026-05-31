@@ -463,6 +463,7 @@ mkdir -p .ai/context
 mkdir -p .ai/harness/checks
 mkdir -p .ai/harness/handoff
 mkdir -p .ai/harness/failures
+mkdir -p .ai/harness/planning
 mkdir -p .ai/harness/runs
 
 timestamp="$(date +%Y%m%d-%H%M)"

@@ -17,8 +17,26 @@ is_execution_approval_intent() {
   echo "$PROMPT_TEXT" | grep -qEi "^[[:space:][:punct:]]*(please[[:space:][:punct:]]+)?(go ahead([[:space:]]+(with[[:space:]]+(it|this|that)|please))?|go|proceed([[:space:]]+(with[[:space:]]+(it|this|that)|please))?|approved|approve([[:space:]]+(it|this|that))?|ship it|let'?s go|继续执行|批准执行|批准|可以干(了|吧)?|可以(开始|执行)(了|吧)?|直接改(了|吧)?|整|整吧|开干|干吧|做吧|走起)([[:space:][:punct:]]+please)?[[:space:][:punct:]]*$"
 }
 
+prompt_has_explicit_execution_command_line() {
+  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "^[[:space:][:punct:]]*(please[[:space:]]+)?(implement[[:space:]]+(this|the)|execute[[:space:]]+(this|the)|start[[:space:]]+(implementation|executing|coding)|go ahead|proceed|ship it|开始(实现|执行|落实|写)|执行计划|落实计划|批准执行|批准|直接(改|做|实现|执行|落地)|动手|开干|可以(开始|执行|干)|可以干|干吧|做吧)([[:space:][:punct:]]|$)"
+}
+
+is_plan_execution_projection_intent() {
+  if is_execution_approval_intent; then
+    return 0
+  fi
+
+  prompt_first_nonblank_line | grep -qEi "^[[:space:][:punct:]]*(please[[:space:][:punct:]]+)?((implement|execute|run|start[[:space:]]+(implementing|executing))[[:space:]]+(this|the|approved)[[:space:]]+plan|开始(实现|执行|落实)(这个|该)?(方案|计划)|执行(这个|该)?(方案|计划)|落实(这个|该)?(方案|计划))([[:space:][:punct:]]+please)?[[:space:][:punct:]]*$"
+}
+
 is_implement_intent() {
   if is_trigger_question_prompt; then
+    return 1
+  fi
+  if is_retrospective_completion_report_intent; then
+    return 1
+  fi
+  if is_next_slice_or_status_advisory_intent; then
     return 1
   fi
   if is_plan_discussion_continuation_intent; then
@@ -130,10 +148,124 @@ is_passive_worktree_status_intent() {
   is_execution_approval_intent && return 1
   is_embedded_approved_plan_intent && return 1
   is_plan_shaped_markdown_intent && return 1
-  is_explicit_execution_start_line && return 1
+  prompt_has_explicit_execution_command_line && return 1
 
   printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(plan-to-todo|worktree|linked worktree|隔离 worktree|分支|branch)" || return 1
-  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(实现会在.*worktree.*完成|会在.*worktree.*完成|implementation will .*worktree|will .*happen.*worktree|will .*complete.*worktree)"
+  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(实现会在.*worktree.*完成|会在.*worktree.*完成|已在.*worktree.*完成实现|worktree.*完成实现|implementation will .*worktree|will .*happen.*worktree|will .*complete.*worktree|implementation (has been )?(completed|done).*worktree|completed implementation.*worktree)"
+}
+
+is_retrospective_completion_report_intent() {
+  is_execution_approval_intent && return 1
+  is_embedded_approved_plan_intent && return 1
+  is_plan_shaped_markdown_intent && return 1
+  prompt_has_explicit_execution_command_line && return 1
+
+  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(implement|execute|build|实现|执行|开发)" || return 1
+  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(现在已补|已补|已归档|已复跑|并已复跑|已完成|已处理|我补了|我已经|通过|passed|completed)" || return 1
+  printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(npm|bun|pnpm|yarn|test|lint|build|check|复跑|归档|docs/|README|PRD|通过|passed)"
+}
+
+is_next_slice_or_status_advisory_intent() {
+  local first
+
+  is_execution_approval_intent && return 1
+  is_embedded_approved_plan_intent && return 1
+  is_plan_shaped_markdown_intent && return 1
+  prompt_has_explicit_execution_command_line && return 1
+
+  first="$(prompt_first_nonblank_line)"
+  if printf '%s\n' "$first" | grep -qEi "(下一刀.*(plan|think|方案|计划)|(plan|think|方案|计划).*下一刀)"; then
+    return 0
+  fi
+
+  if printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(^|[[:space:][:punct:]])下一刀([[:space:][:punct:]]|$)" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "建议切" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "理由是" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "入口是"; then
+    return 0
+  fi
+
+  if printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "^[[:space:]]*P1[[:space:]]*$" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "^[[:space:]]*P2[[:space:]]*$" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "^[[:space:]]*P3[[:space:]]*$" \
+    && printf '%s\n' "$PROMPT_INTENT_TEXT" | grep -qEi "(验证结果|已在.*worktree.*完成实现|worktree.*完成实现|未提交|未[[:space:]-]*merge)"; then
+    return 0
+  fi
+
+  return 1
+}
+
+prompt_matches_worktree_record() {
+  local worktree_path="$1"
+  local branch_name="$2"
+  local path_base
+
+  [[ -n "$worktree_path" ]] || return 1
+  if printf '%s' "$PROMPT_INTENT_TEXT" | grep -Fq "$worktree_path"; then
+    return 0
+  fi
+
+  path_base="$(basename "$worktree_path")"
+  if [[ -n "$path_base" ]] && printf '%s' "$PROMPT_INTENT_TEXT" | grep -Fq "$path_base"; then
+    return 0
+  fi
+
+  if [[ -n "$branch_name" ]] && printf '%s' "$PROMPT_INTENT_TEXT" | grep -Fq "$branch_name"; then
+    return 0
+  fi
+
+  return 1
+}
+
+prompt_linked_worktree_target() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
+  git worktree list --porcelain >/dev/null 2>&1 || return 1
+
+  local current worktree_path branch_name line real_path active_plan
+  current="$(pwd -P)"
+  worktree_path=""
+  branch_name=""
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -z "$line" ]]; then
+      if [[ -n "$worktree_path" ]]; then
+        real_path="$(cd "$worktree_path" 2>/dev/null && pwd -P || true)"
+        active_plan="$(cat "$worktree_path/.ai/harness/active-plan" 2>/dev/null | xargs || true)"
+        if [[ -n "$real_path" && "$real_path" != "$current" ]] \
+          && [[ -n "$active_plan" && -f "$worktree_path/$active_plan" ]] \
+          && prompt_matches_worktree_record "$worktree_path" "$branch_name"; then
+          printf '%s' "$worktree_path"
+          return 0
+        fi
+      fi
+      worktree_path=""
+      branch_name=""
+      continue
+    fi
+
+    case "$line" in
+      worktree\ *)
+        worktree_path="${line#worktree }"
+        ;;
+      branch\ *)
+        branch_name="${line#branch }"
+        branch_name="${branch_name#refs/heads/}"
+        ;;
+    esac
+  done < <(git worktree list --porcelain 2>/dev/null || true)
+
+  if [[ -n "$worktree_path" ]]; then
+    real_path="$(cd "$worktree_path" 2>/dev/null && pwd -P || true)"
+    active_plan="$(cat "$worktree_path/.ai/harness/active-plan" 2>/dev/null | xargs || true)"
+    if [[ -n "$real_path" && "$real_path" != "$current" ]] \
+      && [[ -n "$active_plan" && -f "$worktree_path/$active_plan" ]] \
+      && prompt_matches_worktree_record "$worktree_path" "$branch_name"; then
+      printf '%s' "$worktree_path"
+      return 0
+    fi
+  fi
+
+  return 1
 }
 
 is_embedded_approved_plan_intent() {
@@ -635,6 +767,307 @@ prompt_intent_text() {
   fi
 }
 
+prompt_guard_bool_flag() {
+  local value=0
+  if "$@"; then
+    value=1
+  fi
+  printf '%s' "$value"
+}
+
+prompt_guard_decision_command() {
+  local source_cli source_hook_cli
+  source_cli="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)/src/cli/index.ts"
+  source_hook_cli="$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)/src/cli/hook-entry.ts"
+
+  if [[ -n "${REPO_HARNESS_HOOK_CLI:-}" && -f "${REPO_HARNESS_HOOK_CLI:-}" ]] && command -v bun >/dev/null 2>&1; then
+    bun "$REPO_HARNESS_HOOK_CLI" prompt-guard-decide
+    return $?
+  fi
+
+  if [[ -n "${REPO_HARNESS_CLI:-}" && -f "${REPO_HARNESS_CLI:-}" ]] && command -v bun >/dev/null 2>&1; then
+    bun "$REPO_HARNESS_CLI" prompt-guard-decide
+    return $?
+  fi
+
+  if [[ -f "$source_hook_cli" ]] && command -v bun >/dev/null 2>&1; then
+    bun "$source_hook_cli" prompt-guard-decide
+    return $?
+  fi
+
+  if [[ -n "${HOOK_REPO_ROOT:-}" && -f "$HOOK_REPO_ROOT/src/cli/hook-entry.ts" ]] && command -v bun >/dev/null 2>&1; then
+    bun "$HOOK_REPO_ROOT/src/cli/hook-entry.ts" prompt-guard-decide
+    return $?
+  fi
+
+  if command -v repo-harness-hook >/dev/null 2>&1; then
+    repo-harness-hook prompt-guard-decide
+    return $?
+  fi
+
+  if command -v repo-harness >/dev/null 2>&1; then
+    repo-harness prompt-guard-decide
+    return $?
+  fi
+
+  if [[ -f "$source_cli" ]] && command -v bun >/dev/null 2>&1; then
+    bun "$source_cli" prompt-guard-decide
+    return $?
+  fi
+
+  return 127
+}
+
+prompt_guard_refresh_state() {
+  prompt_guard_spec_state="missing"
+  prompt_guard_plan_state="none"
+  prompt_guard_pending_state="none"
+  prompt_guard_worktree_state="current"
+  prompt_guard_contract_state="missing"
+  prompt_guard_contract_path_state="missing"
+  prompt_guard_evidence_state="unchecked"
+
+  active_plan=""
+  plan_status=""
+  marker_problem=""
+  linked_worktree=""
+  contract_file=""
+  evidence_error=""
+
+  if [ -f "docs/spec.md" ]; then
+    prompt_guard_spec_state="present"
+  fi
+
+  active_plan="$(get_active_plan || true)"
+  if [ -n "$active_plan" ] && [ -f "$active_plan" ]; then
+    plan_status="$(get_plan_status "$active_plan")"
+    case "$plan_status" in
+      Draft) prompt_guard_plan_state="draft" ;;
+      Annotating) prompt_guard_plan_state="annotating" ;;
+      Approved) prompt_guard_plan_state="approved" ;;
+      Executing) prompt_guard_plan_state="executing" ;;
+      *) prompt_guard_plan_state="unknown" ;;
+    esac
+
+    if [ -n "$(derive_contract_path "$active_plan" || true)" ]; then
+      prompt_guard_contract_path_state="present"
+    fi
+
+    if ! evidence_error="$(plan_evidence_contract_error "$active_plan")"; then
+      prompt_guard_evidence_state="incomplete"
+    else
+      prompt_guard_evidence_state="complete"
+    fi
+  else
+    marker_problem="$(active_plan_marker_problem || true)"
+    if [[ "$marker_problem" == *"different worktree"* ]]; then
+      prompt_guard_plan_state="foreign_worktree"
+      prompt_guard_worktree_state="foreign_marker"
+    elif [[ -n "$marker_problem" ]]; then
+      prompt_guard_plan_state="stale_marker"
+    fi
+  fi
+
+  if workflow_pending_orchestration_is_fresh; then
+    prompt_guard_pending_state="fresh"
+  elif [ -s "$(workflow_pending_orchestration_file)" ]; then
+    prompt_guard_pending_state="stale"
+  fi
+
+  linked_worktree="$(prompt_linked_worktree_target || true)"
+  if [[ -n "$linked_worktree" ]]; then
+    prompt_guard_worktree_state="linked_target"
+  fi
+
+  contract_file="$(workflow_active_contract || true)"
+  if [[ -n "$contract_file" && -f "$contract_file" ]]; then
+    prompt_guard_contract_state="present"
+  fi
+}
+
+prompt_guard_decide() {
+  local decision_output
+
+  export PROMPT_GUARD_DONE_INTENT="$done_intent"
+  export PROMPT_GUARD_PLAN_START_INTENT="$plan_start_intent"
+  export PROMPT_GUARD_IMPLEMENT_INTENT="$implement_intent"
+  export PROMPT_GUARD_PLANNING_DISCUSSION_INTENT
+  export PROMPT_GUARD_REVIEW_RELEASE_INTENT
+  export PROMPT_GUARD_PASSIVE_WORKTREE_STATUS_INTENT
+  export PROMPT_GUARD_PASSIVE_COMPLETION_REPORT_INTENT
+  export PROMPT_GUARD_PASSIVE_NEXT_SLICE_REPORT_INTENT
+  export PROMPT_GUARD_EMBEDDED_APPROVED_PLAN_INTENT
+  export PROMPT_GUARD_PLAN_SHAPED_MARKDOWN_INTENT
+  export PROMPT_GUARD_BUG_OR_HUNT_INTENT
+  export PROMPT_GUARD_PLAN_EXECUTION_PROJECTION_INTENT="$plan_execution_projection_intent"
+
+  PROMPT_GUARD_PLANNING_DISCUSSION_INTENT="$(prompt_guard_bool_flag is_plan_discussion_continuation_intent)"
+  PROMPT_GUARD_REVIEW_RELEASE_INTENT="$(prompt_guard_bool_flag is_review_release_advisory_intent)"
+  PROMPT_GUARD_PASSIVE_WORKTREE_STATUS_INTENT="$(prompt_guard_bool_flag is_passive_worktree_status_intent)"
+  PROMPT_GUARD_PASSIVE_COMPLETION_REPORT_INTENT="$(prompt_guard_bool_flag is_retrospective_completion_report_intent)"
+  PROMPT_GUARD_PASSIVE_NEXT_SLICE_REPORT_INTENT="$(prompt_guard_bool_flag is_next_slice_or_status_advisory_intent)"
+  PROMPT_GUARD_EMBEDDED_APPROVED_PLAN_INTENT="$(prompt_guard_bool_flag is_embedded_approved_plan_intent)"
+  PROMPT_GUARD_PLAN_SHAPED_MARKDOWN_INTENT="$(prompt_guard_bool_flag is_plan_shaped_markdown_intent)"
+  PROMPT_GUARD_BUG_OR_HUNT_INTENT="$(prompt_guard_bool_flag is_bug_or_hunt_intent)"
+
+  export PROMPT_GUARD_SPEC_STATE="$prompt_guard_spec_state"
+  export PROMPT_GUARD_PLAN_STATE="$prompt_guard_plan_state"
+  export PROMPT_GUARD_PENDING_STATE="$prompt_guard_pending_state"
+  export PROMPT_GUARD_WORKTREE_STATE="$prompt_guard_worktree_state"
+  export PROMPT_GUARD_CONTRACT_STATE="$prompt_guard_contract_state"
+  export PROMPT_GUARD_CONTRACT_PATH_STATE="$prompt_guard_contract_path_state"
+  export PROMPT_GUARD_EVIDENCE_STATE="$prompt_guard_evidence_state"
+
+  if ! decision_output="$(prompt_guard_decision_command)"; then
+    echo "[PromptGuard] Decision engine unavailable or failed."
+    hook_structured_error \
+      "PromptGuard" \
+      "Prompt guard decision engine failed." \
+      "Install repo-harness or run from the source checkout so the TypeScript decision engine is available." \
+      "missing_artifact"
+    exit 2
+  fi
+
+  printf '%s\n' "$decision_output" | head -n1 | xargs
+}
+
+render_prompt_guard_action() {
+  local action="$1"
+
+  case "$action" in
+    allow|done_gate)
+      return 0
+      ;;
+    spec_block)
+      echo "[SpecGuard] Missing docs/spec.md. Create stable product truth before implementation."
+      hook_structured_error \
+        "SpecGuard" \
+        "Implementation requested without docs/spec.md." \
+        "Run bash scripts/new-spec.sh and capture stable product intent before implementing." \
+        "missing_artifact"
+      exit 2
+      ;;
+    stale_active_plan_advice)
+      clear_active_plan
+      echo "[PlanStatusGuard] Advisory: ${marker_problem}; cleared stale active markers. Capture or switch to an approved plan before editing implementation files."
+      exit 0
+      ;;
+    plan_capture_pending_advice)
+      emit_pending_orchestration_capture_gate || true
+      exit 0
+      ;;
+    worktree_execution_advice)
+      echo "[WorktreeExecutionGate] Active plan is in linked worktree: $linked_worktree"
+      echo "[WorktreeExecutionGate] Continue from that worktree instead of recapturing a plan:"
+      echo "  cd \"$linked_worktree\""
+      exit 0
+      ;;
+    plan_capture_missing_active_advice)
+      echo "[PlanCaptureGate] Approval detected before an active plan artifact exists."
+      echo "[PlanCaptureGate] Let the agent run the approved-plan capture path now:"
+      echo "  git status --short --branch -uall"
+      echo "  printf '%s\n' '<approved plan body>' | bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --source waza-think --route planning --execute"
+      exit 0
+      ;;
+    plan_status_no_active_block)
+      echo "[PlanStatusGuard] No active plan found in plans/. Capture the approved planning output with: bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --execute"
+      echo "[PlanStatusGuard] If there is no captured planning output yet, run: bash scripts/ensure-task-workflow.sh --slug <slug> --title <title>"
+      hook_structured_error \
+        "PlanStatusGuard" \
+        "No active plan found in plans/." \
+        "Capture the approved planning output with bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --execute, or run bash scripts/ensure-task-workflow.sh --slug <slug> --title <title> when no planning output exists." \
+        "missing_artifact"
+      exit 2
+      ;;
+    plan_capture_draft_advice)
+      echo "[PlanCaptureGate] Approval detected for $plan_status plan: $active_plan"
+      echo "[PlanCaptureGate] Recapture the exact approved plan body with --status Approved --execute, or mark this plan Approved and run:"
+      echo "  bash scripts/plan-to-todo.sh --plan $active_plan"
+      exit 0
+      ;;
+    plan_status_not_approved_block)
+      echo "[PlanStatusGuard] Plan status is '$plan_status' in $active_plan. Complete annotation cycle first."
+      hook_structured_error \
+        "PlanStatusGuard" \
+        "Plan status is $plan_status in $active_plan." \
+        "Complete the annotation cycle and move the plan to Approved before implementation." \
+        "state_violation"
+      exit 2
+      ;;
+    evidence_contract_block)
+      echo "[EvidenceContractGuard] Plan Evidence Contract is incomplete in $active_plan:"
+      printf '%s\n' "$evidence_error"
+      hook_structured_error \
+        "EvidenceContractGuard" \
+        "Implementation requested without a complete plan Evidence Contract." \
+        "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before implementation." \
+        "quality_gate"
+      exit 2
+      ;;
+    plan_execution_scaffold_advice)
+      echo "[PlanExecutionGate] Approval detected for approved plan: $active_plan"
+      echo "[PlanExecutionGate] Create the sprint contract/review/notes before implementation:"
+      echo "  bash scripts/plan-to-todo.sh --plan $active_plan"
+      exit 0
+      ;;
+    contract_missing_block)
+      echo "[ContractGuard] Missing active sprint contract for $active_plan"
+      hook_structured_error \
+        "ContractGuard" \
+        "Implementation requested without an active sprint contract." \
+        "Run bash scripts/plan-to-todo.sh --plan $active_plan to create the contract/review/notes scaffold before implementation." \
+        "missing_artifact"
+      exit 2
+      ;;
+    done_missing_active_plan)
+      echo "[ContractGuard] Done intent detected, but no active plan found. Complete plan workflow first."
+      hook_structured_error \
+        "ContractGuard" \
+        "Done intent detected without an active plan." \
+        "Finish the plan workflow and ensure plans/ contains the active plan before marking work done." \
+        "state_violation"
+      exit 2
+      ;;
+    done_contract_path_missing)
+      echo "[ContractGuard] Could not derive contract path from plan: $active_plan"
+      hook_structured_error \
+        "ContractGuard" \
+        "Could not derive a contract path from $active_plan." \
+        "Rename the plan to plan-<timestamp>-<slug>.md so the matching contract can be resolved." \
+        "missing_artifact"
+      exit 2
+      ;;
+    done_missing_contract)
+      echo "[ContractGuard] Missing task contract: $contract_file"
+      hook_structured_error \
+        "ContractGuard" \
+        "Missing task contract $contract_file." \
+        "Create the contract or regenerate tasks from the active plan before marking work done." \
+        "missing_artifact"
+      exit 2
+      ;;
+    done_evidence_contract_block)
+      echo "[EvidenceContractGuard] Plan Evidence Contract is incomplete in $active_plan:"
+      printf '%s\n' "$evidence_error"
+      hook_structured_error \
+        "EvidenceContractGuard" \
+        "Done intent detected without a complete plan Evidence Contract." \
+        "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before marking work done." \
+        "quality_gate"
+      exit 2
+      ;;
+    *)
+      echo "[PromptGuard] Unknown decision action: $action"
+      hook_structured_error \
+        "PromptGuard" \
+        "Unknown prompt guard decision action: $action." \
+        "Fix the TypeScript prompt guard decision table before continuing." \
+        "state_violation"
+      exit 2
+      ;;
+  esac
+}
+
 PROMPT_TEXT="$(hook_get_prompt "${1:-}")"
 PROMPT_INTENT_TEXT="$(prompt_intent_text)"
 
@@ -651,6 +1084,11 @@ fi
 execution_approval_intent=0
 if is_execution_approval_intent; then
   execution_approval_intent=1
+fi
+
+plan_execution_projection_intent=0
+if is_plan_execution_projection_intent; then
+  plan_execution_projection_intent=1
 fi
 
 done_intent=0
@@ -706,145 +1144,23 @@ if [ "$implement_intent" -eq 0 ]; then
 fi
 
 if [ "$implement_intent" -eq 1 ]; then
-  if [ ! -f "docs/spec.md" ]; then
-    echo "[SpecGuard] Missing docs/spec.md. Create stable product truth before implementation."
-    hook_structured_error \
-      "SpecGuard" \
-      "Implementation requested without docs/spec.md." \
-      "Run bash scripts/new-spec.sh and capture stable product intent before implementing." \
-      "missing_artifact"
-    exit 2
+  prompt_guard_refresh_state
+  prompt_guard_action="$(prompt_guard_decide)"
+  if [ "$prompt_guard_action" = "spec_block" ]; then
+    render_prompt_guard_action "$prompt_guard_action"
   fi
 
   maybe_capture_embedded_approved_plan
 
-  active_plan="$(get_active_plan || true)"
-  if [ -z "$active_plan" ] || [ ! -f "$active_plan" ]; then
-    marker_problem="$(active_plan_marker_problem || true)"
-    if [[ -n "$marker_problem" ]]; then
-      clear_active_plan
-      echo "[PlanStatusGuard] Advisory: ${marker_problem}; cleared stale active markers. Capture or switch to an approved plan before editing implementation files."
-      exit 0
-    fi
-
-    if ! is_bug_or_hunt_intent && emit_pending_orchestration_capture_gate; then
-      exit 0
-    fi
-
-    if [ "$execution_approval_intent" -eq 1 ]; then
-      echo "[PlanCaptureGate] Approval detected before an active plan artifact exists."
-      echo "[PlanCaptureGate] Let the agent run the approved-plan capture path now:"
-      echo "  git status --short --branch -uall"
-      echo "  printf '%s\n' '<approved plan body>' | bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --source waza-think --route planning --execute"
-      exit 0
-    fi
-
-    echo "[PlanStatusGuard] No active plan found in plans/. Capture the approved planning output with: bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --execute"
-    echo "[PlanStatusGuard] If there is no captured planning output yet, run: bash scripts/ensure-task-workflow.sh --slug <slug> --title <title>"
-    hook_structured_error \
-      "PlanStatusGuard" \
-      "No active plan found in plans/." \
-      "Capture the approved planning output with bash scripts/capture-plan.sh --slug <slug> --title <title> --status Approved --execute, or run bash scripts/ensure-task-workflow.sh --slug <slug> --title <title> when no planning output exists." \
-      "missing_artifact"
-    exit 2
-  fi
-
-  plan_status="$(get_plan_status "$active_plan")"
-  if [ "$plan_status" = "Draft" ] || [ "$plan_status" = "Annotating" ]; then
-    if [ "$execution_approval_intent" -eq 1 ]; then
-      echo "[PlanCaptureGate] Approval detected for $plan_status plan: $active_plan"
-      echo "[PlanCaptureGate] Recapture the exact approved plan body with --status Approved --execute, or mark this plan Approved and run:"
-      echo "  bash scripts/plan-to-todo.sh --plan $active_plan"
-      exit 0
-    fi
-
-    echo "[PlanStatusGuard] Plan status is '$plan_status' in $active_plan. Complete annotation cycle first."
-    hook_structured_error \
-      "PlanStatusGuard" \
-      "Plan status is $plan_status in $active_plan." \
-      "Complete the annotation cycle and move the plan to Approved before implementation." \
-      "state_violation"
-    exit 2
-  fi
-
-  if [ "$plan_status" = "Approved" ] || [ "$plan_status" = "Executing" ]; then
-    if ! evidence_error="$(plan_evidence_contract_error "$active_plan")"; then
-      echo "[EvidenceContractGuard] Plan Evidence Contract is incomplete in $active_plan:"
-      printf '%s\n' "$evidence_error"
-      hook_structured_error \
-        "EvidenceContractGuard" \
-        "Implementation requested without a complete plan Evidence Contract." \
-        "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before implementation." \
-        "quality_gate"
-      exit 2
-    fi
-
-    if [ "$plan_status" = "Approved" ] && [ "$execution_approval_intent" -eq 1 ]; then
-      contract_file="$(workflow_active_contract || true)"
-      if [ -z "$contract_file" ] || [ ! -f "$contract_file" ]; then
-        echo "[PlanExecutionGate] Approval detected for approved plan: $active_plan"
-        echo "[PlanExecutionGate] Create the sprint contract/review/notes before implementation:"
-        echo "  bash scripts/plan-to-todo.sh --plan $active_plan"
-        exit 0
-      fi
-    fi
-
-    contract_file="$(workflow_active_contract || true)"
-    if [ -z "$contract_file" ] || [ ! -f "$contract_file" ]; then
-      echo "[ContractGuard] Missing active sprint contract for $active_plan"
-      hook_structured_error \
-        "ContractGuard" \
-        "Implementation requested without an active sprint contract." \
-        "Run bash scripts/plan-to-todo.sh --plan $active_plan to create the contract/review/notes scaffold before implementation." \
-        "missing_artifact"
-      exit 2
-    fi
-  fi
+  prompt_guard_refresh_state
+  prompt_guard_action="$(prompt_guard_decide)"
+  render_prompt_guard_action "$prompt_guard_action"
 fi
 
 if [ "$done_intent" -eq 1 ]; then
-  active_plan="$(get_active_plan || true)"
-  if [ -z "$active_plan" ] || [ ! -f "$active_plan" ]; then
-    echo "[ContractGuard] Done intent detected, but no active plan found. Complete plan workflow first."
-    hook_structured_error \
-      "ContractGuard" \
-      "Done intent detected without an active plan." \
-      "Finish the plan workflow and ensure plans/ contains the active plan before marking work done." \
-      "state_violation"
-    exit 2
-  fi
-
-  contract_file="$(derive_contract_path "$active_plan" || true)"
-  if [ -z "$contract_file" ]; then
-    echo "[ContractGuard] Could not derive contract path from plan: $active_plan"
-    hook_structured_error \
-      "ContractGuard" \
-      "Could not derive a contract path from $active_plan." \
-      "Rename the plan to plan-<timestamp>-<slug>.md so the matching contract can be resolved." \
-      "missing_artifact"
-    exit 2
-  fi
-
-  if [ ! -f "$contract_file" ]; then
-    echo "[ContractGuard] Missing task contract: $contract_file"
-    hook_structured_error \
-      "ContractGuard" \
-      "Missing task contract $contract_file." \
-      "Create the contract or regenerate tasks from the active plan before marking work done." \
-      "missing_artifact"
-    exit 2
-  fi
-
-  if ! evidence_error="$(plan_evidence_contract_error "$active_plan")"; then
-    echo "[EvidenceContractGuard] Plan Evidence Contract is incomplete in $active_plan:"
-    printf '%s\n' "$evidence_error"
-    hook_structured_error \
-      "EvidenceContractGuard" \
-      "Done intent detected without a complete plan Evidence Contract." \
-      "Fill ## Evidence Contract with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before marking work done." \
-      "quality_gate"
-    exit 2
-  fi
+  prompt_guard_refresh_state
+  prompt_guard_action="$(prompt_guard_decide)"
+  render_prompt_guard_action "$prompt_guard_action"
 
   if [ -f "scripts/verify-contract.sh" ]; then
     # --read-only: hook-driven verification must not rewrite the contract Status
@@ -982,7 +1298,7 @@ if echo "$PROMPT_TEXT" | grep -qEi "(fix|patch|bug|修复|修bug|修 bug|改bug)
   echo "  检测到修复请求：先写失败测试复现问题，再重写实现。"
   emit_cross_review_hint debug
 fi
-if ! is_diagnostic_question_intent && ! is_review_release_advisory_intent && ! is_passive_worktree_status_intent && echo "$PROMPT_TEXT" | grep -qEi "(new feature|feature|implement|build|新功能|实现|开发功能|执行)"; then
+if ! is_diagnostic_question_intent && ! is_review_release_advisory_intent && ! is_passive_worktree_status_intent && ! is_next_slice_or_status_advisory_intent && ! is_retrospective_completion_report_intent && echo "$PROMPT_TEXT" | grep -qEi "(new feature|feature|implement|build|新功能|实现|开发功能|执行)"; then
   echo "[BDD] Feature intent detected. Define Given-When-Then acceptance scenarios first."
   echo "  检测到新功能请求：先定义 Given-When-Then 验收场景。"
 fi

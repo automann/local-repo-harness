@@ -47,7 +47,12 @@ function runHook(
     cwd,
     input: options?.stdin ?? "",
     encoding: "utf-8",
-    env: { ...process.env, ...(options?.env ?? {}) },
+    env: {
+      ...process.env,
+      REPO_HARNESS_CLI: join(ROOT, "src/cli/index.ts"),
+      REPO_HARNESS_HOOK_CLI: join(ROOT, "src/cli/hook-entry.ts"),
+      ...(options?.env ?? {}),
+    },
   });
 }
 
