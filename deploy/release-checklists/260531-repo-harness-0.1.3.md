@@ -41,4 +41,4 @@ without relying only on GitHub or npm metadata.
 ## Published Artifacts
 
 - NPM: https://www.npmjs.com/package/repo-harness/v/0.1.3
-- GitHub release: pending tag and release creation
+- GitHub release: https://github.com/Ancienttwo/repo-harness/releases/tag/v0.1.3
