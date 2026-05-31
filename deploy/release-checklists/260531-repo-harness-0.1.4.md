@@ -2,8 +2,8 @@
 
 Date: 2026-05-31
 Filing ID: 260531-repo-harness-0.1.4
-Prepared source commit: pending
-Status: Prepared
+Published source commit: 388bf25
+Status: Published
 
 ## Naming
 
@@ -35,14 +35,12 @@ without relying only on GitHub or npm metadata.
 
 ## Verification
 
-- `bun test` passed before the release prep.
-- `bash scripts/check-task-workflow.sh --strict` passed before the release prep.
-- `bash scripts/check-task-sync.sh` passed before the release prep.
-- `bash scripts/migrate-project-template.sh --repo . --dry-run` passed before the release prep.
-- `npm view repo-harness@0.1.4 version --json --registry https://registry.npmjs.org/` returned unpublished before release prep.
+- `bash scripts/check-npm-release.sh` passed from the final release commit.
+- `npm publish --access public --registry https://registry.npmjs.org/` completed successfully.
+- `npm view repo-harness@0.1.4 version --json --registry https://registry.npmjs.org/` returned `0.1.4`.
+- `npm view repo-harness version --json --registry https://registry.npmjs.org/` returned `0.1.4`.
 
-## Publish Plan
+## Published Artifacts
 
-Rerun `bash scripts/check-npm-release.sh` from the final release commit, publish
-to npm, create tag `v0.1.4`, create the GitHub release, and update this filing
-with published artifact URLs.
+- NPM: https://www.npmjs.com/package/repo-harness/v/0.1.4
+- GitHub release: https://github.com/Ancienttwo/repo-harness/releases/tag/v0.1.4
