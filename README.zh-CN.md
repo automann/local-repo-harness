@@ -222,6 +222,15 @@ bun test
 - Codex 必须在 Settings 里信任 `~/.codex/hooks.json`，hooks 才会执行。
 - 调试顺序：user-level adapter config -> `repo-harness-hook` 或 fallback `repo-harness hook` -> route registry -> `.ai/hooks/*`。
 
+`SessionStart` 在开工前按顺序跑两个脚本：
+
+```mermaid
+flowchart LR
+  SessionStart["Claude/Codex SessionStart"] --> Ctx["session-start-context.sh<br/>恢复 + handoff 上下文"]
+  Ctx --> Sec["security-sentinel.sh<br/>只读配置扫描，按指纹门控"]
+  Sec --> SSOut["SessionStart additionalContext<br/>上次会话状态 + SecurityConfig 发现项"]
+```
+
 Prompt guard 多一个内部步骤：
 
 ```mermaid
@@ -233,6 +242,7 @@ flowchart LR
   Shell --> Decision["repo-harness-hook prompt-guard-decide<br/>TypeScript decision table"]
   Decision --> Action["single action enum"]
   Action --> Shell
+  Shell --> RouteHint["Waza 路由提示<br/>显式 think/规划优先匹配 → /think"]
   Shell --> HostOutput["host-safe allow, advice, block, or done gate output"]
 ```
 

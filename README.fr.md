@@ -267,6 +267,15 @@ Si la sortie du dry-run est incorrecte, arrêtez-vous ici et lisez
 - Codex doit faire confiance à `~/.codex/hooks.json` dans Settings pour que les hooks s'exécutent.
 - Ordre de débogage : user-level adapter config -> `repo-harness-hook` ou fallback `repo-harness hook` -> route registry -> `.ai/hooks/*`.
 
+`SessionStart` exécute deux scripts ordonnés avant le début du travail :
+
+```mermaid
+flowchart LR
+  SessionStart["Claude/Codex SessionStart"] --> Ctx["session-start-context.sh<br/>resume + handoff context"]
+  Ctx --> Sec["security-sentinel.sh<br/>read-only config scan, fingerprint-gated"]
+  Sec --> SSOut["SessionStart additionalContext<br/>prior-session state + SecurityConfig findings"]
+```
+
 Le prompt guard ajoute une étape interne supplémentaire :
 
 ```mermaid
@@ -278,6 +287,7 @@ flowchart LR
   Shell --> Decision["repo-harness-hook prompt-guard-decide<br/>TypeScript decision table"]
   Decision --> Action["single action enum"]
   Action --> Shell
+  Shell --> RouteHint["Waza route hint<br/>explicit think/planning matched first → /think"]
   Shell --> HostOutput["host-safe allow, advice, block, or done gate output"]
 ```
 

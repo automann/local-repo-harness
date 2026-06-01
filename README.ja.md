@@ -234,6 +234,15 @@ dry-run の出力がおかしい場合は、ここで一旦止め、
 - Codex は Settings で `~/.codex/hooks.json` を信頼済みにしないと、hooks は実行されません。
 - デバッグの順序：user-level adapter config -> `repo-harness-hook` または fallback の `repo-harness hook` -> route registry -> `.ai/hooks/*`。
 
+`SessionStart` は作業開始前に 2 つの script を順番に実行します。
+
+```mermaid
+flowchart LR
+  SessionStart["Claude/Codex SessionStart"] --> Ctx["session-start-context.sh<br/>resume + handoff context"]
+  Ctx --> Sec["security-sentinel.sh<br/>read-only config scan, fingerprint-gated"]
+  Sec --> SSOut["SessionStart additionalContext<br/>prior-session state + SecurityConfig findings"]
+```
+
 Prompt guard には内部ステップが 1 つ増えます。
 
 ```mermaid
@@ -245,6 +254,7 @@ flowchart LR
   Shell --> Decision["repo-harness-hook prompt-guard-decide<br/>TypeScript decision table"]
   Decision --> Action["single action enum"]
   Action --> Shell
+  Shell --> RouteHint["Waza route hint<br/>explicit think/planning matched first → /think"]
   Shell --> HostOutput["host-safe allow, advice, block, or done gate output"]
 ```
 
