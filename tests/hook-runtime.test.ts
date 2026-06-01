@@ -314,6 +314,8 @@ describe("Hook runtime behavior", () => {
     const cwd = tmpWorkspace("codegraph-route-hint");
     try {
       installHooks(cwd);
+      mkdirSync(join(cwd, ".codegraph"), { recursive: true });
+      writeFileSync(join(cwd, ".codegraph/codegraph.db"), "test-index\n");
 
       const structuralRes = runHook("prompt-guard.sh", cwd, {
         stdin: JSON.stringify({ prompt: "谁调用了 runHook？影响面是什么？" }),

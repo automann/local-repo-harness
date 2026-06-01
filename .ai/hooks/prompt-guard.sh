@@ -701,8 +701,11 @@ emit_codegraph_route_hint() {
     return 0
   fi
 
-  if is_codegraph_route_intent || is_nontrivial_code_task_intent; then
+  if is_codegraph_route_intent; then
     ensure_codegraph_index_for_route || true
+    echo "[CodegraphRoute] Structural code-navigation intent detected. Prefer CodeGraph context/search/callers/impact before grep/read when available."
+    session_state_mark_codegraph_nudged "$session_key" || true
+  elif is_nontrivial_code_task_intent; then
     echo "[CodegraphRoute] Structural code-navigation intent detected. Prefer CodeGraph context/search/callers/impact before grep/read when available."
     session_state_mark_codegraph_nudged "$session_key" || true
   fi
