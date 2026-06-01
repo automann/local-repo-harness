@@ -131,7 +131,7 @@ describe("repo-harness action command skills", () => {
     const deploy = readCommand("repo-harness-deploy");
 
     expect(architecture).toContain("archive-architecture-request.sh");
-    expect(architecture).toContain("diagram-design");
+    expect(architecture).toContain("mermaid");
     expect(architecture).toContain("Does not run `scripts/migrate-project-template.sh --apply`");
     expect(architecture).toContain("hooks only record drift requests");
 

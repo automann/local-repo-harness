@@ -8,9 +8,9 @@
 
 import { Command } from 'commander';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
+import { configuredBrainRoot } from './brain-root';
 
 export type BrainLifecycle = 'always-sync' | 'archive-only' | 'never-sync';
 export type BrainCategory = 'decisions' | 'runbooks' | 'patterns' | 'references';
@@ -40,7 +40,6 @@ export interface BrainManifest {
   mode?: string;
   default_brain_path?: string;
   brain_root_env?: string;
-  legacy_paths?: string[];
   rules?: string[];
   exclusions?: string[];
   groups?: BrainGroup[];
@@ -140,7 +139,7 @@ function readManifest(repoRoot: string, manifest?: string): { manifest: BrainMan
 }
 
 function brainRoot(): string {
-  return path.resolve(process.env.REPO_HARNESS_BRAIN_ROOT ?? path.join(os.homedir(), 'brain'));
+  return configuredBrainRoot();
 }
 
 function issue(issues: BrainIssue[], level: BrainIssue['level'], message: string): void {
@@ -173,11 +172,7 @@ function safeRepoPath(repoRoot: string, value: string, issues: BrainIssue[], lab
 }
 
 function safeBrainPath(root: string, logicalPath: string, id: string, issues: BrainIssue[]): string | null {
-  let value = String(logicalPath || '');
-  if (value.startsWith('icloud/brain/')) {
-    issue(issues, 'warning', `Entry ${id} uses legacy icloud/brain/ prefix; treat it as brain/ and update the manifest.`);
-    value = `brain/${value.slice('icloud/brain/'.length)}`;
-  }
+  const value = String(logicalPath || '');
   if (!value.startsWith('brain/')) {
     issue(issues, 'error', `Entry ${id} brain_path must start with brain/: ${value || '(empty)'}`);
     return null;
@@ -346,7 +341,7 @@ function collectItems(
     const id = entry.id || '(missing id)';
     const sourcePath = safeRepoPath(repoRoot, config.sourcePath || '', issues, `Entry ${id} source_path`);
     const brainPath = String(config.brainPath || '');
-    if (brainPath && defaultPrefix && !brainPath.replace(/^icloud\/brain\//, 'brain/').startsWith(defaultPrefix)) {
+    if (brainPath && defaultPrefix && !brainPath.startsWith(defaultPrefix)) {
       issue(issues, 'error', `Entry ${id} brain_path is outside default_brain_path: ${brainPath}`);
     }
     const targetPath = safeBrainPath(root, brainPath, id, issues);
@@ -357,7 +352,7 @@ function collectItems(
       id,
       sourcePath,
       sourceFile: path.resolve(repoRoot, sourcePath),
-      brainPath: brainPath.replace(/^icloud\/brain\//, 'brain/'),
+      brainPath,
       targetPath,
       lifecycle: 'always-sync',
     });

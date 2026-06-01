@@ -1,8 +1,8 @@
-# Bun + Turborepo Monorepo Structure
+# Bun Workspace Monorepo Structure
 
 {{PROJECT_NAME}}/
 ├── apps/
-│   ├── web/                      # Main web app (Vite + React)
+│   ├── web/                      # Astro shell or Vite app surface
 │   │   ├── src/
 │   │   │   ├── routes/
 │   │   │   ├── components/
@@ -34,10 +34,10 @@
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
-│   ├── types/                    # Shared TypeScript types
+│   ├── contracts/                # Shared Zod/Valibot contracts
 │   │   ├── src/
-│   │   │   ├── user.ts
-│   │   │   ├── database.ts
+│   │   │   ├── events.ts
+│   │   │   ├── tools.ts
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
@@ -55,7 +55,7 @@
 │   └── sql/                      # Ordered deployment SQL
 ├── _ops/                         # Ignored local secrets, env, state, logs
 ├── artifacts/                    # Build outputs (not in Git)
-├── turbo.json                    # Turborepo config
+├── turbo.json                    # Optional Turborepo config when scale needs it
 ├── package.json                  # Root package.json
 ├── bun.lockb                     # Bun lockfile
 ├── .gitignore

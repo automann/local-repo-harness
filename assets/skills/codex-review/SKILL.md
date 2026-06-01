@@ -7,8 +7,8 @@ description: >-
   distribution has non-overlapping blind spots, so Codex catches spec ambiguity,
   missing edge cases, and fake tests that Claude's self-review cannot see. Use
   before merging, after a tricky change, or for a debug second opinion.
-  Triggers: "codex review", "second opinion", "cross review", "outside voice",
-  "让 codex 审", "找外部意见", "二审".
+  Triggers: 'codex review', 'second opinion', 'cross review', 'outside voice',
+  '让 codex 审', '找外部意见', '二审'.
 allowed-tools:
   - Bash
   - Read

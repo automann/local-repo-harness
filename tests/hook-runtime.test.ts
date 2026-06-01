@@ -2786,7 +2786,7 @@ describe("Hook runtime behavior", () => {
         "Plan body for reference (not a fresh approved plan, just describing state):",
         "- archive-workflow.sh emits BrainPromote only for the Completed enum value",
         "- update tests for BrainPromote pass/Completed-only behavior across hooks",
-        "- migrate path defaults to ~/brain and accept legacy icloud/brain with warning",
+        "- migrate path defaults to ~/brain",
         "- ensure CLI surface is tested under tests/cli/brain.test.ts before merge",
         "The point of this paragraph is to push the prompt above the 280 byte",
         "threshold so the long-prompt branch of is_done_intent activates.",
@@ -3255,13 +3255,13 @@ describe("Hook runtime behavior", () => {
             version: 1,
             project: "demo",
             mode: "repo-contract-external-knowledge",
-            default_brain_path: "icloud/brain/demo/*",
+            default_brain_path: "brain/demo/*",
             entries: [
               {
                 id: "valuable",
                 role: "repo-authored",
                 repo_path: "docs/valuable.md",
-                brain_path: "icloud/brain/demo/references/valuable.md",
+                brain_path: "brain/demo/references/valuable.md",
                 gbrain_slug: "references/valuable",
                 sync: { direction: "repo-to-brain" },
               },
@@ -3274,7 +3274,7 @@ describe("Hook runtime behavior", () => {
 
       const res = runHook("post-edit-guard.sh", cwd, {
         stdin: JSON.stringify({ tool_input: { file_path: "docs/valuable.md" } }),
-        env: { ICLOUD_BRAIN_ROOT: brainRoot },
+        env: { REPO_HARNESS_BRAIN_ROOT: brainRoot },
       });
 
       expect(res.status).toBe(0);

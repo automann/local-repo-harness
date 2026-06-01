@@ -19,8 +19,8 @@
       "title": "Plan Selection",
       "batch": 1,
       "questions": [
-        "Choose core plan A-F or Custom Presets",
-        "If Custom Presets: choose G/H/I/J/K"
+        "Choose core stack family A-F",
+        "If sidecar/runtime preset is needed: choose G/H/I/J/K"
       ],
       "required": true
     },

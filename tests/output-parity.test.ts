@@ -125,12 +125,12 @@ describe("Cloudflare Conditional Inclusion", () => {
     expect(output).toContain("Cloudflare Deployment");
   });
 
-  test("Plan B (UmiJS) should exclude Cloudflare section", () => {
+  test("Plan B (Vite client app shell) should include Cloudflare section", () => {
     const output = assembleTemplate({
       planType: "B",
       variables: { PROJECT_NAME: "Test" },
     });
-    expect(output).not.toContain("Cloudflare Deployment");
+    expect(output).toContain("Cloudflare Deployment");
   });
 
   test("Plan F (Mobile) should exclude Cloudflare section", () => {

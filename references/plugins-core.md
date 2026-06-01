@@ -131,16 +131,16 @@ When using `/project-init`, LSP plugins are automatically selected based on proj
 
 | Project Type | Plan | Auto-Selected LSP |
 |--------------|------|-------------------|
-| C-Side with SEO (Remix) | Plan A | `typescript-lsp` |
-| Traditional Enterprise | Plan B | `jdtls-lsp` |
-| B2B SaaS / Internal Tools | Plan C | `typescript-lsp` |
-| Monorepo | Plan D | `typescript-lsp` |
-| Landing Page / Marketing | Plan E | `typescript-lsp` |
-| Mobile App (Expo) | Plan F | `typescript-lsp` |
-| AI Quantitative Trading | Plan G | `pyright-lsp` |
-| Financial Trading (FIX/Rust) | Plan H | `rust-analyzer-lsp` |
-| Web3 DApp (EVM) | Plan I | `typescript-lsp` |
-| AI Coding Agent / TUI | Plan J | `typescript-lsp` |
+| Astro-first SSR/content shell | Plan A | `typescript-lsp` |
+| Vite 8 client app shell | Plan B | `typescript-lsp` |
+| Full-stack React only when needed | Plan C | `typescript-lsp` |
+| Shared frontend/backend monorepo | Plan D | `typescript-lsp` |
+| Cloudflare edge web stack | Plan E | `typescript-lsp` |
+| Mobile/realtime companion | Plan F | `typescript-lsp` |
+| Python research/data/agent sidecar | Plan G | `pyright-lsp` |
+| Go high-concurrency/financial sidecar | Plan H | `gopls-lsp` |
+| Local-first/lightweight SQL stack | Plan I | `typescript-lsp` |
+| Rust native/performance sidecar | Plan J | `rust-analyzer-lsp` |
 | Custom Configuration | Plan K | `typescript-lsp` |
 
 ---

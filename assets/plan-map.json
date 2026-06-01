@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Canonical plan mapping for repo-harness. A-F are core plans. G-J are custom presets. K is fully custom.",
+  "$comment": "Canonical stack-family mapping for repo-harness. A-F are core stack families. G-J are sidecar/runtime presets. K is fully custom.",
   "planTiers": {
     "core": ["A", "B", "C", "D", "E", "F"],
     "presets": ["G", "H", "I", "J"],
@@ -17,8 +17,8 @@
   },
   "plans": {
     "A": {
-      "name": "C-Side with SEO (Dynamic)",
-      "stack": "Remix + React + TypeScript",
+      "name": "Astro-first SSR/content shell",
+      "stack": "Astro + TypeScript + Cloudflare/Node adapters",
       "tier": "core",
       "cloudflareNative": true,
       "aiNativeOverlayDefaults": {
@@ -34,34 +34,13 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "PROJECT_STRUCTURE_FILE": "assets/project-structures/remix.txt",
-        "TECH_STACK_TABLE": "| Frontend | Remix + React + TypeScript |\\n| UI | shadcn/ui + Tailwind CSS |\\n| Backend | Supabase |\\n| Runtime | Bun + Node.js |"
+        "PROJECT_STRUCTURE_FILE": "assets/project-structures/astro-ssr.txt",
+        "TECH_STACK_TABLE": "| Frontend shell | Astro + TypeScript |\\n| UI | Astro islands + shadcn/Radix-compatible components where React is needed |\\n| Deploy | Cloudflare Pages/Workers or Node adapter |\\n| Data | Postgres/Supabase or SQLite/Turso by workload |"
       }
     },
     "B": {
-      "name": "Traditional Enterprise",
-      "stack": "UmiJS + Ant Design Pro + TypeScript",
-      "tier": "core",
-      "cloudflareNative": false,
-      "aiNativeOverlayDefaults": {
-        "defaultProfile": "none",
-        "recommendedProfiles": ["product-copilot", "enterprise-agent-platform"]
-      },
-      "defaultHarnessProfiles": {
-        "orchestration": "shared-long-running-harness",
-        "evaluation": "browser-qa",
-        "handoff": "artifact-aware",
-        "recovery": "hybrid",
-        "state": "file-backed"
-      },
-      "defaultLsp": "jdtls-lsp",
-      "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Frontend | UmiJS + Ant Design Pro |\\n| UI | Ant Design + ProComponents |\\n| Backend | Supabase / Enterprise API |\\n| Runtime | Node.js + Bun tooling |"
-      }
-    },
-    "C": {
-      "name": "B2B SaaS / Internal Tools",
-      "stack": "Vite + TanStack Router + React",
+      "name": "Vite 8 client app shell",
+      "stack": "Vite 8 + React + TanStack Router/Query",
       "tier": "core",
       "cloudflareNative": true,
       "aiNativeOverlayDefaults": {
@@ -78,12 +57,33 @@
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
         "PROJECT_STRUCTURE_FILE": "assets/project-structures/vite-tanstack.txt",
-        "TECH_STACK_TABLE": "| Frontend | Vite + React + TypeScript |\\n| Routing | TanStack Router |\\n| Data | TanStack Query + Zustand |\\n| Backend | Supabase / Cloudflare Workers |"
+        "TECH_STACK_TABLE": "| Frontend app | Vite 8 + React + TypeScript |\\n| Routing/data | TanStack Router + TanStack Query |\\n| UI | shadcn/Radix-style components + Tailwind CSS |\\n| Data authority | Postgres/Supabase by default; SQLite/Turso for lightweight edge/local-first work |"
+      }
+    },
+    "C": {
+      "name": "Full-stack React only when needed",
+      "stack": "TanStack Start or React Router Framework Mode",
+      "tier": "core",
+      "cloudflareNative": true,
+      "aiNativeOverlayDefaults": {
+        "defaultProfile": "none",
+        "recommendedProfiles": ["runtime-console", "product-copilot", "chat-agent", "collaborative-editor"]
+      },
+      "defaultHarnessProfiles": {
+        "orchestration": "shared-long-running-harness",
+        "evaluation": "browser-qa",
+        "handoff": "artifact-aware",
+        "recovery": "hybrid",
+        "state": "file-backed"
+      },
+      "defaultLsp": "typescript-lsp",
+      "defaultTemplateVariables": {
+        "TECH_STACK_TABLE": "| Full-stack React | TanStack Start or React Router Framework Mode |\\n| SSR/actions | Use only when server functions, actions, or streaming are required |\\n| UI/data | React + TanStack Query + shadcn/Radix-style UI |\\n| Non-default | Next.js is not the default recommendation |"
       }
     },
     "D": {
-      "name": "Monorepo (Multi-project)",
-      "stack": "Bun + Turborepo",
+      "name": "Shared frontend/backend monorepo",
+      "stack": "Bun Workspaces + Hono + Shared Contracts",
       "tier": "core",
       "cloudflareNative": true,
       "aiNativeOverlayDefaults": {
@@ -100,17 +100,17 @@
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
         "PROJECT_STRUCTURE_FILE": "assets/project-structures/monorepo.txt",
-        "TECH_STACK_TABLE": "| Workspace | Turborepo + Bun Workspaces |\\n| Apps | Web / Admin / Mobile |\\n| Shared Packages | ui / utils / types |\\n| Runtime | TypeScript across packages |"
+        "TECH_STACK_TABLE": "| Workspace | Bun Workspaces, optional Turborepo only at scale |\\n| Apps | Astro shell, Vite app, Expo companion, or admin surfaces |\\n| Services | Hono gateways, workers, and sidecars |\\n| Shared packages | contracts, ui, data access, tool adapters, test fixtures |"
       }
     },
     "E": {
-      "name": "Landing Page / Marketing",
-      "stack": "Astro + Starwind UI",
+      "name": "Cloudflare edge web stack",
+      "stack": "Cloudflare Pages/Workers + R2/KV/Queues/Durable Objects + external SQL",
       "tier": "core",
-      "cloudflareNative": false,
+      "cloudflareNative": true,
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
-        "recommendedProfiles": ["product-copilot", "enterprise-agent-platform"]
+        "recommendedProfiles": ["product-copilot", "enterprise-agent-platform", "sidecar-kernel"]
       },
       "defaultHarnessProfiles": {
         "orchestration": "shared-long-running-harness",
@@ -121,12 +121,12 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Frontend | Astro + TypeScript |\\n| UI | Starwind UI + Tailwind CSS |\\n| Content | Astro Content Collections |\\n| Runtime | Node.js + Bun tooling |"
+        "TECH_STACK_TABLE": "| Edge web | Cloudflare Pages + Workers |\\n| Cloudflare storage | R2, KV, Queues, Durable Objects, Hyperdrive when useful |\\n| SQL authority | Postgres/Supabase or SQLite/Turso; D1 is opt-in only |\\n| Agent runtime | VPS behind Hono when Node APIs, tools, or long-lived workers are required |"
       }
     },
     "F": {
-      "name": "Mobile App",
-      "stack": "Expo + NativeWind",
+      "name": "Mobile/realtime companion",
+      "stack": "Expo Router + React Native New Architecture + NativeWind",
       "tier": "core",
       "cloudflareNative": false,
       "aiNativeOverlayDefaults": {
@@ -143,14 +143,14 @@
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
         "PROJECT_STRUCTURE_FILE": "assets/project-structures/expo-nativewind.txt",
-        "TECH_STACK_TABLE": "| Mobile | Expo + React Native |\\n| Styling | NativeWind + Tailwind |\\n| State | Zustand + TanStack Query |\\n| Backend | Supabase / API |"
+        "TECH_STACK_TABLE": "| Mobile | Expo Router + React Native New Architecture |\\n| Styling | NativeWind when useful |\\n| State | TanStack Query + Zustand |\\n| Backend | Shared Hono/API boundary, Supabase/Postgres, or realtime/media sidecar |"
       }
     },
     "G": {
-      "name": "AI Quantitative Trading",
-      "stack": "FastAPI + Vite Frontend",
+      "name": "Python research/data/agent sidecar",
+      "stack": "uv + FastAPI/Pydantic AI + DuckDB/Polars",
       "tier": "preset",
-      "cloudflareNative": true,
+      "cloudflareNative": false,
       "factorFactory": true,
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
@@ -165,14 +165,14 @@
       },
       "defaultLsp": "pyright-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Frontend | Vite + React |\\n| Backend | FastAPI + Python |\\n| Data | TimescaleDB / InfluxDB |\\n| AI | Claude / OpenAI |"
+        "TECH_STACK_TABLE": "| Python runtime | uv + FastAPI or Pydantic AI |\\n| Data/research | DuckDB + Polars + artifact storage |\\n| App boundary | Hono gateway owns auth, run IDs, tools, and approvals |\\n| UI | Vite/assistant-ui report or runtime console when user-visible |"
       }
     },
     "H": {
-      "name": "Financial Trading (FIX/RFQ)",
-      "stack": "FIX Engine + Hono + Vite",
+      "name": "Go high-concurrency/financial sidecar",
+      "stack": "Go/Gin sidecar + Hono gateway + TypeScript app",
       "tier": "preset",
-      "cloudflareNative": true,
+      "cloudflareNative": false,
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["sidecar-kernel", "runtime-console"]
@@ -184,19 +184,19 @@
         "recovery": "hybrid",
         "state": "file-backed"
       },
-      "defaultLsp": "rust-analyzer-lsp",
+      "defaultLsp": "gopls-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Frontend | Vite + Trading UI |\\n| API Gateway | Hono |\\n| Trading Core | QuickFIX/J or Rust |\\n| Data | Time-series DB + market feed |"
+        "TECH_STACK_TABLE": "| Go sidecar | Go/Gin or narrow Go workers |\\n| Best fit | Market data, FIX/RFQ, fan-out, infra adapters, high-concurrency jobs |\\n| App gateway | Hono owns product-facing contracts and auth |\\n| Data | Postgres/Supabase for authority; queues/streams by capability |"
       }
     },
     "I": {
-      "name": "Web3 DApp (EVM Chains)",
-      "stack": "Astro Landing + Vite DApp + Wagmi",
+      "name": "Local-first/lightweight SQL stack",
+      "stack": "SQLite/Turso/libSQL + Turso Sync + optional CRDT",
       "tier": "preset",
-      "cloudflareNative": true,
+      "cloudflareNative": false,
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
-        "recommendedProfiles": ["product-copilot", "sidecar-kernel"]
+        "recommendedProfiles": ["collaborative-editor", "product-copilot", "sidecar-kernel"]
       },
       "defaultHarnessProfiles": {
         "orchestration": "shared-long-running-harness",
@@ -207,12 +207,12 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Landing | Astro + Starwind UI |\\n| DApp Frontend | Vite + React + Wagmi + Viem |\\n| Contracts | Hardhat + Solidity |\\n| Wallet | ConnectKit / RainbowKit |"
+        "TECH_STACK_TABLE": "| SQL | SQLite, Turso/libSQL, or embedded local stores |\\n| Sync | Turso Sync for new local-first sync work; explicit replication, conflict, and ownership contracts |\\n| Local-first | Loro/CRDT only when collaborative document state requires it |\\n| Gateway | Hono or existing app API boundary |"
       }
     },
     "J": {
-      "name": "AI Coding Agent / TUI Tool",
-      "stack": "OpenTUI + TypeScript",
+      "name": "Rust native/performance sidecar",
+      "stack": "Rust sidecar + TypeScript app/gateway",
       "tier": "preset",
       "cloudflareNative": false,
       "aiNativeOverlayDefaults": {
@@ -226,14 +226,14 @@
         "recovery": "hybrid",
         "state": "file-backed"
       },
-      "defaultLsp": "typescript-lsp",
+      "defaultLsp": "rust-analyzer-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Interface | OpenTUI (react/core) or Ink |\\n| Runtime | Node.js / Bun |\\n| AI Provider | Claude / OpenAI |\\n| Tooling | TypeScript + testing + linting |"
+        "TECH_STACK_TABLE": "| Rust sidecar | Parsers, indexing, sandboxing, native kernels, low-latency tools |\\n| Interface | MCP tools or narrow HTTP jobs behind Hono |\\n| UI | OpenTUI/Ink or Vite IDE surface when needed |\\n| Constraint | Use only when the team can support Rust operational complexity |"
       }
     },
     "K": {
       "name": "Custom Configuration",
-      "stack": "Manual selection",
+      "stack": "Manual stack-family composition",
       "tier": "custom",
       "cloudflareNative": false,
       "aiNativeOverlayDefaults": {
@@ -249,7 +249,7 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Stack | Custom (user-selected) |\\n| Constraints | Defined during guided Q&A |"
+        "TECH_STACK_TABLE": "| Stack | Custom composition of A-J families |\\n| Constraints | Defined during guided Q&A |"
       }
     }
   }

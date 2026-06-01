@@ -144,12 +144,12 @@ describe("Cloudflare Plan Detection", () => {
     expect(shouldIncludeCloudflare("C")).toBe(true);
   });
 
-  test("should include cloudflare for Plan A (Remix)", () => {
+  test("should include cloudflare for Plan A (Astro SSR/content shell)", () => {
     expect(shouldIncludeCloudflare("A")).toBe(true);
   });
 
-  test("should exclude cloudflare for Plan B (UmiJS)", () => {
-    expect(shouldIncludeCloudflare("B")).toBe(false);
+  test("should include cloudflare for Plan B (Vite client app shell)", () => {
+    expect(shouldIncludeCloudflare("B")).toBe(true);
   });
 
   test("should exclude cloudflare for Plan F (Mobile)", () => {

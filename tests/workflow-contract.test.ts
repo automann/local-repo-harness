@@ -83,10 +83,10 @@ describe("workflow contract manifest", () => {
     expect(contract.helpers.scripts).toContain("check-deploy-sql-order.sh");
     expect(contract.externalTooling?.waza?.primaryHost).toBe("codex");
     expect(contract.externalTooling?.waza?.managedSkills).toContain("think");
-    expect(contract.externalTooling?.codexAutomationProfile?.requiredSkills).toEqual(["health", "check", "diagram-design"]);
-    expect(contract.externalTooling?.codexAutomationProfile?.routes.architectureDiagram).toBe("diagram-design");
+    expect(contract.externalTooling?.codexAutomationProfile?.requiredSkills).toEqual(["health", "check", "mermaid"]);
+    expect(contract.externalTooling?.codexAutomationProfile?.routes.architectureDiagram).toBe("mermaid");
     expect(contract.externalTooling?.codexAutomationProfile?.vendoringPolicy).toBe("do-not-vendor-skill-body");
-    expect(contract.externalTooling?.diagramDesign?.skillName).toBe("diagram-design");
+    expect(contract.externalTooling?.diagramDesign?.skillName).toBe("mermaid");
     expect(contract.externalTooling?.diagramDesign?.vendoringPolicy).toBe("do-not-vendor");
     expect(contract.agenticDevelopment?.routing.complexEngineeringPlan).toBe("gstack:plan-eng-review");
     expect(contract.agenticDevelopment?.routing.bugOrRegression).toBe("waza:hunt");

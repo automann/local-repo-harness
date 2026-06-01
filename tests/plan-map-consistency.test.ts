@@ -76,11 +76,29 @@ describe("Plan map consistency", () => {
   test("docs should not reference deprecated plan labels", () => {
     const skill = read("SKILL.md");
     const techStacks = read("references/tech-stacks.md");
+    const planMap = read("assets/plan-map.json");
 
+    expect(planMap).not.toContain("Remix + React");
+    expect(planMap).not.toContain("UmiJS");
+    expect(planMap).not.toContain("Web3 DApp");
+    expect(planMap).not.toContain("Financial Trading");
     expect(skill).not.toContain("Plan C+");
     expect(skill).not.toContain("Plan L");
     expect(techStacks).not.toContain("Plan C+");
     expect(techStacks).not.toContain("Plan L");
+  });
+
+  test("plan-map routes codes as stack families", () => {
+    const planMap = loadPlanMap();
+
+    expect(planMap.plans.A.name).toBe("Astro-first SSR/content shell");
+    expect(planMap.plans.B.name).toBe("Vite 8 client app shell");
+    expect(planMap.plans.C.stack).toContain("TanStack Start");
+    expect(planMap.plans.D.stack).toContain("Bun Workspaces");
+    expect(planMap.plans.E.stack).toContain("Cloudflare");
+    expect(planMap.plans.E.defaultTemplateVariables?.TECH_STACK_TABLE).toContain("D1 is opt-in only");
+    expect(planMap.plans.H.defaultLsp).toBe("gopls-lsp");
+    expect(planMap.plans.J.defaultLsp).toBe("rust-analyzer-lsp");
   });
 
   test("canonical plan labels should appear in docs", () => {

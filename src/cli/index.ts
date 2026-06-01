@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 import { runInstall, type InstallTargetSpec } from './commands/install';
-import { runInit } from './commands/init';
+import { runInit, runInteractiveInit, type InitBrainMode } from './commands/init';
 import { runHook } from './commands/hook';
 import { formatStatus, runStatus } from './commands/status';
 import { formatDoctor, runDoctor } from './commands/doctor';
@@ -53,12 +53,16 @@ export function buildProgram(): Command {
     .option('--target <target>', `Host target for adapters and external skills: ${VALID_TARGETS.join('|')}`, 'both')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
     .option('--no-host-adapters', 'Skip writing global Codex/Claude hook adapters')
-    .option('--no-external-skills', 'Skip Waza, diagram-design, and cross-review (codex-review/claude-review) skill bootstrap')
+    .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-verify', 'Skip repo workflow verification after apply')
     .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
     .option('--configure-codegraph', 'Auto-register the CodeGraph MCP server for Codex and Claude (global)')
+    .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
+    .option('--brain-root <path>', 'Brain vault root for manifest sync')
+    .option('--brain-mode <mode>', 'Brain sync mode: skip|manifest-only|install-gbrain-cli', 'skip')
+    .option('--interactive', 'Run the numbered interactive install planner')
     .option('--json', 'Output JSON instead of human-readable text')
-    .action((rawOpts: {
+    .action(async (rawOpts: {
       repo?: string;
       dryRun?: boolean;
       target: string;
@@ -68,6 +72,10 @@ export function buildProgram(): Command {
       verify?: boolean;
       codegraph?: boolean;
       configureCodegraph?: boolean;
+      syncCodegraph?: boolean;
+      brainRoot?: string;
+      brainMode?: string;
+      interactive?: boolean;
       json?: boolean;
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
@@ -76,7 +84,11 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
-      const result = runInit({
+      if (!['skip', 'manifest-only', 'install-gbrain-cli'].includes(rawOpts.brainMode ?? 'skip')) {
+        console.error('repo-harness init: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
+        process.exit(2);
+      }
+      const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
         target: rawOpts.target as InstallTargetSpec,
@@ -86,7 +98,16 @@ export function buildProgram(): Command {
         verify: rawOpts.verify !== false,
         codegraph: rawOpts.codegraph !== false,
         configureCodegraphMcp: rawOpts.configureCodegraph === true,
-      });
+        syncCodegraph: rawOpts.syncCodegraph === true,
+        brainRoot: rawOpts.brainRoot,
+        brainMode: rawOpts.brainMode as InitBrainMode,
+      };
+      const result = rawOpts.interactive === true
+        ? await runInteractiveInit({
+            ...common,
+            output: rawOpts.json === true ? process.stderr : process.stdout,
+          })
+        : runInit(common);
       if (rawOpts.json === true) {
         console.log(JSON.stringify(result, null, 2));
       } else {
@@ -183,7 +204,7 @@ export function buildProgram(): Command {
 
 if (import.meta.main) {
   try {
-    buildProgram().parse(process.argv);
+    await buildProgram().parseAsync(process.argv);
   } catch (err) {
     const e = err as { exitCode?: number; message?: string };
     if (typeof e.exitCode === 'number') process.exit(e.exitCode);

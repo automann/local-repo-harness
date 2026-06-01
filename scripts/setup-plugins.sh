@@ -49,11 +49,8 @@ OPTIONAL_PLUGINS=(
 
 default_lsp_for_project_type() {
     case "$1" in
-        "plan-a"|"plan-c"|"plan-d"|"plan-e"|"plan-f"|"plan-i"|"plan-j"|"plan-k")
+        "plan-a"|"plan-b"|"plan-c"|"plan-d"|"plan-e"|"plan-f"|"plan-i"|"plan-k")
             echo "typescript-lsp"
-            ;;
-        "plan-b")
-            echo "jdtls-lsp"
             ;;
         "plan-f-swift")
             echo "swift-lsp"
@@ -64,7 +61,10 @@ default_lsp_for_project_type() {
         "plan-g")
             echo "pyright-lsp"
             ;;
-        "plan-h"|"plan-j-rust")
+        "plan-h")
+            echo "gopls-lsp"
+            ;;
+        "plan-j"|"plan-j-rust")
             echo "rust-analyzer-lsp"
             ;;
         *)
@@ -681,7 +681,7 @@ print_summary() {
     fi
 
     # Show LSP plugin if installed
-    for lsp in typescript-lsp pyright-lsp rust-analyzer-lsp jdtls-lsp; do
+    for lsp in typescript-lsp pyright-lsp gopls-lsp rust-analyzer-lsp jdtls-lsp; do
         if [ -d "$SKILLS_DIR/$lsp" ]; then
             echo -e "  ${GREEN}✓${NC} $lsp (LSP)"
         fi
@@ -764,7 +764,7 @@ main() {
                 echo "  --with-obsidian    Install Obsidian skills"
                 echo "  --hooks TYPE       Hook type: standard (default), minimal, biome, biome-strict, none"
                 echo "  --no-hooks         Skip hook configuration"
-                echo "  --lsp PLUGIN       Install specific LSP plugin (e.g., typescript-lsp, pyright-lsp)"
+                echo "  --lsp PLUGIN       Install specific LSP plugin (e.g., typescript-lsp, pyright-lsp, gopls-lsp)"
                 echo "  --project-type TYPE  Auto-select LSP by project type"
                 echo "  --help             Show this help"
                 echo ""
@@ -775,20 +775,20 @@ main() {
                 echo "  biome-strict  - Standard profile + Biome CI mode (fails on warnings)"
                 echo ""
                 echo "LSP by project type:"
-                echo "  plan-a (Remix)           -> typescript-lsp"
-                echo "  plan-b (UmiJS/Java)      -> jdtls-lsp"
-                echo "  plan-c (Vite+TanStack)   -> typescript-lsp"
-                echo "  plan-d (Monorepo)        -> typescript-lsp"
-                echo "  plan-e (Astro Landing)   -> typescript-lsp"
-                echo "  plan-f (Expo Mobile)     -> typescript-lsp"
+                echo "  plan-a (Astro SSR/content)     -> typescript-lsp"
+                echo "  plan-b (Vite 8 app shell)      -> typescript-lsp"
+                echo "  plan-c (Full-stack React)      -> typescript-lsp"
+                echo "  plan-d (Bun monorepo)          -> typescript-lsp"
+                echo "  plan-e (Cloudflare edge web)   -> typescript-lsp"
+                echo "  plan-f (Expo Mobile)           -> typescript-lsp"
                 echo "  plan-f-swift (iOS)       -> swift-lsp"
                 echo "  plan-f-kotlin (Android)  -> kotlin-lsp"
-                echo "  plan-g (FastAPI Python)  -> pyright-lsp"
-                echo "  plan-h (Rust Trading)    -> rust-analyzer-lsp"
-                echo "  plan-i (Web3 DApp)       -> typescript-lsp"
-                echo "  plan-j (TUI OpenTUI/Ink) -> typescript-lsp"
-                echo "  plan-j-rust (Ratatui)    -> rust-analyzer-lsp"
-                echo "  plan-k (Bun+Hono Agent)  -> typescript-lsp"
+                echo "  plan-g (Python sidecar)        -> pyright-lsp"
+                echo "  plan-h (Go sidecar)            -> gopls-lsp"
+                echo "  plan-i (SQLite/Turso stack)    -> typescript-lsp"
+                echo "  plan-j (Rust sidecar)          -> rust-analyzer-lsp"
+                echo "  plan-j-rust (Ratatui)          -> rust-analyzer-lsp"
+                echo "  plan-k (Custom composition)    -> typescript-lsp"
                 exit 0
                 ;;
             *)
@@ -905,6 +905,10 @@ main() {
                     echo -e "  ${CYAN}ℹ${NC} Rust Analyzer provides Rust IDE features"
                     echo -e "    Install: ${CYAN}rustup component add rust-analyzer${NC}"
                     ;;
+                "gopls-lsp")
+                    echo -e "  ${CYAN}ℹ${NC} gopls provides Go IDE features"
+                    echo -e "    Install: ${CYAN}go install golang.org/x/tools/gopls@latest${NC}"
+                    ;;
                 "jdtls-lsp")
                     echo -e "  ${CYAN}ℹ${NC} Eclipse JDT LS provides Java IDE features"
                     echo -e "    Requires Java 17+ and jdtls installation"
@@ -912,7 +916,7 @@ main() {
             esac
         else
             echo -e "  ${RED}✗${NC} $lsp_plugin (not found in official repo)"
-            echo -e "  ${YELLOW}!${NC} Available LSP plugins: typescript-lsp, pyright-lsp, rust-analyzer-lsp, jdtls-lsp"
+            echo -e "  ${YELLOW}!${NC} Available LSP plugins: typescript-lsp, pyright-lsp, gopls-lsp, rust-analyzer-lsp, jdtls-lsp"
         fi
     fi
 

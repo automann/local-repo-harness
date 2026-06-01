@@ -4,7 +4,7 @@
 
 ## Default Brain
 
-- File vault: `icloud/brain/repo-harness/patterns/pattern-agentic-development-protocol.md`
+- File vault: `brain/repo-harness/patterns/pattern-agentic-development-protocol.md`
 - gbrain slug: `patterns/pattern-agentic-development-protocol`
 
 ## Repo Role

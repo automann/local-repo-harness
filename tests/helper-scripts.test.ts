@@ -531,13 +531,13 @@ describe("Workflow helper scripts", () => {
             version: 1,
             project: "demo",
             mode: "repo-contract-external-knowledge",
-            default_brain_path: "icloud/brain/demo/*",
+            default_brain_path: "brain/demo/*",
             entries: [
               {
                 id: "valuable",
                 role: "repo-authored",
                 repo_path: "docs/valuable.md",
-                brain_path: "icloud/brain/demo/references/valuable.md",
+                brain_path: "brain/demo/references/valuable.md",
                 gbrain_slug: "references/valuable",
                 sync: { direction: "repo-to-brain" },
               },
@@ -549,7 +549,7 @@ describe("Workflow helper scripts", () => {
       );
 
       const syncRes = run("bash", ["scripts/sync-brain-docs.sh", "--all"], cwd, {
-        ICLOUD_BRAIN_ROOT: brainRoot,
+        REPO_HARNESS_BRAIN_ROOT: brainRoot,
       });
       expect(syncRes.status).toBe(0);
       expect(syncRes.stdout).toContain("[BrainSync] synced docs/valuable.md");
@@ -558,14 +558,14 @@ describe("Workflow helper scripts", () => {
       expect(readFileSync(brainFile, "utf-8")).toContain("Stable project knowledge.");
 
       const checkRes = run("bash", ["scripts/sync-brain-docs.sh", "--check"], cwd, {
-        ICLOUD_BRAIN_ROOT: brainRoot,
+        REPO_HARNESS_BRAIN_ROOT: brainRoot,
       });
       expect(checkRes.status).toBe(0);
       expect(checkRes.stdout).toContain("[BrainSync] OK");
 
       writeFileSync(join(cwd, "docs/valuable.md"), "# Valuable Doc\n\nUpdated knowledge.\n");
       const changedRes = run("bash", ["scripts/sync-brain-docs.sh", "--changed", "docs/valuable.md"], cwd, {
-        ICLOUD_BRAIN_ROOT: brainRoot,
+        REPO_HARNESS_BRAIN_ROOT: brainRoot,
       });
       expect(changedRes.status).toBe(0);
       expect(readFileSync(brainFile, "utf-8")).toContain("Updated knowledge.");

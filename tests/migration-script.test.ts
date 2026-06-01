@@ -324,9 +324,9 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.readiness_gate).toBe("scripts/check-agent-tooling.sh --host codex --strict-readiness");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.sync_mode).toBe("stage-upstream-then-copy-to-codex");
-      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "diagram-design"]);
+      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(policy.external_tooling.codex_automation_profile.mode).toBe("codex-runtime-reference");
-      expect(policy.external_tooling.codex_automation_profile.routes.architecture_diagram).toBe("diagram-design");
+      expect(policy.external_tooling.codex_automation_profile.routes.architecture_diagram).toBe("mermaid");
       expect(policy.external_tooling.codex_automation_profile.vendoring_policy).toBe("do-not-vendor-skill-body");
       expect(policy.external_tooling.gbrain.mcp).toBe("candidate-disabled");
       expect(policy.external_tooling.codegraph.primary_host).toBe("both");
@@ -639,7 +639,7 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.mode).toBe("strict-local");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.staging_cache_path).toBe("~/.agents/skills");
-      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "diagram-design"]);
+      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(policy.external_tooling.codex_automation_profile.source).toBe("~/.codex/skills");
       expect(policy.external_tooling.gbrain.mcp).toBe("configured");
       expect(policy.external_tooling.codegraph.primary_host).toBe("both");

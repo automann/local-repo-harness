@@ -1,16 +1,16 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-01T03:48:01+0800 -->
+<!-- updated_at: 2026-06-01T22:15:59+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: Idle
-> **Updated At**: 2026-06-01T03:48:01+0800
+> **Updated At**: 2026-06-01T22:15:59+0800
 > **Source Branch**: main
-> **Source Commit**: 6518732
+> **Source Commit**: fdc82ec
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: release-0.1.5-published
+> **Reason**: ensure-task-workflow
 > **Derived From**: active-plan, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
@@ -37,7 +37,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 - `tasks/workstreams/workflow-engine/contract-assets/cleanup-script-policy.md`: status=completed, current_slice=todo-01, source_plan=(none)
 ## Handoff
 
-- Exact Next Step: Clean up merged contract worktree codex/tgz-pick-wt. Command: bash scripts/contract-worktree.sh cleanup --slug tgz-pick-wt --target main
+- Exact Next Step: (none)
 
 ## Checks
 
@@ -45,10 +45,10 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 1 changed/untracked path(s)
+- Summary: clean
 
 ```
- M deploy/release-checklists/260601-repo-harness-0.1.5.md
+(none)
 ```
 
 ## Source Artifacts

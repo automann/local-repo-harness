@@ -22,7 +22,7 @@ Weak dependencies:
 
 - Compatibility name `repo-harness-skill`.
 - Retired `project-initializer` install paths, which are cleanup targets only.
-- `repo-harness init` owns the one-shot Codex/Claude runtime bootstrap for Waza and `diagram-design`.
+- `repo-harness init` owns the one-shot Codex/Claude runtime bootstrap for Waza and `mermaid`.
 - gstack/gbrain policy references remain advisory; this self-host repo vendors CodeGraph as a dev dependency while downstream generated repos keep global MCP setup explicit unless policy opts in.
 
 Out of scope:
@@ -38,7 +38,7 @@ selects `repo-harness-init` semantics -> `repo-harness init` defaults the target
 repo to cwd unless `--repo` is supplied -> the command runs
 `inspect-project-state.ts --repo <repo> --format text` -> if no legacy state is
 found, `migrate-project-template.sh --repo <repo> --apply` installs or refreshes
-the workflow -> Waza and `diagram-design` are bootstrapped for the selected
+the workflow -> Waza and `mermaid` are bootstrapped for the selected
 host target -> `check-task-workflow.sh --strict` verifies the target repo.
 
 Input source of truth is the target repo path, not the user's wording. The first

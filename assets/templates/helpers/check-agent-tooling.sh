@@ -73,9 +73,9 @@ const SELECTED_HOSTS = hostMode === "both" ? ["claude", "codex"] : [hostMode];
 const WAZA_SOURCE_REPO = "tw93/Waza";
 const WAZA_SOURCE_URL = "https://github.com/tw93/Waza.git";
 const WAZA_RAW_BASE_URL = "https://raw.githubusercontent.com/tw93/Waza/main";
-const WAZA_MANAGED_SKILLS = ["check", "design", "health", "hunt", "learn", "read", "think", "write"];
+const WAZA_MANAGED_SKILLS = ["think", "hunt", "check", "health"];
 const WAZA_SHARED_RULES = ["anti-patterns.md", "chinese.md", "durable-context.md", "english.md"];
-const CODEX_AUTOMATION_SKILLS = ["health", "check", "diagram-design"];
+const CODEX_AUTOMATION_SKILLS = ["health", "check", "mermaid"];
 const CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
 const CODEGRAPH_GLOBAL_INSTALL_COMMAND = `npm install -g ${CODEGRAPH_PACKAGE} && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" repo-harness tools configure codegraph --target codex --location global`;
 const CODEGRAPH_MCP_CONFIGURE_COMMAND = "repo-harness tools configure codegraph --target <codex|claude|both> --location global";
@@ -744,7 +744,7 @@ function detectWaza() {
   const status = summarizeWazaStatus(hostStatuses);
   const installCommand = `npx -y skills add tw93/Waza -g -a ${
     hostMode === "both" ? "claude-code codex" : hostMode === "claude" ? "claude-code" : "codex"
-  } -s check design health hunt learn read think write -y`;
+  } -s think hunt check health -y`;
   const rulesList = WAZA_SHARED_RULES.join(" ");
   const syncCommand = `for d in ${WAZA_MANAGED_SKILLS.join(" ")}; do rsync -a --delete ~/.agents/skills/$d/ ~/.codex/skills/$d/; done; mkdir -p ~/.codex/rules; for f in ${rulesList}; do cp ~/.agents/rules/$f ~/.codex/rules/$f; done`;
 
@@ -824,7 +824,7 @@ function detectCodexAutomationProfile() {
     routes: {
       workflow_health: "waza:health",
       review_gate: "waza:check",
-      architecture_diagram: "diagram-design",
+      architecture_diagram: "mermaid",
     },
     vendoring_policy: "do-not-vendor-skill-body",
     installed_skills: installedSkills,

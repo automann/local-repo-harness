@@ -1,20 +1,29 @@
 ---
 name: repo-harness
-description: installs, migrates, audits, and repairs repo-local agentic development harnesses
-when_to_use: "repo-harness, repo-harness-skill, initialize repo-local agentic development harness, migrate repo-local agentic development harness, audit repo-local agentic development harness, repair repo-local agentic development harness"
+description: routes repo-harness requests to action-style init, scaffold, migrate, audit, repair, and ship workflows
+when_to_use: "repo-harness, repo-harness-skill compatibility, initialize repo-local agentic development harness, scaffold new project with repo-harness, migrate repo-local agentic development harness, audit repo-local agentic development harness, repair repo-local agentic development harness"
 ---
 
 # repo-harness
 
-`repo-harness` is the repo-local agentic development harness skill, formerly `repo-harness-skill`.
-It is a thin router over a versioned workflow engine.
+`repo-harness` is the repo-local agentic development harness skill. It is a thin
+router over a versioned workflow engine and action-style command facades.
 
 Compatibility boundary:
 
 - internal engine: tasks-first harness
 - contract ID: tasks-first-harness-v1
-- compatibility alias: `repo-harness-skill`
-- retired install aliases: `project-initializer` under `~/.codex/skills` and `~/.claude/skills`
+- canonical skill, CLI, and package name: `repo-harness`
+- compatibility trigger/runtime fallback: `repo-harness-skill`
+- retired legacy alias: `project-initializer`
+- new-project creation surface: `repo-harness-scaffold`
+
+`repo-harness-skill` may still route old prompts and runtime fallback lookups.
+It must not expose duplicate Codex command facades. `project-initializer` is a
+cleanup and migration input only: do not create, sync, or search
+`~/.codex/skills/project-initializer` or `~/.claude/skills/project-initializer`
+as active upstream roots. Historical `project-initializer` markers in generated
+files may remain only as legacy evidence.
 
 The skill should not carry the whole workflow contract in prose. It should:
 
@@ -26,6 +35,7 @@ The skill should not carry the whole workflow contract in prose. It should:
 ## When to use
 
 - initialize a new repo with Codex/Codex-compatible workflow scaffolding
+- create a new project or module scaffold, then attach the harness
 - migrate an older repo to the current tasks-first harness
 - audit drift between prompts, hooks, scripts, and repo-local contract files
 - repair broken task-sync, workflow-contract, or handoff surfaces
@@ -34,6 +44,8 @@ The skill should not carry the whole workflow contract in prose. It should:
 
 - runtime bug debugging inside an already healthy AI workflow
 - generic project scaffolding unrelated to AI routing or repo-local workflow contracts
+- using scaffold to adopt an existing repo; route that to `repo-harness-init`,
+  `repo-harness-migrate`, `repo-harness-upgrade`, or `repo-harness-repair`
 - ordinary product feature work
 
 ## Router Protocol
@@ -57,23 +69,30 @@ Read the result fields:
 
 ### Step 2. Choose one path
 
-1. **Initialize**
+1. **Scaffold**
+   - use only when creating a new project, app, or module skeleton
+   - route to `repo-harness-scaffold`
+   - choose the A-K project catalog entry, then optional `ai_native_profile`
+   - attach the harness after the project structure exists
+   - do not use this path for existing-repo adoption
+2. **Initialize**
    - use when the repo has no meaningful tasks-first workflow yet
-2. **Migrate**
+3. **Migrate**
    - use when the repo has legacy workflow docs, missing contract manifest, or stale harness artifacts
-3. **Audit**
+4. **Audit**
    - use when the repo mostly works but the user wants drift analysis and enforcement review
-4. **Repair**
+5. **Repair**
    - use when the repo has a current contract surface but broken task-sync, hooks, or handoff behavior
 ### Step 3. Prefer engine actions over prompt-only fixes
 
 Default order:
 
-1. migrate legacy docs if needed
-2. install or refresh workflow contract artifacts
-3. sync hooks, helpers, and templates
-4. merge the guidance-only `external_tooling` profile into `.ai/harness/policy.json`
-5. verify the repo-local contract
+1. for new projects, scaffold the requested project/module shape first
+2. migrate legacy docs if needed
+3. install or refresh workflow contract artifacts
+4. sync hooks, helpers, and templates
+5. merge the guidance-only `external_tooling` profile into `.ai/harness/policy.json`
+6. verify the repo-local contract
 
 Do not treat hooks as the primary source of truth. The repo contract lives in repo files.
 
@@ -122,44 +141,109 @@ not public commands. They stay behind `init`, `scaffold`, `migrate`, and
 
 ## Plan Index
 
-The router should still respect the canonical plan catalog in `assets/plan-map.json`:
+Keep A-K as stable scaffold codes, but route them as stack-family handles, not
+product prescriptions. Choose by frontend shell, backend/runtime boundary,
+deployment target, data authority, and sidecar needs first. Product domains
+such as finance, CRM, Web3, healthcare, and commerce are overlays.
 
-Core Plans (A-F):
-- Plan A: Remix
-- Plan B: UmiJS + Ant Design Pro
-- Plan C: Vite + TanStack Router
-- Plan D: Bun + Turborepo
-- Plan E: Astro landing page
-- Plan F: Expo + NativeWind
+Core Plans (A-F), routed as stack families:
+- Plan A: Astro-first SSR/content shell. Use Astro for SSR, content, docs,
+  marketing, and mostly-static app shells with islands where needed.
+- Plan B: Vite 8 client app shell. Use Vite + React + TanStack Router/Query
+  plus shadcn/Radix-style UI for dense interactive apps and internal tools.
+- Plan C: Full-stack React only when needed. Prefer TanStack Start or React
+  Router Framework Mode for SSR, server functions, actions, and streaming.
+  Next.js is not a default recommendation.
+- Plan D: Shared frontend/backend monorepo. Prefer Bun workspaces with apps,
+  packages, shared contracts, a Hono gateway, and optional Turborepo only when
+  repo scale needs orchestration.
+- Plan E: Cloudflare edge web stack. Prefer Pages, Workers, R2, KV, Queues,
+  Durable Objects, and Hyperdrive where they fit. Do not default to D1; use
+  Postgres/Supabase or SQLite/Turso unless the D1 tradeoff is explicit.
+- Plan F: Mobile/realtime companion. Use Expo Router on React Native New
+  Architecture, with NativeWind where useful and explicit voice/media/realtime
+  boundaries when needed.
 
-Custom Presets (G-K):
-- Plan G: AI quantitative trading
-- Plan H: Financial trading / FIX / RFQ
-- Plan I: Web3 DApp
-- Plan J: AI coding agent / TUI
-- Plan K: Fully custom configuration
+Custom Presets (G-K), routed as sidecar/runtime families:
+- Plan G: Python research/data/agent sidecar. Use `uv`, FastAPI or Pydantic AI,
+  DuckDB/Polars, evals, and artifact storage behind the app gateway.
+- Plan H: Go high-concurrency or financial sidecar. Use Go/Gin or narrow Go
+  workers for market data, FIX/RFQ, fan-out, infra adapters, and TS-adjacent
+  high-concurrency services.
+- Plan I: Local-first or lightweight SQL stack. Use SQLite, Turso/libSQL,
+  Turso Sync for new local-first sync work, Loro or other sync primitives, and
+  explicit replication/ownership contracts.
+- Plan J: Rust native/performance sidecar. Use Rust for parsers, indexing,
+  sandboxing, native kernels, and low-latency tools when the team can support
+  the operational complexity.
+- Plan K: Fully custom configuration. Use when the stack cannot be expressed as
+  a composition of the families above.
+
+Agent runtimes that need stable Node APIs, long-lived processes, local tools,
+or heavier sidecars should default to VPS deployment behind the Hono gateway,
+not Cloudflare Workers. Cloudflare remains the preferred web/edge delivery
+surface, not the mandatory agent execution environment.
 
 ## AI-native scaffold overlay
 
-`repo-harness-scaffold` keeps A-K as the project-type catalog and uses
+`repo-harness-scaffold` keeps A-K as the stack-family catalog and uses
 `ai_native_profile` as a separate overlay axis. The default profile is `none`,
-so existing generated output stays on the selected A-K plan. Use an overlay only
-when the generated app needs agent runtime, UI protocol, tool, sidecar, state,
-or observability boundaries.
+so generated output stays on the selected family unless the user asks for agentic
+runtime behavior. Use an overlay only when the generated app needs agent UI,
+streaming protocol, tool boundary, sidecar, shared state, approvals, artifacts,
+or observability.
 
 Supported profile IDs live in `assets/initializer-question-pack.v4.json`.
+Current stack guidance:
+
+- Use Astro for SSR/content/docs shells and Vite 8 for rich interactive
+  surfaces. Prefer a shared monorepo over disconnected frontend/backend repos.
+- Use TanStack Start or React Router Framework Mode only when SSR, actions,
+  server functions, or streaming are required inside the React app. Do not
+  default to Next.js.
+- Use Expo Router for mobile and keep React Native New Architecture
+  compatibility visible in the scaffold.
+- Use assistant-ui or AI SDK UI for chat and generative UI primitives; use
+  AG-UI when the frontend and backend need a durable event stream for runs,
+  tools, shared state, interrupts, approvals, replay, or multimodal updates.
+- Use Bun/Hono as the default app-facing agent gateway. The gateway owns auth,
+  policy, run IDs, tool contracts, approval state, streaming, and telemetry
+  before any model framework or sidecar runs.
+- Prefer Cloudflare for web and edge delivery, but keep agent runtimes on VPS
+  when they need Node compatibility, local tools, long-lived workers, or heavier
+  sidecars. D1 is opt-in, not the default database.
+- Use MCP or narrow HTTP jobs for tools and sidecars. Do not let MCP servers,
+  model providers, or agent frameworks become product authority.
+- Keep orchestration swappable: AI SDK for simple provider/tool streaming;
+  OpenAI Agents SDK, Mastra, LangGraph, Pydantic AI, or a custom runner only
+  when the product needs multi-step state, handoffs, memory, evals, approvals,
+  or durable execution.
+- Prefer Postgres or Supabase for durable app authority. Use SQLite or
+  Turso/libSQL for lightweight, local-first, edge, or embedded workloads.
+  Treat object storage, queues, Redis, vector stores, ClickHouse,
+  Temporal/Inngest/BullMQ/Trigger.dev, and OpenTelemetry as opt-in capability
+  boundaries, not mandatory scaffold defaults.
+
 Generated structure overlays currently exist for:
 
-- `runtime-console`: Vite 8 + assistant-ui, AG-UI event transport, Bun/Hono
-  agent gateway, run store, contracts, approvals, artifacts, and telemetry
+- `runtime-console`: assistant-ui/AG-UI run console, Bun/Hono agent gateway,
+  run store, contracts, approvals, artifacts, replay, and telemetry
 - `product-copilot`: in-product copilot panel, AG-UI app-domain events, product
-  context loaders, business action tools, authorization and approval policies
+  context loaders, business action tools, authorization, and approval policies
 - `sidecar-kernel`: Bun/Hono app gateway with Python, Go, or Rust kernels behind
   MCP tools or narrow HTTP jobs
+- `collaborative-editor`: editor surface with document contracts, CRDT/sync
+  ownership, and user-visible agent action boundaries
 
-Do not turn the AI-native overlay into another lettered plan. Do not make A2UI,
-Python, Go, Rust, Redis, ClickHouse, Temporal, object storage, vector DBs, model
-providers, or tracing vendors mandatory defaults.
+Do not turn AI-native overlays into more lettered plans. Do not make A2UI,
+specific model providers, vector DBs, workflow engines, tracing vendors, or
+sidecar languages mandatory defaults.
+
+Scaffold is not an existing-repo adoption path. If the target already has a
+product tree, use `repo-harness-init`, `repo-harness-migrate`,
+`repo-harness-upgrade`, or `repo-harness-repair` and preserve the existing app
+shape. `create-project-dirs`, `hooks-init`, and `docs-init` remain internal
+steps behind public commands, not standalone user-facing scaffold aliases.
 
 ## Migration Rules
 
@@ -191,7 +275,7 @@ Migration defaults:
 - distill repeated corrections into `tasks/lessons.md`
 - merge missing `external_tooling` defaults into `.ai/harness/policy.json` without overwriting explicit user values
 - keep gstack/gbrain/CodeGraph detection advisory-only; do not auto-install, auto-upgrade, auto-sync, or auto-enable MCP
-- let `repo-harness init` bootstrap required Codex/Claude runtime skills in one pass: Waza (`check`, `design`, `health`, `hunt`, `learn`, `read`, `think`, `write`) plus `diagram-design` when a source copy exists
+- let `repo-harness init` bootstrap required Codex/Claude runtime skills in one pass: Waza (`think`, `hunt`, `check`, `health`) plus `mermaid` through the skills CLI
 - treat Waza as Codex-first: `~/.codex/skills` is the Codex runtime source, `~/.agents/skills` is only skills CLI staging/cache, and updates require stage -> copy to Codex -> `cmp` verification
 
 ## Repo-Local Contract

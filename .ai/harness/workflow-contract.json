@@ -12,14 +12,10 @@
     "waza": {
       "sourceRepo": "tw93/Waza",
       "managedSkills": [
-        "check",
-        "design",
-        "health",
-        "hunt",
-        "learn",
-        "read",
         "think",
-        "write"
+        "hunt",
+        "check",
+        "health"
       ],
       "primaryHost": "codex",
       "codexPrimaryPath": "~/.codex/skills",
@@ -31,7 +27,7 @@
       "requiredSkills": [
         "health",
         "check",
-        "diagram-design"
+        "mermaid"
       ],
       "optionalSkills": [],
       "mode": "codex-runtime-reference",
@@ -39,14 +35,14 @@
       "routes": {
         "workflowHealth": "waza:health",
         "reviewGate": "waza:check",
-        "architectureDiagram": "diagram-design"
+        "architectureDiagram": "mermaid"
       },
       "vendoringPolicy": "do-not-vendor-skill-body"
     },
     "diagramDesign": {
-      "skillName": "diagram-design",
+      "skillName": "mermaid",
       "primaryHost": "codex",
-      "codexPrimaryPath": "~/.codex/skills/diagram-design",
+      "codexPrimaryPath": "~/.codex/skills/mermaid",
       "syncMode": "external-installed-skill",
       "vendoringPolicy": "do-not-vendor"
     }

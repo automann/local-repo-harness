@@ -898,8 +898,8 @@ pi_external_tooling_defaults_summary() {
 - Hosts: claude-code, codex
 - Mode: agent-readiness-required
 - Detection: init-migrate
-- Waza: Codex-first, managed skills check/design/health/hunt/learn/read/think/write, stage upstream in ~/.agents/skills, sync verified copies into ~/.codex/skills
-- Codex automation profile: required health/check/diagram-design from ~/.codex/skills; do not vendor skill bodies
+- Waza: Codex-first, managed skills think/hunt/check/health, stage upstream in ~/.agents/skills, sync verified copies into ~/.codex/skills
+- Codex automation profile: required health/check/mermaid from ~/.codex/skills; do not vendor skill bodies
 - gbrain MCP: candidate-disabled
 - CodeGraph: required agent code-navigation readiness tool, target-aware MCP configure by explicit user command or authorized agent action, per-repo ignored .codegraph/ index; generated repos do not add it as a package dependency unless local policy opts in
 - Auto-actions: never install, upgrade, serve, sync, or enable MCP automatically
@@ -1402,8 +1402,8 @@ pi_write_harness_policy() {
     "diagrams_dir": "docs/architecture/diagrams",
     "domains_dir": "docs/architecture/domains",
     "modules_dir": "docs/architecture/modules",
-    "diagram_skill": "diagram-design",
-    "diagram_skill_source": "~/.codex/skills/diagram-design",
+    "diagram_skill": "mermaid",
+    "diagram_skill_source": "~/.codex/skills/mermaid",
     "vendoring_policy": "do-not-vendor-diagram-skill-assets",
     "contract_block_begin": "<!-- BEGIN ARCHITECTURE CONTRACT -->",
     "contract_block_end": "<!-- END ARCHITECTURE CONTRACT -->",
@@ -1436,8 +1436,8 @@ pi_write_harness_policy() {
       "rule": "memory is advisory; current repo state and evidence override summaries"
     },
     "external_knowledge": {
-      "default_brain_path": "icloud/brain/<project>/*",
-      "project_path": "icloud/brain/<project>/*",
+      "default_brain_path": "brain/<project>/*",
+      "project_path": "brain/<project>/*",
       "manifest_file": ".ai/harness/brain-manifest.json",
       "drift_check": "scripts/check-brain-manifest.sh",
       "sync_script": "scripts/sync-brain-docs.sh",
@@ -1563,7 +1563,7 @@ pi_write_harness_policy() {
     "waza": {
       "source_repo": "tw93/Waza",
       "source_url": "https://github.com/tw93/Waza.git",
-      "managed_skills": ["check", "design", "health", "hunt", "learn", "read", "think", "write"],
+      "managed_skills": ["think", "hunt", "check", "health"],
       "primary_host": "codex",
       "codex_primary_path": "~/.codex/skills",
       "staging_cache_path": "~/.agents/skills",
@@ -1571,21 +1571,21 @@ pi_write_harness_policy() {
       "host_drift_policy": "report-per-host-version-staging-and-upstream-drift"
     },
     "codex_automation_profile": {
-      "required_skills": ["health", "check", "diagram-design"],
+      "required_skills": ["health", "check", "mermaid"],
       "optional_skills": [],
       "mode": "codex-runtime-reference",
       "source": "~/.codex/skills",
       "routes": {
         "workflow_health": "waza:health",
         "review_gate": "waza:check",
-        "architecture_diagram": "diagram-design"
+        "architecture_diagram": "mermaid"
       },
       "vendoring_policy": "do-not-vendor-skill-body"
     },
     "diagram_design": {
-      "skill_name": "diagram-design",
+      "skill_name": "mermaid",
       "primary_host": "codex",
-      "codex_primary_path": "~/.codex/skills/diagram-design",
+      "codex_primary_path": "~/.codex/skills/mermaid",
       "sync_mode": "external-installed-skill",
       "vendoring_policy": "do-not-vendor"
     },
@@ -1665,8 +1665,7 @@ pi_write_brain_manifest() {
   "version": 1,
   "project": "${project_name}",
   "mode": "repo-contract-external-knowledge",
-  "default_brain_path": "icloud/brain/<project>/*",
-  "legacy_paths": [],
+  "default_brain_path": "brain/<project>/*",
   "rules": [
     "repo-local contracts, hooks, scripts, checks, and evidence remain authoritative",
     "default brain stores long-lived explanations, runbooks, decisions, references, and patterns",
@@ -1912,7 +1911,7 @@ CURRENT_STATUS_EOF
 - `scripts/context-contract-sync.sh` keeps only the controlled architecture block in functional-block `AGENTS.md` and `CLAUDE.md` files aligned.
 - `scripts/workstream-sync.sh` keeps durable multi-session progress under `tasks/workstreams/<domain>/<capability>/` and projects only pointers into local contracts.
 - Semantic architecture diagrams live as Mermaid fenced blocks in the relevant module or snapshot Markdown.
-- Human-readable architecture diagrams are optional `diagram-design` HTML files in `docs/architecture/diagrams/` and should link back to the Markdown semantic source.
+- Human-readable architecture diagrams are optional `mermaid` HTML files in `docs/architecture/diagrams/` and should link back to the Markdown semantic source.
 
 ## Pending Requests
 

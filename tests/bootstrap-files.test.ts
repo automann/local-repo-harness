@@ -14,12 +14,13 @@ describe("Bootstrap Script Contracts", () => {
     expect(skill.split("\n").length).toBeLessThanOrEqual(500);
   });
 
-  test("router should only advertise initialize, migrate, audit, and repair paths", () => {
+  test("router should advertise scaffold plus existing-repo maintenance paths", () => {
     const skill = read("SKILL.md");
-    expect(skill).toContain("1. **Initialize**");
-    expect(skill).toContain("2. **Migrate**");
-    expect(skill).toContain("3. **Audit**");
-    expect(skill).toContain("4. **Repair**");
+    expect(skill).toContain("1. **Scaffold**");
+    expect(skill).toContain("2. **Initialize**");
+    expect(skill).toContain("3. **Migrate**");
+    expect(skill).toContain("4. **Audit**");
+    expect(skill).toContain("5. **Repair**");
     expect(skill).not.toContain("5. **Skill Factory**");
     expect(skill).not.toContain("references/skill-factory-guide.md");
     expect(existsSync(join(ROOT, "references/skill-factory-guide.md"))).toBe(false);
@@ -107,7 +108,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("workstream-sync.sh");
     expect(contract.helpers.scripts).toContain("contract-worktree.sh");
     expect(contract.helpers.scripts).toContain("ship-worktrees.sh");
-    expect(contract.externalTooling.codexAutomationProfile.requiredSkills).toEqual(["health", "check", "diagram-design"]);
+    expect(contract.externalTooling.codexAutomationProfile.requiredSkills).toEqual(["health", "check", "mermaid"]);
     expect(contract.externalTooling.codexAutomationProfile.vendoringPolicy).toBe("do-not-vendor-skill-body");
     expect(contract.externalTooling.diagramDesign.vendoringPolicy).toBe("do-not-vendor");
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
@@ -240,7 +241,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/worktrees");
     expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/planning");
     expect(contract.agenticDevelopment.routing.postImplementationReview).toBe("waza:check");
-    expect(contract.externalTooling.codexAutomationProfile.routes.architectureDiagram).toBe("diagram-design");
+    expect(contract.externalTooling.codexAutomationProfile.routes.architectureDiagram).toBe("mermaid");
     expect(content).not.toContain("pi_install_skill_factory");
     expect(sharedLib).not.toContain("skill-factory-create.sh");
     expect(sharedLib).not.toContain("skill-factory-check.sh");

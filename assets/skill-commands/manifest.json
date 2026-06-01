@@ -71,7 +71,7 @@
       "name": "repo-harness-architecture",
       "class": "architecture-maintenance",
       "mutatesRepoByDefault": true,
-      "engine": "architecture index, drift requests, capability resolver, archive helper, diagram-design",
+      "engine": "architecture index, drift requests, capability resolver, archive helper, mermaid",
       "summary": "Resolves architecture drift requests and updates architecture docs or diagrams without refreshing the harness."
     },
     {

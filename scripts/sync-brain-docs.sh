@@ -159,16 +159,16 @@ function stripWildcard(logicalPath) {
   return String(logicalPath || "").replace(/\/\*$/, "/");
 }
 
-const brainRoot = process.env.ICLOUD_BRAIN_ROOT ||
+const brainRoot = process.env.REPO_HARNESS_BRAIN_ROOT ||
   path.join(os.homedir(), "Library", "Mobile Documents", "com~apple~CloudDocs", "brain");
 
 function logicalToLocal(logicalPath, id) {
   const value = String(logicalPath || "");
-  if (!value.startsWith("icloud/brain/")) {
-    issue(`Entry ${id} brain_path must start with icloud/brain/: ${value || "(empty)"}`);
+  if (!value.startsWith("brain/")) {
+    issue(`Entry ${id} brain_path must start with brain/: ${value || "(empty)"}`);
     return null;
   }
-  const rel = value.slice("icloud/brain/".length);
+  const rel = value.slice("brain/".length);
   if (!rel || rel.includes("\n") || rel.includes("\r")) {
     issue(`Entry ${id} has invalid brain_path: ${value || "(empty)"}`);
     return null;

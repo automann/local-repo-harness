@@ -104,13 +104,13 @@ describe("AGENTS Target Assembly", () => {
   test("should omit cloudflare section for both targets when excluded by plan", () => {
     const claude = assembleTemplate({
       target: "claude",
-      planType: "B",
+      planType: "F",
       variables: { PROJECT_NAME: "TestProject" },
     });
 
     const agents = assembleTemplate({
       target: "agents",
-      planType: "B",
+      planType: "F",
       variables: { PROJECT_NAME: "TestProject" },
     });
 

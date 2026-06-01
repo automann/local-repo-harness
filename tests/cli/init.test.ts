@@ -11,7 +11,14 @@ import {
 import { spawnSync } from "child_process";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runInit, syncCrossReviewSkills } from "../../src/cli/commands/init";
+import { PassThrough, Writable } from "stream";
+import {
+  runInit,
+  runInteractiveInit,
+  syncCrossReviewSkills,
+  writeGlobalContextFiles,
+} from "../../src/cli/commands/init";
+import { configuredBrainRoot } from "../../src/cli/commands/brain-root";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const CLI = join(ROOT, "src/cli/index.ts");
@@ -23,6 +30,21 @@ function makeExecutable(path: string, body: string): void {
 
 function setupFakeSource(root: string): void {
   mkdirSync(join(root, "scripts"), { recursive: true });
+  mkdirSync(join(root, "assets", "reference-configs"), { recursive: true });
+  writeFileSync(
+    join(root, "assets", "reference-configs", "global-working-rules.md"),
+    [
+      "# Global Working Rules",
+      "",
+      "```md",
+      "# Global Working Rules",
+      "",
+      "- Use the user's language for reports; keep technical terms in English.",
+      "- Finish and verify the concrete task.",
+      "```",
+      "",
+    ].join("\n"),
+  );
   makeExecutable(
     join(root, "scripts", "sync-codex-installed-copies.sh"),
     "#!/bin/bash\nset -euo pipefail\necho \"sync link=${AGENTIC_DEV_LINK_INSTALLED_COPIES:-unset}\"\n",
@@ -52,6 +74,14 @@ function setupFakeSource(root: string): void {
       "fi",
       "mkdir -p \"$repo/scripts\" \"$repo/.ai/harness\"",
       "printf '{}\\n' > \"$repo/.ai/harness/workflow-contract.json\"",
+      "cat > \"$repo/.ai/harness/brain-manifest.json\" <<'EOF'",
+      "{",
+      "  \"version\": 1,",
+      "  \"project\": \"demo\",",
+      "  \"default_brain_path\": \"brain/demo/*\",",
+      "  \"entries\": []",
+      "}",
+      "EOF",
       "cat > \"$repo/scripts/check-task-workflow.sh\" <<'EOF'",
       "#!/bin/bash",
       "echo '[workflow] OK'",
@@ -93,6 +123,7 @@ function writeFakeCodegraph(fakeBin: string, logFile: string): void {
       "    fi",
       "    ;;",
       "  \"init\") mkdir -p .codegraph; touch .codegraph/initialized; echo 'initialized' ;;",
+      "  \"sync\") mkdir -p .codegraph; touch .codegraph/initialized; echo 'synced' ;;",
       "  \"install\") echo 'installed' ;;",
       "  *) exit 1 ;;",
       "esac",
@@ -131,7 +162,7 @@ describe("init command", () => {
     }
   });
 
-  test("bootstraps Waza and diagram-design for Claude and Codex during init", () => {
+  test("bootstraps core Waza skills and Mermaid for Claude and Codex during init", () => {
     const tmp = join(tmpdir(), `repo-harness-init-skills-${Date.now()}`);
     const source = join(tmp, "source");
     const repo = join(tmp, "repo");
@@ -142,9 +173,7 @@ describe("init command", () => {
       mkdirSync(source, { recursive: true });
       mkdirSync(repo, { recursive: true });
       mkdirSync(fakeBin, { recursive: true });
-      mkdirSync(join(home, ".codex", "skills", "diagram-design"), { recursive: true });
       setupFakeSource(source);
-      writeFileSync(join(home, ".codex", "skills", "diagram-design", "SKILL.md"), "---\nname: diagram-design\n---\n");
       makeExecutable(
         join(fakeBin, "npx"),
         `#!/bin/bash\nprintf '%s\\n' "$*" >> "${npxLog}"\nexit 0\n`,
@@ -165,10 +194,11 @@ describe("init command", () => {
 
       expect(result.exitCode).toBe(0);
       expect(readFileSync(npxLog, "utf-8")).toContain(
-        "-y skills add tw93/Waza -g -a claude-code codex -s check design health hunt learn read think write -y",
+        "-y skills add tw93/Waza -g -a claude-code codex -s think hunt check health -y",
       );
-      expect(existsSync(join(home, ".codex", "skills", "diagram-design", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(home, ".claude", "skills", "diagram-design", "SKILL.md"))).toBe(true);
+      expect(readFileSync(npxLog, "utf-8")).toContain(
+        "-y skills add BfdCampos/dotfiles -g -a claude-code codex -s mermaid -y",
+      );
       // Cross-review skills install host-aware: codex-review on Claude, claude-review on Codex.
       expect(existsSync(join(home, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(home, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
@@ -316,6 +346,114 @@ describe("init command", () => {
       expect(log).toContain("codegraph init -i .");
       expect(log).toContain("codegraph install --target codex --location global --yes");
       expect(log).toContain("codegraph install --target claude --location global --yes");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("writes global working rules as an idempotent managed block", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-global-rules-${Date.now()}`);
+    const source = join(tmp, "source");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      setupFakeSource(source);
+      mkdirSync(join(home, ".codex"), { recursive: true });
+      writeFileSync(join(home, ".codex", "AGENTS.md"), "user content\n");
+
+      const first = writeGlobalContextFiles(
+        source,
+        "both",
+        { reportLanguageInstruction: "Use Chinese to report to user." },
+        { ...process.env, HOME: home },
+      );
+      const second = writeGlobalContextFiles(
+        source,
+        "both",
+        { reportLanguageInstruction: "Use Chinese to report to user." },
+        { ...process.env, HOME: home },
+      );
+
+      expect(first.status).toBe("ok");
+      expect(second.detail).toContain("unchanged");
+      const codex = readFileSync(join(home, ".codex", "AGENTS.md"), "utf-8");
+      const claude = readFileSync(join(home, ".claude", "CLAUDE.md"), "utf-8");
+      expect(codex).toContain("user content");
+      expect(codex).toContain("<!-- BEGIN: repo-harness global-working-rules -->");
+      expect(codex).toContain("- Use Chinese to report to user.");
+      expect(claude).toContain("- Use Chinese to report to user.");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("resolves brain roots from REPO_HARNESS_BRAIN_ROOT", () => {
+    const tmp = join(tmpdir(), `repo-harness-brain-root-${Date.now()}`);
+    try {
+      mkdirSync(tmp, { recursive: true });
+      const root = configuredBrainRoot({
+        ...process.env,
+        HOME: join(tmp, "home"),
+        REPO_HARNESS_BRAIN_ROOT: "~/custom-brain",
+      });
+      expect(root).toBe(join(tmp, "home", "custom-brain"));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("interactive init collects a plan then calls existing init primitives", async () => {
+    const tmp = join(tmpdir(), `repo-harness-init-interactive-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    const fakeBin = join(tmp, "bin");
+    const npxLog = join(tmp, "npx.log");
+    const codegraphLog = join(tmp, "codegraph.log");
+    const outputChunks: string[] = [];
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      setupFakeSource(source);
+      writeFakeCodegraph(fakeBin, codegraphLog);
+      makeExecutable(join(fakeBin, "npx"), `#!/bin/bash\nprintf '%s\\n' "$*" >> "${npxLog}"\nexit 0\n`);
+
+      const input = new PassThrough();
+      ["\n", "3\n", "\n", "\n", "y\n"].forEach((answer, index) => {
+        setTimeout(() => input.write(answer), index * 5);
+      });
+      setTimeout(() => input.end(), 30);
+      const output = new Writable({
+        write(chunk, _encoding, callback) {
+          outputChunks.push(String(chunk));
+          callback();
+        },
+      });
+      const result = await runInteractiveInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapters: false,
+        verify: false,
+        input,
+        output,
+        env: {
+          ...process.env,
+          HOME: home,
+          PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.steps.find((step) => step.step === "global working rules")?.status).toBe("ok");
+      expect(result.steps.find((step) => step.step === "ensure brain root")?.detail).toBe(join(home, "Documents", "brain"));
+      expect(readFileSync(join(home, ".codex", "AGENTS.md"), "utf-8")).toContain("Use English to report to user.");
+      expect(readFileSync(codegraphLog, "utf-8")).toContain("codegraph sync .");
+      expect(outputChunks.join("")).toContain("CodeGraph=required ensure --init --sync plus global MCP configure");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

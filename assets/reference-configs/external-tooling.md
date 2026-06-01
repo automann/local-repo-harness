@@ -5,7 +5,7 @@ skill routing lives in `docs/reference-configs/agentic-development-flow.md`.
 
 - `gstack` supplies `office-hours`, `plan-eng-review`, and `plan-design-review`
 - `Waza` supplies `/think`, `/hunt`, and `/check` for daily small/medium work
-- Codex automation requires `health`, `check`, and `diagram-design` from `~/.codex/skills`
+- Codex automation requires `health`, `check`, and `mermaid` from `~/.codex/skills`
 - `gbrain` supports knowledge capture, repo sync, and handoff retrieval
 - `CodeGraph` is required agent readiness for code navigation and impact tracing
 
@@ -15,8 +15,7 @@ to receive upstream `tw93/Waza` updates before syncing verified copies into
 Codex.
 
 `repo-harness init` is allowed to bootstrap the workflow-owned runtime skills in
-one pass: Waza (`check`, `design`, `health`, `hunt`, `learn`, `read`, `think`,
-`write`) plus `diagram-design` for Codex and/or Claude, plus the bundled
+one pass: Waza (`think`, `hunt`, `check`, `health`) plus `mermaid` for Codex and/or Claude, plus the bundled
 cross-review skills `codex-review` (Claude host) and `claude-review` (Codex host).
 It must not silently install unrelated toolchains.
 
@@ -37,7 +36,7 @@ changes, and untracked files are all in scope. A timeout or missing peer CLI is
 reported as unavailable review evidence, not as a pass.
 
 The Codex automation profile is a runtime reference, not a vendored copy. It
-requires Waza `health`, Waza `check`, and the standalone `diagram-design` skill
+requires Waza `health`, Waza `check`, and the standalone `mermaid` skill
 to exist under `~/.codex/skills`; the skill bodies stay owned by their original
 installations.
 
@@ -97,13 +96,13 @@ cd ~/.claude/skills/gstack && ./setup --host codex
 Both hosts:
 
 ```bash
-npx -y skills add tw93/Waza -g -a claude-code codex -s check design health hunt learn read think write -y
+npx -y skills add tw93/Waza -g -a claude-code codex -s think hunt check health -y
 ```
 
 Single host:
 
 ```bash
-npx -y skills add tw93/Waza -g -a claude-code -s check design health hunt learn read think write -y
+npx -y skills add tw93/Waza -g -a claude-code -s think hunt check health -y
 ```
 
 Replace `claude-code` with `codex` when installing for Codex only.
@@ -112,14 +111,14 @@ After installing or updating through the skills CLI, verify Codex has its own
 runtime copy:
 
 ```bash
-for d in check design health hunt learn read think write; do
+for d in think hunt check health; do
   rsync -a --delete ~/.agents/skills/$d/ ~/.codex/skills/$d/
 done
 mkdir -p ~/.codex/rules
 for f in anti-patterns.md chinese.md durable-context.md english.md; do
   cp ~/.agents/rules/$f ~/.codex/rules/$f
 done
-for d in check design health hunt learn read think write; do
+for d in think hunt check health; do
   diff -qr ~/.agents/skills/$d ~/.codex/skills/$d
 done
 for f in anti-patterns.md chinese.md durable-context.md english.md; do
@@ -239,14 +238,14 @@ cd ~/.claude/skills/gstack && git pull && ./setup --host codex
 
 ```bash
 npx -y skills update
-for d in check design health hunt learn read think write; do
+for d in think hunt check health; do
   rsync -a --delete ~/.agents/skills/$d/ ~/.codex/skills/$d/
 done
 mkdir -p ~/.codex/rules
 for f in anti-patterns.md chinese.md durable-context.md english.md; do
   cp ~/.agents/rules/$f ~/.codex/rules/$f
 done
-for d in check design health hunt learn read think write; do
+for d in think hunt check health; do
   diff -qr ~/.agents/skills/$d ~/.codex/skills/$d
 done
 for f in anti-patterns.md chinese.md durable-context.md english.md; do
@@ -281,18 +280,17 @@ Long-lived external knowledge should land in the default brain file vault before
 or alongside `gbrain` import:
 
 ```text
-icloud/brain/<project>/*
+brain/<project>/*
 ```
 
 For this repo, use:
 
 ```text
-icloud/brain/repo-harness/*
+brain/repo-harness/*
 ```
 
-`icloud/brain/repo-harness-skill/*` and `icloud/brain/project-initializer/*`
-are legacy alias paths and should remain as redirects/indexes during the
-compatibility window.
+Legacy repo-harness-skill and project-initializer paths should remain as
+redirects/indexes during the compatibility window, not as active sync targets.
 
 Keep runtime contracts, hooks, scripts, checks, evidence, and migration state in
 the repo. The default brain stores reusable explanations, runbooks, decisions,
@@ -306,7 +304,7 @@ one-way mirroring by adding a manifest entry with:
 {
   "id": "project-decision-log",
   "repo_path": "docs/decisions.md",
-  "brain_path": "icloud/brain/<project>/decisions/project-decision-log.md",
+  "brain_path": "brain/<project>/decisions/project-decision-log.md",
   "gbrain_slug": "decisions/project-decision-log",
   "sync": { "direction": "repo-to-brain" }
 }

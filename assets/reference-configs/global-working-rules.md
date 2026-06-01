@@ -45,4 +45,3 @@ Reports must be concise and grounded in files, commands, runtime behavior, obser
 
 When a task requires broad research, repo archaeology, multi-source synthesis, or background surveys, delegate or isolate the research pass when the runtime supports it. Keep the main thread focused on planning, integration, and decisions.
 ```
-

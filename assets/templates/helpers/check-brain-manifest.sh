@@ -89,12 +89,13 @@ function stripWildcard(logicalPath) {
   return String(logicalPath || "").replace(/\/\*$/, "/");
 }
 
+const defaultBrainRoot = process.env.REPO_HARNESS_BRAIN_ROOT ||
+  path.join(os.homedir(), "Library", "Mobile Documents", "com~apple~CloudDocs", "brain");
+
 function logicalToLocal(logicalPath) {
   const value = String(logicalPath || "");
-  if (value.startsWith("icloud/brain/")) {
-    const root = process.env.ICLOUD_BRAIN_ROOT ||
-      path.join(os.homedir(), "Library", "Mobile Documents", "com~apple~CloudDocs", "brain");
-    return path.join(root, value.slice("icloud/brain/".length));
+  if (value.startsWith("brain/")) {
+    return path.join(defaultBrainRoot, value.slice("brain/".length));
   }
   if (value.startsWith("~/")) {
     return path.join(os.homedir(), value.slice(2));

@@ -203,15 +203,15 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.external_tooling.mode).toBe("agent-readiness-required");
       expect(policy.external_tooling.readiness_gate).toBe("scripts/check-agent-tooling.sh --host codex --strict-readiness");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
-      expect(policy.external_tooling.waza.managed_skills).toEqual(["check", "design", "health", "hunt", "learn", "read", "think", "write"]);
+      expect(policy.external_tooling.waza.managed_skills).toEqual(["think", "hunt", "check", "health"]);
       expect(policy.external_tooling.waza.codex_primary_path).toBe("~/.codex/skills");
-      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "diagram-design"]);
+      expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(policy.external_tooling.codex_automation_profile.mode).toBe("codex-runtime-reference");
       expect(policy.external_tooling.codex_automation_profile.source).toBe("~/.codex/skills");
       expect(policy.external_tooling.codex_automation_profile.routes).toEqual({
         workflow_health: "waza:health",
         review_gate: "waza:check",
-        architecture_diagram: "diagram-design",
+        architecture_diagram: "mermaid",
       });
       expect(policy.external_tooling.codex_automation_profile.vendoring_policy).toBe("do-not-vendor-skill-body");
       expect(policy.external_tooling.gbrain.mcp).toBe("candidate-disabled");
@@ -255,7 +255,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.context.capability_config).toBe("scripts/capability-config.ts");
       expect(policy.documentation.profile).toBe("minimal-agentic");
       expect(policy.documentation.required).toContain("docs/architecture/index.md");
-      expect(policy.architecture.diagram_skill).toBe("diagram-design");
+      expect(policy.architecture.diagram_skill).toBe("mermaid");
       expect(policy.architecture.vendoring_policy).toBe("do-not-vendor-diagram-skill-assets");
       expect(policy.external_tooling.diagram_design.sync_mode).toBe("external-installed-skill");
       expect(policy.harness.architecture_events_file).toBe(".ai/harness/architecture/events.jsonl");
