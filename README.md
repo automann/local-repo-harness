@@ -1,17 +1,62 @@
 # repo-harness
 
+<p align="center">
+  <img src="docs/images/repo-harness-hook-carrot.png" alt="repo-harness hooks leading Codex and Claude forward with repo-local workflow state" width="900">
+</p>
+
 Repo-local agentic development harness CLI and skill runtime for Claude/Codex
 workflows. The npm package and primary command are now `repo-harness`.
 `repo-harness-skill` remains a compatibility alias, while `project-initializer`
 install paths are retired and removed by installed-copy sync.
 Repository: `https://github.com/Ancienttwo/repo-harness`
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
 This repository now dogfoods its own tasks-first contract. It is both:
 
 - the source repo for the `repo-harness` CLI and `repo-harness` skill runtime
 - a self-hosted example of the repo-local workflow it generates for other projects
+
+## Why repo-harness
+
+- **File-backed sessions, not chat memory.** Separate agent sessions — Claude and
+  Codex, now and later — stay coordinated through the repo, not a thread.
+  `.ai/hooks/session-start-context.sh` injects the prior session's resume packet
+  (`.ai/harness/handoff/resume.md`, `tasks/current.md`) when a new session starts;
+  `finalize-handoff.sh` and `post-edit-guard.sh` write the next handoff back on stop
+  and after edits. A session can end mid-task and the next one resumes the exact next
+  step, blockers, and changed files without re-deriving them.
+- **Token-lean by design.** Instead of grep-and-read loops that re-scan the repo every
+  session, the harness leans on a pre-built CodeGraph index for structural queries
+  (callers, callees, definitions) and on progressive context loading via
+  `.ai/context/context-map.json` and `capabilities.json`: a small, stable root context
+  (~12KB) plus capability blocks loaded only when the files you touch need them. Agents
+  read a 1KB capability contract or query the index instead of spending thousands of
+  tokens rediscovering structure.
+
+## What's New in 0.2.0
+
+- **Install script (`scripts/setup-plugins.sh`).** One command bootstraps the global
+  Claude environment: essential plugins, configurable policy hooks (worktree guard,
+  atomic commit/pending), optional LSP plugins by project type, and four hook profiles
+  (`standard`, `minimal`, `biome`, `biome-strict`).
+  Run `bash scripts/setup-plugins.sh [--with-optional] [--hooks <profile>]`.
+- **Security sentinel (`repo-harness security scan` + `security-sentinel.sh`).** A
+  read-only check over high-value config injection surfaces (`~/.claude/settings.json`,
+  `~/.codex/hooks.json`, repo-local `.vscode/tasks.json`, and legacy project-level
+  `.claude`/`.codex` adapters). It flags suspicious command patterns — remote-shell
+  pipes, base64-decode-to-exec, `osascript`, `launchctl`/`crontab` persistence, netcat,
+  inline interpreter exec — plus unmanaged hooks and auto-run `folderOpen` tasks, and it
+  never mutates config. The `SessionStart` sentinel fingerprints the set and re-scans
+  only when a fingerprint changes, so there is no session-start noise. Audit on demand:
+  `repo-harness security scan --json`.
+- **Claude/Codex draft-plan lifecycle.** Plan mode is explicitly two-stage: Draft vs
+  Approved. Hooks detect plan-creation intent and track pending orchestration; a stop gate
+  (`stop-orchestrator.sh`) requires one self-review pass before a session ends mid-plan.
+  Capture a draft with `scripts/capture-plan.sh --slug <slug> --title <title> --status
+  Draft`, then promote to Approved and project into execution with `--execute` or
+  `scripts/plan-to-todo.sh --plan <plan>`. Plans become the file-backed source of truth in
+  `plans/`.
 
 ## What repo-harness Does
 
@@ -120,13 +165,14 @@ safe to adopt in a real repo.
 npx -y repo-harness init
 ```
 
-The npm package release line is `0.1.x`; generated workflow compatibility is
-tracked separately as the `5.x` model line. The `0.1.5` package publishes the
-renamed `repo-harness` CLI, user-level Claude/Codex hook adapter bootstrap,
-AI-native scaffold overlays, the typed prompt-guard decision engine, plan-stem
-task artifact naming, `REPO_HARNESS_*` runtime aliases, repo-harness generated
-markers, Waza runtime skill sync, `mermaid` sync, and the release gate
-used by maintainers before npm publish. When working from a source
+The npm package release line is now `0.2.x`; generated workflow compatibility is
+tracked separately as the `5.x` model line. The `0.2.0` package adds the global
+plugin/hook install script (`scripts/setup-plugins.sh`), the read-only config
+security sentinel (`repo-harness security scan`), and the explicit Claude/Codex
+draft-plan lifecycle, on top of the renamed `repo-harness` CLI, user-level hook
+adapter bootstrap, AI-native scaffold overlays, the typed prompt-guard decision
+engine, plan-stem task artifact naming, `REPO_HARNESS_*` runtime aliases, Waza
+runtime skill sync, and the maintainer release gate. When working from a source
 checkout instead of npm, run:
 
 ```bash
@@ -251,7 +297,7 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.1.5`
+- npm package: `repo-harness@0.2.0`
 - Generated workflow compatibility: `5.2.3`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
