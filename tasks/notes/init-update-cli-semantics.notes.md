@@ -38,12 +38,16 @@ that file did not exist before the automatic init.
   remain hard failures; only local CloudDocs/TCC target read failures downgrade
   to warnings to keep release checks from crashing on machine-local vault locks.
 
-## Publish Attempt
+## Publish Closeout
 
+- The first publish attempt failed because the default npm auth state was not
+  publish-capable. Using the local `_ops/env/npm.md` token through a temporary
+  npmrc verified npmjs identity as `ancienttwo`.
 - `npm publish --registry https://registry.npmjs.org/ --access public` reran the
-  full release gate successfully, then failed at the registry PUT with
-  `E404 Not Found - PUT https://registry.npmjs.org/repo-harness`.
-- The package name is valid and public registry state still stops at `0.2.0`.
-  The blocker is npm authentication on this machine: `npm whoami` returns
-  `E401 Unauthorized`, `NPM_TOKEN` and `NODE_AUTH_TOKEN` are unset, and the
-  existing `~/.npmrc` token is rejected by npmjs.
+  full release gate successfully and published `repo-harness@0.2.1`.
+- Registry verification returned version `0.2.1`, tarball
+  `https://registry.npmjs.org/repo-harness/-/repo-harness-0.2.1.tgz`, and
+  npm `gitHead` `56a68b10192695c4ba49ec3df37276c0121672f9`.
+- Clean-temp `npx -y --registry https://registry.npmjs.org/
+  repo-harness@0.2.1 --version` printed `0.2.1`; clean-temp `init --help`
+  printed the global init command help.

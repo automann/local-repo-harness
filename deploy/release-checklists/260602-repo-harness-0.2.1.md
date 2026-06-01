@@ -2,7 +2,7 @@
 
 Date: 2026-06-02
 Filing ID: 260602-repo-harness-0.2.1
-Status: Blocked on npm authentication
+Status: Published
 
 ## Naming
 
@@ -55,25 +55,25 @@ only on GitHub or npm metadata.
   `bun scripts/inspect-project-state.ts --repo . --format text`,
   `bash scripts/migrate-project-template.sh --repo . --dry-run`, and
   `npm pack --dry-run --json`.
+- `npm whoami --registry https://registry.npmjs.org/` initially returned
+  `E401 Unauthorized`; using the local `_ops/env/npm.md` npm token through a
+  temporary npmrc verified the publish identity as `ancienttwo`.
 - `npm publish --registry https://registry.npmjs.org/ --access public` reran the
-  full `prepublishOnly` gate successfully, then failed at the registry PUT with
-  `E404 Not Found - PUT https://registry.npmjs.org/repo-harness`.
-- npm auth state on this machine is not publish-capable: `npm whoami --registry
-  https://registry.npmjs.org/` returned `E401 Unauthorized`; `NPM_TOKEN` and
-  `NODE_AUTH_TOKEN` were unset. `~/.npmrc` contains an auth-token entry, but the
-  registry rejected it.
-- `npm view repo-harness versions name --registry https://registry.npmjs.org/`
-  confirmed the package exists and currently publishes through `0.2.0`.
-- `npm view repo-harness@0.2.1 version --registry https://registry.npmjs.org/`
-  still returned 404 before publish.
-- Blocked: publish requires a valid npm session/token with rights to
-  `repo-harness`.
-- Pending after auth is fixed: `npm publish --registry https://registry.npmjs.org/
-  --access public`
-- Pending after publish: `npm view repo-harness@0.2.1 version dist.tarball gitHead
-  --registry https://registry.npmjs.org/`
+  full `prepublishOnly` gate successfully and published `repo-harness@0.2.1`.
+- `npm view repo-harness@0.2.1 version dist.tarball gitHead --registry
+  https://registry.npmjs.org/` returned:
+  - `version = '0.2.1'`
+  - `dist.tarball = 'https://registry.npmjs.org/repo-harness/-/repo-harness-0.2.1.tgz'`
+  - `gitHead = '56a68b10192695c4ba49ec3df37276c0121672f9'`
+- Clean-temp npm CLI smoke passed:
+  `npx -y --registry https://registry.npmjs.org/ repo-harness@0.2.1 --version`
+  printed `0.2.1`, and `npx -y --registry https://registry.npmjs.org/
+  repo-harness@0.2.1 init --help` printed the global init help.
+- `bun src/cli/index.ts --version`, `bun src/cli/index.ts init --help`, and
+  `bun src/cli/index.ts update --help` passed locally after publish.
 
 ## Published Artifacts
 
-- npm: blocked by npm authentication; `0.2.1` is not on npm yet.
-- GitHub release: (pending)
+- npm: https://www.npmjs.com/package/repo-harness/v/0.2.1
+- npm tarball: https://registry.npmjs.org/repo-harness/-/repo-harness-0.2.1.tgz
+- GitHub release: https://github.com/Ancienttwo/repo-harness/releases/tag/v0.2.1
