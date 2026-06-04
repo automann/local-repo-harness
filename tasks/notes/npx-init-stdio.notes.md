@@ -24,3 +24,6 @@ terminal until the whole setup script exited.
 - `bun src/cli/index.ts update --help`
 - `HOME="$(mktemp -d)" bun src/cli/index.ts init` streamed the banner and clone
   progress immediately, then completed successfully against the temporary home.
+- `repo-harness@0.2.2` was published to the official npm registry after the
+  release gate passed twice; clean-temp `npx` smoke confirmed default `init`
+  creates no Superpowers output or files.
