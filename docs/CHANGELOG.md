@@ -4,6 +4,26 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-06-06
+
+### Added
+
+- Added shell fallback routing for copied prompt hooks when the TypeScript
+  decision engine is unavailable, preserving PlanCaptureGate guidance instead
+  of failing closed on installed hook copies.
+- Added workflow readiness checks for stale handoff/resume plan references and
+  action-command skill quality gates.
+- Added benchmark quality metrics so release evidence distinguishes
+  authoritative non-dry-run skill evals from dry-run smoke output.
+
+### Changed
+
+- Updated the self-host CodeGraph development dependency to `0.9.9` and made
+  gbrain readiness probe `doctor --json --fast` before falling back to the full
+  doctor command.
+- Updated maintainer release docs and README verification guidance to require
+  non-dry-run skill eval evidence when claiming skill effectiveness.
+
 ## [0.2.3] - 2026-06-05
 
 ### Changed

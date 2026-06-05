@@ -34,40 +34,21 @@ This repository now dogfoods its own tasks-first contract. It is both:
   read a 1KB capability contract or query the index instead of spending thousands of
   tokens rediscovering structure.
 
-## What's New in 0.2.3
+## What's New in 0.2.4
 
-- **Safer global init defaults.** `repo-harness init` no longer calls the legacy
-  Claude plugin setup script or any Superpowers marketplace installer path.
-- **Global init command (`repo-harness init`).** One command installs the
-  `repo-harness` CLI globally, refreshes repo-harness skill aliases, installs
-  user-level Codex/Claude hook adapters, configures Waza
-  (`think`, `hunt`, `check`, `health`) plus Mermaid, persists the brain root, and
-  configures CodeGraph MCP.
-  Run `npx -y repo-harness init`; no source checkout is required.
-- **Repo refresh command (`repo-harness update`).** Existing-repo install and
-  refresh now has its own command surface, preserving the previous repo-local
-  harness migration path while keeping `init` focused on global runtime setup.
-- **CodeGraph index self-heal.** When the prompt hook detects structural
-  code-navigation intent and the repo has no `.codegraph` index, it initializes
-  the index with the local or PATH-visible CodeGraph binary before emitting the
-  route hint. This remains advisory: no dependency install, no heavy readiness
-  probe, and no prompt block if CodeGraph is unavailable.
-- **Security sentinel (`repo-harness security scan` + `security-sentinel.sh`).** A
-  read-only check over high-value config injection surfaces (`~/.claude/settings.json`,
-  `~/.codex/hooks.json`, repo-local `.vscode/tasks.json`, and legacy project-level
-  `.claude`/`.codex` adapters). It flags suspicious command patterns — remote-shell
-  pipes, base64-decode-to-exec, `osascript`, `launchctl`/`crontab` persistence, netcat,
-  inline interpreter exec — plus unmanaged hooks and auto-run `folderOpen` tasks, and it
-  never mutates config. The `SessionStart` sentinel fingerprints the set and re-scans
-  only when a fingerprint changes, so there is no session-start noise. Audit on demand:
-  `repo-harness security scan --json`.
-- **Claude/Codex draft-plan lifecycle.** Plan mode is explicitly two-stage: Draft vs
-  Approved. Hooks detect plan-creation intent and track pending orchestration; a stop gate
-  (`stop-orchestrator.sh`) requires one self-review pass before a session ends mid-plan.
-  Capture a draft with `scripts/capture-plan.sh --slug <slug> --title <title> --status
-  Draft`, then promote to Approved and project into execution with `--execute` or
-  `scripts/plan-to-todo.sh --plan <plan>`. Plans become the file-backed source of truth in
-  `plans/`.
+- **Copied hook fallback.** Installed prompt hooks now keep PlanCaptureGate
+  guidance working even when the copied runtime cannot reach the TypeScript
+  decision engine.
+- **Darwin readiness gates.** Workflow checks now catch stale handoff/resume
+  plan references, and public action-command skills have static quality gates
+  for failure modes, boundaries, and high-risk checkpoints.
+- **Authoritative eval evidence.** Benchmark reports now include
+  `full_test_count`, `dry_run_ratio`, `grader_pass_rate`, and
+  `effectiveness_authority`, so dry-run smoke output cannot be mistaken for
+  release-grade skill effectiveness proof.
+- **Tooling freshness.** The self-host CodeGraph dev dependency is refreshed to
+  `0.9.9`, and gbrain readiness probes try `doctor --json --fast` before the
+  full doctor path.
 
 ## What repo-harness Does
 
@@ -194,13 +175,11 @@ repository to install or refresh workflow files, hook assets, host adapters,
 skill aliases, and repo-local verification surfaces from the current npm package.
 
 The npm package release line is now `0.2.x`; generated workflow compatibility is
-tracked separately as the `5.x` model line. The `0.2.3` package splits first-run
-global bootstrap (`repo-harness init`) from repo-local refresh
-(`repo-harness update`), replaces the legacy global plugin installer path with
-typed CLI/hook/dependency bootstrap, keeps the read-only config security sentinel
-(`repo-harness security scan`), the explicit Claude/Codex draft-plan lifecycle,
-and adds non-blocking CodeGraph index initialization for structural prompt
-routing.
+tracked separately as the `5.x` model line. The `0.2.4` package keeps the split
+between first-run global bootstrap (`repo-harness init`) and repo-local refresh
+(`repo-harness update`), preserves the typed global bootstrap and read-only
+config security sentinel, and adds stronger copied-hook fallback, readiness
+checks, and skill-eval authority reporting.
 These sit on top of the renamed `repo-harness` CLI, user-level hook
 adapter bootstrap, AI-native scaffold overlays, the typed prompt-guard decision
 engine, plan-stem task artifact naming, `REPO_HARNESS_*` runtime aliases, Waza
@@ -340,7 +319,7 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.2.3`
+- npm package: `repo-harness@0.2.4`
 - Generated workflow compatibility: `5.2.3`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
