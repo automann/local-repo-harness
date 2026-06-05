@@ -2,20 +2,22 @@
 
 ## Context
 
-`repo-harness init` delegates to `scripts/setup-plugins.sh` for global Claude
-plugin and hook-profile bootstrap. The CLI wrapper used `spawnSync` with
-captured stdout/stderr, so users running `npx -y repo-harness init` saw a blank
-terminal until the whole setup script exited.
+`repo-harness init` previously delegated to `scripts/setup-plugins.sh` for
+global Claude plugin and hook-profile bootstrap. The CLI wrapper used
+`spawnSync` with captured stdout/stderr, so users running
+`npx -y repo-harness init` saw a blank terminal until the whole setup script
+exited.
 
 ## Decision
 
-- Keep `runGlobalRuntimeSetup` defaulting to captured `pipe` stdio so tests and
-  programmatic callers can continue to inspect `stdout` and `stderr`.
-- Pass `stdio: "inherit"` from the public `repo-harness init` CLI action so the
-  setup script streams progress directly to the user's terminal.
-- Stop installing the Superpowers Claude marketplace plugin by default. The
-  existing script had encoded it as a default even when the user did not request
-  it; the CLI now forwards it only when `--with-superpowers` is explicit.
+- Replace the public `init` shell wrapper with typed global bootstrap steps:
+  install the current package as the global CLI, sync repo-harness skill aliases,
+  install user-level hook adapters, configure Waza
+  `think`/`hunt`/`check`/`health`, persist the brain root, and configure
+  CodeGraph MCP.
+- Keep `runGlobalRuntimeSetup` returning bounded `stdout`/`stderr` fields for
+  tests and programmatic callers, but render step lines directly from the CLI.
+- Remove the Superpowers Claude marketplace installer path entirely.
 
 ## Verification
 
@@ -27,3 +29,8 @@ terminal until the whole setup script exited.
 - `repo-harness@0.2.2` was published to the official npm registry after the
   release gate passed twice; clean-temp `npx` smoke confirmed default `init`
   creates no Superpowers output or files.
+- Follow-up hardening removes the Superpowers installer path entirely from
+  `repo-harness init`, `scripts/setup-plugins.sh`, and current plugin guidance;
+  the next npm patch is `repo-harness@0.2.3`.
+- The active `init` path no longer calls `scripts/setup-plugins.sh`; that script
+  is legacy-only and should not be treated as the current setup authority.
