@@ -10,6 +10,16 @@
 |-------|------------|
 {{TECH_STACK_TABLE}}
 
+{{#IF WEBAPP_RENDERING_MODEL_ENABLED}}
+### Webapp Rendering Model
+
+{{WEBAPP_RENDERING_MODEL_SUMMARY}}
+
+| Boundary | Default |
+|----------|---------|
+{{WEBAPP_RENDERING_TECH_STACK_TABLE}}
+
+{{/IF}}
 {{#IF AI_NATIVE_PROFILE_ENABLED}}
 ### AI-Native Profile
 

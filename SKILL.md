@@ -159,17 +159,20 @@ such as finance, CRM, Web3, healthcare, and commerce are overlays.
 Core Plans (A-F), routed as stack families:
 - Plan A: Astro-first SSR/content shell. Use Astro for SSR, content, docs,
   marketing, and mostly-static app shells with islands where needed.
-- Plan B: Vite 8 client app shell. Use Vite + React + TanStack Router/Query
-  plus shadcn/Radix-style UI for dense interactive apps and internal tools.
-- Plan C: Full-stack React only when needed. Prefer TanStack Start or React
-  Router Framework Mode for SSR, server functions, actions, and streaming.
-  Next.js is not a default recommendation.
+- Plan B: Vite 8 client-only app shell. Use Vite + React + TanStack
+  Router/Query plus shadcn/Radix-style UI for dense interactive apps and
+  internal tools that do not need crawler-visible SSR landing HTML.
+- Plan C: TanStack Start Workers webapp. Prefer TanStack Start + Vite +
+  Cloudflare Workers when the same React webapp needs public SEO/SSR at `/`
+  and authenticated or browser-heavy workspace routes under `/app`. Use
+  route-level `ssr: false` for `/app`; Next.js is not a default recommendation.
 - Plan D: Shared frontend/backend monorepo. Prefer Bun workspaces with apps,
   packages, shared contracts, a Hono gateway, and optional Turborepo only when
   repo scale needs orchestration.
-- Plan E: Cloudflare edge web stack. Prefer Pages, Workers, R2, KV, Queues,
-  Durable Objects, and Hyperdrive where they fit. Do not default to D1; use
-  Postgres/Supabase or SQLite/Turso unless the D1 tradeoff is explicit.
+- Plan E: Cloudflare edge web stack. Prefer Workers for TanStack Start SSR
+  webapps, Pages only for static/client-only assets or content shells, and R2,
+  KV, Queues, Durable Objects, and Hyperdrive where they fit. Do not default to
+  D1; use Postgres/Supabase or SQLite/Turso unless the D1 tradeoff is explicit.
 - Plan F: Mobile/realtime companion. Use Expo Router on React Native New
   Architecture, with NativeWind where useful and explicit voice/media/realtime
   boundaries when needed.
@@ -208,9 +211,14 @@ Current stack guidance:
 
 - Use Astro for SSR/content/docs shells and Vite 8 for rich interactive
   surfaces. Prefer a shared monorepo over disconnected frontend/backend repos.
-- Use TanStack Start or React Router Framework Mode only when SSR, actions,
-  server functions, or streaming are required inside the React app. Do not
-  default to Next.js.
+- Use TanStack Start + Vite + Cloudflare Workers when a SaaS webapp needs
+  public landing SEO/SSR and a client-heavy workspace in the same product
+  surface. Keep `/` SSR/prerender-capable and `/app` client-only.
+- Do not scaffold `apps/marketing` plus `apps/web` as the default answer to
+  SEO/SSR. Treat a static marketing app as explicit legacy/rollback or content
+  scope, not as the normal SaaS webapp split.
+- Use React Router Framework Mode or Vike only as fallback evaluations if the
+  Start + Workers thin scaffold gate fails. Do not default to Next.js.
 - Use Expo Router for mobile and keep React Native New Architecture
   compatibility visible in the scaffold.
 - Use assistant-ui or AI SDK UI for chat and generative UI primitives; use

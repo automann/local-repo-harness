@@ -292,6 +292,33 @@ describe("Output Quality Gates", () => {
     expect(output).not.toContain("Bun/Hono `/api/agent/run`");
   });
 
+  test("should render Plan C as a single Start Workers webapp by default", () => {
+    const output = assembleTemplate({
+      planType: "C",
+      variables: { PROJECT_NAME: "StartSaaS" },
+    });
+
+    expect(output).toContain("Webapp Rendering Model");
+    expect(output).toContain("TanStack Start + Cloudflare Workers Webapp Structure");
+    expect(output).toContain("one `apps/web` Worker");
+    expect(output).toContain("`/` SSR/prerender-capable landing");
+    expect(output).toContain("`/app` client-only route boundary");
+    expect(output).toContain("wrangler deploy");
+    expect(output).not.toContain("default `apps/marketing` + `apps/web` split");
+  });
+
+  test("should keep Plan B client-only without Start SSR claims", () => {
+    const output = assembleTemplate({
+      planType: "B",
+      variables: { PROJECT_NAME: "ClientTool" },
+    });
+
+    expect(output).toContain("Client-only Vite + TanStack Router/Query");
+    expect(output).toContain("No SSR guarantee");
+    expect(output).not.toContain("TanStack Start + Cloudflare Workers Webapp Structure");
+    expect(output).not.toContain("route-level `ssr: false`");
+  });
+
   test("should include AI-native runtime console overlay when selected", () => {
     const output = assembleTemplate({
       planType: "C",

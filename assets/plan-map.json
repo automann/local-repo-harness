@@ -21,6 +21,10 @@
       "stack": "Astro + TypeScript + Cloudflare/Node adapters",
       "tier": "core",
       "cloudflareNative": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "astro-content",
+        "recommendedModels": ["astro-content", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["chat-agent", "product-copilot"]
@@ -39,10 +43,14 @@
       }
     },
     "B": {
-      "name": "Vite 8 client app shell",
+      "name": "Vite 8 client-only app shell",
       "stack": "Vite 8 + React + TanStack Router/Query",
       "tier": "core",
       "cloudflareNative": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "client-only",
+        "recommendedModels": ["client-only", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["runtime-console", "product-copilot", "chat-agent", "collaborative-editor"]
@@ -57,14 +65,18 @@
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
         "PROJECT_STRUCTURE_FILE": "assets/project-structures/vite-tanstack.txt",
-        "TECH_STACK_TABLE": "| Frontend app | Vite 8 + React + TypeScript |\\n| Routing/data | TanStack Router + TanStack Query |\\n| UI | shadcn/Radix-style components + Tailwind CSS |\\n| Data authority | Postgres/Supabase by default; SQLite/Turso for lightweight edge/local-first work |"
+        "TECH_STACK_TABLE": "| Frontend app | Vite 8 + React + TypeScript |\\n| Rendering | Client-only SPA/CSR; no crawler-visible SSR guarantee |\\n| Routing/data | TanStack Router + TanStack Query |\\n| UI | shadcn/Radix-style components + Tailwind CSS |\\n| Data authority | Postgres/Supabase by default; SQLite/Turso for lightweight edge/local-first work |"
       }
     },
     "C": {
-      "name": "Full-stack React only when needed",
-      "stack": "TanStack Start or React Router Framework Mode",
+      "name": "TanStack Start Workers webapp",
+      "stack": "TanStack Start + Vite + Cloudflare Workers",
       "tier": "core",
       "cloudflareNative": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "start-workers",
+        "recommendedModels": ["start-workers", "client-only", "astro-content"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["runtime-console", "product-copilot", "chat-agent", "collaborative-editor"]
@@ -78,7 +90,8 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Full-stack React | TanStack Start or React Router Framework Mode |\\n| SSR/actions | Use only when server functions, actions, or streaming are required |\\n| UI/data | React + TanStack Query + shadcn/Radix-style UI |\\n| Non-default | Next.js is not the default recommendation |"
+        "PROJECT_STRUCTURE_FILE": "assets/project-structures/tanstack-start-workers.txt",
+        "TECH_STACK_TABLE": "| React webapp | TanStack Start + Vite + React |\\n| Deploy | Cloudflare Workers with `@cloudflare/vite-plugin`, `wrangler.jsonc`, Worker assets, and `wrangler deploy` |\\n| Public route | `/` SSR/prerender-capable landing with meta/OG/canonical |\\n| Workspace route | `/app` client-only via route-level `ssr: false`; lazy-load browser-only/WebGL components |\\n| Frontend count | One deployable frontend component under `apps/web`; do not scaffold `apps/marketing` + `apps/web` by default |\\n| Fallback | Evaluate Vike or React Router Framework Mode only if Start fails the thin gate |\\n| Non-default | Next.js is not the default recommendation |"
       }
     },
     "D": {
@@ -86,6 +99,10 @@
       "stack": "Bun Workspaces + Hono + Shared Contracts",
       "tier": "core",
       "cloudflareNative": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "start-workers",
+        "recommendedModels": ["start-workers", "client-only", "astro-content"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["runtime-console", "sidecar-kernel", "enterprise-agent-platform"]
@@ -100,7 +117,7 @@
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
         "PROJECT_STRUCTURE_FILE": "assets/project-structures/monorepo.txt",
-        "TECH_STACK_TABLE": "| Workspace | Bun Workspaces, optional Turborepo only at scale |\\n| Apps | Astro shell, Vite app, Expo companion, or admin surfaces |\\n| Services | Hono gateways, workers, and sidecars |\\n| Shared packages | contracts, ui, data access, tool adapters, test fixtures |"
+        "TECH_STACK_TABLE": "| Workspace | Bun Workspaces, optional Turborepo only at scale |\\n| Web app | Single `apps/web` frontend by default; use TanStack Start + Workers for SEO/SSR plus app workspace |\\n| Apps | API, Agent, MCP, Expo companion, or admin surfaces only when they own separate runtime authority |\\n| Services | Hono gateways, workers, and sidecars |\\n| Shared packages | contracts, ui, data access, tool adapters, test fixtures |"
       }
     },
     "E": {
@@ -108,6 +125,10 @@
       "stack": "Cloudflare Pages/Workers + R2/KV/Queues/Durable Objects + external SQL",
       "tier": "core",
       "cloudflareNative": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "start-workers",
+        "recommendedModels": ["start-workers", "client-only", "astro-content"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["product-copilot", "enterprise-agent-platform", "sidecar-kernel"]
@@ -121,7 +142,7 @@
       },
       "defaultLsp": "typescript-lsp",
       "defaultTemplateVariables": {
-        "TECH_STACK_TABLE": "| Edge web | Cloudflare Pages + Workers |\\n| Cloudflare storage | R2, KV, Queues, Durable Objects, Hyperdrive when useful |\\n| SQL authority | Postgres/Supabase or SQLite/Turso; D1 is opt-in only |\\n| Agent runtime | VPS behind Hono when Node APIs, tools, or long-lived workers are required |"
+        "TECH_STACK_TABLE": "| Edge web | Cloudflare Workers for SSR React webapps; Pages only for static/client-only assets or content shells |\\n| Start deploy | TanStack Start + Vite + `@cloudflare/vite-plugin` + Worker assets + `wrangler deploy` |\\n| Cloudflare storage | R2, KV, Queues, Durable Objects, Hyperdrive when useful |\\n| SQL authority | Postgres/Supabase or SQLite/Turso; D1 is opt-in only |\\n| Agent runtime | VPS behind Hono when Node APIs, tools, or long-lived workers are required |"
       }
     },
     "F": {
@@ -129,6 +150,10 @@
       "stack": "Expo Router + React Native New Architecture + NativeWind",
       "tier": "core",
       "cloudflareNative": false,
+      "webappRenderingDefaults": {
+        "defaultModel": "none",
+        "recommendedModels": ["none"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["chat-agent", "voice-agent"]
@@ -152,6 +177,10 @@
       "tier": "preset",
       "cloudflareNative": false,
       "factorFactory": true,
+      "webappRenderingDefaults": {
+        "defaultModel": "none",
+        "recommendedModels": ["none", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["research-agent", "sidecar-kernel", "runtime-console"]
@@ -173,6 +202,10 @@
       "stack": "Go/Gin sidecar + Hono gateway + TypeScript app",
       "tier": "preset",
       "cloudflareNative": false,
+      "webappRenderingDefaults": {
+        "defaultModel": "none",
+        "recommendedModels": ["none", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["sidecar-kernel", "runtime-console"]
@@ -194,6 +227,10 @@
       "stack": "SQLite/Turso/libSQL + Turso Sync + optional CRDT",
       "tier": "preset",
       "cloudflareNative": false,
+      "webappRenderingDefaults": {
+        "defaultModel": "client-only",
+        "recommendedModels": ["client-only", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["collaborative-editor", "product-copilot", "sidecar-kernel"]
@@ -215,6 +252,10 @@
       "stack": "Rust sidecar + TypeScript app/gateway",
       "tier": "preset",
       "cloudflareNative": false,
+      "webappRenderingDefaults": {
+        "defaultModel": "none",
+        "recommendedModels": ["none", "client-only"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["coding-agent", "runtime-console", "sidecar-kernel"]
@@ -236,6 +277,10 @@
       "stack": "Manual stack-family composition",
       "tier": "custom",
       "cloudflareNative": false,
+      "webappRenderingDefaults": {
+        "defaultModel": "none",
+        "recommendedModels": ["none", "client-only", "start-workers"]
+      },
       "aiNativeOverlayDefaults": {
         "defaultProfile": "none",
         "recommendedProfiles": ["runtime-console", "product-copilot", "sidecar-kernel"]

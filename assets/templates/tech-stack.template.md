@@ -12,6 +12,20 @@
 ### 核心框架
 {{CORE_DEPENDENCIES}}
 
+{{#IF WEBAPP_RENDERING_MODEL_ENABLED}}
+## Webapp Rendering Model
+
+{{WEBAPP_RENDERING_TECH_STACK_SECTION}}
+
+### Boundary Rules
+
+- Use one deployable frontend component under `apps/web` for SaaS webapps that need public SEO/SSR plus an authenticated workspace.
+- `/` should be SSR/prerender-capable when public landing SEO matters.
+- `/app` should be client-only when it contains browser-only, WebGL, tenant workspace, or authenticated runtime state.
+- TanStack Start on Cloudflare deploys through Workers and `wrangler deploy`; Pages/static deploy is for client-only or content/static surfaces.
+- Keep backend Workers separate only when they own API, Agent, MCP, queue, storage, or sidecar runtime authority.
+
+{{/IF}}
 {{#IF AI_NATIVE_PROFILE_ENABLED}}
 ## AI-Native Profile
 

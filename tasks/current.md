@@ -1,16 +1,16 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-06T02:45:18+0800 -->
+<!-- updated_at: 2026-06-07T02:58:13+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: Idle
-> **Updated At**: 2026-06-06T02:45:18+0800
+> **Updated At**: 2026-06-07T02:58:13+0800
 > **Source Branch**: main
-> **Source Commit**: 26195ac
+> **Source Commit**: 8a441a6
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: ensure-task-workflow
+> **Reason**: merge-closeout
 > **Derived From**: active-plan, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
@@ -37,7 +37,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 - `tasks/workstreams/workflow-engine/contract-assets/cleanup-script-policy.md`: status=completed, current_slice=todo-01, source_plan=(none)
 ## Handoff
 
-- Exact Next Step: (none)
+- Exact Next Step: Clean up merged contract worktree codex/webapp-start-workers-scaffold. Command: bash scripts/contract-worktree.sh cleanup --slug webapp-start-workers-scaffold --target main
 
 ## Checks
 

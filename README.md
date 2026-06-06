@@ -418,6 +418,12 @@ UI runtime, Bun/Hono gateway, shared contracts, observability, and MCP/HTTP
 sidecar rules without installing model providers or making Python, Go, Rust, or
 A2UI mandatory defaults.
 
+Webapp rendering is a separate overlay. Client-only Vite remains Plan B, while
+React webapps that need public SEO/SSR plus an authenticated workspace should
+use Plan C: one TanStack Start + Vite app deployed as a Cloudflare Worker under
+`apps/web`, with `/` SSR/prerender-capable and `/app` client-only. The scaffold
+does not default to separate `apps/marketing` and `apps/web` frontend deploys.
+
 Use `repo-harness-capability` when the harness already exists and only selected
 capability boundaries should be added. It updates `.ai/context/capabilities.json`,
 syncs the requested local `AGENTS.md` / `CLAUDE.md` contract files, and validates

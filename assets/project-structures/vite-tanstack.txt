@@ -1,4 +1,11 @@
-# Vite + TanStack Router Project Structure
+# Vite + TanStack Router Client-Only Project Structure
+
+Use this structure for dense interactive apps, dashboards, internal tools, and
+client-only product surfaces. It does not provide crawler-visible SSR landing
+HTML. If the same webapp needs public SEO/SSR at `/` plus an authenticated or
+browser-heavy workspace under `/app`, choose the TanStack Start + Cloudflare
+Workers model instead of scaffolding separate `apps/marketing` and `apps/web`
+frontend deployments.
 
 {{PROJECT_NAME}}/
 ├── src/
