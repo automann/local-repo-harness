@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   getAiNativeTemplateVariables,
+  getWebappRenderingTemplateVariables,
   getPlanTier,
   isCorePlan,
   loadPlanMap,
@@ -36,6 +37,18 @@ describe("Plan map consistency", () => {
     expect(overlayDefaults.E?.recommendedProfiles).toContain("product-copilot");
   });
 
+  test("webapp rendering models stay as overlays, not plan codes", () => {
+    const planMap = loadPlanMap();
+    const planCodes = Object.keys(planMap.plans).sort();
+
+    expect(planCodes).not.toContain("L");
+    expect(planMap.plans.B.webappRenderingDefaults?.defaultModel).toBe("client-only");
+    expect(planMap.plans.C.webappRenderingDefaults?.defaultModel).toBe("start-workers");
+    expect(planMap.plans.C.webappRenderingDefaults?.recommendedModels).toContain("start-workers");
+    expect(planMap.plans.D.webappRenderingDefaults?.recommendedModels).toContain("start-workers");
+    expect(planMap.plans.E.defaultTemplateVariables?.TECH_STACK_TABLE).toContain("Workers for SSR React webapps");
+  });
+
   test("AI-native template variables only activate when explicitly selected", () => {
     const defaultOverlay = getAiNativeTemplateVariables("C", {
       PROJECT_STRUCTURE: "base structure",
@@ -55,6 +68,23 @@ describe("Plan map consistency", () => {
     expect(runtimeConsoleOverlay.variables.AI_NATIVE_TECH_STACK_SECTION).toContain(
       "assistant-ui"
     );
+  });
+
+  test("webapp rendering variables follow plan defaults and explicit overrides", () => {
+    const startWorkers = getWebappRenderingTemplateVariables("C", {
+      PROJECT_STRUCTURE: "base structure",
+    });
+    expect(startWorkers.enabled).toBe(true);
+    expect(startWorkers.modelId).toBe("start-workers");
+    expect(startWorkers.variables.PROJECT_STRUCTURE).toContain("TanStack Start + Cloudflare Workers Webapp Structure");
+    expect(startWorkers.variables.WEBAPP_RENDERING_TECH_STACK_TABLE).toContain("wrangler deploy");
+
+    const clientOnly = getWebappRenderingTemplateVariables("B", {
+      PROJECT_STRUCTURE: "base structure",
+    });
+    expect(clientOnly.enabled).toBe(true);
+    expect(clientOnly.modelId).toBe("client-only");
+    expect(clientOnly.variables.WEBAPP_RENDERING_TECH_STACK_SECTION).not.toContain("ssr: false");
   });
 
   test("plan tiers should enforce core A-F and preset/custom G-K model", () => {
@@ -92,8 +122,9 @@ describe("Plan map consistency", () => {
     const planMap = loadPlanMap();
 
     expect(planMap.plans.A.name).toBe("Astro-first SSR/content shell");
-    expect(planMap.plans.B.name).toBe("Vite 8 client app shell");
-    expect(planMap.plans.C.stack).toContain("TanStack Start");
+    expect(planMap.plans.B.name).toBe("Vite 8 client-only app shell");
+    expect(planMap.plans.C.name).toBe("TanStack Start Workers webapp");
+    expect(planMap.plans.C.stack).toContain("Cloudflare Workers");
     expect(planMap.plans.D.stack).toContain("Bun Workspaces");
     expect(planMap.plans.E.stack).toContain("Cloudflare");
     expect(planMap.plans.E.defaultTemplateVariables?.TECH_STACK_TABLE).toContain("D1 is opt-in only");

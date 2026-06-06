@@ -197,11 +197,21 @@ describe("create-project-dirs scaffold parity", () => {
         join(ROOT, "assets/project-structures/ai-native-sidecar-kernel.txt"),
         "utf-8"
       );
+      const startWorkers = readFileSync(
+        join(ROOT, "assets/project-structures/tanstack-start-workers.txt"),
+        "utf-8"
+      );
       expect(runtimeConsole).toContain("Bun/Hono");
       expect(productCopilot).toContain("business action");
       expect(collaborativeEditor).toContain("Plate");
       expect(collaborativeEditor).toContain("Loro");
       expect(sidecarKernel).toContain("MCP/HTTP");
+      expect(startWorkers).toContain("apps/web");
+      expect(startWorkers).toContain("index.tsx           # / SSR");
+      expect(startWorkers).toContain("app.tsx             # /app client-only");
+      expect(startWorkers).toContain("ssr: false");
+      expect(startWorkers).toContain("wrangler.jsonc");
+      expect(startWorkers).toContain("wrangler deploy");
       expect(agents).not.toContain("AI-native Runtime Console Overlay");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

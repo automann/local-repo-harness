@@ -43,6 +43,10 @@ export interface PlanConfig {
     defaultProfile: string;
     recommendedProfiles: string[];
   };
+  webappRenderingDefaults?: {
+    defaultModel: string;
+    recommendedModels: string[];
+  };
   defaultHarnessProfiles?: {
     orchestration: string;
     evaluation: string;
@@ -96,13 +100,27 @@ interface AiNativeProfileConfig {
   techStackRows?: string[];
 }
 
+interface WebappRenderingModelConfig {
+  label: string;
+  description: string;
+  frontend: string;
+  deployment: string;
+  publicRoute: string;
+  appRoute: string;
+  fallback: string;
+  projectStructureFile?: string;
+  techStackRows?: string[];
+}
+
 interface QuestionPackRuntimeConfig {
   inferredDefaults?: {
     runtimeProfile?: string;
     aiNativeProfile?: string;
+    webappRenderingModel?: string;
   };
   runtimeProfiles?: Record<string, RuntimeProfileConfig>;
   aiNativeProfiles?: Record<string, AiNativeProfileConfig>;
+  webappRenderingModels?: Record<string, WebappRenderingModelConfig>;
 }
 
 // ============================================================================
@@ -142,6 +160,11 @@ const FALLBACK_TEMPLATE_VARIABLES: Record<string, string> = {
   AI_NATIVE_PROFILE_SUMMARY: "",
   AI_NATIVE_TECH_STACK_TABLE: "",
   AI_NATIVE_TECH_STACK_SECTION: "",
+  WEBAPP_RENDERING_MODEL: "none",
+  WEBAPP_RENDERING_MODEL_LABEL: "None",
+  WEBAPP_RENDERING_MODEL_SUMMARY: "",
+  WEBAPP_RENDERING_TECH_STACK_TABLE: "",
+  WEBAPP_RENDERING_TECH_STACK_SECTION: "",
   PROHIBITIONS:
     "- No `any` in production code\n" +
     "- No `console.log` in production code\n" +
@@ -360,6 +383,14 @@ function normalizeAiNativeProfileId(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function normalizeWebappRenderingModelId(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function loadQuestionPackRuntimeConfig(
   questionPackFilePath: string = QUESTION_PACK_FILE
 ): QuestionPackRuntimeConfig {
@@ -467,6 +498,109 @@ function renderAiNativeTechStackSection(profileId: string, profile: AiNativeProf
     "|-------|------------|",
     renderAiNativeTechStackRows(profile),
   ].join("\n");
+}
+
+function renderWebappRenderingModelSummary(
+  modelId: string,
+  model: WebappRenderingModelConfig
+): string {
+  return [
+    `- Model: ${modelId} (${model.label})`,
+    `- Purpose: ${model.description}`,
+    `- Frontend: ${model.frontend}`,
+    `- Deployment: ${model.deployment}`,
+    `- Public route: ${model.publicRoute}`,
+    `- App route: ${model.appRoute}`,
+    `- Fallback: ${model.fallback}`,
+  ].join("\n");
+}
+
+function renderWebappRenderingTechStackRows(model: WebappRenderingModelConfig): string {
+  if (model.techStackRows && model.techStackRows.length > 0) {
+    return model.techStackRows.join("\n");
+  }
+
+  return [
+    `| Web frontend | ${model.frontend} |`,
+    `| Deploy | ${model.deployment} |`,
+    `| Public route | ${model.publicRoute} |`,
+    `| App route | ${model.appRoute} |`,
+    `| Fallback | ${model.fallback} |`,
+  ].join("\n");
+}
+
+function renderWebappRenderingTechStackSection(
+  modelId: string,
+  model: WebappRenderingModelConfig
+): string {
+  return [
+    `### Webapp rendering model: ${modelId} (${model.label})`,
+    "",
+    renderWebappRenderingModelSummary(modelId, model),
+    "",
+    "| Boundary | Default |",
+    "|----------|---------|",
+    renderWebappRenderingTechStackRows(model),
+  ].join("\n");
+}
+
+export function getWebappRenderingTemplateVariables(
+  planType: string,
+  variables: Record<string, string> = {},
+  planMap: PlanMap = loadPlanMap()
+): { enabled: boolean; modelId: string; variables: Record<string, string> } {
+  const resolvedPlan = resolvePlanType(planType, planMap);
+  const planConfig = planMap.plans[resolvedPlan];
+  const questionPack = loadQuestionPackRuntimeConfig();
+  const defaultModel =
+    planConfig.webappRenderingDefaults?.defaultModel ??
+    questionPack.inferredDefaults?.webappRenderingModel ??
+    "none";
+  const requestedModel = variables.WEBAPP_RENDERING_MODEL ?? defaultModel;
+  const modelId = normalizeWebappRenderingModelId(requestedModel || "none") || "none";
+  const models = questionPack.webappRenderingModels ?? {};
+  const model = models[modelId];
+
+  if (!model) {
+    const supported = Object.keys(models).sort().join(", ");
+    throw new Error(`Unsupported webapp rendering model: ${requestedModel}. Supported models: ${supported}`);
+  }
+
+  if (modelId === "none") {
+    return {
+      enabled: false,
+      modelId,
+      variables: {
+        WEBAPP_RENDERING_MODEL: "none",
+        WEBAPP_RENDERING_MODEL_LABEL: model.label,
+        WEBAPP_RENDERING_MODEL_SUMMARY: "",
+        WEBAPP_RENDERING_TECH_STACK_TABLE: "",
+        WEBAPP_RENDERING_TECH_STACK_SECTION: "",
+      },
+    };
+  }
+
+  const overlayStructure = model.projectStructureFile
+    ? readRelativeTextFile(model.projectStructureFile)
+    : "";
+  const baseStructure = variables.PROJECT_STRUCTURE ?? "";
+  const projectStructure = overlayStructure && baseStructure.trim() !== overlayStructure.trim()
+    ? `${baseStructure}\n\n# Webapp rendering model: ${modelId}\n${overlayStructure}`.trim()
+    : baseStructure;
+  const techStackRows = renderWebappRenderingTechStackRows(model);
+
+  return {
+    enabled: true,
+    modelId,
+    variables: {
+      PROJECT_STRUCTURE: projectStructure,
+      WEBAPP_RENDERING_MODEL: modelId,
+      WEBAPP_RENDERING_MODEL_LABEL: model.label,
+      WEBAPP_RENDERING_MODEL_SUMMARY: renderWebappRenderingModelSummary(modelId, model),
+      WEBAPP_RENDERING_TECH_STACK_TABLE: techStackRows,
+      WEBAPP_RENDERING_TECH_STACK_SECTION: renderWebappRenderingTechStackSection(modelId, model),
+    },
+  };
 }
 
 export function getAiNativeTemplateVariables(
@@ -608,6 +742,8 @@ export function getDefaultTemplateVariables(
     PLAN_TIER: planConfig.tier ?? "core",
     FACTOR_FACTORY_ENABLED: planConfig.factorFactory ? "true" : "false",
     AI_NATIVE_PROFILE: planConfig.aiNativeOverlayDefaults?.defaultProfile ?? FALLBACK_TEMPLATE_VARIABLES.AI_NATIVE_PROFILE,
+    WEBAPP_RENDERING_MODEL:
+      planConfig.webappRenderingDefaults?.defaultModel ?? FALLBACK_TEMPLATE_VARIABLES.WEBAPP_RENDERING_MODEL,
     ORCHESTRATION_PROFILE:
       planConfig.defaultHarnessProfiles?.orchestration ?? FALLBACK_TEMPLATE_VARIABLES.ORCHESTRATION_PROFILE,
     EVALUATION_PROFILE:
@@ -811,24 +947,34 @@ export function assembleTemplate(options: AssemblyOptions): string {
     TEMPLATE_VERSION: skillVersion.templateVersion,
   };
 
-  const aiNativeProfile = getAiNativeTemplateVariables(
+  const webappRenderingModel = getWebappRenderingTemplateVariables(
     resolvedPlanType,
     mergedVariables,
     planMap
   );
+  const variablesWithWebappRendering: Record<string, string> = {
+    ...mergedVariables,
+    ...webappRenderingModel.variables,
+  };
+
+  const aiNativeProfile = getAiNativeTemplateVariables(
+    resolvedPlanType,
+    variablesWithWebappRendering,
+    planMap
+  );
 
   const runtimeProfileConfig = resolveRuntimeProfileConfig(
-    mergedVariables.RUNTIME_PROFILE ?? "",
-    mergedVariables.RUNTIME_MODE ?? ""
+    variablesWithWebappRendering.RUNTIME_PROFILE ?? "",
+    variablesWithWebappRendering.RUNTIME_MODE ?? ""
   );
 
   const allVariables: Record<string, string> = {
-    ...mergedVariables,
+    ...variablesWithWebappRendering,
     ...aiNativeProfile.variables,
     CLAUDE_POLICY:
-      mergedVariables.CLAUDE_POLICY ?? runtimeProfileConfig.claudePolicy,
+      variablesWithWebappRendering.CLAUDE_POLICY ?? runtimeProfileConfig.claudePolicy,
     CODEX_POLICY:
-      mergedVariables.CODEX_POLICY ?? runtimeProfileConfig.codexPolicy,
+      variablesWithWebappRendering.CODEX_POLICY ?? runtimeProfileConfig.codexPolicy,
   };
 
   // Get partials
@@ -840,6 +986,7 @@ export function assembleTemplate(options: AssemblyOptions): string {
   const conditions: Record<string, boolean> = {
     CLOUDFLARE_NATIVE: includeCloudflare,
     FACTOR_FACTORY_ENABLED: includeFactorFactory,
+    WEBAPP_RENDERING_MODEL_ENABLED: webappRenderingModel.enabled,
     AI_NATIVE_PROFILE_ENABLED: aiNativeProfile.enabled,
   };
 

@@ -15,17 +15,17 @@ Start -> What stack boundary changes the scaffold most?
 |-- Astro SSR/content/docs shell?
 |   `-- Plan A: Astro-first SSR/content shell
 |
-|-- Rich client-first React app?
-|   `-- Plan B: Vite 8 client app shell
+|-- Rich client-only React app?
+|   `-- Plan B: Vite 8 client-only app shell
 |
-|-- Full-stack React SSR/actions/server functions are truly required?
-|   `-- Plan C: TanStack Start or React Router Framework Mode
+|-- One React webapp needs public SEO/SSR plus a client-heavy workspace?
+|   `-- Plan C: TanStack Start + Vite + Cloudflare Workers
 |
 |-- Shared frontend/backend contracts in one repo?
 |   `-- Plan D: Bun workspace monorepo with Hono gateway
 |
 |-- Cloudflare web/edge delivery is the primary deployment shape?
-|   `-- Plan E: Cloudflare Pages/Workers/R2/KV/Queues/DO plus external SQL
+|   `-- Plan E: Workers SSR/static assets/R2/KV/Queues/DO plus external SQL
 |
 |-- Mobile or realtime companion surface?
 |   `-- Plan F: Expo Router / React Native New Architecture
@@ -46,12 +46,14 @@ Use these as sidecar/runtime families, not domain presets:
 
 ## Default Policy
 
-- Do not default to Next.js. If full-stack React is required, prefer TanStack
-  Start or React Router Framework Mode first.
+- Do not default to Next.js. If a React webapp needs public SEO/SSR plus an
+  authenticated workspace, prefer TanStack Start + Vite on Cloudflare Workers
+  first.
 - Prefer a shared monorepo over disconnected frontend/backend repos. Use Bun
   workspaces by default; add Turborepo only when repo scale needs orchestration.
-- Prefer Cloudflare for web and edge delivery: Pages, Workers, R2, KV, Queues,
-  Durable Objects, and Hyperdrive where they fit.
+- Prefer Cloudflare for web and edge delivery: Workers for TanStack Start SSR
+  webapps, Pages only for static/client-only assets or content shells, and R2,
+  KV, Queues, Durable Objects, and Hyperdrive where they fit.
 - Do not default to D1. Use Postgres/Supabase for durable authority and
   SQLite/Turso/libSQL for lightweight, local-first, edge, or embedded workloads.
 - Keep agent runtimes on VPS when they need stable Node APIs, local tools,
@@ -79,9 +81,10 @@ Default stack:
 Avoid turning Plan A into the dense agent console. If the product needs heavy
 interactive state, add Plan B/D surfaces in the same monorepo.
 
-## Plan B: Vite 8 client app shell
+## Plan B: Vite 8 client-only app shell
 
-Use when the core surface is a dense, interactive React app.
+Use when the core surface is a dense, interactive React app that does not need
+crawler-visible SSR landing HTML.
 
 Default stack:
 
@@ -92,22 +95,32 @@ Default stack:
 - Postgres/Supabase for durable authority, or SQLite/Turso for lightweight cases
 
 This is the default shell for runtime consoles, internal tools, admin surfaces,
-dashboards, and agent-visible app state.
+dashboards, and agent-visible app state. If the same product needs public
+landing SEO/SSR and authenticated workspace routes, use Plan C instead of
+scaffolding separate `apps/marketing` and `apps/web` frontend deploys.
 
-## Plan C: Full-stack React only when needed
+## Plan C: TanStack Start Workers webapp
 
-Use only when the React app itself needs SSR, server functions, actions,
-streaming, or route-level server work.
+Use when the React webapp itself needs public SEO/SSR and an authenticated or
+browser-heavy app workspace in one frontend deployment.
 
 Default stack:
 
-- TanStack Start or React Router Framework Mode
+- TanStack Start + Vite + React
 - React + TanStack Query + typed route/server contracts
-- Cloudflare or Node/VPS deployment selected by runtime constraints
+- Cloudflare Workers with `@cloudflare/vite-plugin`, Worker assets,
+  `wrangler.jsonc`, and `wrangler deploy`
+- `/` as SSR/prerender-capable landing route with title/meta/OG/canonical
+- `/app` as route-level client-only boundary with `ssr: false`; lazy-load
+  browser-only/WebGL components inside the client route
+- One deployable frontend component under `apps/web`
 - Next.js is not the default recommendation
 
-If SSR is only for marketing/docs/content, use Plan A instead. If backend
-authority is substantial, use Plan D and keep the gateway explicit.
+If Start + Workers fails a thin scaffold gate, evaluate Vike or React Router
+Framework Mode as an explicit fallback. Do not make the fallback a default
+`apps/marketing` + `apps/web` split. If SSR is only for marketing/docs/content,
+use Plan A instead. If backend authority is substantial, use Plan D and keep the
+gateway explicit.
 
 ## Plan D: Shared frontend/backend monorepo
 
@@ -117,7 +130,8 @@ together.
 Default stack:
 
 - Bun workspaces
-- Apps: Astro shell, Vite app, Expo companion, or admin surfaces
+- Apps: one `apps/web` frontend by default; API, Agent, MCP, Expo companion, or
+  admin surfaces only when they own separate runtime authority
 - Services: Hono gateways, workers, and sidecars
 - Packages: contracts, UI, data access, tool adapters, test fixtures
 - Optional Turborepo only when build graph orchestration is worth the cost
@@ -131,7 +145,8 @@ Use when the web delivery shape is Cloudflare-first.
 
 Default stack:
 
-- Cloudflare Pages + Workers
+- Cloudflare Workers for TanStack Start/Vite SSR webapps
+- Cloudflare Pages for static/client-only assets or content shells only
 - R2 for object storage
 - KV for small edge lookup data
 - Queues for async work

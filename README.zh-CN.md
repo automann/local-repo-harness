@@ -319,6 +319,13 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 `repo-harness update` 用于已有仓库；`repo-harness-scaffold` 作为支线 command 创建新项目或模块。
 `hooks-init`、`docs-init` 和 `create-project-dirs` 是内部步骤，不是公共 commands。
 
+`repo-harness-scaffold` 保持 A-K plan catalog 作为项目类型 authority；AI-native
+能力通过可选 `ai_native_profile` overlay 叠加。Webapp rendering 也是独立 overlay：
+Plan B 保留为 client-only Vite；需要 public SEO/SSR landing 加 authenticated
+workspace 的 React webapp 使用 Plan C，也就是一个部署在 Cloudflare Workers 上的
+TanStack Start + Vite `apps/web`。`/` 走 SSR/prerender，`/app` 保持 client-only。
+scaffold 不默认生成 `apps/marketing` + `apps/web` 两个前端部署。
+
 ## Maintainer Reference
 
 ### 检查本仓库 workflow contract

@@ -34,6 +34,16 @@ export interface AiNativeProfileChoice extends ProfileChoice {
   techStackRows?: string[];
 }
 
+export interface WebappRenderingModelChoice extends ProfileChoice {
+  frontend: string;
+  deployment: string;
+  publicRoute: string;
+  appRoute: string;
+  fallback: string;
+  projectStructureFile?: string;
+  techStackRows?: string[];
+}
+
 interface InitializerQuestionPackBase {
   version: "initializer-question-pack.v2" | "initializer-question-pack.v3" | "initializer-question-pack.v4";
   goal: string;
@@ -53,6 +63,7 @@ interface InitializerQuestionPackBase {
     contextProfile?: string;
     documentationProfile?: string;
     aiNativeProfile?: string;
+    webappRenderingModel?: string;
   };
   runtimeProfiles: Record<string, RuntimeProfile>;
   orchestrationProfiles: Record<string, ProfileChoice>;
@@ -76,6 +87,7 @@ export interface InitializerQuestionPackV4 extends InitializerQuestionPackBase {
   stateProfiles: Record<string, ProfileChoice>;
   contextProfiles: Record<string, ProfileChoice>;
   aiNativeProfiles: Record<string, AiNativeProfileChoice>;
+  webappRenderingModels: Record<string, WebappRenderingModelChoice>;
 }
 
 export type InitializerQuestionPack = InitializerQuestionPackV2 | InitializerQuestionPackV3 | InitializerQuestionPackV4;
@@ -141,6 +153,16 @@ export function getAiNativeProfileIds(
   return Object.keys(pack.aiNativeProfiles).sort();
 }
 
+export function getWebappRenderingModelIds(
+  pack: InitializerQuestionPack = loadQuestionPack()
+): string[] {
+  if (pack.version !== "initializer-question-pack.v4") {
+    return ["none"];
+  }
+
+  return Object.keys(pack.webappRenderingModels).sort();
+}
+
 export function getQuestionFlowSummary(planType: string): {
   planType: string;
   planTier: "core" | "preset" | "custom";
@@ -149,6 +171,8 @@ export function getQuestionFlowSummary(planType: string): {
   requiredDecisionCount: number;
   aiNativeProfileDefault: string;
   aiNativeProfileCount: number;
+  webappRenderingModelDefault: string;
+  webappRenderingModelCount: number;
 } {
   const pack = loadQuestionPack();
   const resolvedPlan = resolvePlanType(planType);
@@ -162,6 +186,8 @@ export function getQuestionFlowSummary(planType: string): {
     requiredDecisionCount: pack.decisionPoints.filter((point) => point.required).length,
     aiNativeProfileDefault: pack.inferredDefaults.aiNativeProfile ?? "none",
     aiNativeProfileCount: getAiNativeProfileIds(pack).length,
+    webappRenderingModelDefault: pack.inferredDefaults.webappRenderingModel ?? "none",
+    webappRenderingModelCount: getWebappRenderingModelIds(pack).length,
   };
 }
 

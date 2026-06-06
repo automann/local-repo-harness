@@ -1,16 +1,16 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-04T15:08:22+0800 -->
+<!-- updated_at: 2026-06-07T02:57:15+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: Idle
-> **Updated At**: 2026-06-04T15:08:22+0800
-> **Source Branch**: main
-> **Source Commit**: e492da9
+> **Updated At**: 2026-06-07T02:57:15+0800
+> **Source Branch**: codex/webapp-start-workers-scaffold
+> **Source Commit**: 5e25775
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: prompt-guard-fallback
+> **Reason**: archive-workflow
 > **Derived From**: active-plan, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
@@ -41,17 +41,41 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Checks
 
-- status=pass, source=post-bash, exit_code=0, file=.ai/harness/checks/latest.json
+- status=pass, source=verify-sprint, exit_code=0, file=.ai/harness/checks/latest.json
 
 ## Git Status
 
-- Summary: 4 changed/untracked path(s)
+- Summary: 28 changed/untracked path(s)
 
 ```
- M .ai/hooks/prompt-guard.sh
- M assets/hooks/prompt-guard.sh
- M tasks/current.md
- M tests/hook-runtime.test.ts
+ M README.md
+ M README.zh-CN.md
+ M SKILL.md
+ M assets/initializer-question-pack.v4.json
+ M assets/initializer-question-pack.v4.schema.json
+ M assets/partials-agents/07-cloudflare.partial.md
+ M assets/partials/04-project-structure.partial.md
+ M assets/partials/06-cloudflare.partial.md
+ M assets/plan-map.json
+ M assets/project-structures/vite-tanstack.txt
+ M assets/reference-configs/release-deploy.md
+ M assets/templates/tech-stack.template.md
+ M docs/reference-configs/release-deploy.md
+ M references/tech-stacks.md
+ M scripts/assemble-template.ts
+ M scripts/initializer-question-pack.ts
+ M tasks/todo.md
+ M tests/initializer-question-pack.test.ts
+ M tests/output-parity.test.ts
+ M tests/plan-map-consistency.test.ts
+ M tests/scaffold-parity.test.ts
+?? assets/project-structures/tanstack-start-workers.txt
+?? plans/archive/plan-20260607-0216-webapp-start-workers-scaffold.md
+?? tasks/archive/notes-20260607-0257-webapp-start-workers-scaffold.md
+?? tasks/archive/todo-20260607-0257-webapp-start-workers-scaffold.md
+?? tasks/contracts/20260607-0216-webapp-start-workers-scaffold.contract.md
+?? tasks/reviews/20260607-0216-webapp-start-workers-scaffold.review.md
+?? tests/unit/webapp-start-workers-scaffold.test.ts
 ```
 
 ## Source Artifacts

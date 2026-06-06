@@ -15,6 +15,7 @@
     "recoveryProfiles",
     "stateProfiles",
     "contextProfiles",
+    "webappRenderingModels",
     "aiNativeProfiles"
   ],
   "properties": {
@@ -60,7 +61,8 @@
         "recoveryProfile",
         "stateProfile",
         "contextProfile",
-        "aiNativeProfile"
+        "aiNativeProfile",
+        "webappRenderingModel"
       ],
       "properties": {
         "packageManagerPriority": { "type": "array", "items": { "type": "string" } },
@@ -72,7 +74,8 @@
         "stateProfile": { "type": "string" },
         "contextProfile": { "type": "string" },
         "documentationProfile": { "type": "string" },
-        "aiNativeProfile": { "type": "string" }
+        "aiNativeProfile": { "type": "string" },
+        "webappRenderingModel": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -96,6 +99,37 @@
     },
     "contextProfiles": {
       "type": "object"
+    },
+    "webappRenderingModels": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "label",
+          "description",
+          "frontend",
+          "deployment",
+          "publicRoute",
+          "appRoute",
+          "fallback"
+        ],
+        "properties": {
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "frontend": { "type": "string" },
+          "deployment": { "type": "string" },
+          "publicRoute": { "type": "string" },
+          "appRoute": { "type": "string" },
+          "fallback": { "type": "string" },
+          "projectStructureFile": { "type": "string" },
+          "techStackRows": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "aiNativeProfiles": {
       "type": "object",
