@@ -1,7 +1,7 @@
 # Release Filing: repo-harness 0.2.4
 
 Date: 2026-06-07
-Status: Verified, npm auth blocked
+Status: Published
 
 ## Scope
 
@@ -38,7 +38,7 @@ Status: Verified, npm auth blocked
 - `bash scripts/check-npm-release.sh` passed in this session:
   - npm registry uniqueness check for `repo-harness@0.2.4`
   - `bun install --frozen-lockfile`
-  - `bun test`: 571 pass, 6 skip, 0 fail
+  - `bun test`: 581 pass, 6 skip, 0 fail
   - `bash scripts/check-deploy-sql-order.sh`
   - `bash scripts/check-task-sync.sh`
   - `bash scripts/check-task-workflow.sh --strict`
@@ -51,8 +51,16 @@ Status: Verified, npm auth blocked
   - `dry_run_ratio = 0.0%`
   - `grader_pass_rate = 100.0% (4/4)`
   - `effectiveness_authority = authoritative`
-- `npm pack --dry-run --json` reported `repo-harness-0.2.4.tgz`, 277 files,
-  package size 1,894,792 bytes, unpacked size 3,404,452 bytes, and no
+- `npm publish --registry https://registry.npmjs.org/ --access public` used a
+  temporary npmrc verified as `ancienttwo`, reran the full `prepublishOnly`
+  gate successfully, and published `repo-harness@0.2.4`.
+- The first publish attempt after the passing gate failed before upload because
+  the local npm cache hit `EACCES` while creating an entry under
+  `~/.npm/_cacache`; the successful publish used a temporary
+  `NPM_CONFIG_CACHE` instead of mutating the global cache.
+- The publish notice reported `repo-harness-0.2.4.tgz`, 278 files, package size
+  1.9 MB, unpacked size 3.4 MB, shasum
+  `e55df4758f61a6f272325802379db142243b244e`, and no
   `autoresearch-advisory.sh` file.
 - `bash scripts/check-agent-tooling.sh --host both --json` reported CodeGraph
   present via local `0.9.9`, Waza present, gbrain warning, and Codex automation
@@ -60,7 +68,18 @@ Status: Verified, npm auth blocked
 
 ## Publish Status
 
-- npm: blocked; the default `npm whoami --registry https://registry.npmjs.org/`
-  returned `ENEEDAUTH`, and the only discovered local npm token returned `E401`
-  from a temporary npmrc.
-- GitHub release: not created because npm publish is blocked.
+- npm: published to the official registry.
+- Registry readback:
+  - `npm view repo-harness@0.2.4 version --registry https://registry.npmjs.org/`
+    returned `0.2.4`.
+  - `dist.tarball` is
+    `https://registry.npmjs.org/repo-harness/-/repo-harness-0.2.4.tgz`.
+  - `dist.shasum` is `e55df4758f61a6f272325802379db142243b244e`.
+  - `gitHead` is `ca54c14d3d74f1cf9ac4b6db6d3da81b37a55340`.
+- Clean-room npx smoke passed from an empty temp directory with a temporary npm
+  cache:
+  - `npx -y --registry https://registry.npmjs.org/ repo-harness@0.2.4 --version`
+    returned `0.2.4`.
+  - `npx -y --registry https://registry.npmjs.org/ repo-harness@0.2.4 init --help`
+    displayed the expected `repo-harness init` command help.
+- GitHub release: https://github.com/Ancienttwo/repo-harness/releases/tag/v0.2.4
