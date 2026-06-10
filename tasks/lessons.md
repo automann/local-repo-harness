@@ -11,6 +11,12 @@
 - Where to apply next time:
 
 ## Entries
+- Date: 2026-06-10
+- Triggered by correction: hook tests flaked at bun's 5s default per-test timeout during parallel sessions; the prior workaround was rerunning with `--timeout 20000`
+- Mistake pattern: blaming prompt-guard.sh source size for slow startup without profiling; measured bash parse is ~12ms and the TS engine spawn ~35ms, while the real cost is hundreds of small fork/execs per invocation (~0.25s warm, >2s under load) multiplied by 4-6 hook invocations per test
+- Prevention rule: test files whose every test spawns hook shell scripts end-to-end set a file-level `setDefaultTimeout(20000)`; reserve per-test timeout annotations for files where only a few tests are slow, and do not refactor hook startup paths for speed without a phase-probe measurement first
+- Where to apply next time: `tests/hook-runtime.test.ts`, `tests/hook-protocol.test.ts`, and any new test file that exercises `.ai/hooks/*.sh` via spawnSync
+
 - Date: 2026-05-28
 - Triggered by correction: after structured plan capture was fixed, plain “开发新功能” prompts still only emitted BDD guidance and did not create a file-backed plan
 - Mistake pattern: treating new-feature prose as advisory-only because it lacked `$think` or an approved-plan body

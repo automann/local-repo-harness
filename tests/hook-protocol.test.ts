@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, setDefaultTimeout } from "bun:test";
 import {
   cpSync,
   copyFileSync,
@@ -12,6 +12,11 @@ import {
 import { tmpdir } from "os";
 import { join } from "path";
 import { spawnSync } from "child_process";
+
+// Every test here spawns bash hook scripts (each forking git/jq/bun
+// subprocesses) several times; one invocation can exceed 2s under parallel
+// session load, so the 5s bun default flakes on multi-invocation tests.
+setDefaultTimeout(20000);
 
 const ROOT = join(import.meta.dir, "..");
 const ASSETS_HOOKS_DIR = join(ROOT, "assets/hooks");
