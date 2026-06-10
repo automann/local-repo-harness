@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "hook_source": "repo",
   "active_plan": {
     "marker_file": ".ai/harness/active-plan",
     "legacy_marker_file": ".claude/.active-plan",

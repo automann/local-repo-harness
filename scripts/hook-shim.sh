@@ -12,8 +12,15 @@
 #   2. If not in a git repo OR not repo-harness opt-in → silent exit 0
 #   3. If the repo's primary root is not listed in the trust file → exit 0
 #      (session-start prints a one-line hint so the skip is discoverable)
-#   4. Delegate to existing `<repo>/.ai/hooks/run-hook.sh <hook> [args...]`
-#      (reuses tested project-level dispatcher logic; preserves HOOK_REPO_ROOT contract)
+#   4. Resolve the hook runtime (central-first, see below) and delegate to its
+#      `run-hook.sh <hook> [args...]` with HOOK_REPO_ROOT pointing at the repo.
+#
+# Hook runtime resolution (central-first so one `install` updates every repo):
+#   a. REPO_HARNESS_HOOK_SOURCE env: `repo` | `central` | absolute hooks dir
+#   b. repo pin: `"hook_source": "repo"` in <repo>/.ai/harness/policy.json
+#      (self-hosting checkouts pin this so hook development runs live code)
+#   c. central bundle: ${REPO_HARNESS_HOME}/hooks (installed by `install`)
+#   d. fallback: <repo>/.ai/hooks (vendored copy, pre-bundle installs)
 #
 # Opt-in marker: .ai/harness/workflow-contract.json (any non-opt-in repo is no-op)
 # Trust file:    ${REPO_HARNESS_HOME:-~/.repo-harness}/trusted-repos — one primary
@@ -31,6 +38,7 @@ fi
 
 REPO_HARNESS_HOME="${REPO_HARNESS_HOME:-$HOME/.repo-harness}"
 TRUST_FILE="$REPO_HARNESS_HOME/trusted-repos"
+CENTRAL_HOOKS_DIR="$REPO_HARNESS_HOME/hooks"
 
 repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -f "$repo/.ai/harness/workflow-contract.json" ] || exit 0
@@ -39,8 +47,6 @@ repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 # non-migrated repos). After `repo-harness migrate <repo>` removes the project
 # .codex/hooks.json, this guard releases and the global shim takes over.
 [ -f "$repo/.codex/hooks.json" ] && exit 0
-
-[ -f "$repo/.ai/hooks/run-hook.sh" ] || exit 0
 
 # Trust gate: never execute repo-local hook code from a repo the user has not
 # explicitly trusted. Trust is keyed on the PRIMARY repo root (parent of the
@@ -59,5 +65,29 @@ if ! { [ -f "$TRUST_FILE" ] && grep -Fxq "$primary_root" "$TRUST_FILE"; }; then
   exit 0
 fi
 
+resolve_hooks_dir() {
+  case "${REPO_HARNESS_HOOK_SOURCE:-}" in
+    repo) printf '%s' "$repo/.ai/hooks"; return ;;
+    central) printf '%s' "$CENTRAL_HOOKS_DIR"; return ;;
+    /*) printf '%s' "$REPO_HARNESS_HOOK_SOURCE"; return ;;
+  esac
+
+  if [ -f "$repo/.ai/harness/policy.json" ] \
+    && grep -Eq '"hook_source"[[:space:]]*:[[:space:]]*"repo"' "$repo/.ai/harness/policy.json"; then
+    printf '%s' "$repo/.ai/hooks"
+    return
+  fi
+
+  if [ -f "$CENTRAL_HOOKS_DIR/run-hook.sh" ]; then
+    printf '%s' "$CENTRAL_HOOKS_DIR"
+    return
+  fi
+
+  printf '%s' "$repo/.ai/hooks"
+}
+
+hooks_dir="$(resolve_hooks_dir)"
+[ -f "$hooks_dir/run-hook.sh" ] || exit 0
+
 export HOOK_REPO_ROOT="$repo"
-exec bash "$repo/.ai/hooks/run-hook.sh" "$@"
+exec bash "$hooks_dir/run-hook.sh" "$@"

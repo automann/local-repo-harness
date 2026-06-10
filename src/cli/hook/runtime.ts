@@ -1,9 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { execFileSync, spawnSync, type StdioOptions } from 'child_process';
 import { getRoute, type HookEvent, type RouteId } from './route-registry';
 
 const OPT_IN_MARKER = '.ai/harness/workflow-contract.json';
+const POLICY_FILE = '.ai/harness/policy.json';
+const PACKAGE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 export interface RunHookOptions {
   event: HookEvent;
@@ -12,7 +15,7 @@ export interface RunHookOptions {
   cwd?: string;
   /** Pass-through stdio for the spawned hook script. Defaults to inherit. */
   stdio?: 'inherit' | 'pipe' | 'ignore';
-  /** Optional override for the hooks dir (test only); defaults to `<repo>/.ai/hooks`. */
+  /** Optional override for the hooks dir (test only); defaults to resolveHooksDir(). */
   hooksDir?: string;
   /** Diagnostic command name for stderr messages. */
   commandName?: string;
@@ -83,6 +86,62 @@ export function isOptIn(repoRoot: string): boolean {
   return fs.existsSync(path.join(repoRoot, OPT_IN_MARKER));
 }
 
+/**
+ * Central-first hook script resolution. The packaged copy ships inside the
+ * globally installed repo-harness package, so upgrading the CLI upgrades hook
+ * behavior for every repo at once — no per-repo .ai/hooks refresh. Repos that
+ * develop the hooks themselves (e.g. the repo-harness self-host checkout) pin
+ * `"hook_source": "repo"` in .ai/harness/policy.json to keep running their
+ * vendored copy.
+ *
+ * Order (mirrors scripts/hook-shim.sh, where "central" is the installed
+ * ~/.repo-harness/hooks bundle instead of the packaged directory):
+ *   1. REPO_HARNESS_HOOK_SOURCE env: `repo` | `central` | absolute hooks dir
+ *   2. repo policy pin `"hook_source": "repo"`
+ *   3. packaged assets/hooks (when present)
+ *   4. vendored <repo>/.ai/hooks fallback
+ */
+export type HookSource = 'env' | 'repo-pin' | 'packaged' | 'repo-fallback';
+
+export interface ResolvedHooksDir {
+  dir: string;
+  source: HookSource;
+}
+
+function repoPinsHookSource(repoRoot: string): boolean {
+  try {
+    const raw = fs.readFileSync(path.join(repoRoot, POLICY_FILE), 'utf-8');
+    const policy = JSON.parse(raw) as { hook_source?: unknown };
+    return policy.hook_source === 'repo';
+  } catch {
+    return false;
+  }
+}
+
+function packagedHooksDir(): string {
+  return path.join(PACKAGE_ROOT, 'assets', 'hooks');
+}
+
+export function resolveHooksDir(
+  repoRoot: string,
+  env: NodeJS.ProcessEnv = process.env,
+): ResolvedHooksDir {
+  const repoDir = path.join(repoRoot, '.ai/hooks');
+  const override = env.REPO_HARNESS_HOOK_SOURCE?.trim();
+  if (override === 'repo') return { dir: repoDir, source: 'env' };
+  if (override === 'central') return { dir: packagedHooksDir(), source: 'env' };
+  if (override && path.isAbsolute(override)) return { dir: override, source: 'env' };
+
+  if (repoPinsHookSource(repoRoot)) return { dir: repoDir, source: 'repo-pin' };
+
+  const packaged = packagedHooksDir();
+  if (fs.existsSync(path.join(packaged, 'run-hook.sh'))) {
+    return { dir: packaged, source: 'packaged' };
+  }
+
+  return { dir: repoDir, source: 'repo-fallback' };
+}
+
 function isSoftMissingRoute(event: HookEvent, routeId: RouteId): boolean {
   return (
     (event === 'SessionStart' && routeId === 'default') ||
@@ -112,7 +171,14 @@ export function runHook(opts: RunHookOptions): RunHookResult {
     return { exitCode: 2, reason: 'unknown-route', repoRoot, scriptsRun, skippedScripts };
   }
 
-  const hooksDir = opts.hooksDir ?? path.join(repoRoot, '.ai/hooks');
+  const resolved: ResolvedHooksDir = opts.hooksDir
+    ? { dir: opts.hooksDir, source: 'env' }
+    : resolveHooksDir(repoRoot);
+  const hooksDir = resolved.dir;
+  const syncHint =
+    resolved.source === 'packaged'
+      ? 'upgrade the repo-harness CLI (npm install -g repo-harness@latest) to refresh packaged hooks'
+      : `run 'repo-harness update --repo ${repoRoot}' to sync .ai/hooks`;
   const sessionStartCollectStdout = opts.event === 'SessionStart' && opts.stdio === undefined;
   const sessionStartContexts: string[] = [];
   const codexStopDecisionStdout =
@@ -137,7 +203,7 @@ export function runHook(opts: RunHookOptions): RunHookResult {
     if (!fs.existsSync(scriptPath)) {
       if (isSoftMissingRoute(opts.event, opts.routeId)) {
         process.stderr.write(
-          `${commandName}: skipping missing script ${scriptPath} (route ${opts.event}.${opts.routeId}); run 'repo-harness update --repo ${repoRoot}' to sync .ai/hooks\n`,
+          `${commandName}: skipping missing script ${scriptPath} (route ${opts.event}.${opts.routeId}); ${syncHint}\n`,
         );
         skippedScripts.push(script);
         continue;
@@ -216,7 +282,7 @@ export function runHook(opts: RunHookOptions): RunHookResult {
 
   if (sessionStartCollectStdout && skippedScripts.length > 0) {
     sessionStartContexts.push(
-      `[repo-harness] .ai/hooks drift: missing ${skippedScripts.join(', ')}; run 'repo-harness update --repo ${repoRoot}' to sync.`,
+      `[repo-harness] hooks drift (source=${resolved.source}): missing ${skippedScripts.join(', ')}; ${syncHint}.`,
     );
   }
 

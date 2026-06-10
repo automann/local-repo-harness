@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync, spawnSync } from 'child_process';
 import { runHook } from '../../src/cli/commands/hook';
+import { resolveHooksDir } from '../../src/cli/hook/runtime';
 import { runHookEntry } from '../../src/cli/hook-entry';
 
 const ROOT = path.join(import.meta.dir, '../..');
@@ -19,8 +20,14 @@ function withTempRepo(
   );
   try {
     execSync('git init', { cwd: tmp, stdio: 'ignore' });
+    fs.mkdirSync(path.join(tmp, '.ai/harness'), { recursive: true });
+    // Pin repo-local hooks: these contracts exercise per-repo script presence
+    // (missing scripts, exit codes), which only exists in repo-source mode.
+    fs.writeFileSync(
+      path.join(tmp, '.ai/harness/policy.json'),
+      `${JSON.stringify({ hook_source: 'repo' }, null, 2)}\n`,
+    );
     if (opts.optIn) {
-      fs.mkdirSync(path.join(tmp, '.ai/harness'), { recursive: true });
       fs.writeFileSync(path.join(tmp, '.ai/harness/workflow-contract.json'), '{}');
     }
     const hooksDir = path.join(tmp, '.ai/hooks');
@@ -44,6 +51,61 @@ function installAssetHooks(repoRoot: string): void {
     stdio: 'ignore',
   });
 }
+
+describe('hooks dir resolution (central-first)', () => {
+  test('without a pin, an opt-in repo resolves to the packaged assets/hooks copy', () => {
+    const tmp = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-resolve-')),
+    );
+    try {
+      const resolved = resolveHooksDir(tmp, {});
+      expect(resolved.source).toBe('packaged');
+      expect(resolved.dir).toBe(path.join(ROOT, 'assets/hooks'));
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('policy pin "hook_source": "repo" resolves to the vendored copy', () => {
+    const tmp = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-resolve-pin-')),
+    );
+    try {
+      fs.mkdirSync(path.join(tmp, '.ai/harness'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmp, '.ai/harness/policy.json'),
+        '{ "hook_source": "repo" }\n',
+      );
+      const resolved = resolveHooksDir(tmp, {});
+      expect(resolved.source).toBe('repo-pin');
+      expect(resolved.dir).toBe(path.join(tmp, '.ai/hooks'));
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('REPO_HARNESS_HOOK_SOURCE env overrides policy: repo, central, and absolute dir', () => {
+    const tmp = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-resolve-env-')),
+    );
+    try {
+      expect(resolveHooksDir(tmp, { REPO_HARNESS_HOOK_SOURCE: 'repo' })).toEqual({
+        dir: path.join(tmp, '.ai/hooks'),
+        source: 'env',
+      });
+      expect(resolveHooksDir(tmp, { REPO_HARNESS_HOOK_SOURCE: 'central' })).toEqual({
+        dir: path.join(ROOT, 'assets/hooks'),
+        source: 'env',
+      });
+      expect(resolveHooksDir(tmp, { REPO_HARNESS_HOOK_SOURCE: '/opt/custom-hooks' })).toEqual({
+        dir: '/opt/custom-hooks',
+        source: 'env',
+      });
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('hook command (Phase 1B)', () => {
   test('minimal hook entry delegates to shared runtime instead of copying the route table', () => {
@@ -286,8 +348,8 @@ describe('hook command (Phase 1B)', () => {
         const parsed = JSON.parse(res.stdout);
         const context = parsed.hookSpecificOutput.additionalContext;
         expect(context).toContain('ctx-ok');
-        expect(context).toContain('.ai/hooks drift: missing security-sentinel.sh');
-        expect(context.split('\n').filter((line: string) => line.includes('.ai/hooks drift')).length).toBe(1);
+        expect(context).toContain('hooks drift (source=repo-pin): missing security-sentinel.sh');
+        expect(context.split('\n').filter((line: string) => line.includes('hooks drift')).length).toBe(1);
         expect(res.stderr).toContain('skipping missing script');
         expect(res.stderr).toContain('security-sentinel.sh');
       },

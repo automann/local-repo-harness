@@ -1,10 +1,12 @@
 #!/bin/bash
 # Shared hook dispatcher that resolves the repo root once before invoking a hook.
+# Hooks are resolved relative to this script's own directory so the same
+# dispatcher works vendored at <repo>/.ai/hooks AND installed centrally at
+# ~/.repo-harness/hooks (the shim exports HOOK_REPO_ROOT either way).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${HOOK_REPO_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 HOOK_NAME="${1:-}"
 
 if [[ -z "$HOOK_NAME" ]]; then
@@ -14,9 +16,21 @@ fi
 
 shift || true
 
-HOOK_PATH="$REPO_ROOT/.ai/hooks/$HOOK_NAME"
+if [[ -n "${HOOK_REPO_ROOT:-}" ]]; then
+  REPO_ROOT="$HOOK_REPO_ROOT"
+elif REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -n "$REPO_ROOT" ]]; then
+  :
+elif [[ "$(cd "$SCRIPT_DIR/../.." 2>/dev/null && pwd)/.ai/hooks" == "$SCRIPT_DIR" ]]; then
+  # Vendored layout (<repo>/.ai/hooks) invoked directly from outside the repo.
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+else
+  echo "[HookRunner] Cannot resolve repo root: set HOOK_REPO_ROOT or run inside a git repo." >&2
+  exit 2
+fi
+
+HOOK_PATH="$SCRIPT_DIR/$HOOK_NAME"
 if [[ ! -f "$HOOK_PATH" ]]; then
-  echo "[HookRunner] Hook not found: $REPO_ROOT/.ai/hooks/$HOOK_NAME" >&2
+  echo "[HookRunner] Hook not found: $HOOK_PATH" >&2
   exit 1
 fi
 

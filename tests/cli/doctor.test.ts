@@ -31,14 +31,20 @@ function writeExecutable(filePath: string, content: string): void {
   fs.chmodSync(filePath, 0o755);
 }
 
-function withTempRepo(opts: { optIn: boolean; scripts?: readonly string[] }, fn: (repoRoot: string) => void): void {
+function withTempRepo(
+  opts: { optIn: boolean; scripts?: readonly string[]; pinRepoHooks?: boolean },
+  fn: (repoRoot: string) => void,
+): void {
   const repoRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-doctor-repo-')));
   try {
     execSync('git init', { cwd: repoRoot, stdio: 'ignore' });
     fs.mkdirSync(path.join(repoRoot, '.ai/hooks'), { recursive: true });
+    fs.mkdirSync(path.join(repoRoot, '.ai/harness'), { recursive: true });
     if (opts.optIn) {
-      fs.mkdirSync(path.join(repoRoot, '.ai/harness'), { recursive: true });
       fs.writeFileSync(path.join(repoRoot, '.ai/harness/workflow-contract.json'), '{}\n');
+    }
+    if (opts.pinRepoHooks) {
+      fs.writeFileSync(path.join(repoRoot, '.ai/harness/policy.json'), '{ "hook_source": "repo" }\n');
     }
     for (const script of opts.scripts ?? []) {
       writeExecutable(path.join(repoRoot, '.ai/hooks', script), '#!/bin/bash\nexit 0\n');
@@ -138,23 +144,35 @@ describe('doctor command (Phase 1C)', () => {
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
-  test('repo-hook-scripts warns when route scripts are missing', () => {
-    withTempRepo({ optIn: true }, (repoRoot) => {
+  test('repo-hook-scripts warns when pinned repo route scripts are missing', () => {
+    withTempRepo({ optIn: true, pinRepoHooks: true }, (repoRoot) => {
       const r = runDoctor(repoRoot);
       const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
       expect(hooks.status).toBe('warn');
+      expect(hooks.detail).toContain('source=repo-pin');
       expect(hooks.detail).toContain('security-sentinel.sh');
       expect(hooks.detail).toContain(`repo-harness update --repo ${repoRoot}`);
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
-  test('repo-hook-scripts passes when all route scripts are present', () => {
+  test('repo-hook-scripts passes when all pinned route scripts are present', () => {
     const scripts = [...new Set(ROUTES.flatMap((route) => [...route.scripts]))];
-    withTempRepo({ optIn: true, scripts }, (repoRoot) => {
+    withTempRepo({ optIn: true, scripts, pinRepoHooks: true }, (repoRoot) => {
       const r = runDoctor(repoRoot);
       const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
       expect(hooks.status).toBe('ok');
       expect(hooks.detail).toContain('route scripts present');
+      expect(hooks.detail).toContain('source=repo-pin');
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('repo-hook-scripts resolves the packaged runtime when the repo is not pinned', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      const r = runDoctor(repoRoot);
+      const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
+      expect(hooks.status).toBe('ok');
+      expect(hooks.detail).toContain('source=packaged');
+      expect(hooks.detail).toContain(path.join('assets', 'hooks'));
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 

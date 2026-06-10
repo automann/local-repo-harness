@@ -8,8 +8,11 @@
 #
 # Subcommands:
 #   install [--target codex|claude|both]
-#     Copy hook-shim.sh to ~/.repo-harness/, register global hook entries
-#     in ~/.codex/hooks.json and/or ~/.claude/settings.json.
+#     Copy hook-shim.sh to ~/.repo-harness/, install the central hooks bundle
+#     to ~/.repo-harness/hooks/ (the shim prefers it over repo-local .ai/hooks
+#     unless the repo pins "hook_source": "repo" in .ai/harness/policy.json),
+#     and register global hook entries in ~/.codex/hooks.json and/or
+#     ~/.claude/settings.json.
 #     Idempotent: re-running cleans prior repo-harness entries first.
 #
 #   migrate <repo> [--dry-run]
@@ -51,6 +54,9 @@ SHIM_PATH="${AGENTIC_DIR}/hook-shim.sh"
 TRUST_FILE="${AGENTIC_DIR}/trusted-repos"
 SHIM_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SHIM_SRC="${SHIM_SRC_DIR}/hook-shim.sh"
+PACKAGE_ROOT="$(cd "${SHIM_SRC_DIR}/.." && pwd)"
+HOOKS_SRC_DIR="${PACKAGE_ROOT}/assets/hooks"
+CENTRAL_HOOKS_DIR="${AGENTIC_DIR}/hooks"
 CODEX_HOOKS="${HOME}/.codex/hooks.json"
 CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
 
@@ -226,6 +232,33 @@ install_shim() {
   echo "[repo-harness] Shim installed: $SHIM_PATH"
 }
 
+# Install the central hooks bundle. The shim prefers this copy over repo-local
+# .ai/hooks (unless a repo pins "hook_source": "repo"), so one install updates
+# hook behavior for every trusted repo without per-repo syncs.
+install_hooks_bundle() {
+  if [ ! -d "$HOOKS_SRC_DIR" ]; then
+    echo "[repo-harness] ERROR: hooks source not found at $HOOKS_SRC_DIR" >&2
+    exit 1
+  fi
+  rm -rf "$CENTRAL_HOOKS_DIR"
+  mkdir -p "$CENTRAL_HOOKS_DIR/lib"
+  local f
+  for f in "$HOOKS_SRC_DIR"/*.sh; do
+    [ -f "$f" ] || continue
+    install -m 0755 "$f" "$CENTRAL_HOOKS_DIR/"
+  done
+  for f in "$HOOKS_SRC_DIR"/lib/*.sh; do
+    [ -f "$f" ] || continue
+    install -m 0644 "$f" "$CENTRAL_HOOKS_DIR/lib/"
+  done
+  local version="unknown"
+  if [ -f "${PACKAGE_ROOT}/package.json" ] && command -v jq >/dev/null 2>&1; then
+    version=$(jq -r '.version // "unknown"' "${PACKAGE_ROOT}/package.json" 2>/dev/null || echo unknown)
+  fi
+  printf '%s\n' "$version" > "$CENTRAL_HOOKS_DIR/.version"
+  echo "[repo-harness] Central hooks bundle installed: $CENTRAL_HOOKS_DIR (version ${version})"
+}
+
 cmd_install() {
   local target="both"
   while [ $# -gt 0 ]; do
@@ -237,6 +270,7 @@ cmd_install() {
 
   require_jq
   install_shim
+  install_hooks_bundle
 
   # Auto-trust the checkout we are installing from: running install is an
   # explicit act of trust in this copy of repo-harness.
@@ -254,8 +288,9 @@ cmd_install() {
 [repo-harness] Install complete. Next steps:
   1. Restart Codex (NEW trust prompt — command strings changed from canary; accept it)
   2. Claude Code auto-reloads via ConfigChange (no action needed for already-running sessions)
-  3. Test in an opt-in repo: triggering an event should run the real .ai/hooks/<name>.sh,
-     not the canary (e.g. .ai/harness/runs/ should accumulate, not ~/.repo-harness-canary.log)
+  3. Test in an opt-in trusted repo: triggering an event should run the central
+     hooks bundle at $CENTRAL_HOOKS_DIR (repos pinning "hook_source": "repo"
+     keep running their own .ai/hooks)
   4. Run '$0 status' to inspect
   5. Run '$0 uninstall' to remove (keeps shim file at $SHIM_PATH)
 
@@ -362,6 +397,12 @@ cmd_status() {
   else
     echo "  (not installed — run '$0 install')"
   fi
+  echo "Central hooks bundle: $CENTRAL_HOOKS_DIR"
+  if [ -f "$CENTRAL_HOOKS_DIR/run-hook.sh" ]; then
+    echo "  version: $(cat "$CENTRAL_HOOKS_DIR/.version" 2>/dev/null || echo unknown)"
+  else
+    echo "  (not installed — repos fall back to their vendored .ai/hooks; run '$0 install')"
+  fi
   echo ""
 
   for pair in "codex:${CODEX_HOOKS}" "claude:${CLAUDE_SETTINGS}"; do
@@ -403,6 +444,14 @@ cmd_status() {
       else
         echo "  Trust: NOT TRUSTED — hooks will exit 0; run '$0 trust $primary_root'"
       fi
+    fi
+    if [ -f "$repo/.ai/harness/policy.json" ] \
+      && grep -Eq '"hook_source"[[:space:]]*:[[:space:]]*"repo"' "$repo/.ai/harness/policy.json"; then
+      echo "  Hook runtime: repo-pinned ($repo/.ai/hooks)"
+    elif [ -f "$CENTRAL_HOOKS_DIR/run-hook.sh" ]; then
+      echo "  Hook runtime: central ($CENTRAL_HOOKS_DIR, version $(cat "$CENTRAL_HOOKS_DIR/.version" 2>/dev/null || echo unknown))"
+    else
+      echo "  Hook runtime: repo fallback ($repo/.ai/hooks) — run '$0 install' for the central bundle"
     fi
     if [ -f "$repo/.codex/hooks.json" ]; then
       echo "  WARNING: $repo/.codex/hooks.json still exists (run migrate to clean up)"

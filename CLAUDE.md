@@ -22,7 +22,7 @@ This repository self-hosts the `repo-harness` contract; the former `repo-harness
 
 - Sync `tasks/` whenever substantive repo changes are made.
 - Use `tasks/notes/<plan-stem>.notes.md` only for non-obvious slice decisions, deviations, tradeoffs, and open questions; `<plan-stem>` is the active plan filename without `plan-` and `.md` (for example `20260531-0045-governance-workflow`). Do not use notes as durable memory or a task log, and archive/promote them deliberately when the slice closes.
-- Treat `.ai/hooks/` as the shared repo-local hook implementation; user-level `~/.claude/settings.json` and `~/.codex/hooks.json` are the host adapters.
+- Treat hook execution as central-first: trusted repos run `~/.repo-harness/hooks/` (bash shim) or the packaged CLI copy; this self-host repo pins `"hook_source": "repo"` in `.ai/harness/policy.json` so `.ai/hooks/` stays the live development runtime, with `assets/hooks/` as the product source mirrored on install. User-level `~/.claude/settings.json` and `~/.codex/hooks.json` are the host adapters.
 - Keep the umbrella hierarchy explicit: architecture owns stable truth, capability contracts own local agent context, `tasks/workstreams/<domain>/<capability>/` owns durable progress, and `tasks/todo.md` owns only deferred medium/long-term goals with tradeoff and revisit trigger.
 - Treat `.ai/context/capabilities.json` as the source of truth for capability prefixes; `agent-context-blocks.txt` and nested agent files are compatibility inputs only.
 - Keep architecture drift handling split: `architecture-drift.sh` writes architecture requests/events, `workstream-sync.sh` maintains durable capability workstreams, and `context-contract-sync.sh` only updates controlled local `CLAUDE.md`/`AGENTS.md` architecture blocks.

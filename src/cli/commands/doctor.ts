@@ -14,7 +14,7 @@ import { ALL_TARGETS } from '../installer/targets/registry';
 import { checkCodegraph, type CodegraphCheckResult } from '../tools/codegraph';
 import { CLI_VERSION } from './status';
 import { runSecurityScan, type SecurityScanReport } from './security';
-import { isOptIn, resolveRepoRoot } from '../hook/runtime';
+import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
 
 const TRUST_STATE_LINE = /^\[hooks\.state\."[^"]+\/\.codex\/hooks\.json:/;
@@ -290,7 +290,7 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
 
 function checkHookScriptDrift(cwd: string): DoctorCheckResult {
   const id = 'repo-hook-scripts';
-  const describe = 'Repo-local hook scripts match the route registry';
+  const describe = 'Active hook runtime scripts match the route registry';
   const repoRoot = resolveRepoRoot(cwd);
   if (!repoRoot) {
     return { id, describe, status: 'na', detail: 'not in a git repository' };
@@ -304,13 +304,13 @@ function checkHookScriptDrift(cwd: string): DoctorCheckResult {
     };
   }
 
-  const hooksDir = path.join(repoRoot, '.ai/hooks');
+  const resolved = resolveHooksDir(repoRoot);
   const expected = new Set<string>();
   const missing: string[] = [];
   for (const route of ROUTES) {
     for (const script of route.scripts) {
       expected.add(script);
-      if (!fs.existsSync(path.join(hooksDir, script)) && !missing.includes(script)) {
+      if (!fs.existsSync(path.join(resolved.dir, script)) && !missing.includes(script)) {
         missing.push(script);
       }
     }
@@ -321,15 +321,19 @@ function checkHookScriptDrift(cwd: string): DoctorCheckResult {
       id,
       describe,
       status: 'ok',
-      detail: `all ${expected.size} route scripts present`,
+      detail: `all ${expected.size} route scripts present (source=${resolved.source}, dir=${resolved.dir})`,
     };
   }
 
+  const remediation =
+    resolved.source === 'packaged'
+      ? 'npm install -g repo-harness@latest'
+      : `repo-harness update --repo ${repoRoot}`;
   return {
     id,
     describe,
     status: 'warn',
-    detail: `missing: ${missing.join(', ')}; remediation=repo-harness update --repo ${repoRoot}`,
+    detail: `missing from ${resolved.dir} (source=${resolved.source}): ${missing.join(', ')}; remediation=${remediation}`,
   };
 }
 
