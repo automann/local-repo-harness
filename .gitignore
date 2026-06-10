@@ -72,3 +72,4 @@ _ops/
 # External references
 # Operations
 # Local operations state
+.claude/worktrees/

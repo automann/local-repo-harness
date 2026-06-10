@@ -251,15 +251,13 @@ export function buildProgram(): Command {
   program.addCommand(buildToolsCommand());
   program.addCommand(buildBrainCommand());
   program.addCommand(buildCapabilityContextCommand());
-  for (const name of ['prompt-guard-decide', 'prompt-guard-decision']) {
-    program
-      .command(name, { hidden: true })
-      .description('Internal prompt-guard intent/state decision engine')
-      .action(() => {
-        console.log(runPromptGuardDecisionFromEnv());
-        process.exit(0);
-      });
-  }
+  program
+    .command('prompt-guard-decide', { hidden: true })
+    .description('Internal prompt-guard intent/state decision engine')
+    .action(() => {
+      console.log(runPromptGuardDecisionFromEnv());
+      process.exit(0);
+    });
 
   return program;
 }
