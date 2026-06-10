@@ -2,7 +2,7 @@
 
 ### Always Read First
 - `docs/spec.md`: stable product truth
-- `tasks/todo.md`: primary execution checklist only
+- `tasks/todo.md`: deferred-goal ledger only
 - `.ai/harness/handoff/current.md`: resumable session state
 - `.ai/harness/policy.json`: machine-readable workflow contract
 

@@ -129,7 +129,10 @@ get_active_plan() {
 
 extract_status() {
   local file="$1"
-  awk '/\*\*Status\*\*:/ {sub(/^.*\*\*Status\*\*: */, ""); gsub(/\r/, ""); print; exit}' "$file" | xargs
+  # Trim with sed, not xargs: xargs aborts on unbalanced quotes in user-edited
+  # status text, which would kill the whole check under set -e.
+  awk '/\*\*Status\*\*:/ {sub(/^.*\*\*Status\*\*: */, ""); gsub(/\r/, ""); print; exit}' "$file" \
+    | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
 }
 
 plan_evidence_contract_error() {
@@ -219,6 +222,82 @@ todo_deferred_ledger_error() {
     echo "missing deferred-goal table with Tradeoff and Revisit Trigger"
     missing=1
   }
+
+  [[ "$missing" -eq 0 ]]
+}
+
+sprint_known_status() {
+  case "$1" in
+    Draft|Approved|Executing|Done|Archived)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+sprint_prd_has_content() {
+  local file="$1"
+  awk '
+    /^## PRD[[:space:]]*$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    !in_section { next }
+    /^#/ { next }
+    {
+      line = $0
+      gsub(/^[[:space:]]*[->]*[[:space:]]*/, "", line)
+      gsub(/[[:space:]]+$/, "", line)
+      if (line == "" || line == "...") next
+      content = 1
+    }
+    END { exit content ? 0 : 1 }
+  ' "$file"
+}
+
+sprint_ready_error() {
+  local file="$1"
+  local missing=0
+
+  if ! sprint_prd_has_content "$file"; then
+    echo "PRD section is empty or placeholder-only"
+    missing=1
+  fi
+
+  if ! grep -Eq '^\|[[:space:]]*#[[:space:]]*\|[[:space:]]*Status[[:space:]]*\|[[:space:]]*Task[[:space:]]*\|[[:space:]]*Mode[[:space:]]*\|[[:space:]]*Acceptance[[:space:]]*\|[[:space:]]*Plan[[:space:]]*\|' "$file"; then
+    echo "missing backlog table header '| # | Status | Task | Mode | Acceptance | Plan |'"
+    missing=1
+  else
+    local row_errors
+    row_errors="$(awk -F '|' '
+      /^## Backlog[[:space:]]*$/ { in_section = 1; next }
+      in_section && /^## / { exit }
+      !in_section { next }
+      /^\|[[:space:]]*[0-9]+[[:space:]]*\|/ {
+        rows++
+        idx = $2; status = $3; task = $4; mode = $5; acceptance = $6
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", idx)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", status)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", task)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", mode)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", acceptance)
+        if (status !~ /^\[[ xX]\]$/) printf "row %s has an invalid status cell (expected [ ] or [x])\n", idx
+        if (task == "" || task == "...") printf "row %s is missing a task\n", idx
+        if (mode != "contract" && mode != "inline") printf "row %s has an invalid mode (expected contract or inline)\n", idx
+        if (acceptance == "" || tolower(acceptance) ~ /^(\.\.\.|tbd|todo|n\/a|none)$/) printf "row %s is missing a concrete acceptance line\n", idx
+        if (acceptance == "Replace with a machine-checkable acceptance line") printf "row %s still has the template placeholder acceptance\n", idx
+        seen_idx[idx]++
+        if (task != "") seen_task[task]++
+      }
+      END {
+        if (rows == 0) print "backlog table has no task rows"
+        for (i in seen_idx) if (seen_idx[i] > 1) printf "duplicate backlog index %s\n", i
+        for (t in seen_task) if (seen_task[t] > 1) printf "duplicate backlog task %s\n", t
+      }
+    ' "$file")"
+    if [[ -n "$row_errors" ]]; then
+      printf '%s\n' "$row_errors"
+      missing=1
+    fi
+  fi
 
   [[ "$missing" -eq 0 ]]
 }
@@ -350,6 +429,8 @@ runs_dir="$(policy_get '.harness.runs_dir' '.ai/harness/runs')"
 context_map_file="$(policy_get '.context.map_file' '.ai/context/context-map.json')"
 handoff_file="$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')"
 resume_file="$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')"
+sprints_dir="$(policy_get '.sprints.dir' 'tasks/sprints')"
+sprint_marker_file="$(policy_get '.sprints.active_marker_file' '.ai/harness/sprint/active-sprint')"
 upgrade_strategy_version=""
 if [[ -f "$policy_file" ]] && command -v jq >/dev/null 2>&1; then
   upgrade_strategy_version="$(policy_get '.upgrade.strategy_version' '')"
@@ -469,6 +550,46 @@ if [[ -f "$todo_file" ]]; then
     elif ! ledger_error="$(todo_deferred_ledger_error "$todo_file")"; then
       report_issue "${todo_file} deferred ledger is incomplete: ${ledger_error//$'\n'/; }"
     fi
+  fi
+fi
+
+if [[ -d "$sprints_dir" ]]; then
+  while IFS= read -r sprint_file; do
+    [[ -n "$sprint_file" ]] || continue
+    sprint_status="$(extract_status "$sprint_file")"
+    if [[ -z "$sprint_status" ]]; then
+      report_issue "Sprint is missing a '**Status**' line: $sprint_file"
+      continue
+    fi
+    if ! sprint_known_status "$sprint_status"; then
+      report_issue "Sprint has unknown status '${sprint_status}': $sprint_file"
+      continue
+    fi
+    if [[ "$sprint_status" == "Approved" || "$sprint_status" == "Executing" ]]; then
+      if ! sprint_error="$(sprint_ready_error "$sprint_file")"; then
+        report_issue "Sprint $sprint_file is not execution-ready: ${sprint_error//$'\n'/; }"
+      fi
+    fi
+  done < <(find "$sprints_dir" -maxdepth 1 -type f -name '*.sprint.md' 2>/dev/null | sort)
+fi
+
+if [[ -f "$sprint_marker_file" ]]; then
+  marker_sprint="$(sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' "$sprint_marker_file" 2>/dev/null || true)"
+  if [[ -z "$marker_sprint" || ! -f "$marker_sprint" ]]; then
+    report_issue "Active sprint marker does not resolve to a sprint file: ${marker_sprint:-(empty)} (marker: $sprint_marker_file)"
+  else
+    case "$marker_sprint" in
+      "$sprints_dir"/*)
+        case "$marker_sprint" in
+          *..*)
+            report_issue "Active sprint marker must not contain '..': $marker_sprint (marker: $sprint_marker_file)"
+            ;;
+        esac
+        ;;
+      *)
+        report_issue "Active sprint marker points outside ${sprints_dir}: $marker_sprint (marker: $sprint_marker_file)"
+        ;;
+    esac
   fi
 fi
 

@@ -1,0 +1,454 @@
+import { describe, test, expect, setDefaultTimeout } from "bun:test";
+
+// This file exercises .ai/hooks/*.sh via spawnSync; hook fork/exec chains
+// exceed bun's 5s default under parallel load (see tasks/lessons.md 2026-06-10).
+setDefaultTimeout(20000);
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { spawnSync } from "child_process";
+
+const ROOT = join(import.meta.dir, "..");
+const HELPER_DIR = join(ROOT, "assets/templates/helpers");
+const ASSETS_HOOKS_DIR = join(ROOT, "assets/hooks");
+
+function tmpWorkspace(prefix: string): string {
+  return realpathSync(mkdtempSync(join(tmpdir(), `${prefix}-`)));
+}
+
+function run(cmd: string, args: string[], cwd: string) {
+  return spawnSync(cmd, args, { cwd, encoding: "utf-8" });
+}
+
+function copySprintHelpers(cwd: string, files: string[]) {
+  mkdirSync(join(cwd, "scripts"), { recursive: true });
+  for (const file of files) {
+    copyFileSync(join(HELPER_DIR, file), join(cwd, "scripts", file));
+  }
+  expect(run("bash", ["-lc", "chmod +x scripts/*.sh"], cwd).status).toBe(0);
+}
+
+function installHooks(cwd: string) {
+  const aiHooksDir = join(cwd, ".ai", "hooks");
+  mkdirSync(aiHooksDir, { recursive: true });
+  for (const f of readdirSync(ASSETS_HOOKS_DIR, { withFileTypes: true })) {
+    const src = join(ASSETS_HOOKS_DIR, f.name);
+    if (f.isDirectory()) {
+      cpSync(src, join(aiHooksDir, f.name), { recursive: true });
+    } else {
+      copyFileSync(src, join(aiHooksDir, f.name));
+    }
+  }
+  expect(run("bash", ["-lc", "find .ai/hooks -type f -name '*.sh' -exec chmod +x {} +"], cwd).status).toBe(0);
+}
+
+function writeActiveSprintFixture(cwd: string, sprintRelPath: string) {
+  mkdirSync(join(cwd, "tasks/sprints"), { recursive: true });
+  mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+  writeFileSync(
+    join(cwd, sprintRelPath),
+    [
+      "# Sprint: Fixture Sprint",
+      "",
+      "> **Status**: Approved",
+      "> **Slug**: fixture-sprint",
+      "> **Created**: 2026-06-10 00:00",
+      "> **Updated**: 2026-06-10 00:00",
+      "> **Source Spec**: `docs/spec.md`",
+      "> **Goal Mode**: incremental",
+      "",
+      "## PRD",
+      "",
+      "Real problem statement with concrete user outcomes.",
+      "",
+      "## Backlog",
+      "",
+      "| # | Status | Task | Mode | Acceptance | Plan |",
+      "|---|--------|------|------|------------|------|",
+      "| 1 | [ ] | task-a | contract | unit tests pass | (pending) |",
+      "| 2 | [ ] | task-b | inline | doc section updated | (pending) |",
+      "",
+      "## Execution Log",
+      "",
+      "| When | Task | Plan | Result |",
+      "|------|------|------|--------|",
+      "",
+    ].join("\n")
+  );
+  writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), sprintRelPath);
+}
+
+describe("sprint-backlog helper", () => {
+  test("init creates a draft sprint, sets the marker, and refuses a second active sprint", () => {
+    const cwd = tmpWorkspace("sprint-backlog-init");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+
+      const init = run("bash", ["scripts/sprint-backlog.sh", "init", "--slug", "Auth Overhaul", "--title", "Auth Overhaul"], cwd);
+      expect(init.status).toBe(0);
+      expect(init.stdout).toContain("Created draft sprint: tasks/sprints/");
+
+      const marker = readFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), "utf-8").trim();
+      expect(marker).toMatch(/^tasks\/sprints\/\d{8}-\d{4}-auth-overhaul\.sprint\.md$/);
+      expect(existsSync(join(cwd, marker))).toBe(true);
+
+      const sprint = readFileSync(join(cwd, marker), "utf-8");
+      expect(sprint).toContain("# Sprint: Auth Overhaul");
+      expect(sprint).toContain("> **Status**: Draft");
+      expect(sprint).toContain("| # | Status | Task | Mode | Acceptance | Plan |");
+
+      const again = run("bash", ["scripts/sprint-backlog.sh", "init", "--slug", "another"], cwd);
+      expect(again.status).toBe(1);
+      expect(again.stderr).toContain("active sprint already exists");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("status, next, and complete-task drive the backlog lifecycle", () => {
+    const cwd = tmpWorkspace("sprint-backlog-lifecycle");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+      const sprintPath = "tasks/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+
+      const status = run("bash", ["scripts/sprint-backlog.sh", "status"], cwd);
+      expect(status.status).toBe(0);
+      expect(status.stdout).toContain(`sprint: ${sprintPath}`);
+      expect(status.stdout).toContain("status: Approved");
+      expect(status.stdout).toContain("tasks_done: 0");
+      expect(status.stdout).toContain("tasks_total: 2");
+      expect(status.stdout).toContain("next_task: task-a");
+
+      const next = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(next.status).toBe(0);
+      expect(next.stdout).toContain("index: 1");
+      expect(next.stdout).toContain("task: task-a");
+      expect(next.stdout).toContain("mode: contract");
+      expect(next.stdout).toContain("acceptance: unit tests pass");
+
+      const completeBySlug = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "complete-task", "--task", "task-a", "--plan", "plans/plan-20260610-0001-task-a.md"],
+        cwd
+      );
+      expect(completeBySlug.status).toBe(0);
+      expect(completeBySlug.stdout).toContain("Completed backlog task 'task-a' (row 1)");
+      expect(completeBySlug.stdout).toContain("Backlog progress: 1/2");
+
+      const afterFirst = readFileSync(join(cwd, sprintPath), "utf-8");
+      expect(afterFirst).toContain("| 1 | [x] | task-a | contract | unit tests pass | `plans/plan-20260610-0001-task-a.md` |");
+      expect(afterFirst).toContain("| task-a | `plans/plan-20260610-0001-task-a.md` | done |");
+
+      const nextAfterFirst = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(nextAfterFirst.status).toBe(0);
+      expect(nextAfterFirst.stdout).toContain("task: task-b");
+
+      const completeByIndex = run("bash", ["scripts/sprint-backlog.sh", "complete-task", "--task", "2"], cwd);
+      expect(completeByIndex.status).toBe(0);
+      expect(completeByIndex.stdout).toContain("All backlog tasks complete.");
+
+      const exhausted = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(exhausted.status).toBe(3);
+      expect(exhausted.stdout).toContain("next_task: (none)");
+
+      const repeat = run("bash", ["scripts/sprint-backlog.sh", "complete-task", "--task", "2"], cwd);
+      expect(repeat.status).toBe(1);
+      expect(repeat.stderr).toContain("already complete");
+
+      const unknown = run("bash", ["scripts/sprint-backlog.sh", "complete-task", "--task", "task-z"], cwd);
+      expect(unknown.status).toBe(1);
+      expect(unknown.stderr).toContain("no backlog row matches");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("init renders titles with sed/awk metacharacters literally", () => {
+    const cwd = tmpWorkspace("sprint-backlog-metachar");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+
+      const init = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "init", "--slug", "meta", "--title", "A | B & C \\ D"],
+        cwd
+      );
+      expect(init.status).toBe(0);
+
+      const marker = readFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), "utf-8").trim();
+      const sprint = readFileSync(join(cwd, marker), "utf-8");
+      expect(sprint).toContain("# Sprint: A | B & C \\ D");
+      expect(sprint).toContain("> **Status**: Draft");
+      expect(sprint.length).toBeGreaterThan(100);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("complete-task rejects ambiguous refs, resolves duplicates by unique slug, and preserves backslashes", () => {
+    const cwd = tmpWorkspace("sprint-backlog-plan-escape");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+      const sprintPath = "tasks/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+      // Inject a duplicate index 1 row after the real one.
+      const original = readFileSync(join(cwd, sprintPath), "utf-8");
+      writeFileSync(
+        join(cwd, sprintPath),
+        original.replace(
+          "| 2 | [ ] | task-b | inline | doc section updated | (pending) |",
+          "| 1 | [ ] | task-dup | inline | duplicate index row | (pending) |\n| 2 | [ ] | task-b | inline | doc section updated | (pending) |"
+        )
+      );
+
+      const ambiguous = run("bash", ["scripts/sprint-backlog.sh", "complete-task", "--task", "1"], cwd);
+      expect(ambiguous.status).toBe(1);
+      expect(ambiguous.stderr).toContain("ambiguous");
+
+      const complete = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "complete-task", "--task", "task-a", "--plan", "plans\\windows\\plan-a.md"],
+        cwd
+      );
+      expect(complete.status).toBe(0);
+
+      const after = readFileSync(join(cwd, sprintPath), "utf-8");
+      expect(after).toContain("| 1 | [x] | task-a | contract | unit tests pass | `plans\\windows\\plan-a.md` |");
+      expect(after).toContain("| 1 | [ ] | task-dup | inline | duplicate index row | (pending) |");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("markers pointing outside tasks/sprints are treated as no active sprint", () => {
+    const cwd = tmpWorkspace("sprint-backlog-containment");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      mkdirSync(join(cwd, "outside"), { recursive: true });
+      writeFileSync(join(cwd, "outside/victim.sprint.md"), "# Sprint: Victim\n\n> **Status**: Approved\n");
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), "outside/victim.sprint.md");
+
+      const status = run("bash", ["scripts/sprint-backlog.sh", "status"], cwd);
+      expect(status.status).toBe(0);
+      expect(status.stdout).toContain("sprint: (none)");
+
+      const next = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(next.status).toBe(1);
+      expect(next.stderr).toContain("no active sprint");
+
+      expect(readFileSync(join(cwd, "outside/victim.sprint.md"), "utf-8")).toContain("> **Status**: Approved");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("next and complete-task fail without an active sprint", () => {
+    const cwd = tmpWorkspace("sprint-backlog-no-active");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+
+      const next = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(next.status).toBe(1);
+      expect(next.stderr).toContain("no active sprint");
+
+      const status = run("bash", ["scripts/sprint-backlog.sh", "status"], cwd);
+      expect(status.status).toBe(0);
+      expect(status.stdout).toContain("sprint: (none)");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("check-task-workflow sprint validation", () => {
+  test("flags non-ready approved sprints, unknown statuses, and stale markers in strict mode", () => {
+    const cwd = tmpWorkspace("sprint-check-bad");
+    try {
+      copySprintHelpers(cwd, ["check-task-workflow.sh"]);
+      mkdirSync(join(cwd, "tasks/sprints"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      writeFileSync(
+        join(cwd, "tasks/sprints/20260610-0000-bad.sprint.md"),
+        [
+          "# Sprint: Bad",
+          "",
+          "> **Status**: Approved",
+          "",
+          "## PRD",
+          "",
+          "- ...",
+          "",
+          "## Backlog",
+          "",
+          "| # | Status | Task | Mode | Acceptance | Plan |",
+          "|---|--------|------|------|------------|------|",
+          "| 1 | [ ] | task-a | warp | tbd | (pending) |",
+          "| 1 | [ ] | task-a | inline | Replace with a machine-checkable acceptance line | (pending) |",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, "tasks/sprints/20260610-0001-weird.sprint.md"), "# Sprint: Weird\n\n> **Status**: Cooking\n");
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), "tasks/sprints/missing.sprint.md");
+
+      const res = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+      expect(res.status).toBe(1);
+      expect(res.stdout).toContain("PRD section is empty or placeholder-only");
+      expect(res.stdout).toContain("row 1 has an invalid mode (expected contract or inline)");
+      expect(res.stdout).toContain("row 1 is missing a concrete acceptance line");
+      expect(res.stdout).toContain("still has the template placeholder acceptance");
+      expect(res.stdout).toContain("duplicate backlog index 1");
+      expect(res.stdout).toContain("duplicate backlog task task-a");
+      expect(res.stdout).toContain("Sprint has unknown status 'Cooking'");
+      expect(res.stdout).toContain("Active sprint marker does not resolve to a sprint file");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("reports unknown status instead of crashing on quotes in sprint status", () => {
+    const cwd = tmpWorkspace("sprint-check-quote");
+    try {
+      copySprintHelpers(cwd, ["check-task-workflow.sh"]);
+      mkdirSync(join(cwd, "tasks/sprints"), { recursive: true });
+      writeFileSync(
+        join(cwd, "tasks/sprints/20260610-0000-quote.sprint.md"),
+        "# Sprint: Quote\n\n> **Status**: Don't ship\n"
+      );
+
+      const res = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+      expect(res.status).toBe(1);
+      expect(res.stdout).toContain("Sprint has unknown status 'Don't ship'");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("flags markers pointing outside the sprints dir", () => {
+    const cwd = tmpWorkspace("sprint-check-outside-marker");
+    try {
+      copySprintHelpers(cwd, ["check-task-workflow.sh"]);
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      mkdirSync(join(cwd, "outside"), { recursive: true });
+      writeFileSync(join(cwd, "outside/victim.sprint.md"), "# Sprint: Victim\n\n> **Status**: Draft\n");
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), "outside/victim.sprint.md");
+
+      const res = run("bash", ["scripts/check-task-workflow.sh"], cwd);
+      expect(res.stdout).toContain("Active sprint marker points outside tasks/sprints");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("draft skeletons and execution-ready sprints emit no sprint issues", () => {
+    const cwd = tmpWorkspace("sprint-check-ok");
+    try {
+      copySprintHelpers(cwd, ["check-task-workflow.sh"]);
+      mkdirSync(join(cwd, "tasks/sprints"), { recursive: true });
+      writeFileSync(
+        join(cwd, "tasks/sprints/20260610-0000-draft.sprint.md"),
+        "# Sprint: Draft Skeleton\n\n> **Status**: Draft\n\n## PRD\n\n- ...\n"
+      );
+      writeActiveSprintFixture(cwd, "tasks/sprints/20260610-0001-ready.sprint.md");
+
+      const res = run("bash", ["scripts/check-task-workflow.sh"], cwd);
+      expect(res.stdout).not.toContain("[workflow] Sprint ");
+      expect(res.stdout).not.toContain("Active sprint marker");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("sprint projection", () => {
+  test("refresh-current-status renders the active sprint section", () => {
+    const cwd = tmpWorkspace("sprint-refresh-status");
+    try {
+      copySprintHelpers(cwd, ["refresh-current-status.sh"]);
+      writeActiveSprintFixture(cwd, "tasks/sprints/20260610-0000-fixture-sprint.sprint.md");
+
+      const res = run("bash", ["scripts/refresh-current-status.sh"], cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("## Active Sprint");
+      expect(res.stdout).toContain("- Sprint: `tasks/sprints/20260610-0000-fixture-sprint.sprint.md`");
+      expect(res.stdout).toContain("- Sprint Status: Approved");
+      expect(res.stdout).toContain("- Backlog: 0/2");
+      expect(res.stdout).toContain("- Next Sprint Task: task-a");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("refresh-current-status reports no sprint when the marker is absent", () => {
+    const cwd = tmpWorkspace("sprint-refresh-none");
+    try {
+      copySprintHelpers(cwd, ["refresh-current-status.sh"]);
+
+      const res = run("bash", ["scripts/refresh-current-status.sh"], cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("- Sprint: (none)");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("session-start hook injects active sprint context and stays inert without a marker", () => {
+    const cwd = tmpWorkspace("sprint-session-start");
+    try {
+      installHooks(cwd);
+
+      const inert = spawnSync("bash", [join(cwd, ".ai/hooks/session-start-context.sh")], {
+        cwd,
+        input: "{}",
+        encoding: "utf-8",
+      });
+      expect(inert.status).toBe(0);
+      expect(inert.stdout).not.toContain("Active Sprint");
+
+      writeActiveSprintFixture(cwd, "tasks/sprints/20260610-0000-fixture-sprint.sprint.md");
+      const active = spawnSync("bash", [join(cwd, ".ai/hooks/session-start-context.sh")], {
+        cwd,
+        input: "{}",
+        encoding: "utf-8",
+      });
+      expect(active.status).toBe(0);
+      expect(active.stdout).toContain("Active Sprint");
+      expect(active.stdout).toContain("backlog=0/2");
+      expect(active.stdout).toContain("task-a");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("sprint asset parity", () => {
+  test("self-host scripts match the distributed template helpers", () => {
+    expect(readFileSync(join(ROOT, "scripts/sprint-backlog.sh"), "utf-8")).toBe(
+      readFileSync(join(HELPER_DIR, "sprint-backlog.sh"), "utf-8")
+    );
+    expect(readFileSync(join(ROOT, ".claude/templates/sprint.template.md"), "utf-8")).toBe(
+      readFileSync(join(ROOT, "assets/templates/sprint.template.md"), "utf-8")
+    );
+    expect(readFileSync(join(ROOT, "scripts/check-task-workflow.sh"), "utf-8")).toBe(
+      readFileSync(join(HELPER_DIR, "check-task-workflow.sh"), "utf-8")
+    );
+    expect(readFileSync(join(ROOT, "scripts/refresh-current-status.sh"), "utf-8")).toBe(
+      readFileSync(join(HELPER_DIR, "refresh-current-status.sh"), "utf-8")
+    );
+    expect(readFileSync(join(ROOT, "docs/reference-configs/sprint-contracts.md"), "utf-8")).toBe(
+      readFileSync(join(ROOT, "assets/reference-configs/sprint-contracts.md"), "utf-8")
+    );
+  });
+});

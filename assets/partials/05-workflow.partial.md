@@ -15,7 +15,7 @@ PLAN_LOOP:
   PLAN_ARCHIVE: plans/archive/
   ACTIVE_PLAN_RULE: .ai/harness/active-plan marker is scoped to this worktree; .ai/harness/active-worktree records the owner; legacy .claude/.active-plan is fallback only
   PLAN_SWITCH: scripts/switch-plan.sh --plan <plan-file> | --list
-  PRIMARY_FILE: tasks/todo.md
+  DEFERRED_LEDGER: tasks/todo.md
   TODO_ARCHIVE: tasks/archive/
   CONTRACT_DIR: tasks/contracts/
   REVIEW_DIR: tasks/reviews/

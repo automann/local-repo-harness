@@ -265,6 +265,59 @@ workstream_summary() {
   [[ "$count" -gt 0 ]] || printf -- '- (none)\n'
 }
 
+sprint_backlog_progress() {
+  local sprint_file="$1"
+  awk -F '|' '
+    /^## Backlog[[:space:]]*$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    !in_section { next }
+    /^\|[[:space:]]*[0-9]+[[:space:]]*\|/ {
+      total++
+      cell = $3
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell)
+      if (cell ~ /^\[[xX]\]$/) done++
+    }
+    END { printf "%d/%d", done + 0, total + 0 }
+  ' "$sprint_file"
+}
+
+sprint_next_task() {
+  local sprint_file="$1"
+  awk -F '|' '
+    /^## Backlog[[:space:]]*$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    !in_section { next }
+    /^\|[[:space:]]*[0-9]+[[:space:]]*\|/ {
+      status = $3; task = $4
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", status)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", task)
+      if (status == "[ ]") { print task; found = 1; exit }
+    }
+    END { if (!found) print "(none)" }
+  ' "$sprint_file"
+}
+
+sprint_summary() {
+  local marker sprint_file status
+  marker="$(json_get '.sprints.active_marker_file' '.ai/harness/sprint/active-sprint')"
+  if [[ ! -f "$marker" ]]; then
+    printf -- '- Sprint: (none)\n'
+    return 0
+  fi
+
+  sprint_file="$(cat "$marker" 2>/dev/null | xargs || true)"
+  if [[ -z "$sprint_file" || ! -f "$sprint_file" ]]; then
+    printf -- '- Sprint: stale active-sprint marker -> %s\n' "${sprint_file:-(empty)}"
+    return 0
+  fi
+
+  status="$(file_metadata_value "$sprint_file" "Status" || printf 'unknown')"
+  printf -- '- Sprint: `%s`\n' "$sprint_file"
+  printf -- '- Sprint Status: %s\n' "${status:-unknown}"
+  printf -- '- Backlog: %s\n' "$(sprint_backlog_progress "$sprint_file")"
+  printf -- '- Next Sprint Task: %s\n' "$(sprint_next_task "$sprint_file")"
+}
+
 git_status_summary() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'not a git repository'
@@ -346,7 +399,7 @@ render_status() {
 > **Target Branch**: ${target}
 > **Stale After**: ${stale_after}
 > **Reason**: ${reason}
-> **Derived From**: active-plan, workstreams, handoff, checks, git status
+> **Derived From**: active-plan, active-sprint, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
 
@@ -367,6 +420,9 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 ## Active Work
 
 ${active_work:-- (none)}
+## Active Sprint
+
+$(sprint_summary)
 ## Workstreams
 
 $(workstream_summary)
@@ -391,6 +447,8 @@ $(git_status_files)
 - Plans: \`plans/plan-*.md\`
 - Active marker: \`.ai/harness/active-plan\`
 - Active worktree marker: \`.ai/harness/active-worktree\`
+- Sprints: \`tasks/sprints/*.sprint.md\`
+- Active sprint marker: \`.ai/harness/sprint/active-sprint\`
 - Workstreams: \`tasks/workstreams/**/*.md\`
 - Handoff: \`.ai/harness/handoff/current.md\`
 - Checks: \`.ai/harness/checks/latest.json\`

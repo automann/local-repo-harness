@@ -20,6 +20,14 @@
     "reviews_dir": "tasks/reviews",
     "notes_dir": "tasks/notes"
   },
+  "sprints": {
+    "dir": "tasks/sprints",
+    "active_marker_file": ".ai/harness/sprint/active-sprint",
+    "template_file": ".claude/templates/sprint.template.md",
+    "helper_script": "scripts/sprint-backlog.sh",
+    "statuses": ["Draft", "Approved", "Executing", "Done", "Archived"],
+    "rule": "Sprint is the program layer: PRD plus ordered backlog decompose product intent into task-contract slices; each backlog task executes through the existing plan -> contract -> worktree flow; tasks/todo.md stays the deferred-goal ledger"
+  },
   "reference_material": {
     "dir": "_ref",
     "mode": "external-ignored",

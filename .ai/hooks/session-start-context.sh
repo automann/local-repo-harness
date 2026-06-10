@@ -258,6 +258,54 @@ EOF_CONTEXT
   fi
 }
 
+active_sprint_context() {
+  local marker=".ai/harness/sprint/active-sprint"
+  local sprint_file status progress next_task
+
+  if [[ -f ".ai/harness/policy.json" ]] && command -v jq >/dev/null 2>&1; then
+    marker="$(jq -r '.sprints.active_marker_file // empty' .ai/harness/policy.json 2>/dev/null || true)"
+    [[ -n "$marker" ]] || marker=".ai/harness/sprint/active-sprint"
+  fi
+
+  [[ -f "$marker" ]] || return 1
+  sprint_file="$(cat "$marker" 2>/dev/null | xargs || true)"
+  [[ -n "$sprint_file" && -f "$sprint_file" ]] || return 1
+
+  status="$(awk '/\*\*Status\*\*:/ {sub(/^.*\*\*Status\*\*: */, ""); gsub(/\r/, ""); print; exit}' "$sprint_file" | xargs)"
+  progress="$(awk -F '|' '
+    /^## Backlog[[:space:]]*$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    !in_section { next }
+    /^\|[[:space:]]*[0-9]+[[:space:]]*\|/ {
+      total++
+      cell = $3
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell)
+      if (cell ~ /^\[[xX]\]$/) done++
+    }
+    END { printf "%d/%d", done + 0, total + 0 }
+  ' "$sprint_file")"
+  next_task="$(awk -F '|' '
+    /^## Backlog[[:space:]]*$/ { in_section = 1; next }
+    in_section && /^## / { exit }
+    !in_section { next }
+    /^\|[[:space:]]*[0-9]+[[:space:]]*\|/ {
+      status = $3; task = $4
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", status)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", task)
+      if (status == "[ ]") { print task; found = 1; exit }
+    }
+    END { if (!found) print "(none)" }
+  ' "$sprint_file")"
+
+  cat <<EOF_CONTEXT
+# Active Sprint
+
+- Sprint: \`${sprint_file}\` status=${status:-unknown} backlog=${progress}
+- Next sprint task: ${next_task}
+- Rule: run backlog tasks through the existing plan -> contract -> worktree flow (\`scripts/sprint-backlog.sh next\`); \`tasks/todo.md\` stays the deferred-goal ledger.
+EOF_CONTEXT
+}
+
 input_priority_context() {
   cat <<'EOF_CONTEXT'
 # Input Priority
@@ -302,6 +350,15 @@ if [[ -n "$current_status_context" ]]; then
     context="${context}"$'\n'"${current_status_context}"
   else
     context="$current_status_context"
+  fi
+fi
+
+sprint_context="$(active_sprint_context || true)"
+if [[ -n "$sprint_context" ]]; then
+  if [[ -n "$context" ]]; then
+    context="${context}"$'\n'"${sprint_context}"
+  else
+    context="$sprint_context"
   fi
 fi
 
