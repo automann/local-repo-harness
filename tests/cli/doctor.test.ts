@@ -2,13 +2,14 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { spawnSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import {
   clearRegisteredChecks,
   formatDoctor,
   registerCheck,
   runDoctor,
 } from '../../src/cli/commands/doctor';
+import { ROUTES } from '../../src/cli/hook/route-registry';
 
 const DOCTOR_CHECK_TIMEOUT_MS = 15000;
 
@@ -28,6 +29,24 @@ function withTempHome(fn: (home: string) => void): void {
 function writeExecutable(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content);
   fs.chmodSync(filePath, 0o755);
+}
+
+function withTempRepo(opts: { optIn: boolean; scripts?: readonly string[] }, fn: (repoRoot: string) => void): void {
+  const repoRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-doctor-repo-')));
+  try {
+    execSync('git init', { cwd: repoRoot, stdio: 'ignore' });
+    fs.mkdirSync(path.join(repoRoot, '.ai/hooks'), { recursive: true });
+    if (opts.optIn) {
+      fs.mkdirSync(path.join(repoRoot, '.ai/harness'), { recursive: true });
+      fs.writeFileSync(path.join(repoRoot, '.ai/harness/workflow-contract.json'), '{}\n');
+    }
+    for (const script of opts.scripts ?? []) {
+      writeExecutable(path.join(repoRoot, '.ai/hooks', script), '#!/bin/bash\nexit 0\n');
+    }
+    fn(repoRoot);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
 }
 
 function setupFakeEnvironment(prefix: string) {
@@ -106,6 +125,36 @@ describe('doctor command (Phase 1C)', () => {
       expect(ids).toContain('claude-codegraph-mcp');
       expect(ids).toContain('codegraph-index');
       expect(ids).toContain('security-config');
+      expect(ids).toContain('repo-hook-scripts');
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('repo-hook-scripts reports n/a for non-opt-in repos', () => {
+    withTempRepo({ optIn: false }, (repoRoot) => {
+      const r = runDoctor(repoRoot);
+      const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
+      expect(hooks.status).toBe('na');
+      expect(hooks.detail).toContain('not opted in');
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('repo-hook-scripts warns when route scripts are missing', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      const r = runDoctor(repoRoot);
+      const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
+      expect(hooks.status).toBe('warn');
+      expect(hooks.detail).toContain('security-sentinel.sh');
+      expect(hooks.detail).toContain(`repo-harness update --repo ${repoRoot}`);
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('repo-hook-scripts passes when all route scripts are present', () => {
+    const scripts = [...new Set(ROUTES.flatMap((route) => [...route.scripts]))];
+    withTempRepo({ optIn: true, scripts }, (repoRoot) => {
+      const r = runDoctor(repoRoot);
+      const hooks = r.checks.find((c) => c.id === 'repo-hook-scripts')!;
+      expect(hooks.status).toBe('ok');
+      expect(hooks.detail).toContain('route scripts present');
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 

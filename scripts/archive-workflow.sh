@@ -98,6 +98,50 @@ plan_artifact_stem_from_parts() {
   fi
 }
 
+todo_is_deferred_ledger() {
+  local file="${1:-tasks/todo.md}"
+  [[ -f "$file" ]] || return 1
+  grep -Eq '^# Deferred Goal Ledger[[:space:]]*$' "$file" \
+    && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' "$file" \
+    && grep -Eq '^## Deferred Goals[[:space:]]*$' "$file" \
+    && grep -Eq '\|[[:space:]]*Goal[[:space:]]*\|[[:space:]]*Why Deferred[[:space:]]*\|[[:space:]]*Tradeoff[[:space:]]*\|[[:space:]]*Revisit Trigger[[:space:]]*\|' "$file"
+}
+
+touch_deferred_ledger_update_marker() {
+  local file="${1:-tasks/todo.md}"
+  local tmp_file
+  tmp_file="$(mktemp)"
+  awk '
+    BEGIN { updated = 0 }
+    !updated && /^\> \*\*Updated\*\*:/ {
+      print "> **Updated**: (archive-workflow)"
+      updated = 1
+      next
+    }
+    { print }
+  ' "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
+write_empty_deferred_ledger() {
+  cat > tasks/todo.md <<'TODO_EOF'
+# Deferred Goal Ledger
+
+> **Status**: Backlog
+> **Updated**: (archive-workflow)
+> **Scope**: Medium/long-term goals deferred from active plan execution
+
+Current plan tasks live in the active plan's `## Task Breakdown`.
+Do not duplicate that execution checklist here. Record only work intentionally deferred beyond this slice, with the tradeoff and revisit trigger.
+
+## Deferred Goals
+
+| Goal | Why Deferred | Tradeoff | Revisit Trigger |
+|------|--------------|----------|-----------------|
+| (none) | Archived workflow did not leave a deferred medium/long-term goal. | Keep the next slice clean. | Add a row when a real follow-up is postponed. |
+TODO_EOF
+}
+
 plan_file=""
 outcome=""
 
@@ -206,22 +250,11 @@ if [[ -f "$notes_file" ]]; then
   rm -f "$notes_file"
 fi
 
-cat > tasks/todo.md <<'TODO_EOF'
-# Deferred Goal Ledger
-
-> **Status**: Backlog
-> **Updated**: (archive-workflow)
-> **Scope**: Medium/long-term goals deferred from active plan execution
-
-Current plan tasks live in the active plan's `## Task Breakdown`.
-Do not duplicate that execution checklist here. Record only work intentionally deferred beyond this slice, with the tradeoff and revisit trigger.
-
-## Deferred Goals
-
-| Goal | Why Deferred | Tradeoff | Revisit Trigger |
-|------|--------------|----------|-----------------|
-| (none) | Archived workflow did not leave a deferred medium/long-term goal. | Keep the next slice clean. | Add a row when a real follow-up is postponed. |
-TODO_EOF
+if todo_is_deferred_ledger tasks/todo.md; then
+  touch_deferred_ledger_update_marker tasks/todo.md
+else
+  write_empty_deferred_ledger
+fi
 
 # Clear active-plan markers if they pointed to the archived plan
 cleared_active=0

@@ -274,6 +274,7 @@ before applying anything.
 - Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
 - Codex must mark `~/.codex/hooks.json` as trusted in Codex Settings before those hooks run.
 - Debug in this order: user-level adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
+- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness update --repo <root>`.
 
 `SessionStart` runs two ordered scripts before work begins:
 
@@ -283,6 +284,11 @@ flowchart LR
   Ctx --> Sec["security-sentinel.sh<br/>read-only config scan, fingerprint-gated"]
   Sec --> SSOut["SessionStart additionalContext<br/>prior-session state + SecurityConfig findings"]
 ```
+
+`SessionStart` and `Stop` hooks are advisory for missing repo-local scripts: stale
+repos get a drift warning instead of a startup failure. Required guard routes,
+including edit and prompt gates, still fail closed when their scripts are
+missing.
 
 Prompt guard has one extra internal step:
 

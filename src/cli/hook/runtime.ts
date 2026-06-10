@@ -29,6 +29,7 @@ export interface RunHookResult {
     | 'ok';
   repoRoot?: string;
   scriptsRun: string[];
+  skippedScripts: string[];
   failedScript?: string;
 }
 
@@ -82,17 +83,25 @@ export function isOptIn(repoRoot: string): boolean {
   return fs.existsSync(path.join(repoRoot, OPT_IN_MARKER));
 }
 
+function isSoftMissingRoute(event: HookEvent, routeId: RouteId): boolean {
+  return (
+    (event === 'SessionStart' && routeId === 'default') ||
+    (event === 'Stop' && routeId === 'default')
+  );
+}
+
 export function runHook(opts: RunHookOptions): RunHookResult {
   const cwd = opts.cwd ?? process.cwd();
   const commandName = opts.commandName ?? 'repo-harness hook';
   const scriptsRun: string[] = [];
+  const skippedScripts: string[] = [];
 
   const repoRoot = resolveRepoRoot(cwd);
   if (!repoRoot) {
-    return { exitCode: 0, reason: 'not-in-git-repo', scriptsRun };
+    return { exitCode: 0, reason: 'not-in-git-repo', scriptsRun, skippedScripts };
   }
   if (!isOptIn(repoRoot)) {
-    return { exitCode: 0, reason: 'non-opt-in', repoRoot, scriptsRun };
+    return { exitCode: 0, reason: 'non-opt-in', repoRoot, scriptsRun, skippedScripts };
   }
 
   const route = getRoute(opts.event, opts.routeId);
@@ -100,7 +109,7 @@ export function runHook(opts: RunHookOptions): RunHookResult {
     process.stderr.write(
       `${commandName}: unknown route ${opts.event}.${opts.routeId}\n`,
     );
-    return { exitCode: 2, reason: 'unknown-route', repoRoot, scriptsRun };
+    return { exitCode: 2, reason: 'unknown-route', repoRoot, scriptsRun, skippedScripts };
   }
 
   const hooksDir = opts.hooksDir ?? path.join(repoRoot, '.ai/hooks');
@@ -126,6 +135,14 @@ export function runHook(opts: RunHookOptions): RunHookResult {
   for (const script of route.scripts) {
     const scriptPath = path.join(hooksDir, script);
     if (!fs.existsSync(scriptPath)) {
+      if (isSoftMissingRoute(opts.event, opts.routeId)) {
+        process.stderr.write(
+          `${commandName}: skipping missing script ${scriptPath} (route ${opts.event}.${opts.routeId}); run 'repo-harness update --repo ${repoRoot}' to sync .ai/hooks\n`,
+        );
+        skippedScripts.push(script);
+        continue;
+      }
+
       process.stderr.write(
         `${commandName}: script not found at ${scriptPath} (route ${opts.event}.${opts.routeId})\n`,
       );
@@ -134,6 +151,7 @@ export function runHook(opts: RunHookOptions): RunHookResult {
         reason: 'missing-script',
         repoRoot,
         scriptsRun,
+        skippedScripts,
         failedScript: script,
       };
     }
@@ -154,6 +172,7 @@ export function runHook(opts: RunHookOptions): RunHookResult {
         reason: 'script-failed',
         repoRoot,
         scriptsRun,
+        skippedScripts,
         failedScript: script,
       };
     }
@@ -189,9 +208,16 @@ export function runHook(opts: RunHookOptions): RunHookResult {
         reason: 'script-failed',
         repoRoot,
         scriptsRun,
+        skippedScripts,
         failedScript: script,
       };
     }
+  }
+
+  if (sessionStartCollectStdout && skippedScripts.length > 0) {
+    sessionStartContexts.push(
+      `[repo-harness] .ai/hooks drift: missing ${skippedScripts.join(', ')}; run 'repo-harness update --repo ${repoRoot}' to sync.`,
+    );
   }
 
   if (sessionStartCollectStdout && sessionStartContexts.length > 0) {
@@ -203,5 +229,5 @@ export function runHook(opts: RunHookOptions): RunHookResult {
     })}\n`);
   }
 
-  return { exitCode: 0, reason: 'ok', repoRoot, scriptsRun };
+  return { exitCode: 0, reason: 'ok', repoRoot, scriptsRun, skippedScripts };
 }

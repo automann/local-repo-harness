@@ -84,16 +84,19 @@ describe('hook command (Phase 1B)', () => {
     });
   });
 
-  test('opt-in + missing .ai/hooks/<script> → exits 3 with failedScript', () => {
+  test('opt-in + all advisory route scripts missing → skips and exits 0', () => {
     withTempRepo({ optIn: true }, (repoRoot) => {
       const result = runHook({
         event: 'SessionStart',
         routeId: 'default',
         cwd: repoRoot,
+        stdio: 'ignore',
       });
-      expect(result.exitCode).toBe(3);
-      expect(result.reason).toBe('missing-script');
-      expect(result.failedScript).toBe('session-start-context.sh');
+      expect(result.exitCode).toBe(0);
+      expect(result.reason).toBe('ok');
+      expect(result.scriptsRun).toEqual([]);
+      expect(result.skippedScripts).toEqual(['session-start-context.sh', 'security-sentinel.sh']);
+      expect(result.failedScript).toBeUndefined();
     });
   });
 
@@ -116,6 +119,53 @@ describe('hook command (Phase 1B)', () => {
         expect(result.exitCode).toBe(0);
         expect(result.reason).toBe('ok');
         expect(result.scriptsRun).toEqual(['worktree-guard.sh', 'pre-edit-guard.sh']);
+      },
+    );
+  });
+
+  test('opt-in + required route partial missing → exits 3 after existing script runs', () => {
+    withTempRepo(
+      {
+        optIn: true,
+        scripts: {
+          'worktree-guard.sh': '#!/bin/bash\nexit 0\n',
+        },
+      },
+      (repoRoot) => {
+        const result = runHook({
+          event: 'PreToolUse',
+          routeId: 'edit',
+          cwd: repoRoot,
+          stdio: 'ignore',
+        });
+        expect(result.exitCode).toBe(3);
+        expect(result.reason).toBe('missing-script');
+        expect(result.scriptsRun).toEqual(['worktree-guard.sh']);
+        expect(result.skippedScripts).toEqual([]);
+        expect(result.failedScript).toBe('pre-edit-guard.sh');
+      },
+    );
+  });
+
+  test('opt-in + advisory route partial missing → later script still runs', () => {
+    withTempRepo(
+      {
+        optIn: true,
+        scripts: {
+          'security-sentinel.sh': '#!/bin/bash\nexit 0\n',
+        },
+      },
+      (repoRoot) => {
+        const result = runHook({
+          event: 'SessionStart',
+          routeId: 'default',
+          cwd: repoRoot,
+          stdio: 'ignore',
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.reason).toBe('ok');
+        expect(result.scriptsRun).toEqual(['security-sentinel.sh']);
+        expect(result.skippedScripts).toEqual(['session-start-context.sh']);
       },
     );
   });
@@ -216,6 +266,50 @@ describe('hook command (Phase 1B)', () => {
     } finally {
       fs.rmSync(envRoot, { recursive: true, force: true });
     }
+  });
+
+  test('SessionStart CLI smoke reports one drift line when an advisory script is missing', () => {
+    withTempRepo(
+      {
+        optIn: true,
+        scripts: {
+          'session-start-context.sh': '#!/bin/bash\necho ctx-ok\n',
+        },
+      },
+      (repoRoot) => {
+        const res = spawnSync(
+          process.execPath,
+          [HOOK_ENTRY, 'SessionStart', '--route', 'default'],
+          { cwd: repoRoot, encoding: 'utf-8' },
+        );
+        expect(res.status).toBe(0);
+        const parsed = JSON.parse(res.stdout);
+        const context = parsed.hookSpecificOutput.additionalContext;
+        expect(context).toContain('ctx-ok');
+        expect(context).toContain('.ai/hooks drift: missing security-sentinel.sh');
+        expect(context.split('\n').filter((line: string) => line.includes('.ai/hooks drift')).length).toBe(1);
+        expect(res.stderr).toContain('skipping missing script');
+        expect(res.stderr).toContain('security-sentinel.sh');
+      },
+    );
+  });
+
+  test('Codex Stop with missing advisory script exits 0 without stdout', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      const res = spawnSync(
+        process.execPath,
+        [CLI, 'hook', 'Stop', '--route', 'default'],
+        {
+          cwd: repoRoot,
+          encoding: 'utf-8',
+          env: { ...process.env, HOOK_HOST: 'codex' },
+        },
+      );
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe('');
+      expect(res.stderr).toContain('skipping missing script');
+      expect(res.stderr).toContain('stop-orchestrator.sh');
+    });
   });
 
   test('minimal hook entry runs the same route without loading the full CLI', () => {

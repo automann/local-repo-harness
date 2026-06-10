@@ -14,6 +14,8 @@ import { ALL_TARGETS } from '../installer/targets/registry';
 import { checkCodegraph, type CodegraphCheckResult } from '../tools/codegraph';
 import { CLI_VERSION } from './status';
 import { runSecurityScan, type SecurityScanReport } from './security';
+import { isOptIn, resolveRepoRoot } from '../hook/runtime';
+import { ROUTES } from '../hook/route-registry';
 
 const TRUST_STATE_LINE = /^\[hooks\.state\."[^"]+\/\.codex\/hooks\.json:/;
 
@@ -286,6 +288,51 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
   };
 }
 
+function checkHookScriptDrift(cwd: string): DoctorCheckResult {
+  const id = 'repo-hook-scripts';
+  const describe = 'Repo-local hook scripts match the route registry';
+  const repoRoot = resolveRepoRoot(cwd);
+  if (!repoRoot) {
+    return { id, describe, status: 'na', detail: 'not in a git repository' };
+  }
+  if (!isOptIn(repoRoot)) {
+    return {
+      id,
+      describe,
+      status: 'na',
+      detail: 'repo is not opted in (.ai/harness/workflow-contract.json missing)',
+    };
+  }
+
+  const hooksDir = path.join(repoRoot, '.ai/hooks');
+  const expected = new Set<string>();
+  const missing: string[] = [];
+  for (const route of ROUTES) {
+    for (const script of route.scripts) {
+      expected.add(script);
+      if (!fs.existsSync(path.join(hooksDir, script)) && !missing.includes(script)) {
+        missing.push(script);
+      }
+    }
+  }
+
+  if (missing.length === 0) {
+    return {
+      id,
+      describe,
+      status: 'ok',
+      detail: `all ${expected.size} route scripts present`,
+    };
+  }
+
+  return {
+    id,
+    describe,
+    status: 'warn',
+    detail: `missing: ${missing.join(', ')}; remediation=repo-harness update --repo ${repoRoot}`,
+  };
+}
+
 export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   const checks: DoctorCheckResult[] = [];
   const codegraphProbe = probeCodegraph(cwd);
@@ -303,6 +350,7 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   checks.push(checkCodegraphMcpHost(codegraphProbe, 'claude'));
   checks.push(checkCodegraphIndex(codegraphProbe));
   checks.push(checkSecurityConfig(securityReport));
+  checks.push(checkHookScriptDrift(cwd));
   for (const plugin of REGISTERED_CHECKS) {
     const r = plugin.run();
     checks.push({ id: plugin.id, describe: plugin.describe, ...r });

@@ -214,6 +214,60 @@ describe("Hook runtime behavior", () => {
     }
   }, 10000);
 
+  test("prompt-guard: review/audit prompts that mention bugs or hooks do not misfire TDD or /health (regression)", () => {
+    const cwd = tmpWorkspace("intent-precision");
+    try {
+      installHooks(cwd);
+
+      // The exact prompt that produced three false advisories in a live session:
+      // a framework review request must not trigger bug-fix TDD advice, the
+      // debug cross-review hint, or the /health route.
+      const auditRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({
+          prompt: "这是我的一个自动化hook vibe coding framework，请review整个flow，找出Bug并提出优化方案",
+        }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(auditRes.status).toBe(0);
+      expect(auditRes.stdout).not.toContain("[TDD] Bug-fix intent detected");
+      expect(auditRes.stdout).not.toContain("Hard bug");
+      expect(auditRes.stdout).not.toContain("Waza /health");
+      expect(auditRes.stdout).toContain("Waza /check");
+
+      // Bare bug nouns in find/diagnose requests stay silent on TDD.
+      const findBugs = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "找出这个模块里的Bug" }),
+      });
+      expect(findBugs.status).toBe(0);
+      expect(findBugs.stdout).not.toContain("[TDD] Bug-fix intent detected");
+
+      // English substrings (prefix/fixture) must not count as fix verbs.
+      const substringRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "rename the route prefix and update the test fixture naming" }),
+      });
+      expect(substringRes.status).toBe(0);
+      expect(substringRes.stdout).not.toContain("[TDD] Bug-fix intent detected");
+
+      // Genuine fix requests still get the TDD advisory + debug cross-review.
+      const fixRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "fix the login crash on submit" }),
+        env: { HOOK_HOST: "claude" },
+      });
+      expect(fixRes.status).toBe(0);
+      expect(fixRes.stdout).toContain("[TDD] Bug-fix intent detected");
+      expect(fixRes.stdout).toContain("[CrossReview]");
+
+      // Genuine health asks still route to /health.
+      const healthRes = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "审计一下 agent hook 配置环境健康度" }),
+      });
+      expect(healthRes.status).toBe(0);
+      expect(healthRes.stdout).toContain("Waza /health");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 15000);
+
   test("prompt-guard: initializes missing CodeGraph index before first structural route hint", () => {
     const cwd = tmpWorkspace("codegraph-route-init");
     const logFile = join(cwd, "codegraph-init.log");
@@ -499,44 +553,6 @@ describe("Hook runtime behavior", () => {
     }
   });
 
-  test("atomic-commit: commits only after validation command", () => {
-    const cwd = tmpWorkspace("atomic-commit");
-    try {
-      initGitRepo(cwd);
-      installHooks(cwd);
-      mkdirSync(join(cwd, ".claude"), { recursive: true });
-
-      appendFileSync(join(cwd, "tracked.txt"), "change-1\n");
-      writeFileSync(join(cwd, ".claude/.atomic_pending"), "pending\n");
-      const before = gitCommitCount(cwd);
-
-      const passRes = runHook("atomic-commit.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { command: "bun run test" } }),
-        env: { EXIT_CODE: "0" },
-      });
-
-      expect(passRes.status).toBe(0);
-      expect(passRes.stdout).toContain("[AtomicCommit] Checkpoint committed");
-      expect(existsSync(join(cwd, ".claude/.atomic_pending"))).toBe(false);
-      expect(gitCommitCount(cwd)).toBe(before + 1);
-
-      appendFileSync(join(cwd, "tracked.txt"), "change-2\n");
-      writeFileSync(join(cwd, ".claude/.atomic_pending"), "pending\n");
-      const beforeSkip = gitCommitCount(cwd);
-
-      const skipRes = runHook("atomic-commit.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { command: "echo hello" } }),
-        env: { EXIT_CODE: "0" },
-      });
-
-      expect(skipRes.status).toBe(0);
-      expect(skipRes.stdout).not.toContain("Checkpoint committed");
-      expect(existsSync(join(cwd, ".claude/.atomic_pending"))).toBe(true);
-      expect(gitCommitCount(cwd)).toBe(beforeSkip);
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
-  });
 
   test("post-edit-guard: detects apps/*/src direct files and wrangler variants", () => {
     const cwd = tmpWorkspace("doc-drift");
@@ -854,47 +870,6 @@ describe("Hook runtime behavior", () => {
     }
   });
 
-  test("tdd-guard: extension heuristic + barrel-only skip behavior", () => {
-    const cwd = tmpWorkspace("tdd-guard");
-    try {
-      installHooks(cwd);
-      mkdirSync(join(cwd, "apps/web/src/components"), { recursive: true });
-      mkdirSync(join(cwd, "apps/api/src"), { recursive: true });
-
-      writeFileSync(join(cwd, "apps/web/src/components/Button.tsx"), "export function Button() { return <button /> }\n");
-      const bddRes = runHook("tdd-guard-hook.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "apps/web/src/components/Button.tsx" } }),
-      });
-      expect(bddRes.status).toBe(0);
-      expect(bddRes.stdout).toContain("[BDD Guard]");
-
-      writeFileSync(join(cwd, "apps/api/src/utils.ts"), "export const sum = (a: number, b: number) => a + b\n");
-      const tddRes = runHook("tdd-guard-hook.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "apps/api/src/utils.ts" } }),
-      });
-      expect(tddRes.status).toBe(0);
-      expect(tddRes.stdout).toContain("[TDD Guard]");
-
-      writeFileSync(
-        join(cwd, "apps/api/src/index.ts"),
-        "export * from './utils'\nexport { sum } from './utils'\n"
-      );
-      const barrelRes = runHook("tdd-guard-hook.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "apps/api/src/index.ts" } }),
-      });
-      expect(barrelRes.status).toBe(0);
-      expect(barrelRes.stdout.trim()).toBe("");
-
-      writeFileSync(join(cwd, "apps/api/src/index.ts"), "const x = 1\nexport { x }\n");
-      const logicIndexRes = runHook("tdd-guard-hook.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "apps/api/src/index.ts" } }),
-      });
-      expect(logicIndexRes.status).toBe(0);
-      expect(logicIndexRes.stdout).toContain("[TDD Guard]");
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
-  });
 
   test("context-pressure: same-session increments, cross-session resets, warning once", () => {
     const cwd = tmpWorkspace("context-pressure");
@@ -979,10 +954,11 @@ describe("Hook runtime behavior", () => {
       initGitRepo(workspace);
       installHooks(workspace);
 
-      // Run atomic-pending from /tmp — hook should resolve to workspace via SCRIPT_DIR fallback
+      // Run trace-event from /tmp — hook-input should resolve the workspace via
+      // SCRIPT_DIR fallback, cd there, and write trace state inside the workspace.
       const res = spawnSync(
         "bash",
-        [join(workspace, ".ai/hooks/atomic-pending.sh")],
+        [join(workspace, ".ai/hooks/trace-event.sh")],
         {
           cwd: tmpdir(),
           input: "",
@@ -990,7 +966,7 @@ describe("Hook runtime behavior", () => {
         }
       );
       expect(res.status).toBe(0);
-      expect(existsSync(join(workspace, ".claude/.atomic_pending"))).toBe(true);
+      expect(existsSync(join(workspace, ".claude/.trace.jsonl"))).toBe(true);
     } finally {
       rmSync(workspace, { recursive: true, force: true });
     }

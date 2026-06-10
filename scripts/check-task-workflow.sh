@@ -271,7 +271,7 @@ file_mtime() {
 handoff_declares_no_active_plan() {
   local file="$1"
   [[ -f "$file" ]] || return 1
-  grep -Eiq '(No active plan|Active Plan:[[:space:]]*\(none\)|Plan:[[:space:]]*\(none\))' "$file"
+  grep -Eiq '(^|[^[:alnum:]])No active plan([^[:alnum:]]|$)|^[[:space:]]*(-[[:space:]]*)?(Active Plan|Plan):[[:space:]]*\(none\)[[:space:]]*$' "$file"
 }
 
 resume_references_plan() {

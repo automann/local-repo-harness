@@ -1525,6 +1525,54 @@ describe("Workflow helper scripts", () => {
     }
   });
 
+  test("archive-workflow should preserve existing deferred ledger rows", () => {
+    const cwd = tmpWorkspace("helper-archive-deferred-ledger");
+    try {
+      mkdirSync(join(cwd, "plans/archive"), { recursive: true });
+      mkdirSync(join(cwd, "tasks/archive"), { recursive: true });
+      copyHelpers(cwd);
+
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1505-demo.md"),
+        "# Plan: demo\n\n> **Status**: Complete\n"
+      );
+      writeFileSync(
+        join(cwd, "tasks/todo.md"),
+        [
+          "# Deferred Goal Ledger",
+          "",
+          "> **Status**: Backlog",
+          "> **Updated**: (migration)",
+          "> **Scope**: Medium/long-term goals deferred from active plan execution",
+          "",
+          "Current plan tasks live in the active plan's `## Task Breakdown`.",
+          "Do not duplicate that execution checklist here. Record only work intentionally deferred beyond this slice, with the tradeoff and revisit trigger.",
+          "",
+          "## Deferred Goals",
+          "",
+          "| Goal | Why Deferred | Tradeoff | Revisit Trigger |",
+          "|------|--------------|----------|-----------------|",
+          "| Review archived legacy checklist | Legacy checklist was preserved during migration. | Keep user-authored task text. | Promote real follow-up work into a new plan. |",
+          "",
+        ].join("\n")
+      );
+
+      const res = run(
+        "bash",
+        ["scripts/archive-workflow.sh", "--plan", "plans/plan-20260304-1505-demo.md", "--outcome", "Completed"],
+        cwd
+      );
+      expect(res.status).toBe(0);
+
+      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      expect(todo).toContain("> **Updated**: (archive-workflow)");
+      expect(todo).toContain("Review archived legacy checklist");
+      expect(todo).not.toContain("Archived workflow did not leave a deferred medium/long-term goal");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("refresh-current-status should preview and write an idle tracked snapshot", () => {
     const cwd = tmpWorkspace("helper-current-idle");
     try {
@@ -2451,6 +2499,58 @@ describe("Workflow helper scripts", () => {
 
       expect(res.status).toBe(1);
       expect(res.stdout).toContain("resume packet references a historical plan");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("check-task-workflow should not treat Todo Source Plan none as no active plan", () => {
+    const cwd = tmpWorkspace("helper-check-workflow-todo-source-plan");
+    try {
+      copyHelpers(cwd);
+      expect(
+        run("bash", ["scripts/ensure-task-workflow.sh", "--slug", "handoff-check", "--title", "Handoff Check"], cwd)
+          .status
+      ).toBe(0);
+      for (const dir of [
+        "deploy",
+        "deploy/env",
+        "deploy/scripts",
+        "deploy/submissions",
+        "deploy/runbooks",
+        "deploy/release-checklists",
+        "deploy/sql",
+        "docs/reference-configs",
+      ]) {
+        mkdirSync(join(cwd, dir), { recursive: true });
+      }
+      writeFileSync(join(cwd, ".ai/context/capability-source-map.json"), "{}\n");
+      for (const file of [
+        "docs/reference-configs/harness-overview.md",
+        "docs/reference-configs/agentic-development-flow.md",
+        "docs/reference-configs/external-tooling.md",
+        "docs/reference-configs/sprint-contracts.md",
+        "docs/reference-configs/handoff-protocol.md",
+        "docs/reference-configs/document-generation.md",
+        "docs/reference-configs/global-working-rules.md",
+        "deploy/README.md",
+      ]) {
+        writeFileSync(join(cwd, file), "# Fixture\n");
+      }
+
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/current.md"),
+        "# Harness Handoff\n\n## Source Artifacts\n\n- Plan: plans/plan-20260602-0034-live-work.md\n- Todo Source Plan: (none)\n"
+      );
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/resume.md"),
+        "# Codex Resume Packet\n\n## Source Artifacts\n\n- Plan: plans/plan-20260602-0034-live-work.md\n"
+      );
+
+      const res = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).not.toContain("resume packet references a historical plan");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

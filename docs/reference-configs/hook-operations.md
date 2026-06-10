@@ -1,11 +1,6 @@
 # Hook Operations Reference
 
-> Partially externalized: full troubleshooting runbook lives in default brain.
-
-## Default Brain
-
-- File vault: `brain/repo-harness/runbooks/runbook-repo-harness-hook-troubleshooting.md`
-- gbrain slug: `runbooks/runbook-repo-harness-hook-troubleshooting`
+> Full troubleshooting runbook: `brain/repo-harness/runbooks/runbook-repo-harness-hook-troubleshooting.md` (`gbrain` slug `runbooks/runbook-repo-harness-hook-troubleshooting`).
 
 ## Hook Authority Map
 
@@ -16,14 +11,14 @@ Start with the shortest truth path:
 3. The route registry selects the ordered `.ai/hooks/*` scripts for that event and route.
 4. `.ai/hooks/*` is the shared implementation layer and the default place to edit.
 
-`UserPromptSubmit.default` keeps that same public route, but prompt-guard has a
-split implementation:
+The installed CLI carries the route registry; migration copies `.ai/hooks/*` into
+each opted-in repo. Missing advisory scripts warn and skip, but required guard
+routes still fail closed. Refresh stale repos with `repo-harness update --repo <root>`.
 
-1. `repo-harness-hook UserPromptSubmit --route default` dispatches to `.ai/hooks/prompt-guard.sh`.
-2. `prompt-guard.sh` parses host prompt JSON, reads workflow files, performs capture side effects, runs quality gates, and renders host-safe stdout/stderr.
-3. For intent plus workflow-state routing, `prompt-guard.sh` calls `repo-harness-hook prompt-guard-decide`.
-4. The TypeScript decision engine classifies prompt facts, reads state facts from environment variables, and returns one action enum from the explicit decision table.
-5. `prompt-guard.sh` renders that action as allow, advice, block, capture guidance, execution guidance, or done-gate output.
+`UserPromptSubmit.default` dispatches to `.ai/hooks/prompt-guard.sh`, which parses
+host prompt JSON, reads workflow files, performs capture side effects, runs
+quality gates, and calls `repo-harness-hook prompt-guard-decide` for the TypeScript
+intent/state decision table before rendering host-safe output.
 
 If you are asking "which hook file should I edit?", default to `.ai/hooks/`.
 After installing or refreshing `~/.codex/hooks.json`, open Codex Settings and
@@ -36,12 +31,10 @@ stdout stays quiet for ordinary successful hooks, but valid Stop decision JSON
 is forwarded so Codex can honor a one-shot planning completeness block; success
 stderr such as handoff refresh noise remains suppressed.
 
-`SessionStart.default` runs `session-start-context.sh` and
-`security-sentinel.sh` under the same adapter entry. The dispatcher aggregates
-their SessionStart context into one JSON payload. The security sentinel is
-changed-only and advisory: it scans only `~/.claude/settings.json`,
-`~/.codex/hooks.json`, current repo `.vscode/tasks.json`, and legacy repo-local
-hook adapter files, then writes `.ai/harness/security/latest.json`.
+`SessionStart.default` runs `session-start-context.sh` and `security-sentinel.sh`
+under one adapter entry and aggregates their context into one JSON payload. The
+security sentinel is changed-only and advisory; stale repo-local copies emit one
+drift reminder instead of blocking the host session.
 
 Use this command for an explicit read-only audit:
 
@@ -90,11 +83,6 @@ Every hook change should state whether it affects `self-host`, `generated`, or
 
 ## Verification Checklist
 
-Run these after hook or workflow contract changes:
-
-```bash
-bun test
-bash scripts/check-task-sync.sh
-bash scripts/check-task-workflow.sh --strict
-bash scripts/migrate-project-template.sh --repo . --dry-run
-```
+Run after hook or workflow contract changes: `bun test`,
+`bash scripts/check-task-sync.sh`, `bash scripts/check-task-workflow.sh --strict`,
+and `bash scripts/migrate-project-template.sh --repo . --dry-run`.

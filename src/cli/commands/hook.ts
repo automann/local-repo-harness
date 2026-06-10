@@ -8,7 +8,8 @@
  *   - not in a git repo                    → exit 0 silently
  *   - in repo but no opt-in marker         → exit 0 silently
  *   - opt-in + unknown (event, route)      → exit 2 with error
- *   - opt-in + missing .ai/hooks/<script>  → exit 3 with error
+ *   - opt-in + missing advisory script     → skip with warning
+ *   - opt-in + missing required script     → exit 3 with error
  *   - opt-in + script fails                → propagate script exit code
  *   - opt-in + all scripts succeed         → exit 0
  *
