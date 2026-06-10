@@ -67,6 +67,7 @@ common_excludes=(
   --exclude='.claude/*.backup-*'
   --exclude='.ai/harness/checks/latest.json'
   --exclude='.ai/harness/events.jsonl'
+  --exclude='.ai/harness/archive/'
   --exclude='.ai/harness/failures/latest.jsonl'
   --exclude='.ai/harness/handoff/current.md'
   --exclude='.ai/harness/handoff/resume.md'

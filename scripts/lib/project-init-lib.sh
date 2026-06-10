@@ -48,6 +48,7 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/checks/latest.json
 .ai/harness/checks/post-bash-latest.json
 .ai/harness/events.jsonl
+.ai/harness/archive/
 .ai/harness/failures/latest.jsonl
 .ai/harness/handoff/current.md
 .ai/harness/handoff/resume.md

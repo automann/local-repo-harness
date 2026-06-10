@@ -195,6 +195,7 @@ describe("workflow contract manifest", () => {
     expect(runtimeFiles).toContain(".ai/harness/checks/latest.json");
     expect(runtimeFiles).toContain(".ai/harness/active-plan");
     expect(runtimeFiles).toContain(".ai/harness/active-worktree");
+    expect(runtimeFiles).toContain(".ai/harness/archive/");
     expect(runtimeFiles).toContain(".ai/harness/planning/");
     const placeholderBackedRuntime = new Set([
       ".ai/harness/runs/.gitkeep",
@@ -217,6 +218,7 @@ describe("workflow contract manifest", () => {
 
     const gitignore = readFileSync(join(ROOT, ".gitignore"), "utf-8");
     expect(gitignore).toContain(".ai/harness/checks/latest.json");
+    expect(gitignore).toContain(".ai/harness/archive/");
     expect(gitignore).toContain(".ai/harness/handoff/current.md");
     expect(gitignore).toContain(".ai/harness/planning/");
     expect(gitignore).toContain("!.ai/harness/planning/.gitkeep");
