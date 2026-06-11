@@ -76,6 +76,7 @@ describe("workflow contract manifest", () => {
     expect(contract.helpers.scripts).toContain("check-brain-manifest.sh");
     expect(contract.helpers.scripts).toContain("sync-brain-docs.sh");
     expect(contract.helpers.scripts).toContain("check-deploy-sql-order.sh");
+    expect(contract.helpers.scripts).toContain("check-architecture-sync.sh");
     expect(contract.externalTooling?.waza?.primaryHost).toBe("codex");
     expect(contract.externalTooling?.waza?.managedSkills).toContain("think");
     expect(contract.externalTooling?.codexAutomationProfile?.requiredSkills).toEqual(["health", "check", "mermaid"]);

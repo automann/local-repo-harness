@@ -110,6 +110,7 @@ describe("create-project-dirs scaffold parity", () => {
         "./scripts/capability-resolver.ts",
         "./scripts/capture-plan.sh",
         "./scripts/check-agent-tooling.sh",
+        "./scripts/check-architecture-sync.sh",
         "./scripts/check-brain-manifest.sh",
         "./scripts/check-context-files.sh",
         "./scripts/check-deploy-sql-order.sh",

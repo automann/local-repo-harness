@@ -24,6 +24,7 @@ architecture documentation, drift-request, or diagram pass.
 6. Archive handled requests with:
    - `bash scripts/archive-architecture-request.sh --request <request> --status <resolved|superseded|rejected|no-change> --artifact <path> --note <text>`
 7. Verify with:
+   - `bash scripts/check-architecture-sync.sh`
    - `bun scripts/capability-resolver.ts validate --repo <repo> --format text`
    - `bash scripts/check-task-workflow.sh --strict` when repo workflow surfaces changed
 
@@ -31,6 +32,7 @@ architecture documentation, drift-request, or diagram pass.
 
 - If no pending architecture request exists, report `no-change` and do not invent one.
 - If capability resolution is ambiguous, stop at the matching paths and ask for a narrower scope.
+- If `check-architecture-sync.sh` blocks in strict mode, resolve or archive the pending request card for the touched capability before finishing the worktree.
 - If diagram rendering fails, keep the Mermaid Markdown source and report the render failure.
 
 ## Boundaries

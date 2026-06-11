@@ -1,13 +1,13 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-12T04:04:15+0800 -->
+<!-- updated_at: 2026-06-12T04:51:42+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: ManualClearedWithActiveWork
-> **Updated At**: 2026-06-12T04:04:15+0800
+> **Updated At**: 2026-06-12T04:51:42+0800
 > **Source Branch**: codex/arch-doc-loop-01-queue-engine-triage
-> **Source Commit**: 1cc0e1e
+> **Source Commit**: 34a2abb
 > **Target Branch**: main
 > **Stale After**: 24h
 > **Reason**: archive-workflow
@@ -33,7 +33,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 - /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: plans/plan-20260610-1113-hook-runtime-drift-policy.md
 - /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy
-- /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: plans/plan-20260612-0350-loop-engine-02-routing-ab-eval.md
+- /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: plans/plan-20260612-0435-loop-engine-03-shadow-injection.md
 - /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval
 - /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: plans/plan-20260612-0314-wt-continuation-for-architecture-doc-loop.md
 - /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop
@@ -53,49 +53,41 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 104 changed/untracked path(s)
+- Summary: 32 changed/untracked path(s)
 
 ```
- M .ai/harness/policy.json
  M .ai/harness/workflow-contract.json
- M .ai/hooks/post-edit-guard.sh
+ M .ai/hooks/session-start-context.sh
  M AGENTS.md
  M CLAUDE.md
- M assets/hooks/post-edit-guard.sh
- M assets/reference-configs/hook-operations.md
- D assets/templates/helpers/architecture-drift.sh
- M assets/templates/helpers/architecture-event.ts
- M assets/templates/helpers/archive-architecture-request.sh
+ M assets/hooks/session-start-context.sh
+ M assets/reference-configs/harness-overview.md
+ M assets/skill-commands/repo-harness-architecture/SKILL.md
+ M assets/templates/helpers/capability-resolver.ts
  M assets/templates/helpers/check-task-workflow.sh
- M assets/templates/helpers/ensure-task-workflow.sh
+ M assets/templates/helpers/contract-worktree.sh
  M assets/workflow-contract.v1.json
- M docs/architecture/index.md
- M docs/architecture/modules/runtime-harness/hook-adapters.md
- M docs/architecture/modules/verification/evals-checks.md
- M docs/architecture/modules/workflow-engine/contract-assets.md
- D docs/architecture/requests/20260528-154740-ai-hooks-ai-hooks-hook-input-sh.md
- D docs/architecture/requests/20260528-154816-assets-hooks-assets-hooks-hook-input-sh.md
- D docs/architecture/requests/20260528-161851-ai-harness-workflow-contract-json-ai-harness-workflow-contract-json.md
- D docs/architecture/requests/20260528-161853-scripts-check-task-workflow-sh-scripts-check-task-workflow-sh.md
- D docs/architecture/requests/20260528-161911-assets-workflow-contract-v1-json-assets-workflow-contract-v1-json.md
- D docs/architecture/requests/20260528-222416-ai-hooks-ai-hooks-hook-input-sh.md
- D docs/architecture/requests/20260528-222444-ai-hooks-ai-hooks-pre-edit-guard-sh.md
- D docs/architecture/requests/20260528-222457-ai-hooks-ai-hooks-pre-edit-guard-sh.md
- D docs/architecture/requests/20260528-222648-ai-hooks-ai-hooks-pre-edit-guard-sh.md
- D docs/architecture/requests/20260528-222705-ai-hooks-ai-hooks-worktree-guard-sh.md
- D docs/architecture/requests/20260528-222726-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-222727-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-224736-ai-hooks-ai-hooks-hook-input-sh.md
- D docs/architecture/requests/20260528-233259-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-233335-assets-hooks-assets-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-233456-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-233457-assets-hooks-assets-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-233637-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260528-233638-assets-hooks-assets-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260529-000322-root-package-json.md
- D docs/architecture/requests/20260529-004238-ai-hooks-ai-hooks-lib-workflow-state-sh.md
- D docs/architecture/requests/20260529-094236-ai-hooks-ai-hooks-prompt-guard-sh.md
- D docs/architecture/requests/20260529-094323-assets-hooks-assets-hooks-prompt-guard-sh.md
+ M docs/reference-configs/harness-overview.md
+ M package.json
+ M scripts/capability-resolver.ts
+ M scripts/check-task-workflow.sh
+ M scripts/contract-worktree.sh
+ M scripts/lib/project-init-lib.sh
+ M tests/bootstrap-files.test.ts
+ M tests/create-project-dirs.runtime.test.ts
+ M tests/helper-scripts.test.ts
+ M tests/hook-runtime.test.ts
+ M tests/migration-script.test.ts
+ M tests/scaffold-parity.test.ts
+ M tests/workflow-contract.test.ts
+?? assets/templates/helpers/check-architecture-sync.sh
+?? plans/archive/plan-20260612-0410-arch-doc-loop-02-freshness-gate-surfaces.md
+?? scripts/check-architecture-sync.sh
+?? tasks/archive/notes-20260612-0451-arch-doc-loop-02-freshness-gate-surfaces.md
+?? tasks/archive/todo-20260612-0451-arch-doc-loop-02-freshness-gate-surfaces.md
+?? tasks/contracts/20260612-0410-arch-doc-loop-02-freshness-gate-surfaces.contract.md
+?? tasks/reviews/20260612-0410-arch-doc-loop-02-freshness-gate-surfaces.review.md
+?? tests/architecture-sync.test.ts
 ```
 
 ## Source Artifacts

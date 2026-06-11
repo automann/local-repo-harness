@@ -1159,6 +1159,41 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("session-start-context injects architecture queue reminders without a resume packet", () => {
+    const cwd = tmpWorkspace("session-start-architecture-queue");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, "docs/architecture/requests"), { recursive: true });
+      writeFileSync(
+        join(cwd, "docs/architecture/requests/apps-web.md"),
+        [
+          "# Architecture Drift Request: apps-web",
+          "",
+          "> **Status**: Pending",
+          "> **Detected**: 2026-06-01T12:00:00+0800",
+          "> **Severity**: high",
+          "> **Capability ID**: `apps-web`",
+          "",
+        ].join("\n"),
+      );
+
+      const res = runHook("session-start-context.sh", cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("SessionStart");
+      expect(res.stdout).toContain("Architecture Queue");
+      expect(res.stdout).toContain("1 capabilities have pending architecture drift");
+      expect(res.stdout).toContain("bash scripts/architecture-queue.sh status");
+      expect(res.stdout).not.toContain("[CrossReview]");
+
+      const codexRes = runHook("session-start-context.sh", cwd, { env: { HOOK_HOST: "codex" } });
+      expect(codexRes.status).toBe(0);
+      expect(codexRes.stdout).toContain("Architecture Queue");
+      expect(codexRes.stdout).toContain("[CrossReview]");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("session-start-context injects pending plan capture reminder without a resume packet", () => {
     const cwd = tmpWorkspace("session-start-pending-plan-capture");
     try {

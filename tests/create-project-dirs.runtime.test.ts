@@ -90,6 +90,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/check-agent-tooling.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/check-task-sync.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/check-deploy-sql-order.sh"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/check-architecture-sync.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/check-brain-manifest.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/sync-brain-docs.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/check-context-files.sh"))).toBe(true);
@@ -141,6 +142,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
       expect(workflowContract.helpers.scripts).toContain("sync-brain-docs.sh");
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
+      expect(workflowContract.helpers.scripts).toContain("check-architecture-sync.sh");
       expect(workflowContract.helpers.scripts).toContain("check-task-workflow.sh");
       expect(workflowContract.helpers.scripts).toContain("sprint-backlog.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
@@ -294,6 +296,7 @@ describe("create-project-dirs runtime smoke", () => {
       const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8"));
       expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
       expect(pkg.scripts["check:deploy-sql"]).toBe("bash scripts/check-deploy-sql-order.sh");
+      expect(pkg.scripts["check:architecture-sync"]).toBe("bash scripts/check-architecture-sync.sh");
       expect(pkg.scripts["check:task-sync"]).toBe("bash scripts/check-task-sync.sh");
       expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
       expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");

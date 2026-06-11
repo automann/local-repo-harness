@@ -99,6 +99,7 @@ describe("Migration script contract", () => {
     expect(workflowContract).toContain("check-agent-tooling.sh");
     expect(workflowContract).toContain("check-context-files.sh");
     expect(workflowContract).toContain("check-brain-manifest.sh");
+    expect(workflowContract).toContain("check-architecture-sync.sh");
     expect(workflowContract).toContain("sync-brain-docs.sh");
     expect(workflowContract).toContain("ensure-task-workflow.sh");
     expect(workflowContract).toContain("check-task-workflow.sh");
@@ -235,6 +236,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/verify-sprint.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-task-sync.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-deploy-sql-order.sh"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/check-architecture-sync.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-agent-tooling.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-context-files.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-brain-manifest.sh"))).toBe(true);
@@ -388,6 +390,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
       expect(workflowContract.helpers.scripts).toContain("sync-brain-docs.sh");
       expect(workflowContract.helpers.scripts).toContain("check-deploy-sql-order.sh");
+      expect(workflowContract.helpers.scripts).toContain("check-architecture-sync.sh");
       expect(workflowContract.helpers.scripts).toContain("switch-plan.sh");
       expect(workflowContract.helpers.scripts).toContain("contract-worktree.sh");
       expect(workflowContract.helpers.scripts).toContain("ship-worktrees.sh");
@@ -430,6 +433,7 @@ describe("Migration script contract", () => {
       expect(pkg.scripts["check:brain-manifest"]).toBe("bash scripts/check-brain-manifest.sh");
       expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
       expect(pkg.scripts["check:deploy-sql"]).toBe("bash scripts/check-deploy-sql-order.sh");
+      expect(pkg.scripts["check:architecture-sync"]).toBe("bash scripts/check-architecture-sync.sh");
       expect(pkg.scripts["check:task-sync"]).toBe("bash scripts/check-task-sync.sh");
       expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
       expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");

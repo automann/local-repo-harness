@@ -50,6 +50,7 @@ This repository self-hosts the `repo-harness` contract; the former `repo-harness
 ```bash
 bun test
 bash scripts/check-deploy-sql-order.sh
+bash scripts/check-architecture-sync.sh
 bash scripts/check-task-sync.sh
 bash scripts/check-task-workflow.sh --strict
 bun scripts/inspect-project-state.ts --repo . --format text

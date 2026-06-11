@@ -48,11 +48,27 @@ function copyHelpers(cwd: string) {
   const scriptsDir = join(cwd, "scripts");
   mkdirSync(scriptsDir, { recursive: true });
   mkdirSync(join(cwd, ".ai", "harness"), { recursive: true });
+  mkdirSync(join(cwd, "docs", "architecture"), { recursive: true });
 
   for (const file of readdirSync(HELPER_DIR).filter((name) => name.endsWith(".sh") || name.endsWith(".ts"))) {
     copyFileSync(join(HELPER_DIR, file), join(scriptsDir, file));
   }
   copyFileSync(join(ROOT, "assets/workflow-contract.v1.json"), join(cwd, ".ai/harness/workflow-contract.json"));
+  if (!existsSync(join(cwd, "docs/architecture/index.md"))) {
+    writeFileSync(
+      join(cwd, "docs/architecture/index.md"),
+      [
+        "# Architecture Index",
+        "",
+        "## Pending Requests",
+        "",
+        "<!-- BEGIN ARCHITECTURE PENDING REQUESTS -->",
+        "- (none)",
+        "<!-- END ARCHITECTURE PENDING REQUESTS -->",
+        "",
+      ].join("\n")
+    );
+  }
 
   expect(run("bash", ["-lc", "chmod +x scripts/*.sh"], cwd).status).toBe(0);
 }
@@ -288,6 +304,15 @@ describe("Workflow helper scripts", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
+  });
+
+  test("contract-worktree finish runs architecture freshness before sprint verification", () => {
+    const script = readFileSync(join(ROOT, "scripts/contract-worktree.sh"), "utf-8");
+    expect(script).toContain("check_architecture_freshness");
+    expect(script.indexOf('check_architecture_freshness "$target_branch"')).toBeGreaterThan(-1);
+    expect(script.indexOf('check_architecture_freshness "$target_branch"')).toBeLessThan(
+      script.indexOf('bash "scripts/verify-sprint.sh"'),
+    );
   });
 
   test("new-plan should create timestamped plan without compatibility pointer", () => {
@@ -923,6 +948,10 @@ describe("Workflow helper scripts", () => {
         join(cwd, ".ai/harness/policy.json"),
         JSON.stringify(
           {
+            architecture: {
+              freshness_gate: "strict",
+              gate_min_severity: "medium",
+            },
             worktree_strategy: {
               auto_for_contract_tasks: true,
               branch_prefix: "codex/",
@@ -1024,6 +1053,7 @@ describe("Workflow helper scripts", () => {
 
       const finish = run("bash", ["scripts/contract-worktree.sh", "finish"], worktreePath, { HOOK_HOST: "claude" });
       expect(finish.status).toBe(0);
+      expect(finish.stdout).toContain("[ArchitectureSync] mode=strict");
       expect(finish.stdout).toContain("Sprint verification passed");
       expect(finish.stdout).toContain("Archiving completed workflow before merge");
       expect(finish.stdout).toContain("Merged codex/demo into main");
@@ -1172,6 +1202,7 @@ describe("Workflow helper scripts", () => {
       });
       expect(ship.status).toBe(0);
       expect(ship.stdout).toContain("contract-worktree.sh finish --no-merge");
+      expect(ship.stdout).toContain("[ArchitectureSync] mode=advisory");
       expect(ship.stdout).toContain("PR already exists for codex/demo after create failure");
       expect(ship.stdout).toContain("https://example.test/pr/1");
       expect(ship.stdout).not.toContain("Merged codex/demo into main");

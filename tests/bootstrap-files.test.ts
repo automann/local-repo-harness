@@ -67,6 +67,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(pkg.scripts["check:brain-manifest"]).toBe("bash scripts/check-brain-manifest.sh");
     expect(pkg.scripts["check:task-sync"]).toBe("bash scripts/check-task-sync.sh");
     expect(pkg.scripts["check:deploy-sql"]).toBe("bash scripts/check-deploy-sql-order.sh");
+    expect(pkg.scripts["check:architecture-sync"]).toBe("bash scripts/check-architecture-sync.sh");
     expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
     expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
     expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");
@@ -117,6 +118,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("check-agent-tooling.sh");
+    expect(contract.helpers.scripts).toContain("check-architecture-sync.sh");
     expect(contract.helpers.scripts).toContain("check-brain-manifest.sh");
     expect(contract.helpers.scripts).toContain("sync-brain-docs.sh");
     expect(contract.helpers.scripts).toContain("check-deploy-sql-order.sh");
@@ -130,6 +132,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(sharedLib).not.toContain("skill-factory-check.sh");
     expect(sharedLib).toContain("pi_install_workflow_contract");
     expect(sharedLib).toContain("check:task-sync");
+    expect(sharedLib).toContain("check:architecture-sync");
     expect(sharedLib).toContain("check:task-workflow");
     expect(sharedLib).toContain("contract.template.md");
     expect(sharedLib).toContain("implementation-notes.template.md");
@@ -229,6 +232,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("check-agent-tooling.sh");
+    expect(contract.helpers.scripts).toContain("check-architecture-sync.sh");
     expect(contract.helpers.scripts).toContain("check-deploy-sql-order.sh");
     expect(contract.helpers.scripts).toContain("check-context-files.sh");
     expect(contract.helpers.scripts).toContain("select-agent-context-blocks.sh");
@@ -250,6 +254,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(sharedLib).not.toContain("skill-factory-check.sh");
     expect(sharedLib).toContain("pi_workflow_contract_query_lines");
     expect(sharedLib).toContain("check:task-sync");
+    expect(sharedLib).toContain("check:architecture-sync");
     expect(sharedLib).toContain("check:task-workflow");
     expect(content).toContain("pi_install_reference_configs");
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");

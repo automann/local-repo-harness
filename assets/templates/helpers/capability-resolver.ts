@@ -31,6 +31,7 @@ type Args = {
   command: string;
   repo: string;
   path: string;
+  pathsFrom: string;
   format: Format;
 };
 
@@ -42,6 +43,7 @@ function usage(): never {
       "Usage:",
       "  scripts/capability-resolver.ts list [--repo <repo>] [--format json|text|prefixes]",
       "  scripts/capability-resolver.ts match --path <repo-relative-path> [--repo <repo>] [--format json|text]",
+      "  scripts/capability-resolver.ts match --paths-from <file|-> [--repo <repo>] [--format json|text]",
       "  scripts/capability-resolver.ts validate [--repo <repo>] [--format json|text]",
     ].join("\n")
   );
@@ -53,6 +55,7 @@ function parseArgs(argv: string[]): Args {
     command: argv[0] || "",
     repo: ".",
     path: "",
+    pathsFrom: "",
     format: "text",
   };
 
@@ -64,6 +67,9 @@ function parseArgs(argv: string[]): Args {
         break;
       case "--path":
         args.path = argv[++index] || usage();
+        break;
+      case "--paths-from":
+        args.pathsFrom = argv[++index] || usage();
         break;
       case "--format": {
         const value = argv[++index] as Format;
@@ -82,7 +88,8 @@ function parseArgs(argv: string[]): Args {
   }
 
   if (!["list", "match", "validate"].includes(args.command)) usage();
-  if (args.command === "match" && !args.path) usage();
+  if (args.command === "match" && !args.path && !args.pathsFrom) usage();
+  if (args.command === "match" && args.path && args.pathsFrom) usage();
   if (args.command === "match" && args.format === "prefixes") usage();
   return args;
 }
@@ -414,7 +421,12 @@ function printJson(value: unknown): void {
   console.log(JSON.stringify(value, null, 2));
 }
 
-function main(): void {
+async function readPathLines(input: string): Promise<string[]> {
+  const text = input === "-" ? await Bun.stdin.text() : readFileSync(input, "utf-8");
+  return text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const repo = repoRoot(args.repo);
   const registry = readRegistry(repo);
@@ -452,6 +464,25 @@ function main(): void {
   if (errors.length > 0) {
     throw new Error(`capability registry is invalid:\n${errors.join("\n")}`);
   }
+  if (args.pathsFrom) {
+    const paths = await readPathLines(args.pathsFrom);
+    const seen = new Set<string>();
+    const matches = [];
+    for (const path of paths) {
+      if (seen.has(path)) continue;
+      seen.add(path);
+      matches.push(findMatch(registry, repo, path));
+    }
+    if (args.format === "json") {
+      printJson(matches);
+    } else {
+      for (const match of matches) {
+        console.log(`${match.file_path}: ${match.capability_id} (${match.matched_prefix})`);
+      }
+    }
+    return;
+  }
+
   const match = findMatch(registry, repo, args.path);
   if (args.format === "json") {
     printJson(match);
@@ -467,7 +498,7 @@ function main(): void {
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
   console.error(`[CapabilityResolver] ${(error as Error).message}`);
   process.exit(1);

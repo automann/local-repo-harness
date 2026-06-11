@@ -35,6 +35,7 @@
     "check:brain-manifest": "bash scripts/check-brain-manifest.sh",
     "check:context-files": "bash scripts/check-context-files.sh",
     "check:deploy-sql": "bash scripts/check-deploy-sql-order.sh",
+    "check:architecture-sync": "bash scripts/check-architecture-sync.sh",
     "check:task-sync": "bash scripts/check-task-sync.sh",
     "check:task-workflow": "bash scripts/check-task-workflow.sh --strict",
     "prepublishOnly": "bash scripts/check-npm-release.sh",
