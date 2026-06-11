@@ -68,7 +68,7 @@ describe("Migration script contract", () => {
     expect(script).toContain("docs/spec.md");
     expect(script).toContain("plans/archive");
     expect(script).toContain("tasks/archive");
-    expect(script).toContain("tasks/research.md");
+    expect(script).toContain("docs/researches");
     expect(script).toContain("tasks/todo.md");
     expect(script).toContain("tasks/lessons.md");
     expect(script).toContain("tasks/reviews");
@@ -272,7 +272,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".claude/hooks/hook-input.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/lib/workflow-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/lib/session-state.sh"))).toBe(false);
-      expect(existsSync(join(repo, "tasks/research.md"))).toBe(true);
+      expect(existsSync(join(repo, "docs/researches/README.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/todo.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/lessons.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/contracts"))).toBe(true);

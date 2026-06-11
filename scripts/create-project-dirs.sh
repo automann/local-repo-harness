@@ -169,29 +169,16 @@ cat > tasks/lessons.md << 'TASK_LESSONS_EOF'
 - Where to apply next time:
 TASK_LESSONS_EOF
 
-cat > tasks/research.md << 'TASK_RESEARCH_EOF'
-# Project Research Notes
+mkdir -p docs/researches
+cat > docs/researches/README.md << 'RESEARCH_README_EOF'
+# Research Reports
 
-> **Last Updated**: TBD
-> **Scope**: (what area of the codebase was researched)
-> **Usage**: Store deep codebase findings and hidden contracts here, not in chat-only summaries.
+Durable research reports live in this directory as dated Markdown files.
 
-## Codebase Map
-| File | Purpose | Key Exports |
-|------|---------|-------------|
-
-## Architecture Observations
-### Patterns & Conventions
-### Implicit Contracts
-### Edge Cases & Intricacies
-
-## Technical Debt / Risks
-
-## Research Conclusions
-### What to Preserve
-### What to Change
-### Open Questions
-TASK_RESEARCH_EOF
+Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
+decisions in `tasks/notes/`, and keep repeated correction-derived rules in
+`tasks/lessons.md`.
+RESEARCH_README_EOF
 
 write_templates
 install_workflow_helpers

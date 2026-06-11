@@ -67,7 +67,7 @@ export type WorkflowContract = {
     planDirectory: string;
     taskChecklist?: string;
     deferredGoalLedger?: string;
-    researchNotes: string;
+    researchReportsDirectory: string;
     lessonsLog: string;
   };
   migrations: {

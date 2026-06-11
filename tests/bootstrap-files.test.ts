@@ -81,7 +81,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain("create_contract_directories");
     expect(content).toContain("cat > tasks/todo.md");
     expect(content).toContain("cat > tasks/lessons.md");
-    expect(content).toContain("cat > tasks/research.md");
+    expect(content).toContain("cat > docs/researches/README.md");
     expect(content).not.toContain("docs/TODO.md");
     expect(sharedLib).toContain("new-plan.sh");
     expect(sharedLib).toContain("capture-plan.sh");
@@ -211,7 +211,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(content).toContain("create_contract_directories");
     expect(content).toContain("cat > tasks/todo.md");
     expect(content).toContain("cat > tasks/lessons.md");
-    expect(content).toContain("tasks/research.md");
+    expect(content).toContain("docs/researches/README.md");
     expect(content).not.toContain("docs/TODO.md");
     expect(content).toContain("pi_install_helpers");
     expect(content).toContain("pi_install_templates");
@@ -295,7 +295,7 @@ describe("Bootstrap Script Contracts", () => {
 
     expect(content).toContain("tasks/todo.md");
     expect(content).toContain("tasks/lessons.md");
-    expect(content).toContain("tasks/research.md");
+    expect(content).toContain("docs/researches/");
     expect(workflowState).toContain("git status --porcelain=v1");
     expect(content).toContain("has_changes_glob");
     expect(content).toContain("PlanStatusGuard");

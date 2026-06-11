@@ -204,7 +204,7 @@ resume_file="$(safe_repo_file "$(policy_get '.handoff_resume.resume_packet_file'
 repo_handoff="$(safe_repo_file "$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')" '.ai/harness/handoff/current.md' '.ai/harness/')"
 checks_file="$(safe_repo_file "$(policy_get '.harness.checks_file' '.ai/harness/checks/latest.json')" '.ai/harness/checks/latest.json' '.ai/harness/')"
 budget_file="$(safe_repo_file "$(policy_get '.context_budget.status_file' '.ai/harness/context-budget/latest.json')" '.ai/harness/context-budget/latest.json' '.ai/harness/')"
-research_file="$(safe_repo_file "$(policy_get '.tasks.research_file' 'tasks/research.md')" 'tasks/research.md' 'tasks/')"
+research_dir="$(safe_repo_file "$(policy_get '.tasks.research_dir' 'docs/researches')" 'docs/researches' 'docs/researches')"
 todo_file="$(safe_repo_file "$(policy_get '.tasks.todo_file' 'tasks/todo.md')" 'tasks/todo.md' 'tasks/')"
 plan_file="$(active_plan || true)"
 contract_file="$(derive_contract "$plan_file" || true)"
@@ -234,7 +234,7 @@ Required first reads:
 - ${repo_handoff}
 - ${todo_file}
 - ${notes_file:-(none)}
-- ${research_file}
+- ${research_dir}/
 - ${checks_file}
 - ${budget_file}
 
@@ -247,7 +247,7 @@ Conditional first reads:
 Execution rules:
 - Treat filesystem artifacts as the source of truth.
 - Decide in the main agent whether to use subagents, parallel sidecars, sidecar \`codex exec --json\`, or a bounded main-thread trace for broad research/log scans based on context impact and callable tools; do not ask the user for spawn confirmation.
-- Keep deep research conclusions in \`${research_file}\`, not only in chat.
+- Keep deep research conclusions in \`${research_dir}/\`, not only in chat.
 - Do not run \`/compact\` as the primary recovery path.
 - Preserve the current dirty worktree and do not touch unrelated untracked files.
 
@@ -258,7 +258,7 @@ Execution rules:
 - Context budget: ${budget_file}
 - Checks: ${checks_file}
 - Todo: ${todo_file}
-- Research: ${research_file}
+- Research: ${research_dir}/
 - Plan: ${plan_file:-(none)}
 - Contract: ${contract_file:-(none)}
 - Notes: ${notes_file:-(none)}

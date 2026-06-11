@@ -127,35 +127,55 @@ function normalizeLegacyTodo(target: string, archivePath: string, mode: Mode) {
   return true;
 }
 
-function writeCanonicalResearch(target: string, mode: Mode) {
+function writeResearchReadme(target: string, mode: Mode) {
   if (existsSync(target)) return;
   const content = [
-    "# Project — Research Notes",
+    "# Research Reports",
     "",
-    "> **Last Updated**: TBD",
-    "> **Scope**: (what area of the codebase was researched)",
-    "> **Usage**: Store deep codebase findings and hidden contracts here, not in chat-only summaries.",
+    "Durable research reports live in this directory as dated Markdown files.",
     "",
-    "## Codebase Map",
-    "| File | Purpose | Key Exports |",
-    "|------|---------|-------------|",
-    "",
-    "## Architecture Observations",
-    "### Patterns & Conventions",
-    "### Implicit Contracts",
-    "### Edge Cases & Intricacies",
-    "",
-    "## Technical Debt / Risks",
-    "",
-    "## Research Conclusions",
-    "### What to Preserve",
-    "### What to Change",
-    "### Open Questions",
+    "Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation",
+    "decisions in `tasks/notes/`, and keep repeated correction-derived rules in",
+    "`tasks/lessons.md`.",
   ].join("\n");
   if (mode === "apply") {
     ensureDir(dirname(target), mode);
     writeFileSync(target, `${content}\n`);
   }
+}
+
+function migrateLegacyResearch(source: string, archivePath: string, mode: Mode) {
+  if (!existsSync(source)) return false;
+
+  const existing = readFileSync(source, "utf-8");
+  if (existing.includes("**Canonical Surface**: `docs/researches/`")) return false;
+
+  const tombstone = [
+    "# Research Notes Moved",
+    "",
+    "> **Status**: Retired tombstone",
+    "> **Canonical Surface**: `docs/researches/`",
+    "> **Legacy Archive**: `docs/researches/legacy-research-notes.md`",
+    "",
+    "Durable research reports now live under `docs/researches/*.md`. This file is",
+    "kept only as a transition pointer for older tooling and historical links; do",
+    "not add new findings here.",
+  ].join("\n");
+
+  if (mode === "apply") {
+    ensureDir(dirname(archivePath), mode);
+    if (!existsSync(archivePath)) {
+      writeFileSync(archivePath, `${existing.trimEnd()}\n`);
+    }
+    writeFileSync(source, `${tombstone}\n`);
+  }
+
+  return true;
+}
+
+function writeResearchReport(target: string, marker: string, title: string, body: string, mode: Mode) {
+  const block = [`# ${title}`, "", marker, "", body.trimEnd()].join("\n");
+  return appendIfMissing(target, marker, block, mode);
 }
 
 export function migrate(repo: string, mode: Mode): MigrationSummary {
@@ -172,6 +192,10 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
   const progressDoc = join(repo, "docs", "PROGRESS.md");
   const tasksTodo = join(repo, "tasks", "todo.md");
   const tasksResearch = join(repo, "tasks", "research.md");
+  const researchDir = join(repo, "docs", "researches");
+  const researchReadme = join(researchDir, "README.md");
+  const legacyResearchArchive = join(researchDir, "legacy-research-notes.md");
+  const legacyProgressResearch = join(researchDir, "legacy-progress-import.md");
   const plansArchive = join(repo, "plans", "archive");
   const tasksArchive = join(repo, "tasks", "archive");
   const legacyPlanArchive = join(plansArchive, "legacy-docs-plan.md");
@@ -194,7 +218,16 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
       note: "Archived legacy task checklist content and normalized tasks/todo.md to the deferred-goal ledger.",
     });
   }
-  writeCanonicalResearch(tasksResearch, mode);
+  ensureDir(researchDir, mode);
+  writeResearchReadme(researchReadme, mode);
+  if (migrateLegacyResearch(tasksResearch, legacyResearchArchive, mode)) {
+    summary.migrated.push({
+      source: "tasks/research.md",
+      target: "docs/researches/legacy-research-notes.md",
+      action: "archive",
+      note: "Archived legacy singleton research notes and left a tombstone pointer.",
+    });
+  }
 
   // NOTE: The "<!-- project-initializer: legacy-docs-import ... -->" markers below are
   // historical data markers, not an active compatibility surface. They are written into
@@ -257,17 +290,13 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
   if (existsSync(progressDoc)) {
     const content = readFileSync(progressDoc, "utf-8").trimEnd();
     if (!readFileSync(progressDoc, "utf-8").includes("milestone checkpoints only")) {
-      const notesBlock = [
-        "## Legacy Progress Import",
-        "",
+      writeResearchReport(
+        legacyProgressResearch,
         "<!-- project-initializer: legacy-docs-import docs/PROGRESS.md -->",
-        "",
-        "Imported from a legacy execution log stored in `docs/PROGRESS.md`.",
-        "",
-        content,
-      ].join("\n");
-
-      appendIfMissing(tasksResearch, "<!-- project-initializer: legacy-docs-import docs/PROGRESS.md -->", notesBlock, mode);
+        "Legacy Progress Import",
+        ["Imported from a legacy execution log stored in `docs/PROGRESS.md`.", "", content].join("\n"),
+        mode
+      );
     }
 
     if (mode === "apply") {

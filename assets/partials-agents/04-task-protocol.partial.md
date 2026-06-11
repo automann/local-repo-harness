@@ -3,7 +3,7 @@
 ```yaml
 TASK_SOURCES:
   - docs/spec.md
-  - tasks/research.md
+  - docs/researches/
   - tasks/todo.md
   - tasks/contracts/
   - tasks/reviews/
@@ -22,7 +22,7 @@ ARCHIVE:
 RULES:
   - Treat repo-local artifact files as the primary cross-agent workflow contract
   - For non-chat tasks, sync tasks/ whenever substantive work changes the repo
-  - Research first for unfamiliar areas and persist findings in tasks/research.md
+  - Research first for unfamiliar areas and persist findings in docs/researches/
   - Keep stable product intent in docs/spec.md
   - Plan with trade-offs in plans/plan-{timestamp}-{slug}.md
   - Treat .ai/harness/active-plan as authoritative only for this worktree; .ai/harness/active-worktree records the owner; .claude/.active-plan is a legacy fallback during transition
@@ -37,7 +37,7 @@ RULES:
   - Keep tasks/todo.md limited to deferred medium/long-term goals, with tradeoff and revisit trigger; do not duplicate plan Task Breakdown
   - Record correction-derived prevention rules in tasks/lessons.md
   - Distill repeated corrections into tasks/lessons.md instead of keeping them in tasks/todo.md
-  - Capture deep findings and hidden contracts in tasks/research.md
+  - Capture deep findings and hidden contracts in docs/researches/
   - Keep sprint-level verification notes, behavior diffs, and residual risks in tasks/reviews/{plan-stem}.review.md
   - Do not use implementation notes as durable memory or task logs; archive them on close and promote only after evidence shows the rule should outlive the sprint
   - Promote implementation-ready follow-up work into a new plans/plan-{timestamp}-{slug}.md file; keep deferred goals in tasks/todo.md only when intentionally postponed

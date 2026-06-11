@@ -589,53 +589,52 @@ DEPLOY_README_EOF
   fi
 }
 
-create_research_file_if_missing() {
+ensure_research_surface() {
   local repo="$1"
-  local research_file="$repo/tasks/research.md"
-  local now
-  now="$(date '+%Y-%m-%d %H:%M')"
-
-  if [[ -f "$research_file" ]]; then
-    return
-  fi
+  local research_dir="$repo/docs/researches"
+  local research_readme="$research_dir/README.md"
+  local legacy_research="$repo/tasks/research.md"
+  local legacy_archive="$research_dir/legacy-research-notes.md"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] create $research_file"
+    echo "[dry-run] ensure research reports directory at $research_dir"
+    if [[ -f "$legacy_research" ]]; then
+      echo "[dry-run] archive legacy $legacy_research into $legacy_archive and leave a tombstone"
+    fi
     return
   fi
 
-  mkdir -p "$repo/tasks"
+  mkdir -p "$research_dir"
 
-  if [[ -f "$repo/.claude/templates/research.template.md" ]]; then
-    sed \
-      -e "s/{{PROJECT_NAME}}/Project/g" \
-      -e "s/{{DATE}}/${now}/g" \
-      "$repo/.claude/templates/research.template.md" > "$research_file"
-    return
+  if [[ ! -f "$research_readme" ]]; then
+    cat > "$research_readme" <<'RESEARCH_README_EOF'
+# Research Reports
+
+Durable research reports live in this directory as dated Markdown files.
+
+Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
+decisions in `tasks/notes/`, and keep repeated correction-derived rules in
+`tasks/lessons.md`.
+RESEARCH_README_EOF
   fi
 
-  cat > "$research_file" <<EOF_RESEARCH
-# Project — Research Notes
+  if [[ -f "$legacy_research" ]]; then
+    if [[ ! -f "$legacy_archive" ]]; then
+      cp "$legacy_research" "$legacy_archive"
+    fi
 
-> **Last Updated**: ${now}
-> **Scope**: (what area of the codebase was researched)
+    cat > "$legacy_research" <<'RESEARCH_TOMBSTONE_EOF'
+# Research Notes Moved
 
-## Codebase Map
-| File | Purpose | Key Exports |
-|------|---------|-------------|
+> **Status**: Retired tombstone
+> **Canonical Surface**: `docs/researches/`
+> **Legacy Archive**: `docs/researches/legacy-research-notes.md`
 
-## Architecture Observations
-### Patterns & Conventions
-### Implicit Contracts
-### Edge Cases & Intricacies
-
-## Technical Debt / Risks
-
-## Research Conclusions
-### What to Preserve
-### What to Change
-### Open Questions
-EOF_RESEARCH
+Durable research reports now live under `docs/researches/*.md`. This file is
+kept only as a transition pointer for older tooling and historical links; do
+not add new findings here.
+RESEARCH_TOMBSTONE_EOF
+  fi
 }
 
 parse_args() {
@@ -753,7 +752,7 @@ migrate_workflow() {
   fi
   install_reference_configs "$repo"
   ensure_ops_scaffold "$repo"
-  create_research_file_if_missing "$repo"
+  ensure_research_surface "$repo"
   create_task_files_if_missing "$repo"
   ensure_task_sync_package_script "$repo"
 

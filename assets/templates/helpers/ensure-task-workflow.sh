@@ -110,7 +110,7 @@ RESEARCH_TEMPLATE_EOF
 > **Created**: {{TIMESTAMP}}
 > **Slug**: {{SLUG}}
 > **Spec**: `docs/spec.md`
-> **Research**: See `tasks/research.md`
+> **Research**: See `docs/researches/`
 > **Sprint Contract**: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md`
 > **Sprint Review**: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 > **Implementation Notes**: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
@@ -351,7 +351,7 @@ REVIEW_TEMPLATE_EOF
 ## Promotion Candidates
 
 - Promote to `tasks/lessons.md` only after a repeated correction or failure pattern.
-- Promote to `tasks/research.md` only when it is durable repo knowledge with evidence.
+- Promote to `docs/researches/` only when it is durable repo knowledge with evidence.
 - Promote to harness asset files only after verification across more than one task or fixture.
 NOTES_TEMPLATE_EOF
   fi
@@ -436,29 +436,17 @@ SPEC_EOF
 LESSONS_EOF
   fi
 
-  if [[ ! -f "tasks/research.md" ]]; then
-    cat > tasks/research.md <<'RESEARCH_EOF'
-# Project — Research Notes
+  mkdir -p docs/researches
+  if [[ ! -f "docs/researches/README.md" ]]; then
+    cat > docs/researches/README.md <<'RESEARCH_README_EOF'
+# Research Reports
 
-> **Last Updated**: TBD
-> **Scope**: (what area of the codebase was researched)
+Durable research reports live in this directory as dated Markdown files.
 
-## Codebase Map
-| File | Purpose | Key Exports |
-|------|---------|-------------|
-
-## Architecture Observations
-### Patterns & Conventions
-### Implicit Contracts
-### Edge Cases & Intricacies
-
-## Technical Debt / Risks
-
-## Research Conclusions
-### What to Preserve
-### What to Change
-### Open Questions
-RESEARCH_EOF
+Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
+decisions in `tasks/notes/`, and keep repeated correction-derived rules in
+`tasks/lessons.md`.
+RESEARCH_README_EOF
   fi
 
   if [[ ! -f ".ai/harness/checks/latest.json" ]]; then
@@ -592,7 +580,7 @@ ARCHITECTURE_INDEX_EOF
     "todo_file": "tasks/todo.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
-    "research_file": "tasks/research.md",
+    "research_dir": "docs/researches",
     "workstreams_dir": "tasks/workstreams",
     "contracts_dir": "tasks/contracts",
     "reviews_dir": "tasks/reviews",
@@ -602,7 +590,7 @@ ARCHITECTURE_INDEX_EOF
     "dir": "_ref",
     "mode": "external-ignored",
     "commit_policy": "never commit _ref contents",
-    "rule": "use _ref as an occasional ignored external reference checkout cache for upstream/source comparison only; refresh from external sources instead of editing as product code; when it influences a decision, cite the source repo plus commit/tag and path in tasks/notes/ or tasks/research.md"
+    "rule": "use _ref as an occasional ignored external reference checkout cache for upstream/source comparison only; refresh from external sources instead of editing as product code; when it influences a decision, cite the source repo plus commit/tag and path in tasks/notes/ or docs/researches/"
   },
   "operations": {
     "dir": "deploy",
@@ -676,7 +664,7 @@ ARCHITECTURE_INDEX_EOF
       "promotion_rule": "only promote patterns after verified reuse across tasks or fixtures"
     },
     "memory": {
-      "sources": ["tasks/research.md", "tasks/lessons.md", "gbrain"],
+      "sources": ["docs/researches/", "tasks/lessons.md", "gbrain"],
       "rule": "memory is advisory; current repo state and evidence override summaries"
     },
     "external_knowledge": {
@@ -729,7 +717,7 @@ ARCHITECTURE_INDEX_EOF
   },
   "sidecar_research": {
     "default": true,
-    "output_file": "tasks/research.md",
+    "output_dir": "docs/researches",
     "preferred_runners": ["subagent", "codex exec --json", "main-thread trace"],
     "spawn_decision": "main agent decides from task breadth, context impact, raw-log volume, and callable runner availability; do not ask the user for spawn confirmation",
     "fallback_runner": "main-thread trace",

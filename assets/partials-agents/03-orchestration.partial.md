@@ -1,7 +1,7 @@
 ## Workflow Orchestration
 
 ### 1. Research Before Planning
-- Deeply inspect relevant code and persist findings in `tasks/research.md`.
+- Deeply inspect relevant code and persist findings in `docs/researches/`.
 - Avoid implementation before research, spec, plan, and contract are complete.
 
 ### 2. Annotation Cycle
@@ -18,7 +18,7 @@
 ### 4. Research Delegation Strategy
 - The main agent decides whether to spawn based on task breadth, context impact, raw-log volume, and callable runner availability.
 - Parallelize only non-dependent paths.
-- Do not ask the user for spawn confirmation. If no sidecar runner is callable or spawning is not worth the context cost, do the same bounded trace in the main thread and write conclusions to `tasks/research.md`.
+- Do not ask the user for spawn confirmation. If no sidecar runner is callable or spawning is not worth the context cost, do the same bounded trace in the main thread and write conclusions to `docs/researches/`.
 
 ### 4b. Context Budget
 - Treat auto-compact as an unreliable fallback.

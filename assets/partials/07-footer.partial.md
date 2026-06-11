@@ -12,7 +12,7 @@ CLAUDE.md is a routing card. Keep context minimal and load only what the current
 
 | Trigger | Read This File |
 |---------|----------------|
-| Deep codebase investigation | `tasks/research.md` |
+| Deep codebase investigation | `docs/researches/` |
 | Active implementation planning | `plans/plan-*.md` |
 | Sprint done definition | `tasks/contracts/<plan-stem>.contract.md` |
 | Evaluator verdict | `tasks/reviews/<plan-stem>.review.md` |

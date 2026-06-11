@@ -112,7 +112,7 @@ export function inspectRepo(repo: string): InspectionResult {
     "Preserve repo-local tasks-first workflow",
     "Archive uncertain legacy content instead of overwriting it",
     "Delete only manifest-owned known_generated legacy files",
-    "Distill repeated corrections into tasks/lessons.md and hidden contracts into tasks/research.md",
+    "Distill repeated corrections into tasks/lessons.md and hidden contracts into docs/researches/",
   ];
 
   const runtimeManifest = join(repo, contract.artifacts.runtimeManifest);
@@ -178,7 +178,7 @@ export function inspectRepo(repo: string): InspectionResult {
     requiredDecisions.push("Run legacy document migration before template refresh");
   }
   if (driftSignals.includes("legacy-docs-progress")) {
-    requiredDecisions.push("Archive legacy docs/PROGRESS.md into task research or changelog surfaces");
+    requiredDecisions.push("Archive legacy docs/PROGRESS.md into research report or changelog surfaces");
   }
   if (driftSignals.includes("legacy-skill-factory-surface")) {
     requiredDecisions.push("Remove repo-local Skill Factory and auto-memory surfaces");

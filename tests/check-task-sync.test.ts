@@ -22,6 +22,7 @@ function setupRepo(): string {
   const cwd = mkdtempSync(join(tmpdir(), "task-sync-"));
   mkdirSync(join(cwd, "src"), { recursive: true });
   mkdirSync(join(cwd, "tasks", "archive"), { recursive: true });
+  mkdirSync(join(cwd, "docs", "researches"), { recursive: true });
   mkdirSync(join(cwd, "scripts"), { recursive: true });
 
   copyFileSync(HELPER, join(cwd, "scripts", "check-task-sync.sh"));
@@ -33,7 +34,7 @@ function setupRepo(): string {
   writeFileSync(join(cwd, "src", "app.ts"), "export const value = 1;\n");
   writeFileSync(join(cwd, "tasks", "todo.md"), "# Task Execution Checklist (Primary)\n");
   writeFileSync(join(cwd, "tasks", "lessons.md"), "# Lessons Learned (Self-Improvement Loop)\n");
-  writeFileSync(join(cwd, "tasks", "research.md"), "# Project Research Notes\n");
+  writeFileSync(join(cwd, "docs", "researches", "README.md"), "# Research Reports\n");
 
   expect(run(cwd, ["git", "add", "."]).status).toBe(0);
   expect(run(cwd, ["git", "commit", "-m", "init"]).status).toBe(0);
@@ -106,10 +107,23 @@ describe("check-task-sync helper", () => {
   test("passes when only tasks files changed", () => {
     const cwd = setupRepo();
     try {
-      writeFileSync(join(cwd, "tasks", "research.md"), "# Project Research Notes\n- finding\n");
+      writeFileSync(join(cwd, "docs", "researches", "20260612-finding.md"), "# Finding\n");
       const res = run(cwd, ["bash", "scripts/check-task-sync.sh"]);
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Only tasks/");
+      expect(res.stdout).toContain("Only task/research sync files changed");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("passes when code changes include docs/researches updates", () => {
+    const cwd = setupRepo();
+    try {
+      writeFileSync(join(cwd, "src", "app.ts"), "export const value = 2;\n");
+      writeFileSync(join(cwd, "docs", "researches", "20260612-finding.md"), "# Finding\n");
+      const res = run(cwd, ["bash", "scripts/check-task-sync.sh"]);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("synchronized tasks/ updates");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -149,7 +163,7 @@ describe("check-task-sync helper", () => {
 
       const res = run(cwd, ["bash", "scripts/check-task-sync.sh"]);
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Only tasks/ changed.");
+      expect(res.stdout).toContain("Only task/research sync files changed.");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

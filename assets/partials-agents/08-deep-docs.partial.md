@@ -7,7 +7,7 @@
 - `.ai/harness/policy.json`: machine-readable workflow contract
 
 ### Load On Demand
-- `tasks/research.md`: deep codebase analysis and hidden contracts
+- `docs/researches/`: deep codebase analysis and hidden contracts
 - `plans/plan-*.md`: timestamped plan catalog; use `.ai/harness/active-plan` only for its owning worktree, with `.ai/harness/active-worktree` recording that owner and `.claude/.active-plan` as a legacy fallback
 - `tasks/contracts/`: active sprint done definitions
 - `tasks/reviews/`: evaluator verdicts

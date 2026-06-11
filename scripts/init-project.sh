@@ -308,36 +308,16 @@ EOF
 
     pi_install_templates "$PWD" "$ASSETS_TEMPLATES_DIR" "apply"
 
-    if [ -f ".claude/templates/research.template.md" ]; then
-        sed \
-          -e "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" \
-          -e "s/{{DATE}}/${NOW}/g" \
-          .claude/templates/research.template.md > tasks/research.md
-    else
-        cat > tasks/research.md << EOF
-# ${PROJECT_NAME} — Research Notes
+    mkdir -p docs/researches
+    cat > docs/researches/README.md << EOF
+# Research Reports
 
-> **Last Updated**: ${NOW}
-> **Scope**: (what area of the codebase was researched)
-> **Usage**: Store deep codebase findings and hidden contracts here, not in chat-only summaries.
+Durable research reports live in this directory as dated Markdown files.
 
-## Codebase Map
-| File | Purpose | Key Exports |
-|------|---------|-------------|
-
-## Architecture Observations
-### Patterns & Conventions
-### Implicit Contracts
-### Edge Cases & Intricacies
-
-## Technical Debt / Risks
-
-## Research Conclusions
-### What to Preserve
-### What to Change
-### Open Questions
+Use \`YYYYMMDD-topic.md\` names for new reports. Keep task-local implementation
+decisions in \`tasks/notes/\`, and keep repeated correction-derived rules in
+\`tasks/lessons.md\`.
 EOF
-    fi
 
     local helper_names
     helper_names="$(pi_workflow_contract_query_lines "$ASSETS_WORKFLOW_CONTRACT" "helpers.scripts" | xargs)"

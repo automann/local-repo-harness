@@ -2301,7 +2301,8 @@ describe("Workflow helper scripts", () => {
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
       writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
       writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n");
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
 
       const res = run(
         "bash",
@@ -2343,7 +2344,8 @@ describe("Workflow helper scripts", () => {
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
       writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
       writeFileSync(join(cwd, "tasks/todo.md"), "# Deferred Goal Ledger\n");
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
 
       const res = run(
         "bash",
@@ -2426,7 +2428,8 @@ describe("Workflow helper scripts", () => {
         join(cwd, "tasks/todo.md"),
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n> **Updated**: test\n> **Scope**: Medium/long-term goals deferred from active plan execution\n\n## Deferred Goals\n\n| Goal | Why Deferred | Tradeoff | Revisit Trigger |\n|------|--------------|----------|-----------------|\n"
       );
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
 
       const res = run(
         "bash",
@@ -2619,7 +2622,8 @@ describe("Workflow helper scripts", () => {
 
       writeFileSync(join(cwd, "tasks/todo.md"), "# Legacy Todo\n\n- [ ] old item\n");
       writeFileSync(join(cwd, "tasks/lessons.md"), "# Lessons\n");
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
       const res = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
       expect(res.status).toBe(1);
       expect(res.stdout).toContain("Legacy tasks/todo.md detected");
@@ -2732,7 +2736,8 @@ describe("Workflow helper scripts", () => {
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n> **Updated**: test\n> **Scope**: Medium/long-term goals deferred from active plan execution\n\n## Deferred Goals\n\n| Goal | Why Deferred | Tradeoff | Revisit Trigger |\n|------|--------------|----------|-----------------|\n"
       );
       writeFileSync(join(cwd, "tasks/lessons.md"), "# Lessons\n");
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
       writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n");
 

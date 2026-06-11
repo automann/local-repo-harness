@@ -1,13 +1,13 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-12T05:38:09+0800 -->
+<!-- updated_at: 2026-06-12T06:25:42+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: ManualClearedWithActiveWork
-> **Updated At**: 2026-06-12T05:38:09+0800
+> **Updated At**: 2026-06-12T06:25:42+0800
 > **Source Branch**: codex/arch-doc-loop-01-queue-engine-triage
-> **Source Commit**: 3bb1ea6
+> **Source Commit**: 23ef073
 > **Target Branch**: main
 > **Stale After**: 24h
 > **Reason**: archive-workflow
@@ -33,7 +33,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 - /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: plans/plan-20260610-1113-hook-runtime-drift-policy.md
 - /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy
-- /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: plans/plan-20260612-0528-loop-engine-06-heartbeat-v0.md
+- /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: plans/plan-20260612-0539-loop-engine-07-cutover-delete-classifier.md
 - /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval
 - /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: plans/plan-20260612-0314-wt-continuation-for-architecture-doc-loop.md
 - /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop
@@ -53,24 +53,49 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 15 changed/untracked path(s)
+- Summary: 66 changed/untracked path(s)
 
 ```
+ M .ai/harness/policy.json
  M .ai/harness/workflow-contract.json
+ M .ai/hooks/lib/workflow-state.sh
+ M .ai/hooks/prompt-guard.sh
+ M .claude/templates/implementation-notes.template.md
+ M .claude/templates/plan.template.md
+ M AGENTS.md
+ M CLAUDE.md
+ M assets/hooks/lib/workflow-state.sh
+ M assets/hooks/prompt-guard.sh
+ M assets/partials-agents/02-operating-mode.partial.md
+ M assets/partials-agents/03-orchestration.partial.md
+ M assets/partials-agents/04-task-protocol.partial.md
+ M assets/partials-agents/08-deep-docs.partial.md
+ M assets/partials/04-project-structure.partial.md
+ M assets/partials/05-workflow.partial.md
+ M assets/partials/07-footer.partial.md
+ M assets/partials/08-orchestration.partial.md
+ M assets/reference-configs/agentic-development-flow.md
+ M assets/reference-configs/harness-overview.md
+ M assets/templates/helpers/capture-plan.sh
+ M assets/templates/helpers/check-task-sync.sh
+ M assets/templates/helpers/check-task-workflow.sh
+ M assets/templates/helpers/codex-handoff-resume.sh
  M assets/templates/helpers/ensure-task-workflow.sh
+ M assets/templates/helpers/inspect-project-state.ts
+ M assets/templates/helpers/migrate-workflow-docs.ts
+ M assets/templates/helpers/new-plan.sh
+ M assets/templates/helpers/plan-to-todo.sh
+ M assets/templates/helpers/workflow-contract.ts
+ M assets/templates/implementation-notes.template.md
+ M assets/templates/plan.template.md
  M assets/workflow-contract.v1.json
- M scripts/ensure-task-workflow.sh
- M scripts/lib/project-init-lib.sh
- M tasks/todo.md
- M tests/bootstrap-files.test.ts
- M tests/create-project-dirs.runtime.test.ts
- M tests/migration-script.test.ts
- M tests/workflow-contract.test.ts
-?? plans/archive/plan-20260612-0453-arch-doc-loop-03-productize-assets.md
-?? tasks/archive/notes-20260612-0538-arch-doc-loop-03-productize-assets.md
-?? tasks/archive/todo-20260612-0538-arch-doc-loop-03-productize-assets.md
-?? tasks/contracts/20260612-0453-arch-doc-loop-03-productize-assets.contract.md
-?? tasks/reviews/20260612-0453-arch-doc-loop-03-productize-assets.review.md
+ M docs/reference-configs/agentic-development-flow.md
+ M docs/reference-configs/harness-overview.md
+ M scripts/capture-plan.sh
+ M scripts/check-task-sync.sh
+ M scripts/check-task-workflow.sh
+ M scripts/codex-handoff-resume.sh
+ M scripts/create-project-dirs.sh
 ```
 
 ## Source Artifacts

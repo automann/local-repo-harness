@@ -9,7 +9,7 @@
 - Codex runtime expectation: `{{CODEX_POLICY}}`.
 - Do not implement until the user explicitly asks to implement.
 - Stable product truth: `docs/spec.md`.
-- Research contract: `tasks/research.md`.
+- Research reports: `docs/researches/`.
 - Deferred-goal ledger: `tasks/todo.md` (active execution stays in the plan's `## Task Breakdown`).
 - Task contract done gate: `tasks/contracts/` (legacy name: sprint contract).
 - Evaluator verdicts: `tasks/reviews/`.

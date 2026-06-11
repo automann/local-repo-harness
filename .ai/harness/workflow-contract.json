@@ -153,7 +153,8 @@
       "deploy/submissions",
       "deploy/runbooks",
       "deploy/release-checklists",
-      "deploy/sql"
+      "deploy/sql",
+      "docs/researches"
     ],
     "requiredFiles": [
       "docs/spec.md",
@@ -206,7 +207,6 @@
       "tasks/current.md",
       "tasks/todo.md",
       "tasks/lessons.md",
-      "tasks/research.md",
       "docs/architecture/index.md",
       ".ai/context/context-map.json",
       ".ai/context/capabilities.json",
@@ -221,7 +221,8 @@
       "docs/reference-configs/handoff-protocol.md",
       "docs/reference-configs/document-generation.md",
       "docs/reference-configs/global-working-rules.md",
-      "deploy/README.md"
+      "deploy/README.md",
+      "docs/researches/README.md"
     ],
     "runtimeFiles": [
       ".ai/harness/checks/latest.json",
@@ -247,9 +248,9 @@
     "spec": "docs/spec.md",
     "planDirectory": "plans",
     "deferredGoalLedger": "tasks/todo.md",
-    "researchNotes": "tasks/research.md",
     "implementationNotesDirectory": "tasks/notes",
-    "lessonsLog": "tasks/lessons.md"
+    "lessonsLog": "tasks/lessons.md",
+    "researchReportsDirectory": "docs/researches"
   },
   "migrations": {
     "legacyVersions": [
@@ -325,10 +326,10 @@
             "docs/PROGRESS.md"
           ],
           "targetPaths": [
-            "tasks/research.md",
+            "docs/researches/legacy-progress-import.md",
             "tasks/archive/legacy-docs-PROGRESS.md"
           ],
-          "summary": "Move execution-log style progress content into research/archive surfaces."
+          "summary": "Move execution-log style progress content into research reports and archive surfaces."
         },
         {
           "id": "legacy-task-checklist-format",
@@ -471,6 +472,20 @@
             "_ops/"
           ],
           "summary": "Never migrate, delete, or vendor ignored external references, local CodeGraph indexes, private operations state, secrets, or local environment values."
+        },
+        {
+          "id": "legacy-tasks-research-notes",
+          "signal": "legacy-tasks-research-notes",
+          "action": "archive",
+          "risk": "medium",
+          "ownership": "user_authored",
+          "paths": [
+            "tasks/research.md"
+          ],
+          "targetPaths": [
+            "docs/researches/legacy-research-notes.md"
+          ],
+          "summary": "Archive legacy singleton research notes into the docs/researches report surface and leave a tombstone pointer."
         }
       ]
     }

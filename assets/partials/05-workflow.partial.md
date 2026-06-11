@@ -1,6 +1,6 @@
 ### Plan Annotation Protocol
 
-Use `tasks/research.md` for deep codebase understanding, `docs/spec.md` for stable intent, `plans/` for timestamped execution plans, and `tasks/todo.md` for deferred medium/long-term goals with tradeoffs and revisit triggers.
+Use `docs/researches/` for deep codebase understanding, `docs/spec.md` for stable intent, `plans/` for timestamped execution plans, and `tasks/todo.md` for deferred medium/long-term goals with tradeoffs and revisit triggers.
 
 ```yaml
 PLAN_LOOP:
@@ -9,7 +9,7 @@ PLAN_LOOP:
   STATE: {{STATE_PROFILE}}
   CONTEXT: {{CONTEXT_PROFILE}}
   PHASES: research -> spec -> plan -> contract -> implement -> verify -> check -> review -> handoff
-  RESEARCH_FILE: tasks/research.md
+  RESEARCH_DIR: docs/researches/
   SPEC_FILE: docs/spec.md
   PLAN_DIR: plans/
   PLAN_ARCHIVE: plans/archive/

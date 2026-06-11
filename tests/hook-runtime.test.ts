@@ -1555,10 +1555,10 @@ describe("Hook runtime behavior", () => {
       installHooks(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       mkdirSync(join(cwd, "plans"), { recursive: true });
-      mkdirSync(join(cwd, "docs"), { recursive: true });
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
 
       writeFileSync(
-        join(cwd, "tasks/research.md"),
+        join(cwd, "docs/researches/research.md"),
         "# Research\n\nInitial notes\n"
       );
       writeFileSync(
@@ -1569,7 +1569,7 @@ describe("Hook runtime behavior", () => {
       expect(run("git", ["add", "."], cwd).status).toBe(0);
       expect(run("git", ["commit", "-m", "seed workflow files"], cwd).status).toBe(0);
 
-      appendFileSync(join(cwd, "tasks/research.md"), "Updated insight\n");
+      appendFileSync(join(cwd, "docs/researches/research.md"), "Updated insight\n");
       appendFileSync(join(cwd, "plans/plan-20260304-1200-test.md"), "- [NOTE]: update\n");
 
       const res = runHook("prompt-guard.sh", cwd, {
@@ -1704,14 +1704,15 @@ describe("Hook runtime behavior", () => {
       installPlanWorkflowHelpers(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       mkdirSync(join(cwd, "plans"), { recursive: true });
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n\nOlder finding.\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n\nOlder finding.\n");
       writeFileSync(
         join(cwd, "plans/plan-20260530-0016-existing.md"),
         "# Plan: existing\n\n> **Status**: Draft\n"
       );
       const oldTime = new Date("2026-05-30T00:00:00Z");
       const newTime = new Date("2026-05-30T00:16:00Z");
-      utimesSync(join(cwd, "tasks/research.md"), oldTime, oldTime);
+      utimesSync(join(cwd, "docs/researches/research.md"), oldTime, oldTime);
       utimesSync(join(cwd, "plans/plan-20260530-0016-existing.md"), newTime, newTime);
 
       const beforePlans = readdirSync(join(cwd, "plans"));
@@ -1739,7 +1740,8 @@ describe("Hook runtime behavior", () => {
       installHooks(cwd);
       installPlanWorkflowHelpers(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n\nFresh finding.\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n\nFresh finding.\n");
 
       const res = runHook("prompt-guard.sh", cwd, {
         stdin: JSON.stringify({
@@ -1765,7 +1767,8 @@ describe("Hook runtime behavior", () => {
       installHooks(cwd);
       installPlanWorkflowHelpers(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n\nFresh finding.\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n\nFresh finding.\n");
 
       for (const prompt of [
         "怎么创建一个 new plan？",
@@ -2126,7 +2129,8 @@ describe("Hook runtime behavior", () => {
         "# Plan: old draft\n\n> **Status**: Draft\n"
       );
       expect(run("touch", ["-t", "202001010000", "plans/plan-20260304-0900-old-draft.md"], cwd).status).toBe(0);
-      writeFileSync(join(cwd, "tasks/research.md"), "# Research\n\nFresh enough for a new planning slice.\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n\nFresh enough for a new planning slice.\n");
 
       const res = runHook("prompt-guard.sh", cwd, {
         stdin: JSON.stringify({ user_message: "plan this independent hook capture repair with $think" }),

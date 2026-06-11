@@ -311,7 +311,7 @@ describe("state inspection and legacy doc migration", () => {
       const summary = migrate(repo, "apply");
       expect(summary.migrated.length).toBeGreaterThanOrEqual(3);
       expect(existsSync(join(repo, "tasks/todo.md"))).toBe(true);
-      expect(existsSync(join(repo, "tasks/research.md"))).toBe(true);
+      expect(existsSync(join(repo, "docs/researches/README.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/archive/legacy-docs-TODO.md"))).toBe(true);
       expect(existsSync(join(repo, "plans/archive/legacy-docs-plan.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/TODO.md.migrated.bak"))).toBe(true);
@@ -322,7 +322,7 @@ describe("state inspection and legacy doc migration", () => {
       expect(todo).toContain("**Status**: Backlog");
       expect(todo).toContain("Revisit Trigger");
 
-      const research = readFileSync(join(repo, "tasks/research.md"), "utf-8");
+      const research = readFileSync(join(repo, "docs/researches/legacy-progress-import.md"), "utf-8");
       expect(research).toContain("Legacy Progress Import");
       expect(research).toContain("investigate drift");
 

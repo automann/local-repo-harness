@@ -140,7 +140,7 @@ PI_TEMPLATE_PLAN=$(cat <<'EOF_TEMPLATE_PLAN'
 > **Created**: {{TIMESTAMP}}
 > **Slug**: {{SLUG}}
 > **Spec**: `docs/spec.md`
-> **Research**: See `tasks/research.md`
+> **Research**: See `docs/researches/`
 > **Sprint Contract**: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md`
 > **Sprint Review**: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 > **Implementation Notes**: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
@@ -383,7 +383,7 @@ PI_TEMPLATE_IMPLEMENTATION_NOTES=$(cat <<'EOF_TEMPLATE_IMPLEMENTATION_NOTES'
 ## Promotion Candidates
 
 - Promote to `tasks/lessons.md` only after a repeated correction or failure pattern.
-- Promote to `tasks/research.md` only when it is durable repo knowledge with evidence.
+- Promote to `docs/researches/` only when it is durable repo knowledge with evidence.
 - Promote to harness asset files only after verification across more than one task or fixture.
 EOF_TEMPLATE_IMPLEMENTATION_NOTES
 )
@@ -1355,7 +1355,7 @@ pi_write_harness_policy() {
     "todo_file": "tasks/todo.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
-    "research_file": "tasks/research.md",
+    "research_dir": "docs/researches",
     "workstreams_dir": "tasks/workstreams",
     "contracts_dir": "tasks/contracts",
     "reviews_dir": "tasks/reviews",
@@ -1373,7 +1373,7 @@ pi_write_harness_policy() {
     "dir": "_ref",
     "mode": "external-ignored",
     "commit_policy": "never commit _ref contents",
-    "rule": "use _ref as an occasional ignored external reference checkout cache for upstream/source comparison only; refresh from external sources instead of editing as product code; when it influences a decision, cite the source repo plus commit/tag and path in tasks/notes/ or tasks/research.md"
+    "rule": "use _ref as an occasional ignored external reference checkout cache for upstream/source comparison only; refresh from external sources instead of editing as product code; when it influences a decision, cite the source repo plus commit/tag and path in tasks/notes/ or docs/researches/"
   },
   "operations": {
     "dir": "deploy",
@@ -1448,7 +1448,7 @@ pi_write_harness_policy() {
       "promotion_rule": "only promote patterns after verified reuse across tasks or fixtures"
     },
     "memory": {
-      "sources": ["tasks/research.md", "tasks/lessons.md", "gbrain"],
+      "sources": ["docs/researches/", "tasks/lessons.md", "gbrain"],
       "rule": "memory is advisory; current repo state and evidence override summaries"
     },
     "external_knowledge": {
@@ -1501,7 +1501,7 @@ pi_write_harness_policy() {
   },
   "sidecar_research": {
     "default": true,
-    "output_file": "tasks/research.md",
+    "output_dir": "docs/researches",
     "preferred_runners": ["subagent", "codex exec --json", "main-thread trace"],
     "spawn_decision": "main agent decides from task breadth, context impact, raw-log volume, and callable runner availability; do not ask the user for spawn confirmation",
     "fallback_runner": "main-thread trace",
@@ -1756,7 +1756,7 @@ This is the root routing contract for Claude Code and Codex.
 
 - Keep sibling `CLAUDE.md` and `AGENTS.md` files aligned. Claude Code consumes `CLAUDE.md`; Codex consumes `AGENTS.md`.
 - Treat `docs/spec.md` as stable product truth, `tasks/current.md` as a derived status snapshot, and `tasks/todo.md` as the deferred-goal ledger; current execution stays in the active plan's `## Task Breakdown`.
-- Treat `tasks/lessons.md`, `tasks/research.md`, and `.ai/harness/policy.json` as durable workflow context.
+- Treat `docs/researches/`, `tasks/lessons.md`, and `.ai/harness/policy.json` as durable workflow context.
 - Use `.ai/context/context-map.json` and `.ai/context/capabilities.json` to discover functional-block contracts.
 - Do not infer local `CLAUDE.md` or `AGENTS.md` files from broad physical layouts such as `apps/*`, `packages/*`, or `services/*`.
 - Put capability-specific ownership, entrypoints, and verification commands in explicitly selected functional-block contracts.
@@ -1868,6 +1868,7 @@ pi_ensure_harness_state_surface() {
     "$target_dir/.ai/harness/planning" \
     "$target_dir/.ai/harness/architecture" \
     "$target_dir/.ai/harness/worktrees" \
+    "$target_dir/docs/researches" \
     "$target_dir/docs/architecture/domains" \
     "$target_dir/docs/architecture/modules" \
     "$target_dir/docs/architecture/requests" \
@@ -1889,6 +1890,17 @@ pi_ensure_harness_state_surface() {
   [[ -f "$target_dir/.ai/harness/worktrees/.gitkeep" ]] || : > "$target_dir/.ai/harness/worktrees/.gitkeep"
   [[ -f "$target_dir/.ai/harness/runs/.gitkeep" ]] || : > "$target_dir/.ai/harness/runs/.gitkeep"
   [[ -f "$target_dir/tasks/workstreams/.gitkeep" ]] || : > "$target_dir/tasks/workstreams/.gitkeep"
+  if [[ ! -f "$target_dir/docs/researches/README.md" ]]; then
+    cat > "$target_dir/docs/researches/README.md" <<'RESEARCH_README_EOF'
+# Research Reports
+
+Durable research reports live in this directory as dated Markdown files.
+
+Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
+decisions in `tasks/notes/`, and keep repeated correction-derived rules in
+`tasks/lessons.md`.
+RESEARCH_README_EOF
+  fi
   if [[ ! -f "$target_dir/tasks/current.md" ]]; then
     cat > "$target_dir/tasks/current.md" <<'CURRENT_STATUS_EOF'
 # Current Status Snapshot

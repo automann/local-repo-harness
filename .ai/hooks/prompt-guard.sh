@@ -847,8 +847,10 @@ emit_workflow_file_guards() {
     echo "[LessonGuard] tasks/lessons.md has updates. Review prevention rules before coding."
   fi
 
-  if [ -f "tasks/research.md" ] && has_changes "tasks/research.md"; then
-    echo "[ResearchGuard] tasks/research.md updated. Review research deeply before planning or implementation."
+  local changed_research
+  changed_research="$(has_changes_glob '^docs/researches/.*\.md$' || true)"
+  if [ -n "$changed_research" ]; then
+    echo "[ResearchGuard] ${changed_research} updated. Review research deeply before planning or implementation."
   fi
 
   local changed_plan
@@ -896,11 +898,11 @@ if [ "$plan_start_intent" -eq 1 ]; then
     latest_plan="$(get_latest_plan || true)"
     if [[ -n "$latest_plan" ]]; then
       plan_research_ready=0
-      echo "[ResearchGate] Advisory: tasks/research.md is missing or older than $latest_plan; skipping automatic Draft plan creation."
-      echo "[ResearchGate] Update tasks/research.md with fresh findings before creating the next plan."
+      echo "[ResearchGate] Advisory: docs/researches/*.md is missing or older than $latest_plan; skipping automatic Draft plan creation."
+      echo "[ResearchGate] Add or update a docs/researches/ report with fresh findings before creating the next plan."
     else
-      echo "[ResearchGate] WARNING: tasks/research.md does not exist yet. Consider creating it with current findings before drafting the plan."
-      echo "  首次创建计划：建议先写 tasks/research.md，但不阻塞。"
+      echo "[ResearchGate] WARNING: no docs/researches/*.md report exists yet. Consider creating one with current findings before drafting the plan."
+      echo "  首次创建计划：建议先写 docs/researches/<date-topic>.md，但不阻塞。"
     fi
   fi
 fi

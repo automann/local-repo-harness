@@ -889,18 +889,42 @@ workflow_pending_orchestration_summary() {
   printf '\n'
 }
 
-has_research_for_new_plan() {
-  local research_file="tasks/research.md"
-  local latest_plan research_mtime plan_mtime
+latest_research_report() {
+  local research_dir="${1:-docs/researches}"
+  local file mtime latest_file="" latest_mtime=0
 
-  [[ -f "$research_file" ]] || return 1
+  [[ -d "$research_dir" ]] || return 1
+
+  while IFS= read -r -d '' file; do
+    case "$(basename "$file")" in
+      README.md)
+        continue
+        ;;
+    esac
+
+    mtime="$(workflow_read_file_mtime "$file" || true)"
+    if [[ -n "$mtime" && "$mtime" -gt "$latest_mtime" ]]; then
+      latest_mtime="$mtime"
+      latest_file="$file"
+    fi
+  done < <(find "$research_dir" -type f -name '*.md' -print0 2>/dev/null)
+
+  [[ -n "$latest_file" ]] || return 1
+  printf '%s' "$latest_file"
+}
+
+has_research_for_new_plan() {
+  local latest_plan latest_report research_mtime plan_mtime
+
+  latest_report="$(latest_research_report || true)"
+  [[ -n "$latest_report" ]] || return 1
 
   latest_plan="$(get_latest_plan || true)"
   if [[ -z "$latest_plan" ]]; then
     return 0
   fi
 
-  research_mtime="$(workflow_read_file_mtime "$research_file" || true)"
+  research_mtime="$(workflow_read_file_mtime "$latest_report" || true)"
   plan_mtime="$(workflow_read_file_mtime "$latest_plan" || true)"
 
   [[ -n "$research_mtime" && -n "$plan_mtime" && "$research_mtime" -gt "$plan_mtime" ]]

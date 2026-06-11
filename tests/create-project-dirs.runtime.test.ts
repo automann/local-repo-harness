@@ -197,7 +197,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.agenticDevelopment.routing.complexEngineeringPlan).toBe("gstack:plan-eng-review");
       expect(workflowContract.agenticDevelopment.routing.smallOrMediumPlan).toBe("waza:think");
       const contextMap = JSON.parse(readFileSync(join(cwd, ".ai/context/context-map.json"), "utf-8"));
-      expect(contextMap.root_context_files).not.toContain("tasks/research.md");
+      expect(contextMap.root_context_files).not.toContain("docs/researches/");
       expect(contextMap.root_context_files).toContain(".ai/context/capabilities.json");
       expect(contextMap.functional_block_selector.script).toBe("scripts/select-agent-context-blocks.sh");
       expect(contextMap.lsp_profiles.default).toBe("typescript-lsp");
@@ -285,7 +285,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.handoff_resume.auto_start_new_session).toBe(false);
       expect(policy.planning.pending_orchestration_file).toBe(".ai/harness/planning/pending.json");
       expect(policy.planning.source_of_truth).toContain("transient host planning bridge");
-      expect(policy.sidecar_research.output_file).toBe("tasks/research.md");
+      expect(policy.sidecar_research.output_dir).toBe("docs/researches");
       expect(policy.sidecar_research.preferred_runners).toEqual([
         "subagent",
         "codex exec --json",

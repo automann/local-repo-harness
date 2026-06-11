@@ -37,6 +37,9 @@ for file in "${changed_files[@]}"; do
     tasks/*)
       has_task_sync_change=1
       ;;
+    docs/researches/*)
+      has_task_sync_change=1
+      ;;
     *)
       has_non_task_change=1
       ;;
@@ -45,7 +48,7 @@ done
 
 if [[ "$has_non_task_change" -eq 0 ]]; then
   if [[ "$has_task_sync_change" -eq 1 ]]; then
-    echo "[task-sync] Only tasks/ changed."
+    echo "[task-sync] Only task/research sync files changed."
   else
     echo "[task-sync] No substantive repo changes detected."
   fi
@@ -58,5 +61,5 @@ if [[ "$has_task_sync_change" -eq 1 ]]; then
 fi
 
 echo "[task-sync] Substantive repo changes detected without tasks/ synchronization."
-echo "[task-sync] Update tasks/current.md, tasks/todo.md, tasks/lessons.md, tasks/research.md, tasks/notes/*.md, or an active tasks/contracts/*.md file."
+echo "[task-sync] Update tasks/current.md, tasks/todo.md, tasks/lessons.md, docs/researches/*.md, tasks/notes/*.md, or an active tasks/contracts/*.md file."
 exit 1
