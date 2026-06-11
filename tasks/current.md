@@ -1,27 +1,27 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-11T00:58:44+0800 -->
+<!-- updated_at: 2026-06-12T04:33:16+0800 -->
 <!-- stale_after: 24h -->
 
-> **Status**: Idle
-> **Updated At**: 2026-06-11T00:58:44+0800
-> **Source Branch**: main
-> **Source Commit**: 46dea09
+> **Status**: ManualClearedWithActiveWork
+> **Updated At**: 2026-06-12T04:33:16+0800
+> **Source Branch**: codex/loop-engine-02-routing-ab-eval
+> **Source Commit**: 1cc0e1e
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: task-complete
+> **Reason**: archive-workflow
 > **Derived From**: active-plan, active-sprint, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
 
 ## Current Focus
 
-- Status: Idle
+- Status: ManualClearedWithActiveWork
 - Active Plan: (none)
 - Plan Status: (none)
-- Next Task: (none)
-- Clear Note: (none)
+- Next Task: inspect active worktree marker(s)
+- Clear Note: Manual clear requested, but active work markers still exist. Idle was not written.
 
 ## Mainline Snapshot Reading
 
@@ -31,7 +31,12 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Active Work
 
-- (none)
+- /Users/chris/Projects/agentic-dev-wt-arch-doc-loop-01-queue-engine-triage: plans/plan-20260612-0410-arch-doc-loop-02-freshness-gate-surfaces.md
+- /Users/chris/Projects/agentic-dev-wt-arch-doc-loop-01-queue-engine-triage: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-arch-doc-loop-01-queue-engine-triage
+- /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: plans/plan-20260610-1113-hook-runtime-drift-policy.md
+- /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-hook-runtime-drift-policy
+- /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: plans/plan-20260612-0314-wt-continuation-for-architecture-doc-loop.md
+- /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-wt-continuation-for-architecture-doc-loop
 ## Active Sprint
 
 - Sprint: (none)
@@ -48,10 +53,21 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: clean
+- Summary: 12 changed/untracked path(s)
 
 ```
-(none)
+ M evals/benchmark.md
+ M evals/evals.json
+ M tasks/sprints/20260612-0236-loop-engine.sprint.md
+ M tests/evals-contract.test.ts
+?? evals/fixtures/route-nl-vs-ts/
+?? plans/archive/plan-20260612-0350-loop-engine-02-routing-ab-eval.md
+?? scripts/route-nl-vs-ts-eval.ts
+?? tasks/archive/notes-20260612-0433-loop-engine-02-routing-ab-eval.md
+?? tasks/archive/todo-20260612-0433-loop-engine-02-routing-ab-eval.md
+?? tasks/contracts/20260612-0350-loop-engine-02-routing-ab-eval.contract.md
+?? tasks/reviews/20260612-0350-loop-engine-02-routing-ab-eval.review.md
+?? tests/route-nl-vs-ts-eval.test.ts
 ```
 
 ## Source Artifacts
