@@ -11,7 +11,7 @@
     "source_of_truth": "per-worktree explicit marker with active-worktree owner; legacy Claude marker fallback only"
   },
   "tasks": {
-    "todo_file": "tasks/todo.md",
+    "todo_file": "tasks/todos.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "workstreams_dir": "tasks/workstreams",
@@ -21,7 +21,7 @@
     "research_dir": "docs/researches"
   },
   "sprints": {
-    "dir": "tasks/sprints",
+    "dir": "plans/prds",
     "active_marker_file": ".ai/harness/sprint/active-sprint",
     "template_file": ".claude/templates/sprint.template.md",
     "helper_script": "scripts/sprint-backlog.sh",
@@ -32,7 +32,7 @@
       "Done",
       "Archived"
     ],
-    "rule": "Sprint is the program layer: PRD plus ordered backlog decompose product intent into task-contract slices; each backlog task executes through the existing plan -> contract -> worktree flow; tasks/todo.md stays the deferred-goal ledger"
+    "rule": "Sprint is the program layer: PRD plus ordered backlog decompose product intent into task-contract slices; each backlog task executes through the existing plan -> contract -> worktree flow; tasks/todos.md stays the deferred-goal ledger"
   },
   "reference_material": {
     "dir": "_ref",
@@ -105,7 +105,7 @@
     "dir": "tasks/workstreams",
     "scope": "capability",
     "projection": "local-contract-active-pointer-and-current-slice",
-    "todo_projection": "tasks/todo.md",
+    "todo_projection": "tasks/todos.md",
     "rule": "durable multi-session progress lives under tasks/workstreams/<domain>/<capability>; local contracts only project pointers"
   },
   "information_lifecycle": {
@@ -146,28 +146,6 @@
       "hook_trigger": "PostToolUse Edit|Write for manifest entries with sync.direction=repo-to-brain",
       "rule": "external knowledge stores long-lived explanations, runbooks, and patterns only; repo-local contracts, hooks, scripts, checks, and evidence remain authoritative",
       "sync_rule": "only explicitly opted-in repo-to-brain manifest entries may be written to the default brain vault; pointer-only externalized stubs remain check-only"
-    }
-  },
-  "context_budget": {
-    "status_file": ".ai/harness/context-budget/latest.json",
-    "source_priority": [
-      "rollout_token_count",
-      "state_thread",
-      "tool_call_count"
-    ],
-    "zones": {
-      "yellow": 0.55,
-      "orange": 0.7,
-      "red": 0.8
-    },
-    "fallback_model_windows": {
-      "gpt-5.4": 1050000,
-      "gpt-5.5": 258000
-    },
-    "fallback_tool_calls": {
-      "yellow": 30,
-      "orange": 40,
-      "red": 50
     }
   },
   "handoff_resume": {

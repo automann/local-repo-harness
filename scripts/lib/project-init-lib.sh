@@ -35,16 +35,15 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .claude/.atomic_pending
 .claude/.session-id
 .claude/.trace.jsonl
-.claude/.tool-call-count
 .claude/.session-handoff.md
 .claude/.task-state.json
 .claude/.task-handoff.md
-.claude/.context-pressure/
 .claude/.codegraph-state/
 .claude/*.tmp
 .claude/*.bak
 .claude/*.bak.*
 .claude/*.backup-*
+tasks/.current.md.tmp.*
 .ai/harness/checks/latest.json
 .ai/harness/checks/post-bash-latest.json
 .ai/harness/events.jsonl
@@ -52,7 +51,6 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 .ai/harness/failures/latest.jsonl
 .ai/harness/handoff/current.md
 .ai/harness/handoff/resume.md
-.ai/harness/context-budget/latest.json
 .ai/harness/capability-context/
 .ai/harness/security/*
 !.ai/harness/security/.gitkeep
@@ -68,6 +66,7 @@ PI_DEFAULT_RUNTIME_ENTRIES=$(cat <<'EOF_RUNTIME'
 !.ai/harness/triage/.gitkeep
 .codex/*
 .claude/.active-plan
+.claude/.plan-state/
 EOF_RUNTIME
 )
 PI_EXTERNAL_TOOLING_HOSTS_DEFAULT=$(cat <<'EOF_EXTERNAL_TOOLING_HOSTS'
@@ -162,7 +161,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Sprint contract: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md`
 - Sprint review: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 - Implementation notes: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md` `allowed_paths`
@@ -238,7 +237,7 @@ Describe the exact outcome this task must deliver.
 ## Workflow Inventory
 
 - Source plan: `{{PLAN_FILE}}`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Review file: `{{REVIEW_FILE}}`
 - Notes file: `{{NOTES_FILE}}`
 - Checks file: `.ai/harness/checks/latest.json`
@@ -251,7 +250,7 @@ Describe the exact outcome this task must deliver.
 ```yaml
 allowed_paths:
   - plans/
-  - tasks/todo.md
+  - tasks/todos.md
   - {{CONTRACT_FILE}}
   - {{REVIEW_FILE}}
   - {{NOTES_FILE}}
@@ -519,6 +518,135 @@ NODE_EOF
 
 pi_print_codex_hook_trust_notice() {
   echo "Host hook adapters are user-level: run repo-harness install --target both --location global, then trust ~/.codex/hooks.json in Codex Settings."
+}
+
+pi_repo_pins_hook_source() {
+  local repo="$1"
+  local policy_file="$repo/.ai/harness/policy.json"
+
+  if [[ "${REPO_HARNESS_HOOK_SOURCE:-}" == "repo" ]]; then
+    return 0
+  fi
+
+  [[ -f "$policy_file" ]] || return 1
+  grep -Eq '"hook_source"[[:space:]]*:[[:space:]]*"repo"' "$policy_file"
+}
+
+pi_write_hook_runtime_readme() {
+  local hooks_dir="$1"
+  local mode="${2:-apply}"
+  local readme="$hooks_dir/README.md"
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] write $readme"
+    return 0
+  fi
+
+  mkdir -p "$hooks_dir"
+  cat > "$readme" <<'EOF_HOOK_README'
+# Repo-Local Hook Fallback
+
+This repo does not pin `"hook_source": "repo"`, so active hook execution is
+user-level and central-first:
+
+`~/.codex/hooks.json` / `~/.claude/settings.json` -> `repo-harness-hook` ->
+packaged hooks from the installed repo-harness runtime.
+
+The files under `.ai/hooks/lib/` are kept only for repo workflow helper scripts
+that source shared shell utilities. Full hook runtime scripts are not vendored
+here by default because stale copies can be mistaken for the active hook path.
+
+Set `"hook_source": "repo"` in `.ai/harness/policy.json` only for self-hosted
+hook development or an explicitly reviewed repo-local hook override.
+EOF_HOOK_README
+}
+
+pi_prune_repo_local_hook_runtime() {
+  local hooks_dir="$1"
+  local mode="${2:-apply}"
+
+  if [[ ! -d "$hooks_dir" ]]; then
+    return 0
+  fi
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] remove repo-local hook entry scripts from $hooks_dir unless hook_source is repo"
+    return 0
+  fi
+
+  find "$hooks_dir" -mindepth 1 -maxdepth 1 -type f \
+    \( -name '*.sh' \
+      -o -name 'AGENTS.md' \
+      -o -name 'CLAUDE.md' \
+      -o -name 'settings.template.json' \
+      -o -name 'codex.hooks.template.json' \
+      -o -name '.version' \) \
+    -delete
+}
+
+pi_install_hook_assets() {
+  local target_dir="$1"
+  local hooks_assets_dir="$2"
+  local mode="${3:-apply}"
+  local hooks_dir="$target_dir/.ai/hooks"
+
+  if [[ ! -d "$hooks_assets_dir" ]]; then
+    echo "[project-init] Warning: hook assets not found at $hooks_assets_dir" >&2
+    echo "[project-init] User-level host adapters dispatch through repo-harness-hook packaged hooks." >&2
+    return 0
+  fi
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] mkdir -p \"$hooks_dir\""
+  else
+    mkdir -p "$hooks_dir"
+  fi
+
+  if pi_repo_pins_hook_source "$target_dir"; then
+    while IFS= read -r hook; do
+      local rel_path rel_dir dest_dir hook_name
+      rel_path="${hook#"$hooks_assets_dir"/}"
+      rel_dir="$(dirname "$rel_path")"
+      if [[ "$rel_dir" == "." ]]; then
+        dest_dir="$hooks_dir"
+      else
+        dest_dir="$hooks_dir/$rel_dir"
+      fi
+      hook_name="$(basename "$hook")"
+      if [[ "$mode" != "apply" ]]; then
+        echo "[dry-run] mkdir -p \"$dest_dir\""
+        echo "[dry-run] cp \"$hook\" \"$dest_dir/$hook_name\""
+        continue
+      fi
+      mkdir -p "$dest_dir"
+      cp "$hook" "$dest_dir/$hook_name"
+      chmod +x "$dest_dir/$hook_name" 2>/dev/null || true
+    done < <(find "$hooks_assets_dir" -type f -name '*.sh' | sort)
+    return 0
+  fi
+
+  pi_prune_repo_local_hook_runtime "$hooks_dir" "$mode"
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] mkdir -p \"$hooks_dir/lib\""
+  else
+    mkdir -p "$hooks_dir/lib"
+  fi
+
+  if [[ -d "$hooks_assets_dir/lib" ]]; then
+    while IFS= read -r hook_lib; do
+      local lib_name
+      lib_name="$(basename "$hook_lib")"
+      if [[ "$mode" != "apply" ]]; then
+        echo "[dry-run] cp \"$hook_lib\" \"$hooks_dir/lib/$lib_name\""
+        continue
+      fi
+      cp "$hook_lib" "$hooks_dir/lib/$lib_name"
+      chmod +x "$hooks_dir/lib/$lib_name" 2>/dev/null || true
+    done < <(find "$hooks_assets_dir/lib" -maxdepth 1 -type f -name '*.sh' | sort)
+  fi
+
+  pi_write_hook_runtime_readme "$hooks_dir" "$mode"
 }
 
 pi_ensure_executable_if_apply() {
@@ -804,7 +932,7 @@ pi_install_helpers() {
   local target_dir="$1"
   local helpers_dir="$2"
   local mode="${3:-apply}"
-  local helper_names="${4:-new-spec.sh new-sprint.sh new-plan.sh capture-plan.sh plan-to-todo.sh contract-run.ts contract-worktree.sh ship-worktrees.sh archive-workflow.sh refresh-current-status.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh verify-sprint.sh sprint-backlog.sh check-task-sync.sh check-deploy-sql-order.sh check-architecture-sync.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh maintenance-triage.sh heartbeat-triage.sh switch-plan.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh context-budget.ts capability-resolver.ts architecture-event.ts capability-config.ts architecture-queue.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
+  local helper_names="${4:-new-spec.sh new-sprint.sh new-plan.sh capture-plan.sh plan-to-todo.sh contract-run.ts contract-worktree.sh ship-worktrees.sh archive-workflow.sh refresh-current-status.sh prepare-handoff.sh verify-contract.sh summarize-failures.sh verify-sprint.sh sprint-backlog.sh check-task-sync.sh check-deploy-sql-order.sh check-architecture-sync.sh check-agent-tooling.sh check-context-files.sh check-brain-manifest.sh sync-brain-docs.sh check-skill-version.ts select-agent-context-blocks.sh ensure-task-workflow.sh check-task-workflow.sh maintenance-triage.sh heartbeat-triage.sh switch-plan.sh workflow-contract.ts inspect-project-state.ts migrate-workflow-docs.ts migrate-project-template.sh capability-resolver.ts architecture-event.ts capability-config.ts architecture-queue.sh archive-architecture-request.sh context-contract-sync.sh workstream-sync.sh prepare-codex-handoff.sh codex-handoff-resume.sh}"
   local scripts_dir="$target_dir/scripts"
   local helper_name
 
@@ -818,11 +946,15 @@ pi_install_helpers() {
   if [[ -d "$helpers_dir" ]]; then
     for helper_name in $helper_names; do
       if [[ -f "$helpers_dir/$helper_name" ]]; then
-        if [[ "$helper_name" == "migrate-project-template.sh" && -n "${SKILL_ROOT:-}" ]]; then
+        if [[ "$helper_name" == "migrate-project-template.sh" ]]; then
           local target_abs=""
           local skill_abs=""
           target_abs="$(cd "$target_dir" && pwd)"
-          skill_abs="$(cd "$SKILL_ROOT" && pwd)"
+          if [[ -n "${SKILL_ROOT:-}" ]]; then
+            skill_abs="$(cd "$SKILL_ROOT" && pwd)"
+          else
+            skill_abs="$(cd "$helpers_dir/../.." && pwd)"
+          fi
           if [[ "$target_abs" == "$skill_abs" ]]; then
             continue
           fi
@@ -1372,7 +1504,7 @@ pi_write_harness_policy() {
     "source_of_truth": "per-worktree explicit marker with active-worktree owner; legacy Claude marker fallback only"
   },
   "tasks": {
-    "todo_file": "tasks/todo.md",
+    "todo_file": "tasks/todos.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "research_dir": "docs/researches",
@@ -1382,12 +1514,12 @@ pi_write_harness_policy() {
     "notes_dir": "tasks/notes"
   },
   "sprints": {
-    "dir": "tasks/sprints",
+    "dir": "plans/prds",
     "active_marker_file": ".ai/harness/sprint/active-sprint",
     "template_file": ".claude/templates/sprint.template.md",
     "helper_script": "scripts/sprint-backlog.sh",
     "statuses": ["Draft", "Approved", "Executing", "Done", "Archived"],
-    "rule": "Sprint is the program layer: PRD plus ordered backlog decompose product intent into task-contract slices; each backlog task executes through the existing plan -> contract -> worktree flow; tasks/todo.md stays the deferred-goal ledger"
+    "rule": "Sprint is the program layer: PRD plus ordered backlog decompose product intent into task-contract slices; each backlog task executes through the existing plan -> contract -> worktree flow; tasks/todos.md stays the deferred-goal ledger"
   },
   "reference_material": {
     "dir": "_ref",
@@ -1449,8 +1581,8 @@ pi_write_harness_policy() {
     "dir": "tasks/workstreams",
     "scope": "capability",
     "projection": "local-contract-active-pointer-and-current-slice",
-    "todo_projection": "tasks/todo.md",
-    "rule": "durable multi-session progress lives under tasks/workstreams/<domain>/<capability>; current plan execution lives in the plan Task Breakdown; tasks/todo.md records deferred goals only"
+    "todo_projection": "tasks/todos.md",
+    "rule": "durable multi-session progress lives under tasks/workstreams/<domain>/<capability>; current plan execution lives in the plan Task Breakdown; tasks/todos.md records deferred goals only"
   },
   "information_lifecycle": {
     "notes": {
@@ -1480,24 +1612,6 @@ pi_write_harness_policy() {
       "hook_trigger": "PostToolUse Edit|Write for manifest entries with sync.direction=repo-to-brain",
       "rule": "external knowledge stores long-lived explanations, runbooks, and patterns only; repo-local contracts, hooks, scripts, checks, and evidence remain authoritative",
       "sync_rule": "only explicitly opted-in repo-to-brain manifest entries may be written to the default brain vault; pointer-only externalized stubs remain check-only"
-    }
-  },
-  "context_budget": {
-    "status_file": ".ai/harness/context-budget/latest.json",
-    "source_priority": ["rollout_token_count", "state_thread", "tool_call_count"],
-    "zones": {
-      "yellow": 0.55,
-      "orange": 0.7,
-      "red": 0.8
-    },
-    "fallback_model_windows": {
-      "gpt-5.4": 1050000,
-      "gpt-5.5": 258000
-    },
-    "fallback_tool_calls": {
-      "yellow": 30,
-      "orange": 40,
-      "red": 50
     }
   },
   "handoff_resume": {
@@ -1750,7 +1864,7 @@ pi_write_context_map() {
     "AGENTS.md",
     "docs/spec.md",
     "tasks/current.md",
-    "tasks/todo.md",
+    "tasks/todos.md",
     "tasks/lessons.md",
     ".ai/context/capabilities.json",
     ".ai/harness/policy.json"
@@ -1775,7 +1889,7 @@ This is the root routing contract for Claude Code and Codex.
 ## Root Workflow Contract
 
 - Keep sibling `CLAUDE.md` and `AGENTS.md` files aligned. Claude Code consumes `CLAUDE.md`; Codex consumes `AGENTS.md`.
-- Treat `docs/spec.md` as stable product truth, `tasks/current.md` as a derived status snapshot, and `tasks/todo.md` as the deferred-goal ledger; current execution stays in the active plan's `## Task Breakdown`.
+- Treat `docs/spec.md` as stable product truth, `tasks/current.md` as a derived status snapshot, and `tasks/todos.md` as the deferred-goal ledger; current execution stays in the active plan's `## Task Breakdown`.
 - Treat `docs/researches/`, `tasks/lessons.md`, and `.ai/harness/policy.json` as durable workflow context.
 - Use `.ai/context/context-map.json` and `.ai/context/capabilities.json` to discover functional-block contracts.
 - Do not infer local `CLAUDE.md` or `AGENTS.md` files from broad physical layouts such as `apps/*`, `packages/*`, or `services/*`.
@@ -1882,7 +1996,6 @@ pi_ensure_harness_state_surface() {
     "$target_dir/.ai/context" \
     "$target_dir/.ai/harness/checks" \
     "$target_dir/.ai/harness/handoff" \
-    "$target_dir/.ai/harness/context-budget" \
     "$target_dir/.ai/harness/failures" \
     "$target_dir/.ai/harness/security" \
     "$target_dir/.ai/harness/planning" \
@@ -1900,7 +2013,6 @@ pi_ensure_harness_state_surface() {
   [[ -f "$target_dir/.ai/harness/checks/latest.json" ]] || printf "{}\n" > "$target_dir/.ai/harness/checks/latest.json"
   [[ -f "$target_dir/.ai/harness/handoff/current.md" ]] || printf "# Harness Handoff\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/current.md"
   [[ -f "$target_dir/.ai/harness/handoff/resume.md" ]] || printf "# Codex Resume Packet\n\n> **Reason**: bootstrap\n" > "$target_dir/.ai/harness/handoff/resume.md"
-  [[ -f "$target_dir/.ai/harness/context-budget/latest.json" ]] || printf "{}\n" > "$target_dir/.ai/harness/context-budget/latest.json"
   [[ -f "$target_dir/.ai/context/capability-source-map.json" ]] || printf '{\n  "version": 1,\n  "capabilities": {}\n}\n' > "$target_dir/.ai/context/capability-source-map.json"
   [[ -f "$target_dir/.ai/harness/events.jsonl" ]] || : > "$target_dir/.ai/harness/events.jsonl"
   [[ -f "$target_dir/.ai/harness/architecture/events.jsonl" ]] || : > "$target_dir/.ai/harness/architecture/events.jsonl"
@@ -1916,11 +2028,11 @@ pi_ensure_harness_state_surface() {
     cat > "$target_dir/docs/researches/README.md" <<'RESEARCH_README_EOF'
 # Research Reports
 
-Durable research reports live in this directory as dated Markdown files.
+Durable research reports live in this directory as topic-scoped Markdown files.
 
-Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
-decisions in `tasks/notes/`, and keep repeated correction-derived rules in
-`tasks/lessons.md`.
+Use `YYYYMMDD-topic.md` names when chronology matters, or `<topic>.md` for
+stable subject reports. Keep task-local implementation decisions in
+`tasks/notes/`, and keep repeated correction-derived rules in `tasks/lessons.md`.
 RESEARCH_README_EOF
   fi
   if [[ ! -f "$target_dir/tasks/current.md" ]]; then

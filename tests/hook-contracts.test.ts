@@ -60,16 +60,20 @@ describe("Hook contracts", () => {
     expect(script).toContain("hook_structured_error");
   });
 
-  test("post-tool observer should keep context pressure with stable session-id file, one-time flags, and sampled budget probes", () => {
+  test("post-tool observer should keep trace, CodeGraph session state, and plan annotation guards without budget probes", () => {
     const script = read("assets/hooks/post-tool-observer.sh");
     expect(script).toContain(".claude/.session-id");
-    expect(script).toContain("WARN_FILE");
-    expect(script).toContain("RED_FILE");
-    expect(script).toContain(".tool-call-count");
-    expect(script).toContain("scripts/context-budget.ts");
-    expect(script).toContain("BUDGET_SAMPLE_EVERY");
-    expect(script).toContain("prepare-codex-handoff.sh");
-    expect(script).toContain("fresh-session resume packet");
+    expect(script).toContain("session_state_resolve_key");
+    expect(script).toContain("session_state_mark_codegraph_used");
+    expect(script).toContain("workflow_trace_file");
+    expect(script).toContain("[AnnotationGuard]");
+    expect(script).not.toContain("WARN_FILE");
+    expect(script).not.toContain("RED_FILE");
+    expect(script).not.toContain(".tool-call-count");
+    expect(script).not.toContain(".context-pressure");
+    expect(script).not.toContain("scripts/context-budget.ts");
+    expect(script).not.toContain("BUDGET_SAMPLE_EVERY");
+    expect(script).not.toContain("ContextMonitor");
     expect(script).not.toContain("/compact");
   });
 
@@ -171,7 +175,7 @@ describe("Hook contracts", () => {
     expect(script).toContain("sync-brain-docs.sh");
     expect(read("assets/templates/helpers/archive-architecture-request.sh")).toContain("[ArchitectureArchive]");
     expect(read("assets/templates/helpers/workstream-sync.sh")).toContain("tasks/workstreams");
-    expect(script).toContain("tasks/todo.md");
+    expect(script).toContain("tasks/todos.md");
     expect(script).toContain("--quiet");
     expect(script).toContain("contract_references_path");
   });

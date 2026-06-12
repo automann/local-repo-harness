@@ -13,16 +13,16 @@
 - Enter plan mode for non-trivial tasks.
 - If `docs/spec.md` is missing, run `bash scripts/new-spec.sh` first.
 - Capture decision-complete Codex Plan mode or Waza `/think` output with `bash scripts/capture-plan.sh --slug <slug> --title <title>`; if no captured active plan exists, use `new-sprint.sh`; after approval, run `plan-to-todo.sh` or capture with `--status Approved --execute`.
-- Keep active checklist items in the active plan's `## Task Breakdown`; record only deferred goals in `tasks/todo.md`.
+- Keep active checklist items in the active plan's `## Task Breakdown`; record only deferred goals in `tasks/todos.md`.
 
 ### 4. Research Delegation Strategy
 - The main agent decides whether to spawn based on task breadth, context impact, raw-log volume, and callable runner availability.
 - Parallelize only non-dependent paths.
 - Do not ask the user for spawn confirmation. If no sidecar runner is callable or spawning is not worth the context cost, do the same bounded trace in the main thread and write conclusions to `docs/researches/`.
 
-### 4b. Context Budget
+### 4b. Durable Handoff
 - Treat auto-compact as an unreliable fallback.
-- At orange/red context pressure, refresh `.ai/harness/handoff/current.md` and `.ai/harness/handoff/resume.md`, then resume from a fresh session.
+- Before switching sessions or worktrees, refresh `.ai/harness/handoff/current.md` and `.ai/harness/handoff/resume.md`, then resume from the filesystem artifacts.
 
 ### 5. Self-Improvement Loop
 - After correction, append prevention rule to `tasks/lessons.md`.

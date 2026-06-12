@@ -93,7 +93,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Sprint contract: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md`
 - Sprint review: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 - Implementation notes: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md` `allowed_paths`

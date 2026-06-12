@@ -189,21 +189,21 @@ check_plan_template_evidence_contract() {
 }
 
 todo_source_plan() {
-  if [[ ! -f "${todo_file:-tasks/todo.md}" ]]; then
+  if [[ ! -f "${todo_file:-tasks/todos.md}" ]]; then
     return 1
   fi
-  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' "${todo_file:-tasks/todo.md}" | xargs
+  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' "${todo_file:-tasks/todos.md}" | xargs
 }
 
 todo_is_deferred_ledger() {
-  local file="${1:-${todo_file:-tasks/todo.md}}"
+  local file="${1:-${todo_file:-tasks/todos.md}}"
   [[ -f "$file" ]] || return 1
   grep -Eq '^# Deferred Goal Ledger[[:space:]]*$' "$file" \
     && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' "$file"
 }
 
 todo_deferred_ledger_error() {
-  local file="${1:-${todo_file:-tasks/todo.md}}"
+  local file="${1:-${todo_file:-tasks/todos.md}}"
   local missing=0
 
   grep -Eq '^# Deferred Goal Ledger[[:space:]]*$' "$file" || {
@@ -417,7 +417,7 @@ policy_get() {
   printf '%s' "$default_value"
 }
 
-todo_file="$(policy_get '.tasks.todo_file' 'tasks/todo.md')"
+todo_file="$(policy_get '.tasks.todo_file' 'tasks/todos.md')"
 current_status_file="$(policy_get '.tasks.current_status_file' 'tasks/current.md')"
 lessons_file="$(policy_get '.tasks.lessons_file' 'tasks/lessons.md')"
 research_dir="$(policy_get '.tasks.research_dir' 'docs/researches')"
@@ -429,8 +429,9 @@ runs_dir="$(policy_get '.harness.runs_dir' '.ai/harness/runs')"
 context_map_file="$(policy_get '.context.map_file' '.ai/context/context-map.json')"
 handoff_file="$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')"
 resume_file="$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')"
-sprints_dir="$(policy_get '.sprints.dir' 'tasks/sprints')"
+sprints_dir="$(policy_get '.sprints.dir' 'plans/prds')"
 sprint_marker_file="$(policy_get '.sprints.active_marker_file' '.ai/harness/sprint/active-sprint')"
+legacy_sprints_dir="tasks/sprints"
 upgrade_strategy_version=""
 if [[ -f "$policy_file" ]] && command -v jq >/dev/null 2>&1; then
   upgrade_strategy_version="$(policy_get '.upgrade.strategy_version' '')"
@@ -522,7 +523,11 @@ if [[ -f "docs/plan.md" ]]; then
 fi
 
 if [[ -f "docs/TODO.md" ]]; then
-  report_issue "Legacy docs/TODO.md detected; migrate it into tasks/todo.md."
+  report_issue "Legacy docs/TODO.md detected; migrate it into tasks/todos.md."
+fi
+
+if [[ "$todo_file" != "tasks/todo.md" && -f "tasks/todo.md" ]]; then
+  report_issue "Legacy tasks/todo.md detected; migrate it into ${todo_file}."
 fi
 
 if [[ -f "scripts/check-deploy-sql-order.sh" ]]; then
@@ -571,7 +576,11 @@ if [[ -d "$sprints_dir" ]]; then
         report_issue "Sprint $sprint_file is not execution-ready: ${sprint_error//$'\n'/; }"
       fi
     fi
-  done < <(find "$sprints_dir" -maxdepth 1 -type f -name '*.sprint.md' 2>/dev/null | sort)
+  done < <(find "$sprints_dir" -maxdepth 1 -type f -name '*.prd.md' 2>/dev/null | sort)
+fi
+
+if [[ "$sprints_dir" != "$legacy_sprints_dir" && -d "$legacy_sprints_dir" ]]; then
+  report_issue "Legacy sprint PRD directory detected; migrate ${legacy_sprints_dir}/*.sprint.md into ${sprints_dir}/*.prd.md."
 fi
 
 if [[ -f "$sprint_marker_file" ]]; then

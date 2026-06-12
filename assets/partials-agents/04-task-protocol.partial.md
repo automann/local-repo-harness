@@ -4,7 +4,7 @@
 TASK_SOURCES:
   - docs/spec.md
   - docs/researches/
-  - tasks/todo.md
+  - tasks/todos.md
   - tasks/contracts/
   - tasks/reviews/
   - tasks/notes/
@@ -34,13 +34,13 @@ RULES:
   - Record only non-obvious implementation decisions, deviations, tradeoffs, and open questions in tasks/notes/{plan-stem}.notes.md
   - Verify contracts before claiming completion
   - Require review pass before claiming completion
-  - Keep tasks/todo.md limited to deferred medium/long-term goals, with tradeoff and revisit trigger; do not duplicate plan Task Breakdown
+  - Keep tasks/todos.md limited to deferred medium/long-term goals, with tradeoff and revisit trigger; do not duplicate plan Task Breakdown
   - Record correction-derived prevention rules in tasks/lessons.md
-  - Distill repeated corrections into tasks/lessons.md instead of keeping them in tasks/todo.md
+  - Distill repeated corrections into tasks/lessons.md instead of keeping them in tasks/todos.md
   - Capture deep findings and hidden contracts in docs/researches/
   - Keep sprint-level verification notes, behavior diffs, and residual risks in tasks/reviews/{plan-stem}.review.md
   - Do not use implementation notes as durable memory or task logs; archive them on close and promote only after evidence shows the rule should outlive the sprint
-  - Promote implementation-ready follow-up work into a new plans/plan-{timestamp}-{slug}.md file; keep deferred goals in tasks/todo.md only when intentionally postponed
+  - Promote implementation-ready follow-up work into a new plans/plan-{timestamp}-{slug}.md file; keep deferred goals in tasks/todos.md only when intentionally postponed
   - Treat `.ai/hooks/` as the shared automation entrypoint when repo scripts reference hook-backed workflow checks
   - Treat user-level `~/.claude/settings.json` and `~/.codex/hooks.json` as host adapters; do not add repo-local project hook adapters unless explicitly migrating legacy config
   - For Codex sessions, treat `bash scripts/check-task-sync.sh` and `bash scripts/check-task-workflow.sh --strict` as required repo-local checks

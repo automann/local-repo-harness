@@ -123,7 +123,7 @@ delegation without changing the file-backed authority model.
 ```mermaid
 flowchart TD
   Program["Program goal or release theme"] --> Sprint{"Sprint layer needed?"}
-  Sprint -->|yes| SprintDoc["Sprint PRD + backlog<br/>tasks/sprints/*.sprint.md"]
+  Sprint -->|yes| SprintDoc["Sprint PRD + backlog<br/>plans/prds/*.prd.md"]
   SprintDoc --> NextTask["Select next sprint task<br/>sprint-backlog.sh next"]
   Sprint -->|no| UserTask["User task or planning prompt"]
   Heartbeat["Heartbeat triage<br/>scripts/heartbeat-triage.sh<br/>.ai/harness/triage/"] --> UserTask
@@ -179,6 +179,26 @@ flowchart TD
   Archive --> Cleanup["Cleanup merged worktree<br/>contract-worktree.sh cleanup"]
   Cleanup --> Done["Reviewable completed task"]
 ```
+
+## Long-Running Product Loops
+
+For Greenfield and Brownfield work, front-load discovery and engineering-plan
+judgment in Claude-Fable before asking Codex to loop on execution:
+
+1. In Claude-Fable, use gstack `office-hours` for product discovery or
+   `plan-eng-review` for engineering plan review. The output should be the
+   development documents that lock product intent, architecture, risks, and the
+   evidence contract.
+2. Turn those documents into a PRD sprint under `plans/prds/`, with an
+   ordered backlog and detailed sub-plans for each execution slice.
+3. In Codex, create a Goal that points at that sprint file. The harness can then
+   project each sprint item through the normal plan -> contract -> worktree ->
+   verification flow.
+
+That handoff keeps long-running loops precise: Claude-Fable owns the broad
+front-loaded judgment, the PRD sprint is the durable source of truth, and Codex
+Goal mode resumes against a concrete sprint instead of reinterpreting the
+original chat.
 
 ## First 5 Minutes
 
@@ -408,7 +428,7 @@ Most common guards:
   - no automatic gstack, gbrain MCP, CodeGraph daemon, or provider setup
 - Manual distillation stays repo-local:
   - repeated corrections -> `tasks/lessons.md`
-  - deep findings and hidden contracts -> `tasks/research.md`
+  - deep findings and hidden contracts -> topic-scoped `docs/researches/*.md`
   - sprint verification evidence -> `tasks/reviews/*.review.md`
   - durable capability progress -> `tasks/workstreams/`
   - release history -> `docs/CHANGELOG.md`
@@ -422,6 +442,7 @@ are not all bundled product dependencies.
 
 | Tool or repo | Used for | Dependency shape |
 | --- | --- | --- |
+| [Hylarucoder](https://x.com/hylarucoder) / Geju | P1/P2/P3 due-diligence method and Geju practice that shaped the planning, tracing, and decision-rationale discipline in this workflow | Methodology contribution and acknowledgement; not a bundled dependency |
 | gstack skills, including `document-release`, `office-hours`, `plan-eng-review`, and `plan-design-review` | Product discovery, plan review, design review, and post-ship documentation hygiene | External operator workflow; advisory by default |
 | Waza core skills `think`, `hunt`, `check`, and `health` | Daily planning, bug hunts, verification, health checks, and Codex-first skill sync | Installed through the skills CLI into host skill roots |
 | `mermaid` | Human-readable architecture and system-flow diagrams when Mermaid is not enough | Runtime-referenced skill, not vendored into generated repos |
@@ -436,7 +457,7 @@ Source-owned command facades live in `assets/skill-commands/`. They keep host
 skill discovery compatible while the CLI and hooks own execution:
 
 - Planning and review: `repo-harness-plan`, `repo-harness-review`, `repo-harness-autoplan`
-- Sprint program layer: `repo-harness-sprint` (PRD + ordered backlog in `tasks/sprints/`, executed task-by-task through the contract flow)
+- Sprint program layer: `repo-harness-sprint` (PRD + ordered backlog in `plans/prds/`, executed task-by-task through the contract flow)
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation command: `repo-harness-scaffold`
 

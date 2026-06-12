@@ -51,19 +51,7 @@ create_contract_directories() {
 }
 
 install_hook_assets() {
-  mkdir -p .ai/hooks
-
-  if [[ -d "$ASSETS_HOOKS_DIR" ]]; then
-    find "$ASSETS_HOOKS_DIR" -mindepth 1 -maxdepth 1 \( -type f -name '*.sh' -o -type d -name 'lib' \) | while read -r asset; do
-      if [[ -d "$asset" ]]; then
-        cp -R "$asset" .ai/hooks/
-      else
-        cp "$asset" .ai/hooks/
-      fi
-    done
-  fi
-
-  find .ai/hooks -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
+  pi_install_hook_assets "$PWD" "$ASSETS_HOOKS_DIR" "apply"
 }
 
 ensure_task_sync_package_script() {
@@ -92,7 +80,6 @@ mkdir -p .ai/hooks
 mkdir -p .ai/context
 mkdir -p .ai/harness/checks
 mkdir -p .ai/harness/handoff
-mkdir -p .ai/harness/context-budget
 mkdir -p .ai/harness/failures
 mkdir -p .ai/harness/security
 mkdir -p .ai/harness/runs
@@ -119,7 +106,7 @@ if pi_should_generate_full_docs; then
   touch docs/decisions.md
 fi
 
-cat > tasks/todo.md << 'TASK_TODO_EOF'
+cat > tasks/todos.md << 'TASK_TODO_EOF'
 # Deferred Goal Ledger
 
 > **Status**: Backlog
@@ -173,11 +160,11 @@ mkdir -p docs/researches
 cat > docs/researches/README.md << 'RESEARCH_README_EOF'
 # Research Reports
 
-Durable research reports live in this directory as dated Markdown files.
+Durable research reports live in this directory as topic-scoped Markdown files.
 
-Use `YYYYMMDD-topic.md` names for new reports. Keep task-local implementation
-decisions in `tasks/notes/`, and keep repeated correction-derived rules in
-`tasks/lessons.md`.
+Use `YYYYMMDD-topic.md` names when chronology matters, or `<topic>.md` for
+stable subject reports. Keep task-local implementation decisions in
+`tasks/notes/`, and keep repeated correction-derived rules in `tasks/lessons.md`.
 RESEARCH_README_EOF
 
 write_templates
@@ -208,7 +195,6 @@ DOCS_SPEC_EOF
 # - .ai/harness/architecture/events.jsonl
 # - .ai/harness/handoff/current.md
 # - .ai/harness/handoff/resume.md
-# - .ai/harness/context-budget/latest.json
 # - .ai/harness/failures/latest.jsonl
 # - .ai/harness/security/.gitkeep
 # - .ai/harness/worktrees/.gitkeep

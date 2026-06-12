@@ -178,7 +178,9 @@ export function runHook(opts: RunHookOptions): RunHookResult {
   const syncHint =
     resolved.source === 'packaged'
       ? 'upgrade the repo-harness CLI (npm install -g repo-harness@latest) to refresh packaged hooks'
-      : `run 'repo-harness update --repo ${repoRoot}' to sync .ai/hooks`;
+      : resolved.source === 'repo-fallback'
+        ? 'upgrade the repo-harness CLI to restore packaged hooks, or set "hook_source": "repo" before syncing a full vendored hook runtime'
+        : `run 'repo-harness update --repo ${repoRoot}' to sync pinned .ai/hooks`;
   const sessionStartCollectStdout = opts.event === 'SessionStart' && opts.stdio === undefined;
   const sessionStartContexts: string[] = [];
   const codexStopDecisionStdout =

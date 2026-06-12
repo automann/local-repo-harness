@@ -16,7 +16,7 @@ Usage:
 Program-level sprint backlog helper. A Sprint is the program layer
 (PRD + ordered backlog); each backlog task executes as one task-contract
 slice through the existing plan -> contract -> worktree flow.
-tasks/todo.md stays the deferred-goal ledger.
+tasks/todos.md stays the deferred-goal ledger.
 
 start-task captures a plan for the next (or named) pending backlog row via
 capture-plan.sh --source repo-harness-sprint and fills the row's Plan cell.
@@ -46,7 +46,7 @@ policy_get() {
   printf '%s' "$default_value"
 }
 
-sprints_dir="$(policy_get '.sprints.dir' 'tasks/sprints')"
+sprints_dir="$(policy_get '.sprints.dir' 'plans/prds')"
 marker_file="$(policy_get '.sprints.active_marker_file' '.ai/harness/sprint/active-sprint')"
 template_file="$(policy_get '.sprints.template_file' '.claude/templates/sprint.template.md')"
 
@@ -204,7 +204,7 @@ render_sprint_file() {
 
 Program-level sprint container. The PRD and ordered backlog decompose product
 intent into task-contract slices; each backlog task executes through the
-existing plan -> contract -> worktree -> verify flow. `tasks/todo.md` stays the
+existing plan -> contract -> worktree -> verify flow. `tasks/todos.md` stays the
 deferred-goal ledger and never carries this backlog.
 
 ## PRD
@@ -342,10 +342,10 @@ cmd_init() {
   local timestamp file_stamp sprint_file counter
   timestamp="$(date '+%Y-%m-%d %H:%M')"
   file_stamp="$(date +%Y%m%d-%H%M)"
-  sprint_file="${sprints_dir}/${file_stamp}-${slug}.sprint.md"
+  sprint_file="${sprints_dir}/${file_stamp}-${slug}.prd.md"
   counter=2
   while [[ -e "$sprint_file" ]]; do
-    sprint_file="${sprints_dir}/${file_stamp}-${slug}-v${counter}.sprint.md"
+    sprint_file="${sprints_dir}/${file_stamp}-${slug}-v${counter}.prd.md"
     counter=$((counter + 1))
   done
 

@@ -107,7 +107,6 @@
       "inspect-project-state.ts",
       "migrate-workflow-docs.ts",
       "migrate-project-template.sh",
-      "context-budget.ts",
       "capability-resolver.ts",
       "architecture-event.ts",
       "capability-config.ts",
@@ -124,6 +123,7 @@
     "requiredDirectories": [
       "plans",
       "plans/archive",
+      "plans/prds",
       "tasks",
       "tasks/archive",
       "tasks/contracts",
@@ -136,7 +136,6 @@
       ".ai/harness/checks",
       ".ai/harness/failures",
       ".ai/harness/handoff",
-      ".ai/harness/context-budget",
       ".ai/harness/security",
       ".ai/harness/planning",
       ".ai/harness/architecture",
@@ -199,7 +198,6 @@
       "scripts/inspect-project-state.ts",
       "scripts/migrate-workflow-docs.ts",
       "scripts/migrate-project-template.sh",
-      "scripts/context-budget.ts",
       "scripts/capability-resolver.ts",
       "scripts/architecture-event.ts",
       "scripts/capability-config.ts",
@@ -210,7 +208,7 @@
       "scripts/prepare-codex-handoff.sh",
       "scripts/codex-handoff-resume.sh",
       "tasks/current.md",
-      "tasks/todo.md",
+      "tasks/todos.md",
       "tasks/lessons.md",
       "docs/architecture/index.md",
       ".ai/context/context-map.json",
@@ -238,7 +236,6 @@
       ".ai/harness/failures/latest.jsonl",
       ".ai/harness/handoff/current.md",
       ".ai/harness/handoff/resume.md",
-      ".ai/harness/context-budget/latest.json",
       ".ai/harness/capability-context/",
       ".ai/harness/security/.gitkeep",
       ".ai/harness/planning/",
@@ -255,7 +252,7 @@
   "documents": {
     "spec": "docs/spec.md",
     "planDirectory": "plans",
-    "deferredGoalLedger": "tasks/todo.md",
+    "deferredGoalLedger": "tasks/todos.md",
     "implementationNotesDirectory": "tasks/notes",
     "lessonsLog": "tasks/lessons.md",
     "researchReportsDirectory": "docs/researches"
@@ -340,18 +337,47 @@
           "summary": "Move execution-log style progress content into research reports and archive surfaces."
         },
         {
+          "id": "legacy-singular-todo-file",
+          "signal": "legacy-singular-todo-file",
+          "action": "archive",
+          "risk": "low",
+          "ownership": "user_authored",
+          "paths": [
+            "tasks/todo.md"
+          ],
+          "targetPaths": [
+            "tasks/todos.md",
+            "tasks/archive/legacy-tasks-todo.md"
+          ],
+          "summary": "Archive the legacy singular todo ledger and normalize the canonical deferred-goal ledger to tasks/todos.md."
+        },
+        {
           "id": "legacy-task-checklist-format",
           "signal": "legacy-task-checklist-format",
           "action": "archive",
           "risk": "medium",
           "ownership": "user_authored",
           "paths": [
-            "tasks/todo.md"
+            "tasks/todos.md"
           ],
           "targetPaths": [
             "tasks/archive/legacy-tasks-todo.md"
           ],
-          "summary": "Archive old task checklists before rewriting tasks/todo.md as the active execution projection."
+          "summary": "Archive old task checklists before rewriting tasks/todos.md as the active execution projection."
+        },
+        {
+          "id": "legacy-task-sprint-prds",
+          "signal": "legacy-task-sprint-prds",
+          "action": "reconfigure",
+          "risk": "low",
+          "ownership": "user_authored",
+          "paths": [
+            "tasks/sprints/*.sprint.md"
+          ],
+          "targetPaths": [
+            "plans/prds/*.prd.md"
+          ],
+          "summary": "Move program-level PRD/backlog files out of tasks/ and into the planning catalog under plans/prds/."
         },
         {
           "id": "runtime-contract-refresh",

@@ -44,12 +44,12 @@ describe("Bootstrap Script Contracts", () => {
     const claude = read("CLAUDE.md");
     const agents = read("AGENTS.md");
 
-    expect(claude).toContain("tasks/todo.md");
+    expect(claude).toContain("tasks/todos.md");
     expect(claude).toContain(".ai/hooks/");
     expect(claude).toContain("agentic-development-flow.md");
     expect(claude).toContain("external-tooling.md");
     expect(claude).toContain("gstack");
-    expect(agents).toContain("tasks/todo.md");
+    expect(agents).toContain("tasks/todos.md");
     expect(agents).toContain("check-task-workflow.sh --strict");
     expect(agents).toContain("check-agent-tooling.sh --host both --check-updates");
   });
@@ -79,7 +79,7 @@ describe("Bootstrap Script Contracts", () => {
     const contract = JSON.parse(read("assets/workflow-contract.v1.json"));
 
     expect(content).toContain("create_contract_directories");
-    expect(content).toContain("cat > tasks/todo.md");
+    expect(content).toContain("cat > tasks/todos.md");
     expect(content).toContain("cat > tasks/lessons.md");
     expect(content).toContain("cat > docs/researches/README.md");
     expect(content).not.toContain("docs/TODO.md");
@@ -106,7 +106,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("heartbeat-triage.sh");
     expect(contract.helpers.scripts).toContain("capture-plan.sh");
     expect(contract.helpers.scripts).toContain("refresh-current-status.sh");
-    expect(contract.helpers.scripts).toContain("context-budget.ts");
+    expect(contract.helpers.scripts).not.toContain("context-budget.ts");
     expect(contract.helpers.scripts).toContain("architecture-queue.sh");
     expect(contract.helpers.scripts).toContain("archive-architecture-request.sh");
     expect(contract.helpers.scripts).toContain("context-contract-sync.sh");
@@ -144,9 +144,10 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/heartbeat-triage.md");
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
     expect(content).toContain("install_workflow_contract");
+    expect(content).toContain("pi_install_hook_assets");
     expect(content).toContain('pi_install_hook_adapters "$PWD" "$ASSETS_HOOKS_DIR" "apply"');
     expect(content).toContain("pi_print_codex_hook_trust_notice");
-    expect(content).toContain("mkdir -p .ai/hooks");
+    expect(sharedLib).toContain('local hooks_dir="$target_dir/.ai/hooks"');
     expect(content).not.toContain("mkdir -p .codex");
     expect(sharedLib).toContain("pi_retire_project_hook_adapter");
     expect(sharedLib).toContain(".claude/settings.json");
@@ -174,7 +175,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(read("assets/templates/review.template.md")).toContain("## External Acceptance Advice");
     expect(sharedLib).toContain("## External Acceptance Advice");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
-    expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
+    expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/capability-context/");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/planning/");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
@@ -216,7 +217,7 @@ describe("Bootstrap Script Contracts", () => {
     const contract = JSON.parse(read("assets/workflow-contract.v1.json"));
 
     expect(content).toContain("create_contract_directories");
-    expect(content).toContain("cat > tasks/todo.md");
+    expect(content).toContain("cat > tasks/todos.md");
     expect(content).toContain("cat > tasks/lessons.md");
     expect(content).toContain("docs/researches/README.md");
     expect(content).not.toContain("docs/TODO.md");
@@ -241,7 +242,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.helpers.scripts).toContain("heartbeat-triage.sh");
     expect(contract.helpers.scripts).toContain("capture-plan.sh");
     expect(contract.helpers.scripts).toContain("refresh-current-status.sh");
-    expect(contract.helpers.scripts).toContain("context-budget.ts");
+    expect(contract.helpers.scripts).not.toContain("context-budget.ts");
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
     expect(contract.helpers.scripts).toContain("check-agent-tooling.sh");
@@ -280,10 +281,14 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain("docs/reference-configs/heartbeat-triage.md");
     expect(content).toContain('pi_install_hook_adapters "$PWD" "$ASSETS_HOOKS_DIR" "apply"');
     expect(content).toContain("pi_print_codex_hook_trust_notice");
+    expect(content).toContain("pi_install_hook_assets");
     expect(sharedLib).toContain("pi_retire_project_hook_adapter");
+    expect(sharedLib).toContain("pi_repo_pins_hook_source");
+    expect(sharedLib).toContain("pi_write_hook_runtime_readme");
+    expect(sharedLib).toContain("pi_install_hook_assets");
     expect(sharedLib).toContain(".claude/settings.json");
     expect(sharedLib).toContain(".codex/hooks.json");
-    expect(content).toContain("mkdir -p .ai/hooks");
+    expect(sharedLib).toContain('local hooks_dir="$target_dir/.ai/hooks"');
     expect(content).not.toContain("mkdir -p .codex");
     expect(sharedLib).not.toContain(".skill-factory-state.json");
     expect(sharedLib).not.toContain(".memory-context.json");
@@ -307,7 +312,7 @@ describe("Bootstrap Script Contracts", () => {
     const content = read("assets/hooks/prompt-guard.sh");
     const workflowState = read("assets/hooks/lib/workflow-state.sh");
 
-    expect(content).toContain("tasks/todo.md");
+    expect(content).toContain("tasks/todos.md");
     expect(content).toContain("tasks/lessons.md");
     expect(content).toContain("docs/researches/");
     expect(workflowState).toContain("git status --porcelain=v1");

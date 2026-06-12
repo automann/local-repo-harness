@@ -1,10 +1,8 @@
 #!/bin/bash
 # Post-Tool Observer — PostToolUse (all tools)
-# Single pass per tool call: JSONL trace logging plus context-pressure
-# monitoring. Replaces the former trace-event.sh + context-pressure-hook.sh
-# pair so the always-route costs one dispatch, one stdin parse, and one
-# library load instead of two.
-# The recovery path is handoff + fresh-session resume, not remote compaction.
+# Single pass per tool call: JSONL trace logging plus lightweight advisories.
+# Replaces the former split observers so the always-route costs one dispatch,
+# one stdin parse, and one library load instead of two.
 
 set -euo pipefail
 
@@ -20,18 +18,8 @@ mkdir -p .claude
 
 TRACE_FILE="$(workflow_trace_file)"
 SESSION_ID_FILE=".claude/.session-id"
-COUNTER_DIR=".claude/.context-pressure"
-mkdir -p "$COUNTER_DIR"
 
-SESSION_KEY="$(session_state_resolve_key "$SESSION_ID_FILE")"
-SESSION_SAFE_KEY="$(session_state_safe_key "$SESSION_KEY")"
-COUNT_FILE="$COUNTER_DIR/${SESSION_SAFE_KEY}.count"
-WARN_FILE="$COUNTER_DIR/${SESSION_SAFE_KEY}.warned"
-RED_FILE="$COUNTER_DIR/${SESSION_SAFE_KEY}.red"
-# Locked read-increment-write: concurrent PostToolUse hooks used to lose
-# increments and under-report context pressure.
-COUNT="$(workflow_increment_counter "$COUNT_FILE")"
-echo "$COUNT" > ".claude/.tool-call-count"
+SESSION_KEY="$(session_state_resolve_key "$SESSION_ID_FILE" "${1:-}")"
 
 # --- Trace logging ---
 
@@ -109,89 +97,3 @@ emit_codex_plan_change_guard() {
 }
 
 emit_codex_plan_change_guard
-
-# --- Context pressure ---
-
-SESSION_ID="$(hook_get_session_id "${1:-}")"
-TRANSCRIPT_PATH="$(hook_get_transcript_path "${1:-}")"
-HOOK_CWD="$(hook_get_cwd "${1:-}")"
-BUDGET_JSON=""
-ZONE=""
-SOURCE=""
-MESSAGE=""
-BUDGET_STATUS_FILE="$(workflow_context_budget_status_file)"
-
-# Token budgeting needs a bun cold start per probe; zone transitions do not
-# need per-call precision, so sample every Nth call and reuse the cached
-# status file in between.
-BUDGET_SAMPLE_EVERY=5
-budget_sample_due=false
-if (( COUNT % BUDGET_SAMPLE_EVERY == 0 )) || [[ ! -s "$BUDGET_STATUS_FILE" ]]; then
-  budget_sample_due=true
-fi
-
-if [[ "$budget_sample_due" == "true" ]] && command -v bun >/dev/null 2>&1 && [[ -f "scripts/context-budget.ts" ]]; then
-  BUDGET_JSON="$(
-    bun scripts/context-budget.ts \
-      --format json \
-      --cwd "$HOOK_CWD" \
-      --session-id "$SESSION_ID" \
-      --transcript-path "$TRANSCRIPT_PATH" \
-      --tool-count "$COUNT" \
-      --write-status 2>/dev/null || true
-  )"
-elif [[ -s "$BUDGET_STATUS_FILE" ]]; then
-  BUDGET_JSON="$(cat "$BUDGET_STATUS_FILE" 2>/dev/null || true)"
-fi
-
-if [[ -n "$BUDGET_JSON" ]] && command -v jq >/dev/null 2>&1; then
-  ZONE="$(printf '%s' "$BUDGET_JSON" | jq -r '.zone // empty' 2>/dev/null || true)"
-  SOURCE="$(printf '%s' "$BUDGET_JSON" | jq -r '.source // empty' 2>/dev/null || true)"
-  MESSAGE="$(printf '%s' "$BUDGET_JSON" | jq -r '.message // empty' 2>/dev/null || true)"
-fi
-
-if [[ -z "$ZONE" ]]; then
-  if [[ "$COUNT" -ge 50 ]]; then
-    ZONE="red"
-    SOURCE="tool-call-count"
-    MESSAGE="context red zone by tool-count fallback"
-  elif [[ "$COUNT" -ge 40 ]]; then
-    ZONE="orange"
-    SOURCE="tool-call-count"
-    MESSAGE="context orange zone by tool-count fallback"
-  elif [[ "$COUNT" -ge 30 ]]; then
-    ZONE="yellow"
-    SOURCE="tool-call-count"
-    MESSAGE="context yellow zone by tool-count fallback"
-  else
-    ZONE="green"
-    SOURCE="tool-call-count"
-    MESSAGE="context green zone by tool-count fallback"
-  fi
-fi
-
-if [[ "$ZONE" == "yellow" && ! -f "$WARN_FILE" ]]; then
-  echo "[ContextMonitor] Yellow zone (${SOURCE}). Persist research/todo/handoff state before continuing."
-  touch "$WARN_FILE"
-fi
-
-if [[ "$ZONE" == "orange" && ! -f "$RED_FILE.orange" ]]; then
-  echo "[ContextMonitor] Orange zone (${SOURCE}). Stop broad exploration and prepare a fresh-session resume packet."
-  if [[ -f "scripts/prepare-codex-handoff.sh" ]]; then
-    bash scripts/prepare-codex-handoff.sh --reason context-orange-zone >/dev/null 2>&1 || workflow_write_handoff "context-orange-zone"
-  else
-    workflow_write_handoff "context-orange-zone"
-  fi
-  touch "$RED_FILE.orange"
-fi
-
-if [[ "$ZONE" == "red" && ! -f "$RED_FILE" ]]; then
-  echo "[ContextMonitor] Red zone (${SOURCE}). STOP after the current response; resume from the generated handoff in a fresh Codex session."
-  if [[ -f "scripts/prepare-codex-handoff.sh" ]]; then
-    bash scripts/prepare-codex-handoff.sh --reason context-red-zone >/dev/null 2>&1 || workflow_write_handoff "context-red-zone"
-  else
-    workflow_write_handoff "context-red-zone"
-  fi
-
-  touch "$RED_FILE"
-fi

@@ -61,5 +61,5 @@ if [[ "$has_task_sync_change" -eq 1 ]]; then
 fi
 
 echo "[task-sync] Substantive repo changes detected without tasks/ synchronization."
-echo "[task-sync] Update tasks/current.md, tasks/todo.md, tasks/lessons.md, docs/researches/*.md, tasks/notes/*.md, or an active tasks/contracts/*.md file."
+echo "[task-sync] Update tasks/current.md, tasks/todos.md, tasks/lessons.md, docs/researches/*.md, tasks/notes/*.md, or an active tasks/contracts/*.md file."
 exit 1

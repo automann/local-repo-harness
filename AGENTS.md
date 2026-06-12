@@ -5,8 +5,8 @@ This repository self-hosts the `repo-harness` contract; the former `repo-harness
 ## Canonical Workflow Files
 
 - `tasks/current.md` for the tracked current-status snapshot derived from workflow artifacts
-- `tasks/todo.md` for deferred medium/long-term goals, not active execution checklists
-- `tasks/sprints/` for program-level sprint PRDs and ordered backlogs, operated by `scripts/sprint-backlog.sh` (Sprint = program layer; task contracts stay the execution slices)
+- `tasks/todos.md` for deferred medium/long-term goals, not active execution checklists
+- `plans/prds/` for program-level sprint PRDs and ordered backlogs, operated by `scripts/sprint-backlog.sh` (Sprint = program layer; task contracts stay the execution slices)
 - `.ai/context/capabilities.json` for the capability registry and longest-prefix context boundaries
 - `tasks/workstreams/` for capability long-running workstreams that project durable progress into local contracts
 - `tasks/lessons.md` for correction-derived rules
@@ -24,7 +24,7 @@ This repository self-hosts the `repo-harness` contract; the former `repo-harness
 - Sync `tasks/` whenever substantive repo changes are made.
 - Use `tasks/notes/<plan-stem>.notes.md` only for non-obvious slice decisions, deviations, tradeoffs, and open questions; `<plan-stem>` is the active plan filename without `plan-` and `.md` (for example `20260531-0045-governance-workflow`). Do not use notes as durable memory or a task log, and archive/promote them deliberately when the slice closes.
 - Treat hook execution as central-first: trusted repos run `~/.repo-harness/hooks/` (bash shim) or the packaged CLI copy; this self-host repo pins `"hook_source": "repo"` in `.ai/harness/policy.json` so `.ai/hooks/` stays the live development runtime, with `assets/hooks/` as the product source mirrored on install. User-level `~/.claude/settings.json` and `~/.codex/hooks.json` are the host adapters.
-- Keep the umbrella hierarchy explicit: architecture owns stable truth, capability contracts own local agent context, `tasks/workstreams/<domain>/<capability>/` owns durable progress, and `tasks/todo.md` owns only deferred medium/long-term goals with tradeoff and revisit trigger.
+- Keep the umbrella hierarchy explicit: architecture owns stable truth, capability contracts own local agent context, `tasks/workstreams/<domain>/<capability>/` owns durable progress, and `tasks/todos.md` owns only deferred medium/long-term goals with tradeoff and revisit trigger.
 - Treat `.ai/context/capabilities.json` as the source of truth for capability prefixes; `agent-context-blocks.txt` and nested agent files are compatibility inputs only.
 - Keep architecture drift handling split: `architecture-queue.sh` writes architecture requests/events, `workstream-sync.sh` maintains durable capability workstreams, and `context-contract-sync.sh` only updates controlled local `CLAUDE.md`/`AGENTS.md` architecture blocks.
 - Keep `assets/workflow-contract.v1.json` and `.ai/harness/workflow-contract.json` in sync.
@@ -90,5 +90,5 @@ bash scripts/migrate-project-template.sh --repo . --dry-run
 
 - Durable progress lives under `tasks/workstreams/runtime-harness/hook-adapters`.
 - `tasks/current.md` is the tracked derived status snapshot; it is not a live lock or task source.
-- `tasks/todo.md` is the deferred-goal ledger; current execution slices stay in the active plan's `## Task Breakdown`.
+- `tasks/todos.md` is the deferred-goal ledger; current execution slices stay in the active plan's `## Task Breakdown`.
 <!-- END ARCHITECTURE CONTRACT -->

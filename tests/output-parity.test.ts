@@ -213,9 +213,9 @@ describe("Output Quality Gates", () => {
       variables: { PROJECT_NAME: "Test" },
     });
 
-    expect(claude).toContain("tasks/todo.md");
+    expect(claude).toContain("tasks/todos.md");
     expect(claude).toContain("tasks/lessons.md");
-    expect(agents).toContain("tasks/todo.md");
+    expect(agents).toContain("tasks/todos.md");
     expect(agents).toContain("tasks/lessons.md");
     expect(claude).toContain("product truth");
     expect(agents).toContain("repo-local artifact files");

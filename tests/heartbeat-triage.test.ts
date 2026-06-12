@@ -20,7 +20,7 @@ function makeRepo(prefix = "heartbeat-triage-"): string {
   mkdirSync(join(repo, ".ai/harness/sprint"), { recursive: true });
   mkdirSync(join(repo, ".ai/harness/runs"), { recursive: true });
   mkdirSync(join(repo, "docs/architecture/requests"), { recursive: true });
-  mkdirSync(join(repo, "tasks/sprints"), { recursive: true });
+  mkdirSync(join(repo, "plans/prds"), { recursive: true });
   return repo;
 }
 
@@ -31,7 +31,7 @@ function writeExecutable(repo: string, relPath: string, body: string) {
 }
 
 function writeSprint(repo: string) {
-  const sprintPath = "tasks/sprints/demo.sprint.md";
+  const sprintPath = "plans/prds/demo.prd.md";
   writeFileSync(
     join(repo, sprintPath),
     [

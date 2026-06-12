@@ -93,7 +93,7 @@ checkout 隔离 worktree，在 hooks 保护下实现，然后验证、review、e
 ```mermaid
 flowchart TD
   Program["Program goal 或 release theme"] --> Sprint{"需要 sprint layer?"}
-  Sprint -->|是| SprintDoc["Sprint PRD + backlog<br/>tasks/sprints/*.sprint.md"]
+  Sprint -->|是| SprintDoc["Sprint PRD + backlog<br/>plans/prds/*.prd.md"]
   SprintDoc --> NextTask["选择下一个 sprint task<br/>sprint-backlog.sh next"]
   Sprint -->|否| UserTask["用户任务或 planning prompt"]
   Heartbeat["Heartbeat triage<br/>scripts/heartbeat-triage.sh<br/>.ai/harness/triage/"] --> UserTask
@@ -149,6 +149,22 @@ flowchart TD
   Archive --> Cleanup["清理已合并 worktree<br/>contract-worktree.sh cleanup"]
   Cleanup --> Done["可审查的已完成任务"]
 ```
+
+## 长周期产品 Loop
+
+Greenfield 和 Brownfield 工作先把 discovery 和工程计划前置在 Claude-Fable
+中完成，不要直接让 Codex 从原始聊天长期滚动：
+
+1. 在 Claude-Fable 里用 gstack `office-hours` 做产品 discovery，或用
+   `plan-eng-review` 做工程方案评审。输出应当是锁定产品意图、架构、风险和
+   evidence contract 的开发文档。
+2. 把这些文档转成 `plans/prds/` 下的 PRD Sprint，并为每个 execution
+   slice 写清有序 backlog 和详细 sub-plan。
+3. 创建 Codex Goal，目标指向该 sprint 文件。repo-harness 之后就可以按既有
+   plan -> contract -> worktree -> verification flow 逐项投射和执行。
+
+这个交接让长周期 loop 更精准：Claude-Fable 负责前置判断，PRD Sprint 是 durable
+source of truth，Codex Goal mode 只围绕具体 sprint 恢复和推进，而不是反复重新解释原始聊天。
 
 ## 前 5 分钟
 
@@ -343,6 +359,12 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 - 其他外部工具保持 advisory-only：
   - `bash scripts/check-agent-tooling.sh --host both --check-updates`
   - 不自动设置 gstack、gbrain MCP、CodeGraph daemon 或 provider
+
+## 致谢
+
+感谢 [Hylarucoder](https://x.com/hylarucoder) 的方法论贡献。`repo-harness`
+里的 P1/P2/P3 due-diligence 方法，以及 Geju 实践对 planning、trace 和
+decision rationale 的要求，来自他的贡献与启发。
 
 ## Action Command Skills
 

@@ -62,25 +62,8 @@ ensure_gitignore_entry() {
 }
 
 install_hook_assets() {
-    if [ ! -d "$ASSETS_HOOKS_DIR" ]; then
-        echo -e "${YELLOW}Warning: Hook scripts not found at $ASSETS_HOOKS_DIR${NC}"
-        echo -e "${YELLOW}  User-level host adapters need repo-local .ai/hooks/ scripts to dispatch into.${NC}"
-        echo -e "${YELLOW}  Add shared hook scripts to .ai/hooks/ or refresh repo-harness assets.${NC}"
-        return
-    fi
-
-    mkdir -p .ai/hooks
-
-    find "$ASSETS_HOOKS_DIR" -mindepth 1 -maxdepth 1 \( -type f -name '*.sh' -o -type d -name 'lib' \) | while read -r asset; do
-        if [ -d "$asset" ]; then
-            cp -R "$asset" .ai/hooks/
-        else
-            cp "$asset" .ai/hooks/
-        fi
-    done
-
-    find .ai/hooks -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
-    echo -e "${GREEN}Shared hooks installed to .ai/hooks/${NC}"
+    pi_install_hook_assets "$PWD" "$ASSETS_HOOKS_DIR" "apply"
+    echo -e "${GREEN}Repo-local hook fallback installed to .ai/hooks/${NC}"
 }
 
 install_workflow_contract() {
@@ -222,7 +205,6 @@ create_structure() {
     mkdir -p .ai/context
     mkdir -p .ai/harness/checks
     mkdir -p .ai/harness/handoff
-    mkdir -p .ai/harness/context-budget
     mkdir -p .ai/harness/failures
     mkdir -p .ai/harness/runs
     mkdir -p .claude/templates
@@ -256,7 +238,7 @@ All notable changes to this project will be documented in this file.
 *Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)*
 EOF
 
-    cat > tasks/todo.md << EOF
+    cat > tasks/todos.md << EOF
 # Deferred Goal Ledger
 
 > **Status**: Backlog
@@ -312,11 +294,11 @@ EOF
     cat > docs/researches/README.md << EOF
 # Research Reports
 
-Durable research reports live in this directory as dated Markdown files.
+Durable research reports live in this directory as topic-scoped Markdown files.
 
-Use \`YYYYMMDD-topic.md\` names for new reports. Keep task-local implementation
-decisions in \`tasks/notes/\`, and keep repeated correction-derived rules in
-\`tasks/lessons.md\`.
+Use \`YYYYMMDD-topic.md\` names when chronology matters, or \`<topic>.md\` for
+stable subject reports. Keep task-local implementation decisions in
+\`tasks/notes/\`, and keep repeated correction-derived rules in \`tasks/lessons.md\`.
 EOF
 
     local helper_names
@@ -336,7 +318,6 @@ EOF
     # - .ai/harness/architecture/events.jsonl
     # - .ai/harness/handoff/current.md
     # - .ai/harness/handoff/resume.md
-    # - .ai/harness/context-budget/latest.json
     # - .ai/harness/failures/latest.jsonl
     # - .ai/harness/security/.gitkeep
     # - .ai/harness/worktrees/.gitkeep

@@ -9,7 +9,7 @@
 #   .ai/harness/brain-manifest.json,
 #   .ai/harness/events.jsonl, .ai/harness/architecture/events.jsonl,
 #   .ai/harness/handoff/current.md,
-#   .ai/harness/handoff/resume.md, .ai/harness/context-budget/latest.json,
+#   .ai/harness/handoff/resume.md,
 #   .ai/harness/failures/latest.jsonl, .ai/harness/security/.gitkeep,
 #   .ai/harness/worktrees/.gitkeep, .ai/harness/runs/.gitkeep
 #
@@ -246,13 +246,9 @@ cleanup_removed_workflow_assets() {
 
 ensure_runtime_gitignore_block() {
   local file_path="$1"
-  local extra_entries
-  extra_entries=$(cat <<'EOF_EXTRA'
-.claude/.plan-state/
-EOF_EXTRA
-)
+  local extra_entries=""
   if pi_should_enable_factor_factory "$(pi_plan_type)"; then
-    extra_entries="${extra_entries}"$'\n'"$(pi_factor_factory_gitignore_entries)"
+    extra_entries="$(pi_factor_factory_gitignore_entries)"
   fi
   pi_ensure_gitignore_block "$file_path" "" "$extra_entries" "$MODE"
 }
@@ -346,23 +342,79 @@ ensure_task_sync_package_script() {
   fi
 }
 
+migrate_legacy_sprint_prds() {
+  local repo="$1"
+  local legacy_dir="$repo/tasks/sprints"
+  local prd_dir="$repo/plans/prds"
+  local marker_file="$repo/.ai/harness/sprint/active-sprint"
+  local src
+  local stem
+  local dest
+  local dest_rel
+  local legacy_rel
+  local counter
+  local marker_value
+
+  [[ -d "$legacy_dir" ]] || return 0
+
+  if [[ "$MODE" != "apply" ]]; then
+    echo "[dry-run] migrate legacy PRD sprint files from tasks/sprints/*.sprint.md to plans/prds/*.prd.md"
+    return 0
+  fi
+
+  mkdir -p "$prd_dir"
+  shopt -s nullglob
+  for src in "$legacy_dir"/*.sprint.md; do
+    stem="$(basename "$src" .sprint.md)"
+    dest="$prd_dir/${stem}.prd.md"
+    counter=2
+    while [[ -e "$dest" ]]; do
+      dest="$prd_dir/${stem}-v${counter}.prd.md"
+      counter=$((counter + 1))
+    done
+
+    mv "$src" "$dest"
+
+    legacy_rel="tasks/sprints/${stem}.sprint.md"
+    dest_rel="plans/prds/$(basename "$dest")"
+    if [[ -f "$marker_file" ]]; then
+      marker_value="$(tr -d '\r\n' < "$marker_file")"
+      if [[ "$marker_value" == "$legacy_rel" || "$marker_value" == "$src" ]]; then
+        printf '%s\n' "$dest_rel" > "$marker_file"
+      fi
+    fi
+  done
+  shopt -u nullglob
+
+  rmdir "$legacy_dir" 2>/dev/null || true
+  rmdir "$repo/tasks" 2>/dev/null || true
+}
+
 create_task_files_if_missing() {
   local repo="$1"
   local project_name
   local timestamp
   local todo_file
+  local legacy_todo_file
+  local legacy_todo_archive
 
   project_name="$(basename "$repo")"
   timestamp="$(date '+%Y-%m-%d %H:%M')"
-  todo_file="$repo/tasks/todo.md"
+  todo_file="$repo/tasks/todos.md"
+  legacy_todo_file="$repo/tasks/todo.md"
+  legacy_todo_archive="$repo/tasks/archive/legacy-tasks-todo.md"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] ensure docs/spec.md, tasks/*, workstreams, reviews, notes, .ai/context/{capabilities.json,context-map.json}, and .ai/harness/{checks/latest.json,policy.json,brain-manifest.json,events.jsonl,architecture/events.jsonl,handoff/current.md,handoff/resume.md,context-budget/latest.json,failures/latest.jsonl,security/.gitkeep,worktrees/.gitkeep,runs/.gitkeep} exist with current workflow guidance"
+    echo "[dry-run] ensure docs/spec.md, tasks/*, workstreams, reviews, notes, .ai/context/{capabilities.json,context-map.json}, and .ai/harness/{checks/latest.json,policy.json,brain-manifest.json,events.jsonl,architecture/events.jsonl,handoff/current.md,handoff/resume.md,failures/latest.jsonl,security/.gitkeep,worktrees/.gitkeep,runs/.gitkeep} exist with current workflow guidance"
     return
   fi
 
   mkdir -p \
+    "$repo/plans" \
+    "$repo/plans/archive" \
+    "$repo/plans/prds" \
     "$repo/tasks" \
+    "$repo/tasks/archive" \
     "$repo/tasks/contracts" \
     "$repo/tasks/reviews" \
     "$repo/tasks/notes" \
@@ -395,6 +447,37 @@ create_task_files_if_missing() {
 > **Owner**: Planner
 EOF_SPEC
     fi
+  fi
+
+  if [[ -f "$legacy_todo_file" ]]; then
+    mkdir -p "$repo/tasks/archive"
+    if [[ ! -f "$legacy_todo_archive" ]]; then
+      cp "$legacy_todo_file" "$legacy_todo_archive"
+    fi
+    if [[ ! -f "$todo_file" ]]; then
+      if grep -Eq '^# Deferred Goal Ledger[[:space:]]*$' "$legacy_todo_file" \
+        && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' "$legacy_todo_file"; then
+        cp "$legacy_todo_file" "$todo_file"
+      else
+        cat > "$todo_file" <<'TODO_EOF'
+# Deferred Goal Ledger
+
+> **Status**: Backlog
+> **Updated**: (migration)
+> **Scope**: Medium/long-term goals deferred from active plan execution
+
+Current plan tasks live in the active plan's `## Task Breakdown`.
+Do not duplicate that execution checklist here. Record only work intentionally deferred beyond this slice, with the tradeoff and revisit trigger.
+
+## Deferred Goals
+
+| Goal | Why Deferred | Tradeoff | Revisit Trigger |
+|------|--------------|----------|-----------------|
+| Review archived legacy checklist | Legacy tasks/todo.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |
+TODO_EOF
+      fi
+    fi
+    mv "$legacy_todo_file" "$legacy_todo_file.migrated.bak"
   fi
 
   if [[ ! -f "$todo_file" ]]; then
@@ -430,7 +513,7 @@ Do not duplicate that execution checklist here. Record only work intentionally d
 
 | Goal | Why Deferred | Tradeoff | Revisit Trigger |
 |------|--------------|----------|-----------------|
-| Review archived legacy checklist | Legacy tasks/todo.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |
+| Review archived legacy checklist | Legacy tasks/todos.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |
 TODO_EOF
   fi
 
@@ -698,19 +781,8 @@ migrate_hooks() {
 
   run_or_echo "mkdir -p \"$project_claude_dir\" \"$project_ai_hooks_dir\""
 
-  while IFS= read -r hook; do
-    local rel_path dest_dir hook_name
-    rel_path="${hook#"$HOOK_ASSETS_DIR"/}"
-    dest_dir="$project_ai_hooks_dir/$(dirname "$rel_path")"
-    hook_name="$(basename "$hook")"
-    run_or_echo "mkdir -p \"$dest_dir\""
-    run_or_echo "cp \"$hook\" \"$dest_dir/$hook_name\""
-    if [[ "$MODE" == "apply" ]]; then
-      chmod +x "$dest_dir/$hook_name" 2>/dev/null || true
-    fi
-  done < <(find "$HOOK_ASSETS_DIR" -type f -name '*.sh' | sort)
-
   cleanup_removed_workflow_assets "$repo"
+  pi_install_hook_assets "$repo" "$HOOK_ASSETS_DIR" "$MODE"
   pi_install_hook_adapters "$repo" "$HOOK_ASSETS_DIR" "$MODE"
 }
 
@@ -734,6 +806,7 @@ migrate_workflow() {
   local repo="$1"
 
   run_or_echo "mkdir -p \"$repo/plans/archive\""
+  run_or_echo "mkdir -p \"$repo/plans/prds\""
   run_or_echo "mkdir -p \"$repo/tasks/archive\""
   run_or_echo "mkdir -p \"$repo/tasks/contracts\""
   run_or_echo "mkdir -p \"$repo/tasks/reviews\""
@@ -753,6 +826,7 @@ migrate_workflow() {
   install_reference_configs "$repo"
   ensure_ops_scaffold "$repo"
   ensure_research_surface "$repo"
+  migrate_legacy_sprint_prds "$repo"
   create_task_files_if_missing "$repo"
   ensure_task_sync_package_script "$repo"
 
@@ -805,7 +879,7 @@ print_report() {
     echo "--- Inspection ---"
     printf '%s\n' "$INSPECT_OUTPUT"
   fi
-  echo "- Project hooks synced from: $HOOK_ASSETS_DIR"
+  echo "- Project hooks synced from: $HOOK_ASSETS_DIR (repo-local fallback; lib-only unless hook_source=repo)"
   echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
   echo "- $(pi_print_codex_hook_trust_notice)"
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"

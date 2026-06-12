@@ -20,7 +20,7 @@ Describe the exact outcome this task must deliver.
 ## Workflow Inventory
 
 - Source plan: `{{PLAN_FILE}}`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Review file: `{{REVIEW_FILE}}`
 - Notes file: `{{NOTES_FILE}}`
 - Checks file: `.ai/harness/checks/latest.json`
@@ -34,7 +34,7 @@ Describe the exact outcome this task must deliver.
 allowed_paths:
   - docs/spec.md
   - plans/
-  - tasks/todo.md
+  - tasks/todos.md
   - {{CONTRACT_FILE}}
   - {{REVIEW_FILE}}
   - {{NOTES_FILE}}

@@ -248,7 +248,7 @@ Track durable multi-session progress for \`${capability_id}\` without inflating 
 
 ## Notes
 
-- Project the current slice into \`tasks/todo.md\` for a single session.
+- Project the current slice into \`tasks/todos.md\` for a single session.
 - Keep architecture facts in \`${architecture_module}\`; keep execution progress here.
 EOF_WORKSTREAM
 fi

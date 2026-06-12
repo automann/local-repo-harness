@@ -31,7 +31,7 @@ describe("AGENTS Target Assembly", () => {
     expect(output).toContain("### First Principles");
     expect(output).toContain("### Single Source of Truth");
     expect(output).toContain("Self-Improvement Loop");
-    expect(output).toContain("tasks/todo.md");
+    expect(output).toContain("tasks/todos.md");
     expect(output).toContain("tasks/lessons.md");
     expect(output).toContain("sync tasks/");
     expect(output).toContain("Default to **Plan-only**.");

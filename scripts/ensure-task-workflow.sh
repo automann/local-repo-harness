@@ -130,7 +130,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Sprint contract: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md`
 - Sprint review: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 - Implementation notes: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Current checks: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md` `allowed_paths`
@@ -208,7 +208,7 @@ Describe the exact outcome this task must deliver.
 ## Workflow Inventory
 
 - Source plan: `{{PLAN_FILE}}`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Review file: `{{REVIEW_FILE}}`
 - Notes file: `{{NOTES_FILE}}`
 - Checks file: `.ai/harness/checks/latest.json`
@@ -221,7 +221,7 @@ Describe the exact outcome this task must deliver.
 ```yaml
 allowed_paths:
   - plans/
-  - tasks/todo.md
+  - tasks/todos.md
   - {{CONTRACT_FILE}}
   - {{REVIEW_FILE}}
   - {{NOTES_FILE}}
@@ -377,8 +377,8 @@ NOTES_TEMPLATE_EOF
 
 ensure_idle_todo() {
   mkdir -p tasks
-  if [[ ! -f "tasks/todo.md" ]]; then
-    cat > tasks/todo.md <<'TODO_EOF'
+  if [[ ! -f "tasks/todos.md" ]]; then
+    cat > tasks/todos.md <<'TODO_EOF'
 # Deferred Goal Ledger
 
 > **Status**: Backlog
@@ -427,7 +427,7 @@ CURRENT_STATUS_EOF
 }
 
 ensure_auxiliary_files() {
-  mkdir -p plans plans/archive tasks/archive tasks/contracts tasks/reviews tasks/notes tasks/workstreams docs/architecture/domains docs/architecture/modules docs/architecture/requests docs/architecture/snapshots docs/architecture/diagrams scripts .ai/context .ai/harness/checks .ai/harness/handoff .ai/harness/context-budget .ai/harness/failures .ai/harness/security .ai/harness/planning .ai/harness/architecture .ai/harness/worktrees .ai/harness/runs
+  mkdir -p plans plans/archive plans/prds tasks/archive tasks/contracts tasks/reviews tasks/notes tasks/workstreams docs/architecture/domains docs/architecture/modules docs/architecture/requests docs/architecture/snapshots docs/architecture/diagrams scripts .ai/context .ai/harness/checks .ai/harness/handoff .ai/harness/failures .ai/harness/security .ai/harness/planning .ai/harness/architecture .ai/harness/worktrees .ai/harness/runs
 
   if [[ ! -f "docs/spec.md" ]]; then
     cat > docs/spec.md <<'SPEC_EOF'
@@ -485,10 +485,6 @@ HANDOFF_EOF
 
 > **Reason**: bootstrap
 RESUME_EOF
-  fi
-
-  if [[ ! -f ".ai/harness/context-budget/latest.json" ]]; then
-    echo "{}" > ".ai/harness/context-budget/latest.json"
   fi
 
   if [[ ! -f ".ai/harness/events.jsonl" ]]; then
@@ -595,7 +591,7 @@ ARCHITECTURE_INDEX_EOF
     "source_of_truth": "per-worktree explicit marker with active-worktree owner; legacy Claude marker fallback only"
   },
   "tasks": {
-    "todo_file": "tasks/todo.md",
+    "todo_file": "tasks/todos.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
     "research_dir": "docs/researches",
@@ -663,8 +659,8 @@ ARCHITECTURE_INDEX_EOF
     "dir": "tasks/workstreams",
     "scope": "capability",
     "projection": "local-contract-active-pointer-and-current-slice",
-    "todo_projection": "tasks/todo.md",
-    "rule": "durable multi-session progress lives under tasks/workstreams/<domain>/<capability>; current plan execution lives in the plan Task Breakdown; tasks/todo.md records deferred goals only"
+    "todo_projection": "tasks/todos.md",
+    "rule": "durable multi-session progress lives under tasks/workstreams/<domain>/<capability>; current plan execution lives in the plan Task Breakdown; tasks/todos.md records deferred goals only"
   },
   "information_lifecycle": {
     "notes": {
@@ -694,24 +690,6 @@ ARCHITECTURE_INDEX_EOF
       "hook_trigger": "PostToolUse Edit|Write for manifest entries with sync.direction=repo-to-brain",
       "rule": "external knowledge stores long-lived explanations, runbooks, and patterns only; repo-local contracts, hooks, scripts, checks, and evidence remain authoritative",
       "sync_rule": "only explicitly opted-in repo-to-brain manifest entries may be written to the default brain vault; pointer-only externalized stubs remain check-only"
-    }
-  },
-  "context_budget": {
-    "status_file": ".ai/harness/context-budget/latest.json",
-    "source_priority": ["rollout_token_count", "state_thread", "tool_call_count"],
-    "zones": {
-      "yellow": 0.55,
-      "orange": 0.7,
-      "red": 0.8
-    },
-    "fallback_model_windows": {
-      "gpt-5.4": 1050000,
-      "gpt-5.5": 258000
-    },
-    "fallback_tool_calls": {
-      "yellow": 30,
-      "orange": 40,
-      "red": 50
     }
   },
   "handoff_resume": {
@@ -925,7 +903,7 @@ BRAIN_MANIFEST_EOF
     "AGENTS.md",
     "docs/spec.md",
     "tasks/current.md",
-    "tasks/todo.md",
+    "tasks/todos.md",
     "tasks/lessons.md",
     ".ai/context/capabilities.json",
     ".ai/harness/policy.json"

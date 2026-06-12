@@ -14,11 +14,13 @@ Start with the shortest truth path:
 Central-first means one `install` (or one CLI upgrade) updates hook behavior for every trusted opt-in repo at once; vendored `.ai/hooks` copies are inert defaults unless the repo pins `"hook_source": "repo"`. Missing advisory scripts warn and skip, but required guard routes still fail closed. `repo-harness doctor` and `scripts/repo-harness.sh status` report which source is active for the current repo.
 Generated host adapter commands carry a 30 second timeout; long-running work belongs in explicit CLI commands, not hook foreground execution.
 
-`UserPromptSubmit.default` dispatches to `.ai/hooks/prompt-guard.sh`. The shell layer parses host prompt JSON, reads workflow files, performs capture side effects, and renders host-safe output; it pipes `{"prompt": ...}` into `repo-harness-hook prompt-guard-decide`, which owns every prompt-text intent classifier (Unicode-aware, in `src/cli/hook/prompt-intents.ts`) plus the intent x state decision table and returns one verdict JSON line (action, intent facts, derived strings). If the engine is unreachable or predates the protocol, the prompt layer degrades to a one-shot advisory instead of guessing; there is no shell fallback decision table.
+`repo-harness update`, migration, and new-project scaffold paths do not copy the full hook runtime into ordinary downstream repos. Without a `"hook_source": "repo"` pin they prune stale top-level `.ai/hooks/*.sh` entry scripts and refresh only `.ai/hooks/lib/` helper libraries plus a README tombstone, because active execution should come from the user-level adapter and packaged hooks. Repos that intentionally develop or override hooks must set `"hook_source": "repo"` before syncing a full vendored hook runtime.
+
+`UserPromptSubmit.default` dispatches to the active `prompt-guard.sh` resolved by the central-first hook source decision. For ordinary repos that means the packaged/user-level runtime; `.ai/hooks/prompt-guard.sh` is active only when the repo pins `"hook_source": "repo"`. The shell layer parses host prompt JSON, reads workflow files, performs capture side effects, and renders host-safe output; it pipes `{"prompt": ...}` into `repo-harness-hook prompt-guard-decide`, which owns every prompt-text intent classifier (Unicode-aware, in `src/cli/hook/prompt-intents.ts`) plus the intent x state decision table and returns one verdict JSON line (action, intent facts, derived strings). If the engine is unreachable or predates the protocol, the prompt layer degrades to a one-shot advisory instead of guessing; there is no shell fallback decision table.
 
 Prompt-layer plan/spec/contract gates are advisory routing only. Hard enforcement lives in `PreToolUse.edit`: `pre-edit-guard.sh` blocks implementation edits (paths outside plans/tasks/docs/deploy/harness/markdown surfaces) unless the active plan is Approved/Executing and `docs/spec.md` exists. Modes `enforce` (default) | `advice` | `off` via policy `.guards.edit_plan_gate` or `REPO_HARNESS_EDIT_PLAN_GATE`. Done-claim gates in the prompt layer keep blocking because they verify file-backed completion evidence, not language.
 
-If you are asking "which hook file should I edit?", default to `.ai/hooks/` and mirror the change into `assets/hooks/`; runtime pickup outside this repo happens on the next `install`/CLI upgrade because hooks resolve central-first.
+If you are asking "which hook file should I edit?", default to `assets/hooks/` for product changes and mirror into `.ai/hooks/` only for this self-host repo or another repo that pins `"hook_source": "repo"`; runtime pickup outside repo-pinned development happens on the next `install`/CLI upgrade because hooks resolve central-first.
 After installing or refreshing `~/.codex/hooks.json`, open Codex Settings and mark the user-level hook config as trusted; otherwise Codex will not execute it.
 Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
 
@@ -32,7 +34,7 @@ Use this command for an explicit read-only audit:
 repo-harness security scan --json
 ```
 
-`PostToolUse.always` runs one merged observer, `post-tool-observer.sh` (JSONL trace + context-pressure monitoring); the trace file `.claude/.trace.jsonl` is the single tool-trace record and context-budget probes are sampled every 5th call.
+`PostToolUse.always` runs one merged observer, `post-tool-observer.sh` (JSONL trace + lightweight advisories); the trace file `.claude/.trace.jsonl` is the single tool-trace record.
 
 `PostToolUse.edit` runs a downstream sync chain after local edit reminders: architecture drift record, context contract sync, capability-context queueing, repo-to-brain mirror sync, and active contract verification. These stages remain advisory. A failed downstream stage must emit one `[SyncChain] WARN: ...` line and let the edit hook exit 0 so local editing is not blocked by maintenance drift.
 

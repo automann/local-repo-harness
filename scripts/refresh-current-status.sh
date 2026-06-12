@@ -447,7 +447,7 @@ $(git_status_files)
 - Plans: \`plans/plan-*.md\`
 - Active marker: \`.ai/harness/active-plan\`
 - Active worktree marker: \`.ai/harness/active-worktree\`
-- Sprints: \`tasks/sprints/*.sprint.md\`
+- Sprints: \`plans/prds/*.prd.md\`
 - Active sprint marker: \`.ai/harness/sprint/active-sprint\`
 - Workstreams: \`tasks/workstreams/**/*.md\`
 - Handoff: \`.ai/harness/handoff/current.md\`

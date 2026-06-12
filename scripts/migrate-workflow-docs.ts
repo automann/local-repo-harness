@@ -112,7 +112,7 @@ function normalizeLegacyTodo(target: string, archivePath: string, mode: Mode) {
     "",
     "| Goal | Why Deferred | Tradeoff | Revisit Trigger |",
     "|------|--------------|----------|-----------------|",
-    "| Review archived legacy checklist | Legacy tasks/todo.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |",
+    "| Review archived legacy checklist | Legacy tasks/todos.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |",
   ].join("\n");
 
   if (mode === "apply") {
@@ -122,6 +122,44 @@ function normalizeLegacyTodo(target: string, archivePath: string, mode: Mode) {
       writeFileSync(archivePath, `${existing.trimEnd()}\n`);
     }
     writeFileSync(target, `${content}\n`);
+  }
+
+  return true;
+}
+
+function migrateLegacySingularTodo(source: string, target: string, archivePath: string, mode: Mode) {
+  if (!existsSync(source)) return false;
+
+  const existing = readFileSync(source, "utf-8");
+  const content = hasCanonicalTodoHeader(existing)
+    ? existing.trimEnd()
+    : [
+        "# Deferred Goal Ledger",
+        "",
+        "> **Status**: Backlog",
+        "> **Updated**: (migration)",
+        "> **Scope**: Medium/long-term goals deferred from active plan execution",
+        "",
+        "Current plan tasks live in the active plan's `## Task Breakdown`.",
+        "Do not duplicate that execution checklist here. Record only work intentionally deferred beyond this slice, with the tradeoff and revisit trigger.",
+        "",
+        "## Deferred Goals",
+        "",
+        "| Goal | Why Deferred | Tradeoff | Revisit Trigger |",
+        "|------|--------------|----------|-----------------|",
+        "| Review archived legacy checklist | Legacy tasks/todo.md contained execution checklist content before migration. | Preserve user-authored task text in tasks/archive instead of guessing which items still matter. | Open the archive and promote real follow-up work into a new plan or a deferred-goal row. |",
+      ].join("\n");
+
+  if (mode === "apply") {
+    ensureDir(dirname(target), mode);
+    ensureDir(dirname(archivePath), mode);
+    if (!existsSync(archivePath)) {
+      writeFileSync(archivePath, `${existing.trimEnd()}\n`);
+    }
+    if (!existsSync(target)) {
+      writeFileSync(target, `${content}\n`);
+    }
+    renameSync(source, `${source}.migrated.bak`);
   }
 
   return true;
@@ -190,7 +228,8 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
   const planDoc = join(repo, "docs", "plan.md");
   const todoDoc = join(repo, "docs", "TODO.md");
   const progressDoc = join(repo, "docs", "PROGRESS.md");
-  const tasksTodo = join(repo, "tasks", "todo.md");
+  const tasksTodo = join(repo, "tasks", "todos.md");
+  const legacySingularTasksTodo = join(repo, "tasks", "todo.md");
   const tasksResearch = join(repo, "tasks", "research.md");
   const researchDir = join(repo, "docs", "researches");
   const researchReadme = join(researchDir, "README.md");
@@ -209,13 +248,21 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
 
   ensureDir(plansArchive, mode);
   ensureDir(tasksArchive, mode);
+  if (migrateLegacySingularTodo(legacySingularTasksTodo, tasksTodo, legacyTasksTodoArchive, mode)) {
+    summary.migrated.push({
+      source: "tasks/todo.md",
+      target: "tasks/todos.md",
+      action: "rewrite",
+      note: "Archived legacy singular todo content and normalized tasks/todos.md to the deferred-goal ledger.",
+    });
+  }
   writeCanonicalTodo(tasksTodo, mode);
   if (normalizeLegacyTodo(tasksTodo, legacyTasksTodoArchive, mode)) {
     summary.migrated.push({
-      source: "tasks/todo.md",
-      target: "tasks/todo.md",
+      source: "tasks/todos.md",
+      target: "tasks/todos.md",
       action: "rewrite",
-      note: "Archived legacy task checklist content and normalized tasks/todo.md to the deferred-goal ledger.",
+      note: "Archived legacy task checklist content and normalized tasks/todos.md to the deferred-goal ledger.",
     });
   }
   ensureDir(researchDir, mode);
@@ -276,14 +323,14 @@ export function migrate(repo: string, mode: Mode): MigrationSummary {
     }
     summary.migrated.push({
       source: "docs/TODO.md",
-      target: "tasks/todo.md",
+      target: "tasks/todos.md",
       action: hadCanonicalTodo ? "skip" : "rewrite",
       note: hadCanonicalTodo
         ? "Archived the legacy todo without rewriting the existing deferred-goal ledger."
         : "Created the deferred-goal ledger and archived the legacy todo for manual plan triage.",
     });
     summary.manual_followups.push(
-      "Review tasks/archive/legacy-docs-TODO.md and promote any still-relevant work into a new plan instead of rehydrating it into tasks/todo.md."
+      "Review tasks/archive/legacy-docs-TODO.md and promote any still-relevant work into a new plan instead of rehydrating it into tasks/todos.md."
     );
   }
 

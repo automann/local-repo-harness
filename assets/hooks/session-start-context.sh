@@ -52,20 +52,6 @@ resume_current_for_handoff() {
   [[ "$resume_mtime" -ge "$handoff_mtime" ]]
 }
 
-context_budget_active() {
-  local budget_file zone
-  budget_file="$(workflow_context_budget_status_file)"
-  [[ -s "$budget_file" ]] || return 1
-
-  if command -v jq >/dev/null 2>&1; then
-    zone="$(jq -r '.zone // empty' "$budget_file" 2>/dev/null || true)"
-    [[ "$zone" == "orange" || "$zone" == "red" ]] && return 0
-    return 1
-  fi
-
-  grep -Eq '"zone"[[:space:]]*:[[:space:]]*"(orange|red)"' "$budget_file"
-}
-
 active_plan_exists() {
   local plan_file status
   plan_file="$(get_active_plan || true)"
@@ -80,14 +66,14 @@ active_plan_exists() {
 }
 
 active_todo_exists() {
-  [[ -f "tasks/todo.md" ]] || return 1
+  [[ -f "tasks/todos.md" ]] || return 1
 
-  if grep -Eq '^\> \*\*Status\*\*:[[:space:]]*(Executing|Active|Review|Reviewing|In Progress)[[:space:]]*$' tasks/todo.md; then
+  if grep -Eq '^\> \*\*Status\*\*:[[:space:]]*(Executing|Active|Review|Reviewing|In Progress)[[:space:]]*$' tasks/todos.md; then
     return 0
   fi
 
-  if grep -Eq '^[[:space:]]*-[[:space:]]\[[[:space:]]\][[:space:]]+' tasks/todo.md \
-    && ! grep -Fq "No active execution checklist" tasks/todo.md; then
+  if grep -Eq '^[[:space:]]*-[[:space:]]\[[[:space:]]\][[:space:]]+' tasks/todos.md \
+    && ! grep -Fq "No active execution checklist" tasks/todos.md; then
     return 0
   fi
 
@@ -114,17 +100,6 @@ handoff_section_has_signal() {
     }
     END { exit found ? 0 : 1 }
   ' "$handoff_file"
-}
-
-resume_reason_active() {
-  local reason
-  reason="$(resume_reason)"
-  case "$reason" in
-    context-orange-zone|context-red-zone)
-      return 0
-      ;;
-  esac
-  return 1
 }
 
 capability_context_pending() {
@@ -342,7 +317,7 @@ active_sprint_context() {
 
 - Sprint: \`${sprint_file}\` status=${status:-unknown} backlog=${progress}
 - Next sprint task: ${next_task}
-- Rule: run backlog tasks through the existing plan -> contract -> worktree flow (\`scripts/sprint-backlog.sh next\`); \`tasks/todo.md\` stays the deferred-goal ledger.
+- Rule: run backlog tasks through the existing plan -> contract -> worktree flow (\`scripts/sprint-backlog.sh next\`); \`tasks/todos.md\` stays the deferred-goal ledger.
 EOF_CONTEXT
 }
 
@@ -356,12 +331,10 @@ EOF_CONTEXT
 
 context=""
 if resume_current_for_handoff; then
-  if context_budget_active \
-    || active_plan_exists \
+  if active_plan_exists \
     || active_todo_exists \
     || handoff_section_has_signal "## Blockers" \
-    || handoff_section_has_signal "## Changed Files" \
-    || resume_reason_active; then
+    || handoff_section_has_signal "## Changed Files"; then
     context="$(awk 'length(total) < 12000 { total = total $0 "\n" } END { printf "%s", total }' "$resume_file")"
   fi
 fi

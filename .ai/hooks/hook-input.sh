@@ -275,19 +275,35 @@ hook_get_session_id() {
   local arg="${1:-}"
   local parsed=""
 
+  if [[ -n "${HOOK_SESSION_ID:-}" ]]; then
+    printf '%s' "$HOOK_SESSION_ID"
+    return
+  fi
+
   parsed="$(hook_json_get '.session_id' '')"
   if [[ -n "$parsed" ]]; then
+    HOOK_SESSION_ID="$parsed"
+    export HOOK_SESSION_ID
     printf '%s' "$parsed"
     return
   fi
 
   parsed="$(hook_parse_json_arg "$arg" '.session_id')"
   if [[ -n "$parsed" ]]; then
+    HOOK_SESSION_ID="$parsed"
+    export HOOK_SESSION_ID
     printf '%s' "$parsed"
     return
   fi
 
-  printf '%s' "${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-}}"
+  if [[ -n "${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-}}" ]]; then
+    HOOK_SESSION_ID="${CLAUDE_SESSION_ID:-${CODEX_SESSION_ID:-}}"
+    export HOOK_SESSION_ID
+    printf '%s' "$HOOK_SESSION_ID"
+    return
+  fi
+
+  printf '%s' ""
 }
 
 hook_get_transcript_path() {

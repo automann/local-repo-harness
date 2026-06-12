@@ -1,6 +1,6 @@
 ---
 name: repo-harness-sprint
-description: Program-level sprint planning and execution entrypoint. Discusses a PRD with the user from PM and architect perspectives, decomposes it into an ordered backlog in tasks/sprints/, then drives backlog tasks one at a time through the existing plan, contract, and worktree flow.
+description: Program-level sprint planning and execution entrypoint. Discusses a PRD with the user from PM and architect perspectives, decomposes it into an ordered backlog in plans/prds/, then drives backlog tasks one at a time through the existing plan, contract, and worktree flow.
 when_to_use: "repo-harness-sprint, plan a sprint, create sprint backlog, PRD to backlog, run next sprint task, sprint status"
 ---
 
@@ -36,4 +36,4 @@ Use this command to plan a program-level Sprint (PRD + ordered backlog) and exec
 - Never bypasses `/check`, external acceptance, or `verify-sprint.sh` to mark a backlog row complete.
 - Goal mode (`run --goal`, autonomous continuation) is not part of this command yet; treat requests for it as future work and say so.
 - Do not run two backlog tasks in parallel: concurrent contract rows merge-conflict on the sprint file's Updated and Execution Log lines; the backlog is an ordered queue.
-- `tasks/todo.md` stays the deferred-goal ledger; never write the backlog there.
+- `tasks/todos.md` stays the deferred-goal ledger; never write the backlog there.

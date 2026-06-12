@@ -32,7 +32,7 @@ function setupRepo(): string {
   expect(run(cwd, ["git", "config", "user.name", "Test User"]).status).toBe(0);
 
   writeFileSync(join(cwd, "src", "app.ts"), "export const value = 1;\n");
-  writeFileSync(join(cwd, "tasks", "todo.md"), "# Task Execution Checklist (Primary)\n");
+  writeFileSync(join(cwd, "tasks", "todos.md"), "# Task Execution Checklist (Primary)\n");
   writeFileSync(join(cwd, "tasks", "lessons.md"), "# Lessons Learned (Self-Improvement Loop)\n");
   writeFileSync(join(cwd, "docs", "researches", "README.md"), "# Research Reports\n");
 
@@ -66,11 +66,11 @@ describe("check-task-sync helper", () => {
     }
   });
 
-  test("passes when code changes include tasks/todo.md updates", () => {
+  test("passes when code changes include tasks/todos.md updates", () => {
     const cwd = setupRepo();
     try {
       writeFileSync(join(cwd, "src", "app.ts"), "export const value = 2;\n");
-      writeFileSync(join(cwd, "tasks", "todo.md"), "# Task Execution Checklist (Primary)\n- [x] updated\n");
+      writeFileSync(join(cwd, "tasks", "todos.md"), "# Task Execution Checklist (Primary)\n- [x] updated\n");
       const res = run(cwd, ["bash", "scripts/check-task-sync.sh"]);
       expect(res.status).toBe(0);
     } finally {
@@ -158,8 +158,8 @@ describe("check-task-sync helper", () => {
     const cwd = setupRepo();
     try {
       writeFileSync(join(cwd, "src", "app.ts"), "export const value = 2;\n");
-      writeFileSync(join(cwd, "tasks", "todo.md"), "# Task Execution Checklist (Primary)\n- [x] staged\n");
-      expect(run(cwd, ["git", "add", "tasks/todo.md"]).status).toBe(0);
+      writeFileSync(join(cwd, "tasks", "todos.md"), "# Task Execution Checklist (Primary)\n- [x] staged\n");
+      expect(run(cwd, ["git", "add", "tasks/todos.md"]).status).toBe(0);
 
       const res = run(cwd, ["bash", "scripts/check-task-sync.sh"]);
       expect(res.status).toBe(0);

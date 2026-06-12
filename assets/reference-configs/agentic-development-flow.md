@@ -36,7 +36,7 @@ migrating, repairing, or verifying this repo-local harness:
 | Check deploy and ops config | `repo-harness-deploy` | Read-only deploy/_ops readiness check without publishing |
 | Fix broken current harness behavior | `repo-harness-repair` | Task sync, hook routing, handoff, context, policy, or helper drift |
 | Verify readiness | `repo-harness-check` | Workflow gates, task sync, inspector, migration dry-run, and readiness yellow flags |
-| Plan and run a program-level sprint | `repo-harness-sprint` | PRD + ordered backlog in `tasks/sprints/`; each task runs through plan -> contract -> worktree |
+| Plan and run a program-level sprint | `repo-harness-sprint` | PRD + ordered backlog in `plans/prds/`; each task runs through plan -> contract -> worktree |
 
 `hooks-init`, `docs-init`, and `create-project-dirs` are not public commands.
 They are implementation steps behind `init`, `scaffold`, `migrate`, and
@@ -57,11 +57,11 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 ## Daily Flow
 
 1. Route the request by intent before reading broadly.
-2. Read the repo-local contract first: `AGENTS.md` or `CLAUDE.md`, `tasks/todo.md`, `tasks/lessons.md`, and `.ai/harness/policy.json`.
+2. Read the repo-local contract first: `AGENTS.md` or `CLAUDE.md`, `tasks/todos.md`, `tasks/lessons.md`, and `.ai/harness/policy.json`.
 3. Use the selected skill or mode to produce either an approved plan, a root cause, or a review verdict.
 4. When Codex Plan mode, Waza `/think`, or `repo-harness-plan` produces a decision-complete plan, capture it into `plans/` with `scripts/capture-plan.sh --slug <slug> --title <title>` and the plan text on stdin.
 5. Approved plans must include `## Evidence Contract` with state/progress path, verification evidence, evaluator rubric, stop condition, and rollback surface before execution. `capture-plan.sh` supplies this contract for captured planning output.
-6. Convert approved plans to execution scaffolding with `scripts/plan-to-todo.sh --plan <plan>`; if approval is already explicit, use `scripts/capture-plan.sh --status Approved --execute ...`. The plan's own `## Task Breakdown` remains the execution checklist; `tasks/todo.md` remains a deferred-goal ledger. Contract-level plans are projected into a linked `codex/<slug>` worktree when the policy enables it.
+6. Convert approved plans to execution scaffolding with `scripts/plan-to-todo.sh --plan <plan>`; if approval is already explicit, use `scripts/capture-plan.sh --status Approved --execute ...`. The plan's own `## Task Breakdown` remains the execution checklist; `tasks/todos.md` remains a deferred-goal ledger. Contract-level plans are projected into a linked `codex/<slug>` worktree when the policy enables it.
 7. Use `scripts/refresh-current-status.sh` for an explicit `tasks/current.md` preview or `--write` snapshot. In non-target worktrees, `git show <target>:tasks/current.md` reads the mainline snapshot, but it never replaces source artifacts.
 8. After substantive changes, run project checks and record evidence in `tasks/`. For contract worktrees, run Waza `/check`, start host-aware external acceptance in parallel, fill the review artifact from both verdicts, then use `repo-harness-ship` for default PR closeout. It calls `scripts/contract-worktree.sh finish --no-merge`, pushes the `codex/<slug>` branch, and opens a draft PR. Use `repo-harness-ship --local-merge` only when an explicit maintainer workflow wants the older fast-forward merge and cleanup path.
 
@@ -69,7 +69,7 @@ work, or shared contracts, report the P1/P2/P3 evidence explicitly.
 
 - Codex Plan mode and Waza `/think` do not need the user to remember `new-sprint` or `plan-to-todo`.
 - The agent should capture decision-complete planning output with `scripts/capture-plan.sh`; the script sets `.ai/harness/active-plan`, writes `.ai/harness/active-worktree`, mirrors `.claude/.active-plan`, and writes a timestamped `plans/plan-*.md` artifact.
-- Planning capture is allowed before implementation. Contract, review, notes, and worktree artifacts are generated only after explicit implementation approval; `tasks/todo.md` is not a duplicate of plan tasks.
+- Planning capture is allowed before implementation. Contract, review, notes, and worktree artifacts are generated only after explicit implementation approval; `tasks/todos.md` is not a duplicate of plan tasks.
 - Current-status capture is separate from planning capture: `tasks/current.md` is regenerated from artifacts for orientation, not edited as a plan or task list.
 
 ## Boundaries

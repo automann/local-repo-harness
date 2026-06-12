@@ -246,7 +246,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Sprint contract: \`tasks/contracts/${artifact_stem}.contract.md\`
 - Sprint review: \`tasks/reviews/${artifact_stem}.review.md\`
 - Implementation notes: \`tasks/notes/${artifact_stem}.notes.md\`
-- Deferred-goal ledger: \`tasks/todo.md\`
+- Deferred-goal ledger: \`tasks/todos.md\`
 - Current checks: \`.ai/harness/checks/latest.json\`
 - Run snapshots: \`.ai/harness/runs/\`
 - Scope authority: \`tasks/contracts/${artifact_stem}.contract.md\` \`allowed_paths\`
@@ -294,7 +294,7 @@ See captured planning output.
 
 ## Evidence Contract
 
-- **State/progress path**: \`${plan_file}\` task breakdown, \`tasks/todo.md\` deferred-goal ledger, \`tasks/contracts/${artifact_stem}.contract.md\`, \`tasks/reviews/${artifact_stem}.review.md\`, and \`tasks/notes/${artifact_stem}.notes.md\`
+- **State/progress path**: \`${plan_file}\` task breakdown, \`tasks/todos.md\` deferred-goal ledger, \`tasks/contracts/${artifact_stem}.contract.md\`, \`tasks/reviews/${artifact_stem}.review.md\`, and \`tasks/notes/${artifact_stem}.notes.md\`
 - **Verification evidence**: \`.ai/harness/checks/latest.json\`, \`.ai/harness/runs/\`, and the commands named in the captured planning output
 - **Evaluator rubric**: \`tasks/reviews/${artifact_stem}.review.md\` must record a passing Waza /check style recommendation
 - **Stop condition**: all task breakdown items are complete, sprint verification passes, and the review recommends pass

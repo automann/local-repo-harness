@@ -5,7 +5,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 ## Roles
 
 - **Planner** updates `docs/spec.md`, researches constraints, and writes or approves `plans/plan-*.md`.
-- **Generator** implements only against the active sprint contract and the plan's `## Task Breakdown`, leaving `tasks/todo.md` as a deferred-goal ledger, and records task-local implementation judgments in `tasks/notes/<plan-stem>.notes.md`.
+- **Generator** implements only against the active sprint contract and the plan's `## Task Breakdown`, leaving `tasks/todos.md` as a deferred-goal ledger, and records task-local implementation judgments in `tasks/notes/<plan-stem>.notes.md`.
 - **Evaluator** runs Waza `/check`, then writes `tasks/reviews/<plan-stem>.review.md` using fresh evidence from `.ai/harness/checks/latest.json` and `.ai/harness/runs/*.json`.
 
 ## State Flow
@@ -14,7 +14,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 2. `plans/plan-*.md` captures a concrete execution approach.
 3. `tasks/contracts/<plan-stem>.contract.md` defines done for the active sprint.
 4. `tasks/current.md` is a tracked mainline status snapshot derived from workflow artifacts; it is not a live lock, kanban board, or implementation gate.
-5. `tasks/todo.md` is the deferred-goal ledger; the plan's `## Task Breakdown` and active contract carry sprint execution.
+5. `tasks/todos.md` is the deferred-goal ledger; the plan's `## Task Breakdown` and active contract carry sprint execution.
 6. `tasks/notes/<plan-stem>.notes.md` records design decisions, deviations, tradeoffs, open questions, and promotion candidates for this sprint only.
 7. `tasks/reviews/<plan-stem>.review.md` records evaluator judgment.
 8. `.ai/harness/policy.json` is the machine-readable workflow contract.

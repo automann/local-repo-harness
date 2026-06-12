@@ -12,7 +12,7 @@
 The executable source of truth is still repo-local:
 
 - Active execution: `plans/plan-*.md` `## Task Breakdown` plus `tasks/contracts/`
-- Deferred goals: `tasks/todo.md`
+- Deferred goals: `tasks/todos.md`
 - Plans: `plans/`
 - Contracts: `tasks/contracts/`
 - Reviews: `tasks/reviews/`

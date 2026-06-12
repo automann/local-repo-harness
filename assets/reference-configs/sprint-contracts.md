@@ -8,11 +8,11 @@ The word "sprint" historically named a single execution slice in this harness. W
 
 | Term | Layer | Artifact | Owner |
 |------|-------|----------|-------|
-| **Sprint** | Program level | `tasks/sprints/<stamp>-<slug>.sprint.md` (PRD + Architecture Notes + ordered Backlog + Execution Log) | PM + architect planning |
+| **Sprint** | Program level | `plans/prds/<stamp>-<slug>.prd.md` (PRD + Architecture Notes + ordered Backlog + Execution Log) | PM + architect planning |
 | **Task Contract** | Execution slice | `tasks/contracts/<plan-stem>.contract.md` plus its review/notes trio | One plan, one worktree |
 
 - A Sprint decomposes `docs/spec.md` intent into an ordered backlog; each backlog task executes as one task-contract slice through the existing plan -> contract -> worktree -> verify flow.
-- `tasks/todo.md` stays the deferred-goal ledger; it never carries the sprint backlog or any active checklist.
+- `tasks/todos.md` stays the deferred-goal ledger; it never carries the sprint backlog or any active checklist.
 - Legacy naming: "Sprint Contract" / "Sprint Review" headings and the `verify-sprint.sh` / `new-sprint.sh` filenames predate the program layer and refer to the execution slice. The filenames are kept for downstream compatibility; read them as task-contract verification.
 - Sprint lifecycle: `Draft -> Approved -> Executing -> Done -> Archived`, tracked in the sprint file's `> **Status**:` line. Where the sprint layer is installed, `scripts/sprint-backlog.sh` (init/status/next/complete-task) operates the backlog and `.ai/harness/sprint/active-sprint` (runtime state, not committed) marks the single active sprint; harness installs predating the sprint layer do not ship the helper, so check for the script before invoking it. `check-task-workflow.sh` rejects Approved/Executing sprints whose PRD is placeholder-only or whose backlog rows lack a concrete acceptance line.
 

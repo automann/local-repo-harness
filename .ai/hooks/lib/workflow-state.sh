@@ -90,10 +90,6 @@ workflow_runs_dir() {
   workflow_repo_relative_path "$(workflow_policy_get '.harness.runs_dir' '.ai/harness/runs')" '.ai/harness/runs' '.ai/harness/'
 }
 
-workflow_context_budget_status_file() {
-  workflow_repo_relative_path "$(workflow_policy_get '.context_budget.status_file' '.ai/harness/context-budget/latest.json')" '.ai/harness/context-budget/latest.json' '.ai/harness/'
-}
-
 workflow_resume_packet_file() {
   workflow_repo_relative_path "$(workflow_policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')" '.ai/harness/handoff/resume.md' '.ai/harness/'
 }
@@ -109,7 +105,6 @@ workflow_ensure_harness_surface() {
     "$(dirname "$(workflow_policy_file)")" \
     "$(dirname "$(workflow_checks_file)")" \
     "$(dirname "$(workflow_handoff_file)")" \
-    "$(dirname "$(workflow_context_budget_status_file)")" \
     "$(dirname "$(workflow_resume_packet_file)")" \
     "$(dirname "$(workflow_failure_log_file)")" \
     "$(dirname "$(workflow_pending_orchestration_file)")" \
@@ -117,7 +112,6 @@ workflow_ensure_harness_surface() {
 
   [[ -f "$(workflow_checks_file)" ]] || printf "{}\n" > "$(workflow_checks_file)"
   [[ -f "$(workflow_handoff_file)" ]] || printf "# Harness Handoff\n\n> **Reason**: bootstrap\n" > "$(workflow_handoff_file)"
-  [[ -f "$(workflow_context_budget_status_file)" ]] || printf "{}\n" > "$(workflow_context_budget_status_file)"
   [[ -f "$(workflow_resume_packet_file)" ]] || printf "# Codex Resume Packet\n\n> **Reason**: bootstrap\n" > "$(workflow_resume_packet_file)"
   [[ -f "$(workflow_failure_log_file)" ]] || : > "$(workflow_failure_log_file)"
   [[ -f "$(workflow_events_file)" ]] || : > "$(workflow_events_file)"
@@ -272,11 +266,11 @@ get_plan_status() {
 }
 
 get_todo_source_plan() {
-  if [[ ! -f "tasks/todo.md" ]]; then
+  if [[ ! -f "tasks/todos.md" ]]; then
     return 1
   fi
 
-  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todo.md | xargs
+  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todos.md | xargs
 }
 
 workflow_plan_slug_from_path() {
@@ -395,21 +389,21 @@ workflow_plan_slug() {
 }
 
 workflow_todo_total() {
-  if [[ ! -f "tasks/todo.md" ]]; then
+  if [[ ! -f "tasks/todos.md" ]]; then
     printf '0'
     return
   fi
 
-  grep -E '^[[:space:]]*-[[:space:]]\[[ xX]\][[:space:]]+' tasks/todo.md | wc -l | tr -d ' '
+  grep -E '^[[:space:]]*-[[:space:]]\[[ xX]\][[:space:]]+' tasks/todos.md | wc -l | tr -d ' '
 }
 
 workflow_todo_done() {
-  if [[ ! -f "tasks/todo.md" ]]; then
+  if [[ ! -f "tasks/todos.md" ]]; then
     printf '0'
     return
   fi
 
-  grep -E '^[[:space:]]*-[[:space:]]\[[xX]\][[:space:]]+' tasks/todo.md | wc -l | tr -d ' '
+  grep -E '^[[:space:]]*-[[:space:]]\[[xX]\][[:space:]]+' tasks/todos.md | wc -l | tr -d ' '
 }
 
 workflow_is_linked_worktree() {
@@ -514,8 +508,8 @@ workflow_plan_task_state() {
 
   # Legacy compatibility only: current repositories keep execution in the
   # active plan, but older generated repos may still carry a todo checklist.
-  if [[ -f "tasks/todo.md" ]] && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todo.md; then
-    workflow_iterate_todo_tasks "tasks/todo.md" | workflow_plan_task_state_from_stream
+  if [[ -f "tasks/todos.md" ]] && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todos.md; then
+    workflow_iterate_todo_tasks "tasks/todos.md" | workflow_plan_task_state_from_stream
     return 0
   fi
 
@@ -676,7 +670,7 @@ workflow_read_state_field() {
 }
 
 workflow_iterate_todo_tasks() {
-  local todo_file="${1:-tasks/todo.md}"
+  local todo_file="${1:-tasks/todos.md}"
   [[ -f "$todo_file" ]] || return 0
 
   awk '
@@ -693,7 +687,7 @@ workflow_iterate_todo_tasks() {
 }
 
 workflow_sync_task_state_from_todo() {
-  local todo_file="${1:-tasks/todo.md}"
+  local todo_file="${1:-tasks/todos.md}"
   local state_file="${2:-.claude/.task-state.json}"
   local source_plan="${3:-}"
   local run_id="${HOOK_RUN_ID:-${CLAUDE_RUN_ID:-${CODEX_RUN_ID:-}}}"
@@ -1508,13 +1502,12 @@ workflow_write_handoff() {
   local reason="${1:-session-stop}"
   local handoff_file active_plan active_contract active_review active_notes checks_file next_task changed_files diff_stat spec_file source_plan parent_run_id supersedes
   local next_action next_stage next_command next_message
-  local budget_file resume_file trace_file recent_commands blockers decisions goal
+  local resume_file trace_file recent_commands blockers decisions goal
   local changed_count untracked_count
 
   workflow_ensure_harness_surface
   handoff_file="$(workflow_handoff_file)"
   checks_file="$(workflow_checks_file)"
-  budget_file="$(workflow_context_budget_status_file)"
   resume_file="$(workflow_resume_packet_file)"
   spec_file="docs/spec.md"
   active_plan="$(get_active_plan || true)"
@@ -1620,7 +1613,6 @@ ${recent_commands}
 ## Checks
 
 - Checks file: ${checks_file}
-- Context budget: ${budget_file}
 
 ## Blockers
 
@@ -1644,7 +1636,6 @@ ${recent_commands}
 - Review: ${active_review:-(none)}
 - Notes: ${active_notes:-(none)}
 - Checks: ${checks_file}
-- Context Budget: ${budget_file}
 - Resume Packet: ${resume_file}
 - Policy: $(workflow_policy_file)
 - Context Map: $(workflow_context_map_file)

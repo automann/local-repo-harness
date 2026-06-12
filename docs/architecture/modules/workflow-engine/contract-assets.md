@@ -44,7 +44,7 @@ Error paths:
 Contract assets are separated from runtime state so generated repos can verify
 themselves without a service. The invariant is that tracked contract files are
 durable truth, while `.ai/harness/checks/latest.json`, handoff packets, failure
-logs, context-budget files, architecture events, worktrees, and run snapshots are
+logs, architecture events, worktrees, and run snapshots are
 ignored runtime state.
 
 At 10x generated repos, the first failure would be self-host behavior diverging

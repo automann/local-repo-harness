@@ -257,9 +257,9 @@ jobs:
 - `AGENTS.md` / `CLAUDE.md` - concise agent routing contract for Codex and Claude
 - `docs/spec.md` - stable product intent
 - `docs/architecture/index.md` - architecture status and module pointers
-- `tasks/todo.md` - active execution checklist
+- `tasks/todos.md` - deferred-goal ledger; active execution stays in the plan's task breakdown
 - `tasks/lessons.md` - correction-derived rules
-- `tasks/research.md` - deep repo findings and hidden contracts
+- `docs/researches/*.md` - deep repo findings and hidden contracts
 - `docs/CHANGELOG.md` - version history when release history is relevant
 
 Optional docs such as `docs/brief.md`, `docs/tech-stack.md`, and `docs/decisions.md`

@@ -102,7 +102,7 @@ do_switch() {
 
   write_active_plan_marker "$target_plan"
   echo "[PlanSwitch] Selected $target_plan for worktree $(pwd -P)"
-  echo "[PlanSwitch] tasks/todo.md is a deferred-goal ledger and was left unchanged."
+  echo "[PlanSwitch] tasks/todos.md is a deferred-goal ledger and was left unchanged."
 }
 
 # --- Main ---

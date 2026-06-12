@@ -218,6 +218,24 @@ Added:
 Modified (vs todo's original 1B):
 - `src/cli/commands/hook.ts` — interface 改 `--route` 而非 positional script
 - `src/cli/commands/install.ts` — adapter generation 按 matcher group + route 输出 7 entries
+
+## Downstream Vendored Hook Policy (2026-06-12)
+
+After validating `/Users/chris/Projects/97app`, the confusing surface was not the active runtime: `repo-harness-hook` correctly resolved to packaged hooks. The confusing surface was stale downstream `.ai/hooks` fallback files that looked like the active runtime.
+
+Decision:
+
+- Ordinary downstream `repo-harness update`, migration, and new-project scaffold paths no longer copy the full hook runtime into `.ai/hooks`.
+- Downstream refresh/scaffold paths install only `.ai/hooks/lib/` shell helper libraries plus a README tombstone.
+- Full vendored hook runtime sync is preserved for repos that explicitly pin `"hook_source": "repo"` in `.ai/harness/policy.json`, including this self-host repo.
+- Existing non-manifest-owned hook files in downstream repos are not deleted automatically; only `known_generated` upgrade actions may remove files.
+
+Verification anchors:
+
+- `tests/migration-script.test.ts` asserts default downstream repos get lib-only fallback.
+- `tests/migration-script.test.ts` asserts repo-pinned hook source still receives full hook scripts.
+- `tests/create-project-dirs.runtime.test.ts` asserts new scaffold defaults to lib-only fallback and preserves full runtime when `hook_source` is pinned before scaffold.
+- `tests/scaffold-parity.test.ts` snapshots the default scaffold file tree with `.ai/hooks/README.md` plus helper libs only.
 - `src/cli/installer/targets/codex.ts` — matcher field 写到 host config
 - `src/cli/installer/targets/claude.ts` — Claude 无 matcher 字段, 但事件分组同 Codex
 

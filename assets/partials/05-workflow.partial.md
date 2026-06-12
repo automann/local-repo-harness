@@ -1,6 +1,6 @@
 ### Plan Annotation Protocol
 
-Use `docs/researches/` for deep codebase understanding, `docs/spec.md` for stable intent, `plans/` for timestamped execution plans, and `tasks/todo.md` for deferred medium/long-term goals with tradeoffs and revisit triggers.
+Use `docs/researches/` for deep codebase understanding, `docs/spec.md` for stable intent, `plans/` for timestamped execution plans, and `tasks/todos.md` for deferred medium/long-term goals with tradeoffs and revisit triggers.
 
 ```yaml
 PLAN_LOOP:
@@ -15,7 +15,7 @@ PLAN_LOOP:
   PLAN_ARCHIVE: plans/archive/
   ACTIVE_PLAN_RULE: .ai/harness/active-plan marker is scoped to this worktree; .ai/harness/active-worktree records the owner; legacy .claude/.active-plan is fallback only
   PLAN_SWITCH: scripts/switch-plan.sh --plan <plan-file> | --list
-  DEFERRED_LEDGER: tasks/todo.md
+  DEFERRED_LEDGER: tasks/todos.md
   TODO_ARCHIVE: tasks/archive/
   CONTRACT_DIR: tasks/contracts/
   REVIEW_DIR: tasks/reviews/

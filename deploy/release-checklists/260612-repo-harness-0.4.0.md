@@ -1,7 +1,7 @@
 # Release Filing: repo-harness 0.4.0
 
 Date: 2026-06-12
-Status: Verified for release
+Status: Published
 
 ## Scope
 
@@ -63,5 +63,17 @@ and generated `.claude/.skill-version` stamps now share `0.4.0`.
 
 ## Publish Status
 
-- npm: not published by this pass; maintainer will publish.
-- GitHub release: create from `v0.4.0` after this verified release prep commit.
+- npm: published to the official registry.
+- Registry readback:
+  - `npm view repo-harness version --registry https://registry.npmjs.org/`
+    returned `0.4.0`.
+  - `npm view repo-harness@0.4.0 version dist.tarball gitHead dist.shasum
+    dist.integrity --json --registry https://registry.npmjs.org/` returned:
+    - `version = "0.4.0"`
+    - `dist.tarball =
+      "https://registry.npmjs.org/repo-harness/-/repo-harness-0.4.0.tgz"`
+    - `gitHead = "bef7cdc34b01b2a3c929d171dd35a4e87bea26eb"`
+    - `dist.shasum = "88b5877750392991d78c6042ab96245d1bdb8246"`
+    - `dist.integrity =
+      "sha512-REXWc7LLowPP6snXkZgirZlTGTNJRKGev7up/C2C6V6keiq/ZQF8KfLSZvlvg433gOboTkb72W13ksqJSDld4Q=="`
+- GitHub release: create or verify `v0.4.0` from the published source commit.

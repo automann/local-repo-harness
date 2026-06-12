@@ -203,9 +203,8 @@ latest_global_handoff() {
 resume_file="$(safe_repo_file "$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')" '.ai/harness/handoff/resume.md' '.ai/harness/')"
 repo_handoff="$(safe_repo_file "$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')" '.ai/harness/handoff/current.md' '.ai/harness/')"
 checks_file="$(safe_repo_file "$(policy_get '.harness.checks_file' '.ai/harness/checks/latest.json')" '.ai/harness/checks/latest.json' '.ai/harness/')"
-budget_file="$(safe_repo_file "$(policy_get '.context_budget.status_file' '.ai/harness/context-budget/latest.json')" '.ai/harness/context-budget/latest.json' '.ai/harness/')"
 research_dir="$(safe_repo_file "$(policy_get '.tasks.research_dir' 'docs/researches')" 'docs/researches' 'docs/researches')"
-todo_file="$(safe_repo_file "$(policy_get '.tasks.todo_file' 'tasks/todo.md')" 'tasks/todo.md' 'tasks/')"
+todo_file="$(safe_repo_file "$(policy_get '.tasks.todo_file' 'tasks/todos.md')" 'tasks/todos.md' 'tasks/')"
 plan_file="$(active_plan || true)"
 contract_file="$(derive_contract "$plan_file" || true)"
 notes_file="$(derive_notes "$plan_file" || true)"
@@ -236,7 +235,6 @@ Required first reads:
 - ${notes_file:-(none)}
 - ${research_dir}/
 - ${checks_file}
-- ${budget_file}
 
 Conditional first reads:
 - Active plan: ${plan_file:-(none)}
@@ -255,7 +253,6 @@ Execution rules:
 
 - Repo handoff: ${repo_handoff}
 - Resume packet: ${resume_file}
-- Context budget: ${budget_file}
 - Checks: ${checks_file}
 - Todo: ${todo_file}
 - Research: ${research_dir}/

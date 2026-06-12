@@ -179,6 +179,27 @@ flowchart TD
   Cleanup --> Done["Tâche terminée et auditable"]
 ```
 
+## Longues boucles produit
+
+Pour le travail Greenfield comme Brownfield, avancez la discovery et le jugement
+d'engineering plan dans Claude-Fable avant de demander à Codex de boucler sur
+l'exécution :
+
+1. Dans Claude-Fable, utilisez gstack `office-hours` pour la product discovery ou
+   `plan-eng-review` pour la review du plan d'ingénierie. La sortie doit être les
+   development documents qui verrouillent l'intention produit, l'architecture,
+   les risques et l'evidence contract.
+2. Transformez ces documents en PRD Sprint sous `plans/prds/`, avec un backlog
+   ordonné et des sub-plans détaillés pour chaque execution slice.
+3. Créez un Codex Goal qui pointe vers ce fichier de sprint. repo-harness peut
+   ensuite projeter chaque sprint item dans le flow normal plan -> contract ->
+   worktree -> verification.
+
+Ce handoff rend les longues boucles plus précises : Claude-Fable porte le
+jugement large en amont, le PRD Sprint devient la durable source of truth, et
+Codex Goal mode reprend sur un sprint concret au lieu de réinterpréter le chat
+initial.
+
 ## Les 5 premières minutes
 
 C'est le chemin le plus rapide pour évaluer si un dépôt réel se prête à l'adoption
@@ -352,6 +373,13 @@ Guards courants :
 - Les autres outils externes restent advisory-only :
   - `bash scripts/check-agent-tooling.sh --host both --check-updates`
   - pas de configuration automatique de gstack, gbrain, CodeGraph MCP, daemon ou provider
+
+## Remerciements
+
+Merci à [Hylarucoder](https://x.com/hylarucoder) pour sa contribution
+méthodologique. La méthode P1/P2/P3 due-diligence de `repo-harness`, ainsi que
+la pratique Geju qui structure le planning, le trace et le decision rationale,
+viennent de sa contribution et de son influence.
 
 ## Action Command Skills
 

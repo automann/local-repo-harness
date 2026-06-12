@@ -69,7 +69,7 @@ describe("Migration script contract", () => {
     expect(script).toContain("plans/archive");
     expect(script).toContain("tasks/archive");
     expect(script).toContain("docs/researches");
-    expect(script).toContain("tasks/todo.md");
+    expect(script).toContain("tasks/todos.md");
     expect(script).toContain("tasks/lessons.md");
     expect(script).toContain("tasks/reviews");
     expect(script).toContain("tasks/notes");
@@ -79,7 +79,7 @@ describe("Migration script contract", () => {
     expect(script).toContain(".ai/harness/brain-manifest.json");
     expect(script).toContain(".ai/harness/events.jsonl");
     expect(script).toContain(".ai/harness/handoff/current.md");
-    expect(script).toContain(".ai/harness/context-budget");
+    expect(script).not.toContain(".ai/harness/context-budget");
     expect(sharedLib).toContain(".ai/harness/planning/");
     expect(script).toContain(".ai/harness/workflow-contract.json");
     expect(workflowContract).toContain("new-spec.sh");
@@ -106,7 +106,7 @@ describe("Migration script contract", () => {
     expect(workflowContract).toContain("check-task-workflow.sh");
     expect(workflowContract).toContain("maintenance-triage.sh");
     expect(workflowContract).toContain("heartbeat-triage.sh");
-    expect(workflowContract).toContain("context-budget.ts");
+    expect(workflowContract).not.toContain("context-budget.ts");
     expect(workflowContract).toContain("capability-resolver.ts");
     expect(workflowContract).toContain("architecture-event.ts");
     expect(workflowContract).toContain("capability-config.ts");
@@ -212,7 +212,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".ai/harness/failures/latest.jsonl"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/handoff/current.md"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/handoff/resume.md"))).toBe(true);
-      expect(existsSync(join(repo, ".ai/harness/context-budget/latest.json"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/harness/context-budget/latest.json"))).toBe(false);
       expect(existsSync(join(repo, ".ai/harness/planning"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/workflow-contract.json"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/brain-manifest.json"))).toBe(true);
@@ -256,15 +256,18 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/migrate-workflow-docs.ts"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-skill-version.ts"))).toBe(true);
       expect(existsSync(join(repo, "scripts/migrate-project-template.sh"))).toBe(true);
-      expect(existsSync(join(repo, "scripts/context-budget.ts"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/context-budget.ts"))).toBe(false);
       expect(existsSync(join(repo, "scripts/capability-config.ts"))).toBe(true);
       expect(existsSync(join(repo, "scripts/prepare-codex-handoff.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(repo, "scripts/skill-factory-check.sh"))).toBe(false);
-      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(true);
-      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
-      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/memory-intake.sh"))).toBe(false);
@@ -278,7 +281,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".claude/hooks/lib/workflow-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/hooks/lib/session-state.sh"))).toBe(false);
       expect(existsSync(join(repo, "docs/researches/README.md"))).toBe(true);
-      expect(existsSync(join(repo, "tasks/todo.md"))).toBe(true);
+      expect(existsSync(join(repo, "tasks/todos.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/lessons.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/contracts"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/handoff-protocol.md"))).toBe(true);
@@ -357,7 +360,7 @@ describe("Migration script contract", () => {
         bug_or_regression: "waza:hunt",
         post_implementation_review: "waza:check",
       });
-      expect(policy.context_budget.status_file).toBe(".ai/harness/context-budget/latest.json");
+      expect(policy.context_budget).toBeUndefined();
       expect(policy.handoff_resume.resume_packet_file).toBe(".ai/harness/handoff/resume.md");
       expect(policy.planning.pending_orchestration_file).toBe(".ai/harness/planning/pending.json");
       expect(policy.tasks.notes_dir).toBe("tasks/notes");
@@ -411,7 +414,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("check-context-files.sh");
       expect(workflowContract.helpers.scripts).toContain("maintenance-triage.sh");
       expect(workflowContract.helpers.scripts).toContain("heartbeat-triage.sh");
-      expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
+      expect(workflowContract.helpers.scripts).not.toContain("context-budget.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-resolver.ts");
       expect(workflowContract.helpers.scripts).toContain("architecture-event.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-config.ts");
@@ -461,9 +464,11 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
       expect(gitignore).toContain(".ai/harness/active-plan");
       expect(gitignore).toContain(".ai/harness/active-worktree");
+      expect(gitignore).toContain("tasks/.current.md.tmp.*");
       expect(gitignore).toContain(".ai/harness/planning/");
       expect(gitignore).toContain("!.ai/harness/planning/.gitkeep");
       expect(gitignore).toContain(".claude/.active-plan");
+      expect(gitignore).toContain(".claude/.plan-state/");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");
@@ -480,6 +485,58 @@ describe("Migration script contract", () => {
       rmSync(repo, { recursive: true, force: true });
     }
   }, 30000);
+
+  test("should keep full vendored hook runtime for repos that pin hook_source repo", () => {
+    const repo = mkdtempSync(join(tmpdir(), "repo-harness-migrate-hooks-"));
+    try {
+      mkdirSync(join(repo, ".ai/harness"), { recursive: true });
+      writeFileSync(join(repo, ".ai/harness/policy.json"), '{ "hook_source": "repo" }\n');
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/post-tool-observer.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, MIGRATION_INTEGRATION_TIMEOUT);
+
+  test("should prune stale repo-local hook runtime for non-pinned repos during migration", () => {
+    const repo = mkdtempSync(join(tmpdir(), "repo-harness-migrate-hook-prune-"));
+    try {
+      mkdirSync(join(repo, ".ai/hooks/lib"), { recursive: true });
+      writeFileSync(join(repo, ".ai/hooks/run-hook.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/prompt-guard.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/post-edit-guard.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/CLAUDE.md"), "# Stale hook docs\n");
+      writeFileSync(join(repo, ".ai/hooks/codex.hooks.template.json"), "{}\n");
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/prompt-guard.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/CLAUDE.md"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/codex.hooks.template.json"))).toBe(false);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, MIGRATION_INTEGRATION_TIMEOUT);
 
   test("should migrate legacy trackable _ops assets into deploy while preserving private _ops state", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-ops-deploy-"));
@@ -681,7 +738,7 @@ describe("Migration script contract", () => {
     }
   }, MIGRATION_INTEGRATION_TIMEOUT);
 
-  test("should normalize partial tasks-first repos that still have a legacy tasks/todo.md", () => {
+  test("should migrate partial tasks-first repos that still have a legacy tasks/todo.md", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-partial-tasks-"));
     try {
       mkdirSync(join(repo, "docs"), { recursive: true });
@@ -699,8 +756,9 @@ describe("Migration script contract", () => {
       expect(res.status).toBe(0);
       expect(existsSync(join(repo, "tasks/archive/legacy-tasks-todo.md"))).toBe(true);
       expect(existsSync(join(repo, "tasks/archive/legacy-docs-TODO.md"))).toBe(true);
+      expect(existsSync(join(repo, "tasks/todo.md.migrated.bak"))).toBe(true);
 
-      const todo = readFileSync(join(repo, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(repo, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("**Status**: Backlog");
       expect(todo).toContain("Review archived legacy checklist");
@@ -711,6 +769,32 @@ describe("Migration script contract", () => {
       expect(legacyTasksTodo).toContain("existing task");
       const legacyDocsTodo = readFileSync(join(repo, "tasks/archive/legacy-docs-TODO.md"), "utf-8");
       expect(legacyDocsTodo).toContain("docs task");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, MIGRATION_INTEGRATION_TIMEOUT);
+
+  test("should migrate legacy sprint PRDs into the plans catalog", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-sprint-prds-"));
+    try {
+      mkdirSync(join(repo, "tasks/sprints"), { recursive: true });
+      mkdirSync(join(repo, ".ai/harness/sprint"), { recursive: true });
+      writeFileSync(join(repo, "tasks/sprints/demo.sprint.md"), "# Sprint: Demo\n\n> **Status**: Draft\n");
+      writeFileSync(join(repo, ".ai/harness/sprint/active-sprint"), "tasks/sprints/demo.sprint.md\n");
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, "plans/prds/demo.prd.md"))).toBe(true);
+      expect(existsSync(join(repo, "tasks/sprints/demo.sprint.md"))).toBe(false);
+      expect(readFileSync(join(repo, ".ai/harness/sprint/active-sprint"), "utf-8").trim()).toBe(
+        "plans/prds/demo.prd.md"
+      );
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -744,9 +828,11 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.task-state.json");
       expect(gitignore).toContain(".ai/harness/active-plan");
       expect(gitignore).toContain(".ai/harness/active-worktree");
+      expect(gitignore).toContain("tasks/.current.md.tmp.*");
       expect(gitignore).toContain(".ai/harness/planning/");
       expect(gitignore).toContain("!.ai/harness/planning/.gitkeep");
       expect(gitignore).toContain(".claude/.active-plan");
+      expect(gitignore).toContain(".claude/.plan-state/");
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");

@@ -1,20 +1,21 @@
 # Hooks Configuration Guide
 
-Use this guide for repo-local hook configuration details.
+Use this guide for hook configuration details and legacy migration context.
 
 ## Project Hook Source of Truth
 
 - Repo-local `tasks/` files are the primary cross-agent contract.
 - Repo-local `plans/` files are the plan catalog. `.ai/harness/active-plan` selects the active plan, with `.claude/.active-plan` as a legacy fallback during transition.
-- Shared hook implementation: `.ai/hooks/`.
-- Team-configurable Claude adapter: `.claude/settings.json` (committable).
-- Team-configurable Codex adapter: `.codex/hooks.json` (committable).
+- Shared hook product source: `assets/hooks/`.
+- Active hook runtime resolves central-first through `repo-harness-hook`; `.ai/hooks/` carries a full vendored runtime only when the repo pins `"hook_source": "repo"`.
+- User-level Claude adapter: `~/.claude/settings.json`.
+- User-level Codex adapter: `~/.codex/hooks.json`.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json` are legacy project-level adapters and should be retired during migration.
 - Personal overrides only: `.claude/settings.local.json` (optional).
-- Claude adapter: `.claude/settings.json` dispatches into `.ai/hooks/run-hook.sh`.
-- Codex adapter: `.codex/hooks.json` dispatches into `.ai/hooks/run-hook.sh`.
-- Codex requires the repo hook to be trusted in Codex Settings before it runs.
+- Claude and Codex adapters dispatch into `repo-harness-hook` or the compatibility `repo-harness hook` route.
+- Codex requires the user-level hook config to be trusted in Codex Settings before it runs.
 
-Use `.ai/hooks/` as the shared implementation layer. Use hooks as advisory accelerators, not as the only source of workflow enforcement.
+Use hooks as advisory accelerators and deterministic guards, not as the only source of workflow enforcement.
 
 ## Hook Presets
 
@@ -23,7 +24,7 @@ Use `.ai/hooks/` as the shared implementation layer. Use hooks as advisory accel
 - `PreToolUse (Edit|Write)`: worktree guard (warn by default, opt-in hard block), pre-edit guard (TDD/BDD + asset-layer reminders).
 - `PostToolUse (Edit|Write)`: post-edit guard (doc drift + task handoff summary).
 - `PostToolUse (Bash)`: post-bash advisory reminders.
-- `PostToolUse (all tools)`: `trace-event.sh` structured JSONL trace + context-pressure session monitor.
+- `PostToolUse (all tools)`: `post-tool-observer.sh` structured JSONL trace + lightweight advisories.
 - `UserPromptSubmit`: prompt guard (plan sync + TDD/BDD reminders).
 - `Stop`: finalize-handoff summary refresh.
 - Automatic checkpoint commits are disabled in the shared default.
@@ -32,7 +33,7 @@ Use `.ai/hooks/` as the shared implementation layer. Use hooks as advisory accel
 - Same as A, plus `changelog-guard.sh` for repos that want release reminders.
 
 ### C) Balanced + Advisory Extras
-- Same as A, plus optional advisory hooks like `anti-simplification.sh` when teams explicitly want more reminders beyond the default `post-bash.sh` and `context-pressure-hook.sh`.
+- Same as A, plus optional advisory hooks like `anti-simplification.sh` when teams explicitly want more reminders beyond the default trace and bash observers.
 
 ### D) Minimal
 - `UserPromptSubmit` only.
@@ -47,18 +48,15 @@ Use `.ai/hooks/` as the shared implementation layer. Use hooks as advisory accel
 
 | Asset File | Target Path |
 |---|---|
-| `assets/hooks/hook-input.sh` | `.ai/hooks/hook-input.sh` |
-| `assets/hooks/run-hook.sh` | `.ai/hooks/run-hook.sh` |
-| `assets/hooks/*.sh` | `.ai/hooks/*.sh` |
 | `assets/hooks/lib/` | `.ai/hooks/lib/` |
-| `assets/hooks/settings.template.json` | `.claude/settings.json` and `.codex/hooks.json` |
+| generated fallback README | `.ai/hooks/README.md` |
+| `assets/hooks/*.sh` | `.ai/hooks/*.sh` only when `"hook_source": "repo"` is pinned |
 
 Bundled hook assets include:
 - `assets/hooks/tdd-guard-hook.sh`
 - `assets/hooks/pre-code-change.sh`
 - `assets/hooks/anti-simplification.sh`
 - `assets/hooks/post-bash.sh`
-- `assets/hooks/context-pressure-hook.sh`
 - `assets/hooks/changelog-guard.sh`
 - `assets/hooks/session-start-context.sh`
 - `assets/hooks/finalize-handoff.sh`
@@ -84,7 +82,7 @@ files.
 - Non-Expo projects can remove Metro config drift checks.
 - Non-Turborepo projects can remove `turbo.json` drift checks.
 - Keep durable shared policy in `CLAUDE.md`, repo-local workflow files, and reference configs rather than hidden runtime caches.
-- Use `tasks/lessons.md` for repeated corrections and `tasks/research.md` for deep findings instead of hook-managed auto-memory.
+- Use `tasks/lessons.md` for repeated corrections and `docs/researches/*.md` for deep findings instead of hook-managed auto-memory.
 
 ## Failure Logging
 

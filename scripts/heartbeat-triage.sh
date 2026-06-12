@@ -178,7 +178,7 @@ extract_next_pending_from_sprint() {
 
 find_executing_sprint() {
   local file status
-  [[ -d "tasks/sprints" ]] || return 1
+  [[ -d "plans/prds" ]] || return 1
   while IFS= read -r file; do
     status="$(awk '/\*\*Status\*\*:/ { sub(/^.*\*\*Status\*\*: */, ""); gsub(/\r/, ""); print; exit }' "$file" | xargs)"
     case "$status" in
@@ -187,7 +187,7 @@ find_executing_sprint() {
         return 0
         ;;
     esac
-  done < <(find tasks/sprints -maxdepth 1 -name '*.sprint.md' -type f | sort -r)
+  done < <(find plans/prds -maxdepth 1 -name '*.prd.md' -type f | sort -r)
   return 1
 }
 

@@ -1,3 +1,4 @@
 [test]
 root = "tests"
+timeout = 60000
 pathIgnorePatterns = ["_ref/**", "_ops/**", ".codegraph/**", ".understand-anything/**"]

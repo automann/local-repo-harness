@@ -82,7 +82,7 @@ extract_capability_id() {
 }
 
 get_todo_source_plan() {
-  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todo.md 2>/dev/null | xargs
+  awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todos.md 2>/dev/null | xargs
 }
 
 plan_slug_from_path() {
@@ -293,7 +293,7 @@ Describe the exact outcome this task must deliver.
 ## Workflow Inventory
 
 - Source plan: `{{PLAN_FILE}}`
-- Deferred-goal ledger: `tasks/todo.md`
+- Deferred-goal ledger: `tasks/todos.md`
 - Review file: `{{REVIEW_FILE}}`
 - Notes file: `{{NOTES_FILE}}`
 - Checks file: `.ai/harness/checks/latest.json`
@@ -306,7 +306,7 @@ Describe the exact outcome this task must deliver.
 ```yaml
 allowed_paths:
   - plans/
-  - tasks/todo.md
+  - tasks/todos.md
   - {{CONTRACT_FILE}}
   - {{REVIEW_FILE}}
   - {{NOTES_FILE}}
@@ -449,7 +449,7 @@ NOTES_TEMPLATE_EOF
 # This ensures a single source of truth for task-state JSON generation.
 if [[ "$_HAS_WF_LIB" -eq 0 ]]; then
   workflow_sync_task_state_from_todo() {
-    local todo_file="${1:-tasks/todo.md}"
+    local todo_file="${1:-tasks/todos.md}"
     local state_file="${2:-.claude/.task-state.json}"
     local source_plan="${3:-}"
     local timestamp
@@ -593,9 +593,9 @@ capability_id="${capability_id:-root}"
 
 rewrite_plan_artifact_references "$plan_file" "$original_artifact_stem" "$artifact_stem"
 
-if [[ -f "tasks/todo.md" ]] \
-  && grep -q '[^[:space:]]' tasks/todo.md \
-  && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todo.md; then
+if [[ -f "tasks/todos.md" ]] \
+  && grep -q '[^[:space:]]' tasks/todos.md \
+  && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todos.md; then
   archive_file="$(unique_archive_path "tasks/archive/todo-${timestamp}-${slug}.md")"
   {
     echo "> **Archived**: $(date '+%Y-%m-%d %H:%M')"
@@ -604,11 +604,11 @@ if [[ -f "tasks/todo.md" ]] \
     echo "> **Source Plan**: ${previous_source_plan:-"(none)"}"
     echo "> **Parent Run ID**: ${parent_run_id}"
     echo
-    cat tasks/todo.md
+    cat tasks/todos.md
   } > "$archive_file"
 fi
 
-if [[ ! -f "tasks/todo.md" ]] || ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todo.md; then
+if [[ ! -f "tasks/todos.md" ]] || ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todos.md; then
   {
     echo "# Deferred Goal Ledger"
     echo
@@ -624,7 +624,7 @@ if [[ ! -f "tasks/todo.md" ]] || ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backl
     echo "| Goal | Why Deferred | Tradeoff | Revisit Trigger |"
     echo "|------|--------------|----------|-----------------|"
     echo "| (none) | No deferred medium/long-term goal recorded for this projection. | Keep this sprint bounded. | Add a row when a real follow-up is postponed. |"
-  } > tasks/todo.md
+  } > tasks/todos.md
 else
   todo_tmp="$(mktemp)"
   awk -v timestamp_human="$timestamp_human" -v plan_file="$plan_file" '
@@ -637,8 +637,8 @@ else
       next
     }
     { print }
-  ' tasks/todo.md > "$todo_tmp"
-  mv "$todo_tmp" tasks/todo.md
+  ' tasks/todos.md > "$todo_tmp"
+  mv "$todo_tmp" tasks/todos.md
 fi
 
 rm -f .claude/.task-state.json
@@ -749,4 +749,4 @@ else
 fi
 
 echo "Prepared sprint artifacts from $plan_file"
-echo "Left tasks/todo.md as deferred-goal ledger; execute the plan's own ## Task Breakdown."
+echo "Left tasks/todos.md as deferred-goal ledger; execute the plan's own ## Task Breakdown."

@@ -54,14 +54,14 @@
       },
       "expectations": [
         "Chooses a plausible core plan and explains the stack choice.",
-        "Includes docs/spec.md, tasks/todo.md, tasks/lessons.md, tasks/research.md, tasks/contracts/, tasks/reviews/, and .ai/harness/ in the generated workflow.",
+        "Includes docs/spec.md, tasks/todos.md, tasks/lessons.md, docs/researches/, tasks/contracts/, tasks/reviews/, and .ai/harness/ in the generated workflow.",
         "Treats docs/PROGRESS.md as milestone-only instead of the active execution log."
       ]
     },
     {
       "id": 2,
       "slug": "repair-agents-task-sync",
-      "prompt": "This repo already exists. Fix AGENTS.md so Codex is required to sync tasks/todo.md and tasks/lessons.md, and make the final response mention which task files were updated.",
+      "prompt": "This repo already exists. Fix AGENTS.md so Codex is required to sync tasks/todos.md and tasks/lessons.md, and make the final response mention which task files were updated.",
       "expected_output": "An audit or implementation plan that strengthens AGENTS.md, aligns CLAUDE.md if needed, and updates any supporting protocol docs or tests to enforce the tasks-first contract.",
       "files": [
         "evals/fixtures/fix-agents"
@@ -152,7 +152,7 @@
         ]
       },
       "expectations": [
-        "Replaces docs/TODO.md with tasks/todo.md as the primary task contract.",
+        "Replaces docs/TODO.md with tasks/todos.md as the primary task contract.",
         "Installs docs/spec.md, tasks/reviews/, and .ai/harness/ as first-class harness artifacts.",
         "Removes docs/plan.md compatibility pointers in favor of plans/ as the active-plan source of truth.",
         "Adds repo-local task-sync enforcement such as scripts/check-task-sync.sh.",
@@ -813,7 +813,7 @@
       "id": 20,
       "slug": "repair-codex-hook-workflow",
       "prompt": "Codex is not detecting this repo's hooks after migration. Audit and repair the hook workflow, and do not make hooks run autoresearch mutations in the background.",
-      "expected_output": "Routes the request as a runtime-harness hook workflow repair, checks .codex/hooks.json, Codex Settings trust, .ai/hooks/run-hook.sh, target hook scripts, trace or events evidence, and keeps autoresearch as an agent-run loop rather than a background hook mutation.",
+      "expected_output": "Routes the request as a runtime-harness hook workflow repair, checks the user-level Codex hook adapter, Codex Settings trust, repo-harness-hook resolution, the active target hook script, trace or events evidence, and keeps autoresearch as an agent-run loop rather than a background hook mutation.",
       "files": [
         "evals/fixtures/audit-drift"
       ],
@@ -859,7 +859,7 @@
       "expectations": [
         "Treats the task as runtime-harness hook workflow repair.",
         "Checks Codex adapter config separately from Codex Settings trust.",
-        "Debugs through .ai/hooks/run-hook.sh and hook-specific trace or events evidence.",
+        "Debugs through repo-harness-hook resolution, the active hook script, and hook-specific trace or events evidence.",
         "Keeps any autoresearch hook advisory and self-host/dev-only rather than making it a default user-installed hook.",
         "Keeps hooks as advisory guards over repo-local plans, tasks, contracts, checks, and handoff artifacts.",
         "Does not silently run a full autoresearch mutation loop from PostEdit or Prompt hooks."
@@ -987,8 +987,8 @@
     {
       "id": 24,
       "slug": "plan-sprint-program-backlog",
-      "prompt": "This repo already has the harness installed. Use repo-harness-sprint to plan a program-level sprint for a notification feature: discuss the PRD, decompose it into an ordered backlog under tasks/sprints/, and explain how each backlog task will execute and be tracked.",
-      "expected_output": "Routes to repo-harness-sprint: PM+architect PRD discussion, sprint-backlog.sh init, an ordered backlog table with concrete acceptance per row, user approval before Approved status, then per-task execution through capture-plan (--source repo-harness-sprint) into the plan -> contract -> worktree flow with warn-only finish back-fill; tasks/todo.md stays the deferred-goal ledger.",
+      "prompt": "This repo already has the harness installed. Use repo-harness-sprint to plan a program-level sprint for a notification feature: discuss the PRD, decompose it into an ordered backlog under plans/prds/, and explain how each backlog task will execute and be tracked.",
+      "expected_output": "Routes to repo-harness-sprint: PM+architect PRD discussion, sprint-backlog.sh init, an ordered backlog table with concrete acceptance per row, user approval before Approved status, then per-task execution through capture-plan (--source repo-harness-sprint) into the plan -> contract -> worktree flow with warn-only finish back-fill; tasks/todos.md stays the deferred-goal ledger.",
       "files": [
         "evals/fixtures/fix-agents"
       ],
@@ -1003,7 +1003,7 @@
           },
           {
             "path": "final-response.md",
-            "pattern": "tasks/sprints"
+            "pattern": "plans/prds"
           },
           {
             "path": "final-response.md",
@@ -1021,7 +1021,7 @@
       },
       "expectations": [
         "Routes the request to repo-harness-sprint instead of plain repo-harness-plan.",
-        "Keeps tasks/todo.md as the deferred-goal ledger and places the backlog in tasks/sprints/.",
+        "Keeps tasks/todos.md as the deferred-goal ledger and places the backlog in plans/prds/.",
         "Requires a concrete acceptance line per backlog row before Approved status.",
         "Executes each backlog task through the existing plan -> contract -> worktree gates."
       ]

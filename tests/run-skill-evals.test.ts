@@ -71,10 +71,10 @@ for arg in "$@"; do
   prev="$arg"
 done
 if grep -q "Benchmark Skill Wrapper" AGENTS.md 2>/dev/null; then
-  printf "\\n- codex with skill\\n" >> tasks/todo.md
+  printf "\\n- codex with skill\\n" >> tasks/todos.md
   echo "codex with skill: $prompt" > "$output"
 else
-  printf "\\n- codex baseline\\n" >> tasks/todo.md
+  printf "\\n- codex baseline\\n" >> tasks/todos.md
   echo "codex without skill: $prompt" > "$output"
 fi
 echo "codex executed"

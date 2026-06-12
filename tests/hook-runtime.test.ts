@@ -92,7 +92,7 @@ function planEvidenceContract(): string {
   return [
     "## Evidence Contract",
     "",
-    "- **State/progress path**: tasks/todo.md and tasks/notes/demo.notes.md",
+    "- **State/progress path**: tasks/todos.md and tasks/notes/demo.notes.md",
     "- **Verification evidence**: .ai/harness/checks/latest.json and verify-sprint",
     "- **Evaluator rubric**: sprint review must recommend pass",
     "- **Stop condition**: stop on failing contract verification",
@@ -437,6 +437,50 @@ describe("Hook runtime behavior", () => {
       } finally {
         rmSync(usedCwd, { recursive: true, force: true });
       }
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prompt-guard: Codegraph route state is scoped by stdin session_id", () => {
+    const cwd = tmpWorkspace("codegraph-route-session-scope");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".claude"), { recursive: true });
+      mkdirSync(join(cwd, ".codegraph"), { recursive: true });
+      writeFileSync(join(cwd, ".claude/.session-id"), "fossil-session\n");
+      writeFileSync(join(cwd, ".codegraph/codegraph.db"), "test-index\n");
+
+      const observedUse = runHook("post-tool-observer.sh", cwd, {
+        stdin: JSON.stringify({
+          hook_event_name: "PostToolUse",
+          session_id: "session-S1",
+          tool_name: "mcp__codegraph__codegraph_search",
+        }),
+      });
+      expect(observedUse.status).toBe(0);
+
+      const usedMarkers = readdirSync(join(cwd, ".claude/.codegraph-state"));
+      expect(usedMarkers.some((name) => name.startsWith("session-S1") && name.endsWith(".used"))).toBe(true);
+      expect(usedMarkers.some((name) => name.startsWith("fossil-session") && name.endsWith(".used"))).toBe(false);
+
+      const firstS2 = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ session_id: "session-S2", prompt: "谁调用了 resolveHooksDir？影响面是什么？" }),
+      });
+      expect(firstS2.status).toBe(0);
+      expect(firstS2.stdout).toContain("[CodegraphRoute]");
+
+      const secondS2 = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ session_id: "session-S2", prompt: "谁调用了 resolveHooksDir？影响面是什么？" }),
+      });
+      expect(secondS2.status).toBe(0);
+      expect(secondS2.stdout).not.toContain("[CodegraphRoute]");
+
+      const fallback = runHook("prompt-guard.sh", cwd, {
+        stdin: JSON.stringify({ prompt: "谁调用了 resolveHooksDir？影响面是什么？" }),
+      });
+      expect(fallback.status).toBe(0);
+      expect(readFileSync(join(cwd, ".claude/.session-id"), "utf-8").trim()).toBe("session-S2");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -812,7 +856,7 @@ describe("Hook runtime behavior", () => {
       expect(agents).toContain("Active Workstreams");
       expect(agents).toContain("`tasks/workstreams/apps-web/account/account-rebuild.md`");
       expect(agents).toContain("current_slice: todo-03");
-      expect(agents).toContain("tasks/todo.md` is the deferred-goal ledger");
+      expect(agents).toContain("tasks/todos.md` is the deferred-goal ledger");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -899,12 +943,11 @@ describe("Hook runtime behavior", () => {
   });
 
 
-  test("context-pressure: same-session increments, cross-session resets, warning once", () => {
-    const cwd = tmpWorkspace("context-pressure");
+  test("post-tool observer records trace without context budget side effects", () => {
+    const cwd = tmpWorkspace("post-tool-no-budget");
     try {
       initGitRepo(cwd);
       installHooks(cwd);
-      mkdirSync(join(cwd, ".claude/.context-pressure"), { recursive: true });
 
       const s1a = runHook("post-tool-observer.sh", cwd, {
         env: { CLAUDE_SESSION_ID: "session-a" },
@@ -915,36 +958,29 @@ describe("Hook runtime behavior", () => {
         env: { CLAUDE_SESSION_ID: "session-a" },
       });
       expect(s1b.status).toBe(0);
-      expect(readFileSync(join(cwd, ".claude/.tool-call-count"), "utf-8").trim()).toBe("2");
 
       const s2 = runHook("post-tool-observer.sh", cwd, {
         env: { CLAUDE_SESSION_ID: "session-b" },
       });
       expect(s2.status).toBe(0);
-      expect(readFileSync(join(cwd, ".claude/.tool-call-count"), "utf-8").trim()).toBe("1");
 
-      writeFileSync(join(cwd, ".claude/.context-pressure/warnsession_.count"), "29\n");
-
-      const warn1 = runHook("post-tool-observer.sh", cwd, {
+      const followup = runHook("post-tool-observer.sh", cwd, {
         env: { CLAUDE_SESSION_ID: "warnsession" },
       });
-      expect(warn1.status).toBe(0);
-      expect(warn1.stdout).toContain("Yellow zone");
-      expect(warn1.stdout).toContain("Persist research/todo/handoff");
-      expect(warn1.stdout).not.toContain("/compact");
-
-      const warn2 = runHook("post-tool-observer.sh", cwd, {
-        env: { CLAUDE_SESSION_ID: "warnsession" },
-      });
-      expect(warn2.status).toBe(0);
-      expect(warn2.stdout).not.toContain("Yellow zone");
+      expect(followup.status).toBe(0);
+      expect(followup.stdout).not.toContain("ContextMonitor");
+      expect(followup.stdout).not.toContain("Yellow zone");
+      expect(followup.stdout).not.toContain("/compact");
+      expect(existsSync(join(cwd, ".claude/.trace.jsonl"))).toBe(true);
+      expect(existsSync(join(cwd, ".claude/.tool-call-count"))).toBe(false);
+      expect(existsSync(join(cwd, ".claude/.context-pressure"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
   });
 
-  test("context-pressure: Codex apply_patch warns on dirty plan annotations", () => {
-    const cwd = tmpWorkspace("context-pressure-plan-guard");
+  test("post-tool observer: Codex apply_patch warns on dirty plan annotations", () => {
+    const cwd = tmpWorkspace("post-tool-plan-guard");
     try {
       initGitRepo(cwd);
       installHooks(cwd);
@@ -1005,7 +1041,6 @@ describe("Hook runtime behavior", () => {
     try {
       installHooks(cwd);
       mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
 
       writeFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "# Codex Resume Packet\n\n> **Reason**: bootstrap\n");
       const bootstrapRes = runHook("session-start-context.sh", cwd);
@@ -1037,7 +1072,19 @@ describe("Hook runtime behavior", () => {
       expect(idleCodexRes.status).toBe(0);
       expect(idleCodexRes.stdout.trim()).toBe("");
 
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), JSON.stringify({ zone: "red" }) + "\n");
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/current.md"),
+        [
+          "# Harness Handoff",
+          "",
+          "## Changed Files",
+          "",
+          "```",
+          "src/example.ts",
+          "```",
+        ].join("\n")
+      );
+      appendFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "\n");
 
       const res = runHook("session-start-context.sh", cwd, { env: { HOOK_HOST: "codex" } });
       expect(res.status).toBe(0);
@@ -1062,7 +1109,6 @@ describe("Hook runtime behavior", () => {
     try {
       installHooks(cwd);
       mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
 
       writeFileSync(
         join(cwd, ".ai/harness/handoff/resume.md"),
@@ -1070,15 +1116,14 @@ describe("Hook runtime behavior", () => {
           "# Codex Resume Packet",
           "<!-- generated-by: repo-harness codex-handoff-resume v1 -->",
           "",
-          "> **Reason**: context-red-zone",
+          "> **Reason**: manual",
           "",
           "## Resume Prompt",
           "",
           "Old resume packet that must not be injected.",
         ].join("\n")
       );
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), JSON.stringify({ zone: "red" }) + "\n");
-      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\nnewer handoff\n");
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\n## Changed Files\n\n```\nsrc/newer.ts\n```\n");
 
       const oldTime = new Date("2026-05-25T09:00:00Z");
       const newTime = new Date("2026-05-29T09:00:00Z");
@@ -1098,7 +1143,6 @@ describe("Hook runtime behavior", () => {
     try {
       installHooks(cwd);
       mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
 
       writeFileSync(
         join(cwd, ".ai/harness/handoff/resume.md"),
@@ -1106,14 +1150,13 @@ describe("Hook runtime behavior", () => {
           "# Codex Resume Packet",
           "<!-- generated-by: project-initializer codex-handoff-resume v1 -->",
           "",
-          "> **Reason**: context-red-zone",
+          "> **Reason**: manual",
           "",
           "## Resume Prompt",
           "",
           "Retired-marker resume packet that must not be injected.",
         ].join("\n")
       );
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), JSON.stringify({ zone: "red" }) + "\n");
 
       const res = runHook("session-start-context.sh", cwd, { env: { HOOK_HOST: "codex" } });
       expect(res.status).toBe(0);
@@ -2019,7 +2062,7 @@ describe("Hook runtime behavior", () => {
       const plan = readFileSync(join(cwd, "plans", plans[0]), "utf-8");
       expect(plan).toContain("# Plan: 我要开发新功能：做一个设置页");
       expect(plan).toContain("> **Status**: Draft");
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("> **Status**: Backlog");
     } finally {
@@ -2250,7 +2293,7 @@ describe("Hook runtime behavior", () => {
       expect(readFileSync(join(cwd, ".ai/harness/active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
       expect(readFileSync(join(cwd, ".claude/.active-plan"), "utf-8")).toBe(`plans/${plans[0]}`);
       expect(readFileSync(join(cwd, ".ai/harness/active-worktree"), "utf-8").trim()).toBe(cwd);
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("> **Status**: Backlog");
       expect(todo).not.toContain("- [ ] Capture approved prompt plan");
@@ -2302,7 +2345,7 @@ describe("Hook runtime behavior", () => {
         /^plan-\d{8}-\d{4}-enterprise-brain-semantic-index-plan\.md$/.test(name)
       );
       expect(plans).toHaveLength(1);
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).not.toContain("- [ ] Projection excludes Markdown body");
       const plan = readFileSync(join(cwd, "plans", plans[0]), "utf-8");
@@ -2348,7 +2391,7 @@ describe("Hook runtime behavior", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).not.toContain("[PlanCaptureGate]");
       expect(existsSync(join(cwd, "plans"))).toBe(false);
-      expect(existsSync(join(cwd, "tasks/todo.md"))).toBe(false);
+      expect(existsSync(join(cwd, "tasks/todos.md"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -3111,7 +3154,7 @@ describe("Hook runtime behavior", () => {
       );
       writeActivePlan(cwd, "plans/plan-20260304-1410-demo.md");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1410-demo.md\n"
       );
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -3163,7 +3206,7 @@ describe("Hook runtime behavior", () => {
       );
       writeActivePlan(cwd, "plans/plan-20260304-1410-demo.md");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1410-demo.md\n"
       );
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -3201,7 +3244,7 @@ describe("Hook runtime behavior", () => {
       );
       writeActivePlan(cwd, "plans/plan-20260304-1415-demo.md");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1415-demo.md\n"
       );
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -3272,7 +3315,7 @@ describe("Hook runtime behavior", () => {
         );
         writeActivePlan(cwd, "plans/plan-20260304-1410-demo.md");
         writeFileSync(
-          join(cwd, "tasks/todo.md"),
+          join(cwd, "tasks/todos.md"),
           "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1410-demo.md\n"
         );
         writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -3316,7 +3359,7 @@ describe("Hook runtime behavior", () => {
       );
       writeActivePlan(cwd, "plans/plan-20260304-1420-demo.md");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1420-demo.md\n"
       );
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -3421,7 +3464,7 @@ describe("Hook runtime behavior", () => {
       expect(noPlanRes.stderr).toContain("[PlanStatusGuard]");
 
       const workflowRes = runHook("pre-edit-guard.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todo.md" } }),
+        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todos.md" } }),
       });
       expect(workflowRes.status).toBe(0);
 
@@ -3498,7 +3541,7 @@ describe("Hook runtime behavior", () => {
       expect(docRes.stdout).toContain("[DocDrift]");
 
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         [
           "# Task Execution Checklist (Primary)",
           "",
@@ -3516,7 +3559,7 @@ describe("Hook runtime behavior", () => {
       writeActivePlan(cwd, "plans/plan-20260304-1410-demo.md");
 
       const handoffRes = runHook("post-edit-guard.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todo.md" } }),
+        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todos.md" } }),
       });
       expect(handoffRes.status).toBe(0);
       expect(handoffRes.stdout).toContain("[TaskHandoff]");
@@ -3587,7 +3630,7 @@ describe("Hook runtime behavior", () => {
       mkdirSync(join(cwd, "plans"), { recursive: true });
 
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         [
           "# Task Execution Checklist (Primary)",
           "",
@@ -3605,7 +3648,7 @@ describe("Hook runtime behavior", () => {
       writeActivePlan(cwd, "plans/plan-20260304-1410-demo.md");
 
       const res = runHook("post-edit-guard.sh", cwd, {
-        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todo.md" } }),
+        stdin: JSON.stringify({ tool_input: { file_path: "tasks/todos.md" } }),
       });
 
       expect(res.status).toBe(0);

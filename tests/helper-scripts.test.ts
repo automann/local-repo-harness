@@ -135,7 +135,7 @@ function evidenceContract(): string {
   return [
     "## Evidence Contract",
     "",
-    "- **State/progress path**: tasks/todo.md and tasks/notes/demo.notes.md",
+    "- **State/progress path**: tasks/todos.md and tasks/notes/demo.notes.md",
     "- **Verification evidence**: .ai/harness/checks/latest.json and bun test",
     "- **Evaluator rubric**: Waza /check must recommend pass",
     "- **Stop condition**: stop on failing contract verification",
@@ -476,7 +476,7 @@ describe("Workflow helper scripts", () => {
 
       const switched = run("bash", ["scripts/switch-plan.sh", "--plan", "plans/plan-20260327-2210-beta.md"], cwd);
       expect(switched.status).toBe(0);
-      expect(switched.stdout).toContain("tasks/todo.md is a deferred-goal ledger");
+      expect(switched.stdout).toContain("tasks/todos.md is a deferred-goal ledger");
       expect(readFileSync(join(cwd, ".ai/harness/active-plan"), "utf-8")).toBe("plans/plan-20260327-2210-beta.md");
       expect(readFileSync(join(cwd, ".claude/.active-plan"), "utf-8")).toBe("plans/plan-20260327-2210-beta.md");
       expect(readFileSync(join(cwd, ".ai/harness/active-worktree"), "utf-8").trim()).toBe(cwd);
@@ -518,7 +518,7 @@ describe("Workflow helper scripts", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("Captured plan:");
       expect(res.stdout).toContain("Prepared sprint artifacts");
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("**Status**: Backlog");
       expect(todo).not.toContain("- [ ] Implement approved capture");
@@ -736,7 +736,7 @@ describe("Workflow helper scripts", () => {
         join(cwd, ".claude/templates/plan.template.md")
       );
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n\n## Deferred Goals\n\n| Goal | Why Deferred | Tradeoff | Revisit Trigger |\n|------|--------------|----------|-----------------|\n"
       );
 
@@ -751,7 +751,7 @@ describe("Workflow helper scripts", () => {
       expect(plan).toContain("> **Status**: Draft");
       expect(existsSync(join(cwd, "tasks/contracts/draft-only.contract.md"))).toBe(false);
       expect(existsSync(join(cwd, "tasks/reviews/draft-only.review.md"))).toBe(false);
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("**Status**: Backlog");
       expect(todo).not.toContain("**Status**: Executing");
     } finally {
@@ -785,7 +785,7 @@ describe("Workflow helper scripts", () => {
           "## Notes",
         ].join("\n")
       );
-      writeFileSync(join(cwd, "tasks/todo.md"), "old todo content\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "old todo content\n");
 
       const res = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1400-demo.md"], cwd);
       expect(res.status).toBe(0);
@@ -793,7 +793,7 @@ describe("Workflow helper scripts", () => {
       const archiveFiles = readdirSync(join(cwd, "tasks/archive")).filter((name) => name.startsWith("todo-"));
       expect(archiveFiles.length).toBeGreaterThanOrEqual(1);
 
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("**Status**: Backlog");
       expect(todo).toContain("Tradeoff");
@@ -894,7 +894,7 @@ describe("Workflow helper scripts", () => {
           2
         ) + "\n"
       );
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Primary Todo\n\n- [ ] keep primary clean\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Primary Todo\n\n- [ ] keep primary clean\n");
       initGitRepo(cwd);
       commitAll(cwd, "init workflow");
 
@@ -917,11 +917,11 @@ describe("Workflow helper scripts", () => {
       expect(res.stdout).toContain("[ContractWorktree] Created worktree");
       expect(existsSync(worktreePath)).toBe(true);
 
-      const primaryTodo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const primaryTodo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(primaryTodo).toContain("# Primary Todo");
       expect(primaryTodo).not.toContain("**Status**: Executing");
 
-      const worktreeTodo = readFileSync(join(worktreePath, "tasks/todo.md"), "utf-8");
+      const worktreeTodo = readFileSync(join(worktreePath, "tasks/todos.md"), "utf-8");
       expect(worktreeTodo).toContain("# Deferred Goal Ledger");
       expect(worktreeTodo).toContain("**Status**: Backlog");
       expect(worktreeTodo).not.toContain("- [ ] Step one");
@@ -1292,7 +1292,7 @@ describe("Workflow helper scripts", () => {
       );
       writeActivePlan(worktreePath, "plans/plan-20260304-1450-demo.md");
       writeFileSync(
-        join(worktreePath, "tasks/todo.md"),
+        join(worktreePath, "tasks/todos.md"),
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n"
       );
       writeFileSync(join(worktreePath, "tasks/contracts/demo.contract.md"), "# contract\n");
@@ -1440,7 +1440,7 @@ describe("Workflow helper scripts", () => {
       initGitRepo(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       writeFileSync(join(cwd, "README.md"), "# demo\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Deferred Goal Ledger\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Deferred Goal Ledger\n");
       commitAll(cwd, "init scaffold cleanup");
 
       expect(run("git", ["worktree", "add", worktreePath, "-b", "codex/demo"], cwd).status).toBe(0);
@@ -1451,7 +1451,7 @@ describe("Workflow helper scripts", () => {
       mkdirSync(join(worktreePath, "tasks/contracts"), { recursive: true });
       mkdirSync(join(worktreePath, "tasks/reviews"), { recursive: true });
       mkdirSync(join(worktreePath, "tasks/notes"), { recursive: true });
-      writeFileSync(join(worktreePath, "tasks/todo.md"), "# Deferred Goal Ledger\n- generated scaffold\n");
+      writeFileSync(join(worktreePath, "tasks/todos.md"), "# Deferred Goal Ledger\n- generated scaffold\n");
       writeFileSync(join(worktreePath, "plans/plan-20260304-1410-demo.md"), "# Plan: demo\n");
       writeFileSync(join(worktreePath, "tasks/contracts/demo.contract.md"), "# Contract\n");
       writeFileSync(join(worktreePath, "tasks/reviews/demo.review.md"), "# Review\n");
@@ -1484,13 +1484,13 @@ describe("Workflow helper scripts", () => {
       initGitRepo(cwd);
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       writeFileSync(join(cwd, "README.md"), "# demo\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Deferred Goal Ledger\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Deferred Goal Ledger\n");
       commitAll(cwd, "init scaffold no flag cleanup");
 
       expect(run("git", ["worktree", "add", worktreePath, "-b", "codex/demo"], cwd).status).toBe(0);
       mkdirSync(join(worktreePath, "plans"), { recursive: true });
       mkdirSync(join(worktreePath, "tasks/contracts"), { recursive: true });
-      writeFileSync(join(worktreePath, "tasks/todo.md"), "# Deferred Goal Ledger\n- generated scaffold\n");
+      writeFileSync(join(worktreePath, "tasks/todos.md"), "# Deferred Goal Ledger\n- generated scaffold\n");
       writeFileSync(join(worktreePath, "plans/plan-20260304-1410-demo.md"), "# Plan: demo\n");
       writeFileSync(join(worktreePath, "tasks/contracts/demo.contract.md"), "# Contract\n");
 
@@ -1498,8 +1498,8 @@ describe("Workflow helper scripts", () => {
       expect(cleanup.status).toBe(1);
       expect(cleanup.stderr).toContain("dirty merged linked worktree");
       expect(cleanup.stderr).toContain("--discard-scaffold-only");
-      expect(existsSync(join(worktreePath, "tasks/todo.md"))).toBe(true);
-      expect(readFileSync(join(worktreePath, "tasks/todo.md"), "utf8")).toContain("generated scaffold");
+      expect(existsSync(join(worktreePath, "tasks/todos.md"))).toBe(true);
+      expect(readFileSync(join(worktreePath, "tasks/todos.md"), "utf8")).toContain("generated scaffold");
       expect(existsSync(worktreePath)).toBe(true);
       expect(run("git", ["show-ref", "--verify", "--quiet", "refs/heads/codex/demo"], cwd).status).toBe(0);
     } finally {
@@ -1571,7 +1571,7 @@ describe("Workflow helper scripts", () => {
           "- [ ] Step two",
         ].join("\n")
       );
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Existing Todo\n\n- [ ] legacy task\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Existing Todo\n\n- [ ] legacy task\n");
 
       const res = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1420-meta.md"], cwd);
       expect(res.status).toBe(0);
@@ -1645,7 +1645,7 @@ describe("Workflow helper scripts", () => {
       );
       mkdirSync(join(cwd, "tasks/notes"), { recursive: true });
       writeFileSync(join(cwd, "tasks/notes/demo.notes.md"), "# Implementation Notes: demo\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n\n- [ ] task\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Task Execution Checklist (Primary)\n\n- [ ] task\n");
 
       const res = run(
         "bash",
@@ -1667,7 +1667,7 @@ describe("Workflow helper scripts", () => {
       expect(readFileSync(join(cwd, "tasks/archive", archivedNotes[0]), "utf-8")).toContain("**Lifecycle**: notes");
       expect(existsSync(join(cwd, "tasks/notes/demo.notes.md"))).toBe(false);
 
-      const resetTodo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const resetTodo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(resetTodo).toContain("# Deferred Goal Ledger");
       expect(resetTodo).toContain("**Status**: Backlog");
       expect(resetTodo).toContain("## Deferred Goals");
@@ -1695,7 +1695,7 @@ describe("Workflow helper scripts", () => {
         "# Plan: demo\n\n> **Status**: Complete\n"
       );
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         [
           "# Deferred Goal Ledger",
           "",
@@ -1722,7 +1722,7 @@ describe("Workflow helper scripts", () => {
       );
       expect(res.status).toBe(0);
 
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("> **Updated**: (archive-workflow)");
       expect(todo).toContain("Review archived legacy checklist");
       expect(todo).not.toContain("Archived workflow did not leave a deferred medium/long-term goal");
@@ -1825,7 +1825,7 @@ describe("Workflow helper scripts", () => {
         join(cwd, "plans/plan-20260304-1510-demo.md"),
         "# Plan: demo\n\n> **Status**: Executing\n"
       );
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n\n- [ ] task\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Task Execution Checklist (Primary)\n\n- [ ] task\n");
 
       const res = run(
         "bash",
@@ -2305,7 +2305,7 @@ describe("Workflow helper scripts", () => {
       );
       writeFileSync(join(cwd, ".claude/.active-plan"), "plans/plan-20260327-2200-alpha.md");
       writeFileSync(join(cwd, "tasks/contracts/alpha.contract.md"), "# Task Contract: alpha\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n\n- [ ] Finish handoff\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Task Execution Checklist (Primary)\n\n- [ ] Finish handoff\n");
 
       const res = run("bash", ["scripts/prepare-handoff.sh", "manual-checkpoint"], cwd);
       expect(res.status).toBe(0);
@@ -2334,7 +2334,7 @@ describe("Workflow helper scripts", () => {
         join(ROOT, "assets/hooks/lib/workflow-state.sh"),
         join(cwd, ".ai/hooks/lib/workflow-state.sh")
       );
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n\n- [ ] Continue\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Task Execution Checklist (Primary)\n\n- [ ] Continue\n");
 
       expect(run("git", ["init"], cwd).status).toBe(0);
       expect(run("git", ["config", "user.name", "Helper Test"], cwd).status).toBe(0);
@@ -2361,12 +2361,10 @@ describe("Workflow helper scripts", () => {
       copyHelpers(cwd);
       mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
       mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\n## Exact Next Step\n- Continue.\n");
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Task Execution Checklist (Primary)\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Task Execution Checklist (Primary)\n");
       mkdirSync(join(cwd, "docs/researches"), { recursive: true });
       writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
 
@@ -2390,7 +2388,8 @@ describe("Workflow helper scripts", () => {
       expect(resume).toContain("generated-by: repo-harness codex-handoff-resume v1");
       expect(resume).toContain("Current prompt files first:");
       expect(resume.indexOf("Current prompt files first:") < resume.indexOf("Required first reads:")).toBe(true);
-      expect(resume).toContain(".ai/harness/context-budget/latest.json");
+      expect(resume).not.toContain(".ai/harness/context-budget/latest.json");
+      expect(resume).not.toContain("Context budget");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -2402,14 +2401,12 @@ describe("Workflow helper scripts", () => {
       copyHelpers(cwd);
       mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
       mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
       mkdirSync(join(cwd, "plans"), { recursive: true });
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       writeFileSync(join(cwd, "plans/plan-20260602-0034-old-work.md"), "# Plan: Old Work\n");
       writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n\nNo active plan.\n");
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Deferred Goal Ledger\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Deferred Goal Ledger\n");
       mkdirSync(join(cwd, "docs/researches"), { recursive: true });
       writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
 
@@ -2481,7 +2478,6 @@ describe("Workflow helper scripts", () => {
       copyHelpers(cwd);
       mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
       mkdirSync(join(cwd, ".ai/harness/checks"), { recursive: true });
-      mkdirSync(join(cwd, ".ai/harness/context-budget"), { recursive: true });
       mkdirSync(join(cwd, "tasks"), { recursive: true });
       copyFileSync(
         join(ROOT, "assets/hooks/lib/workflow-state.sh"),
@@ -2489,9 +2485,8 @@ describe("Workflow helper scripts", () => {
       );
       writeFileSync(join(cwd, "AGENTS.md"), "# AGENTS\n");
       writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), "{}\n");
-      writeFileSync(join(cwd, ".ai/harness/context-budget/latest.json"), "{}\n");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n> **Updated**: test\n> **Scope**: Medium/long-term goals deferred from active plan execution\n\n## Deferred Goals\n\n| Goal | Why Deferred | Tradeoff | Revisit Trigger |\n|------|--------------|----------|-----------------|\n"
       );
       mkdirSync(join(cwd, "docs/researches"), { recursive: true });
@@ -2513,6 +2508,8 @@ describe("Workflow helper scripts", () => {
       const global = readFileSync(join(codexHome, "handoffs", handoffs[0]), "utf-8");
       expect(global).toContain("Filesystem-first fallback handoffs");
       expect(global).toContain("### Repo Handoff");
+      expect(global).not.toContain("context_budget");
+      expect(global).not.toContain("### Context Budget");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -2533,7 +2530,7 @@ describe("Workflow helper scripts", () => {
       const plans = readdirSync(join(cwd, "plans")).filter((name) => /^plan-\d{8}-\d{4}-alpha-feature\.md$/.test(name));
       expect(plans.length).toBe(1);
 
-      const todo = readFileSync(join(cwd, "tasks/todo.md"), "utf-8");
+      const todo = readFileSync(join(cwd, "tasks/todos.md"), "utf-8");
       expect(todo).toContain("# Deferred Goal Ledger");
       expect(todo).toContain("**Status**: Backlog");
       expect(existsSync(join(cwd, ".claude/templates/spec.template.md"))).toBe(true);
@@ -2686,13 +2683,13 @@ describe("Workflow helper scripts", () => {
       copyFileSync(join(TEMPLATE_DIR, "spec.template.md"), join(cwd, ".claude/templates/spec.template.md"));
       copyFileSync(join(TEMPLATE_DIR, "review.template.md"), join(cwd, ".claude/templates/review.template.md"));
 
-      writeFileSync(join(cwd, "tasks/todo.md"), "# Legacy Todo\n\n- [ ] old item\n");
+      writeFileSync(join(cwd, "tasks/todos.md"), "# Legacy Todo\n\n- [ ] old item\n");
       writeFileSync(join(cwd, "tasks/lessons.md"), "# Lessons\n");
       mkdirSync(join(cwd, "docs/researches"), { recursive: true });
       writeFileSync(join(cwd, "docs/researches/research.md"), "# Research\n");
       const res = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
       expect(res.status).toBe(1);
-      expect(res.stdout).toContain("Legacy tasks/todo.md detected");
+      expect(res.stdout).toContain("Legacy tasks/todos.md detected");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -2800,7 +2797,7 @@ describe("Workflow helper scripts", () => {
 
       writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
       writeFileSync(
-        join(cwd, "tasks/todo.md"),
+        join(cwd, "tasks/todos.md"),
         "# Deferred Goal Ledger\n\n> **Status**: Backlog\n> **Updated**: test\n> **Scope**: Medium/long-term goals deferred from active plan execution\n\n## Deferred Goals\n\n| Goal | Why Deferred | Tradeoff | Revisit Trigger |\n|------|--------------|----------|-----------------|\n"
       );
       writeFileSync(join(cwd, "tasks/lessons.md"), "# Lessons\n");

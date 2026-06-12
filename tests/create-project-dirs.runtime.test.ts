@@ -65,8 +65,11 @@ describe("create-project-dirs runtime smoke", () => {
         readFileSync(join(cwd, "AGENTS.md"), "utf-8")
       );
       expect(readFileSync(join(cwd, "AGENTS.md"), "utf-8")).toContain("Repo Agent Context");
-      expect(readFileSync(join(cwd, "AGENTS.md"), "utf-8")).toContain("tasks/todo.md");
+      expect(readFileSync(join(cwd, "AGENTS.md"), "utf-8")).toContain("tasks/todos.md");
       expect(readFileSync(join(cwd, "AGENTS.md"), "utf-8")).toContain(".ai/context/context-map.json");
+      const gitignore = readFileSync(join(cwd, ".gitignore"), "utf-8");
+      expect(gitignore).toContain("tasks/.current.md.tmp.*");
+      expect(gitignore).toContain(".claude/.plan-state/");
       expect(existsSync(join(cwd, ".ai/context/context-map.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/context/capabilities.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/checks/latest.json"))).toBe(true);
@@ -79,7 +82,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, ".ai/harness/failures/latest.jsonl"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/handoff/current.md"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/handoff/resume.md"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/harness/planning"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/runs/.gitkeep"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/worktrees/.gitkeep"))).toBe(true);
@@ -111,16 +114,19 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/heartbeat-triage.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/sprint-backlog.sh"))).toBe(true);
       expect(existsSync(join(cwd, ".claude/templates/sprint.template.md"))).toBe(true);
-      expect(existsSync(join(cwd, "scripts/context-budget.ts"))).toBe(true);
+      expect(existsSync(join(cwd, "scripts/context-budget.ts"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/prepare-codex-handoff.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/skill-factory-check.sh"))).toBe(false);
-      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
-      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/memory-intake.sh"))).toBe(false);
@@ -136,9 +142,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, ".claude/skill-factory/rubric.template.json"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/skill-factory/registry.json"))).toBe(false);
 
-      expect(existsSync(join(cwd, ".ai/hooks/post-tool-observer.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-tool-observer.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
 
       const architectureIndex = readFileSync(join(cwd, "docs/architecture/index.md"), "utf-8");
       expect(architectureIndex).toContain("<!-- BEGIN ARCHITECTURE PENDING REQUESTS -->");
@@ -158,7 +164,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.scripts).toContain("ship-worktrees.sh");
       expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("select-agent-context-blocks.sh");
-      expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
+      expect(workflowContract.helpers.scripts).not.toContain("context-budget.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-resolver.ts");
       expect(workflowContract.helpers.scripts).toContain("architecture-event.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-config.ts");
@@ -170,7 +176,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".claude/settings.json");
       expect(workflowContract.artifacts.requiredFiles).not.toContain(".codex/hooks.json");
-      expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/context-budget/latest.json");
+      expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/context-budget/latest.json");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/planning/");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/architecture/events.jsonl");
@@ -287,7 +293,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.worktree_strategy.finish_script).toBe("scripts/contract-worktree.sh finish");
       expect(policy.worktree_strategy.cleanup_script).toBe("scripts/contract-worktree.sh cleanup --slug <slug>");
       expect(policy.worktree_strategy.validation_route).toBe("waza:check");
-      expect(policy.context_budget.zones).toEqual({ yellow: 0.55, orange: 0.7, red: 0.8 });
+      expect(policy.context_budget).toBeUndefined();
       expect(policy.handoff_resume.auto_start_new_session).toBe(false);
       expect(policy.planning.pending_orchestration_file).toBe(".ai/harness/planning/pending.json");
       expect(policy.planning.source_of_truth).toContain("transient host planning bridge");
@@ -485,6 +491,56 @@ describe("create-project-dirs runtime smoke", () => {
     }
   });
 
+  test("should scaffold full hook runtime when hook_source repo is pinned", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "create-project-dirs-hook-pin-"));
+    try {
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/policy.json"), '{ "hook_source": "repo" }\n');
+
+      const res = spawnSync("bash", [join(ROOT, "scripts/create-project-dirs.sh")], {
+        cwd,
+        encoding: "utf-8",
+      });
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-tool-observer.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("should prune stale repo-local hook runtime when hook_source repo is not pinned", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "create-project-dirs-hook-prune-"));
+    try {
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/hooks/run-hook.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(cwd, ".ai/hooks/prompt-guard.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(cwd, ".ai/hooks/AGENTS.md"), "# Stale hook docs\n");
+      writeFileSync(join(cwd, ".ai/hooks/settings.template.json"), "{}\n");
+
+      const res = spawnSync("bash", [join(ROOT, "scripts/create-project-dirs.sh")], {
+        cwd,
+        encoding: "utf-8",
+      });
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/prompt-guard.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/AGENTS.md"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/settings.template.json"))).toBe(false);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("should not create monorepo roots for custom plans without modules", () => {
     const cwd = mkdtempSync(join(tmpdir(), "custom-layout-"));
     const libPath = join(ROOT, "scripts/lib/project-init-lib.sh");
@@ -511,7 +567,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "AGENTS.md"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/context/context-map.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/policy.json"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/harness/context-budget/latest.json"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

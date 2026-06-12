@@ -99,7 +99,7 @@ plan_artifact_stem_from_parts() {
 }
 
 todo_is_deferred_ledger() {
-  local file="${1:-tasks/todo.md}"
+  local file="${1:-tasks/todos.md}"
   [[ -f "$file" ]] || return 1
   grep -Eq '^# Deferred Goal Ledger[[:space:]]*$' "$file" \
     && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' "$file" \
@@ -108,7 +108,7 @@ todo_is_deferred_ledger() {
 }
 
 touch_deferred_ledger_update_marker() {
-  local file="${1:-tasks/todo.md}"
+  local file="${1:-tasks/todos.md}"
   local tmp_file
   tmp_file="$(mktemp)"
   awk '
@@ -124,7 +124,7 @@ touch_deferred_ledger_update_marker() {
 }
 
 write_empty_deferred_ledger() {
-  cat > tasks/todo.md <<'TODO_EOF'
+  cat > tasks/todos.md <<'TODO_EOF'
 # Deferred Goal Ledger
 
 > **Status**: Backlog
@@ -204,7 +204,7 @@ slug="$(echo "$plan_base" | sed -E 's/^plan-[0-9]{8}-[0-9]{4}-//; s/\.md$//')"
 original_artifact_stem="$(printf '%s' "$plan_base" | sed -E 's/^plan-//; s/\.md$//')"
 artifact_stem="$(plan_artifact_stem_from_parts "$plan_file" "$original_artifact_stem" "$slug")"
 parent_run_id="${HOOK_RUN_ID:-${CLAUDE_RUN_ID:-${CODEX_RUN_ID:-run-${timestamp}}}}"
-todo_source_plan="$(awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todo.md 2>/dev/null | xargs)"
+todo_source_plan="$(awk -F': ' '/^\> \*\*Source Plan\*\*:/ {print $2; exit}' tasks/todos.md 2>/dev/null | xargs)"
 
 plan_status="Archived"
 if [[ "$outcome" == "Abandoned" ]]; then
@@ -219,7 +219,7 @@ if [[ "$plan_file" != "$archive_plan_path" ]]; then
   mv "$plan_file" "$archive_plan_path"
 fi
 
-if [[ -f tasks/todo.md ]] && grep -q '[^[:space:]]' tasks/todo.md; then
+if [[ -f tasks/todos.md ]] && grep -q '[^[:space:]]' tasks/todos.md; then
   archive_todo="tasks/archive/todo-${timestamp}-${slug}.md"
   {
     echo "> **Archived**: ${timestamp_human}"
@@ -228,7 +228,7 @@ if [[ -f tasks/todo.md ]] && grep -q '[^[:space:]]' tasks/todo.md; then
     echo "> **Source Plan**: ${todo_source_plan:-"(none)"}"
     echo "> **Parent Run ID**: ${parent_run_id}"
     echo
-    cat tasks/todo.md
+    cat tasks/todos.md
   } > "$archive_todo"
 fi
 
@@ -250,8 +250,8 @@ if [[ -f "$notes_file" ]]; then
   rm -f "$notes_file"
 fi
 
-if todo_is_deferred_ledger tasks/todo.md; then
-  touch_deferred_ledger_update_marker tasks/todo.md
+if todo_is_deferred_ledger tasks/todos.md; then
+  touch_deferred_ledger_update_marker tasks/todos.md
 else
   write_empty_deferred_ledger
 fi

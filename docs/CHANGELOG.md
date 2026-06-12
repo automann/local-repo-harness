@@ -4,6 +4,34 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Scoped the CodeGraph route nudge to the real hook stdin `session_id` by
+  exporting `HOOK_SESSION_ID` from the shared hook input parser and preferring
+  it in `session_state_resolve_key`. CodeGraph one-shot state is now per
+  Claude/Codex session instead of being pinned to a stale `.claude/.session-id`
+  fallback.
+- Prevented stale repo-local hook scripts from racing user-level host adapters:
+  generated and migrated repos now prune top-level `.ai/hooks/*.sh` unless
+  `.ai/harness/policy.json` explicitly pins `"hook_source": "repo"`.
+
+### Changed
+
+- Kept non-pinned downstream repos on the user-level hook runtime by retaining
+  only `.ai/hooks/lib/` helper fallbacks plus a README tombstone; this self-host
+  repo can still pin live hook development to `.ai/hooks`.
+- Normalized active workflow documentation to `tasks/todos.md` for the deferred
+  ledger and topic-scoped `docs/researches/*.md` for durable research reports.
+- Added `tasks/.current.md.tmp.*` and `.claude/.plan-state/` to the managed
+  runtime ignore block, and gave plain `bun test` the same 60s per-test timeout
+  used by the release gate.
+
+### Release Notes
+
+- Prepared the `repo-harness@0.4.1` release filing with pre-publish hold points:
+  version bump, final release gate, npm pack, npm publish, and registry
+  readback remain outstanding.
+
 ## [0.4.0] - 2026-06-12
 
 ### Added

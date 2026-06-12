@@ -39,10 +39,6 @@ if [[ -f "scripts/prepare-handoff.sh" ]]; then
   REPO_HARNESS_SKIP_RESUME_REFRESH=1 bash scripts/prepare-handoff.sh "$reason"
 fi
 
-if command -v bun >/dev/null 2>&1 && [[ -f "scripts/context-budget.ts" ]]; then
-  bun scripts/context-budget.ts --format json --cwd "$repo" --write-status >/dev/null 2>&1 || true
-fi
-
 resume_args=(scripts/codex-handoff-resume.sh --cwd "$repo" --reason "$reason")
 if [[ "$print_prompt" -eq 1 ]]; then
   resume_args+=(--print-prompt)
@@ -58,18 +54,17 @@ global_dir="$codex_home/handoffs"
 global_file="$global_dir/handoff-$(date '+%y%m%d').md"
 repo_handoff=".ai/harness/handoff/current.md"
 resume_file=".ai/harness/handoff/resume.md"
-budget_file=".ai/harness/context-budget/latest.json"
 
 mkdir -p "$global_dir"
 
 repo_key="$(printf '%s' "$repo" | shasum | awk '{print substr($1, 1, 12)}')"
 
 if command -v node >/dev/null 2>&1; then
-  node - "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" "$budget_file" <<'JS_EOF'
+  node - "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" <<'JS_EOF'
 const fs = require("fs");
 const path = require("path");
 
-const [, , globalFile, repo, repoKey, reason, repoHandoff, resumeFile, budgetFile] = process.argv;
+const [, , globalFile, repo, repoKey, reason, repoHandoff, resumeFile] = process.argv;
 
 fs.mkdirSync(path.dirname(globalFile), { recursive: true });
 const start = `<!-- repo:${repoKey} start -->`;
@@ -110,13 +105,6 @@ const section = [
   `- reason: \`${reason}\``,
   `- repo_handoff: \`${repoHandoff}\``,
   `- resume_packet: \`${resumeFile}\``,
-  `- context_budget: \`${budgetFile}\``,
-  "",
-  "### Context Budget",
-  "",
-  "```json",
-  readText(budgetFile, 4000).trim(),
-  "```",
   "",
   "### Repo Handoff",
   "",
@@ -146,7 +134,7 @@ fs.writeFileSync(globalFile, content, "utf8");
 console.log(globalFile);
 JS_EOF
 else
-  python3 - "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" "$budget_file" <<'PY_EOF'
+  python3 - "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" <<'PY_EOF'
 from __future__ import annotations
 
 import sys
@@ -159,7 +147,6 @@ repo_key = sys.argv[3]
 reason = sys.argv[4]
 repo_handoff = Path(sys.argv[5])
 resume_file = Path(sys.argv[6])
-budget_file = Path(sys.argv[7])
 
 global_file.parent.mkdir(parents=True, exist_ok=True)
 start = f"<!-- repo:{repo_key} start -->"
@@ -182,13 +169,6 @@ section = "\n".join(
         f"- reason: `{reason}`",
         f"- repo_handoff: `{repo_handoff}`",
         f"- resume_packet: `{resume_file}`",
-        f"- context_budget: `{budget_file}`",
-        "",
-        "### Context Budget",
-        "",
-        "```json",
-        read_text(budget_file, 4000).strip(),
-        "```",
         "",
         "### Repo Handoff",
         "",

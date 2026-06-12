@@ -30,8 +30,11 @@ describe("init-project settings runtime", () => {
       expect(res.stdout).toContain("Host hook adapters are user-level:");
       expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
       expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
-      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(false);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -610,7 +610,7 @@ emit_codegraph_route_hint() {
   local session_key session_file=".claude/.session-id"
 
   mkdir -p .claude
-  session_key="$(session_state_resolve_key "$session_file")"
+  session_key="$(session_state_resolve_key "$session_file" "${1:-}")"
 
   if session_state_codegraph_used "$session_key" || session_state_codegraph_nudged "$session_key"; then
     return 0
@@ -839,8 +839,8 @@ render_prompt_guard_action() {
 }
 
 emit_workflow_file_guards() {
-  if [ -f "tasks/todo.md" ] && has_changes "tasks/todo.md"; then
-    echo "[PlanGuard] tasks/todo.md has been modified. Read annotations and update the plan. Do not implement yet."
+  if [ -f "tasks/todos.md" ] && has_changes "tasks/todos.md"; then
+    echo "[PlanGuard] tasks/todos.md has been modified. Read annotations and update the plan. Do not implement yet."
   fi
 
   if [ -f "tasks/lessons.md" ] && has_changes "tasks/lessons.md"; then

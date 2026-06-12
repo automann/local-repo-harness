@@ -110,7 +110,7 @@ flowchart TD
     PostBashRoute --> PostBash["post-bash.sh"]
 
     Route --> Always["PostToolUse.always<br/>all tools"]
-    Always --> Observer["post-tool-observer.sh<br/>trace + context pressure"]
+    Always --> Observer["post-tool-observer.sh<br/>trace + lightweight advisories"]
 
     Route --> Prompt["UserPromptSubmit.default"]
     Prompt --> PromptGuard["prompt-guard.sh"]
@@ -122,7 +122,7 @@ flowchart TD
   subgraph Shared["Shared Hook Libraries"]
     Input["hook-input.sh<br/>stdin/env/argv parser"]
     Workflow["lib/workflow-state.sh<br/>active plan, pending plan, todo, contract, handoff, events"]
-    Session["lib/session-state.sh<br/>session key/counters"]
+    Session["lib/session-state.sh<br/>session keys and route state"]
   end
 
   SSC -. uses .-> Input
@@ -133,12 +133,9 @@ flowchart TD
   PostGuard -. uses .-> Workflow
   PostBash -. uses .-> Input
   PostBash -. uses .-> Workflow
-  Trace -. uses .-> Input
-  Trace -. uses .-> Session
-  Trace -. uses .-> Workflow
-  Pressure -. uses .-> Input
-  Pressure -. uses .-> Session
-  Pressure -. uses .-> Workflow
+  Observer -. uses .-> Input
+  Observer -. uses .-> Session
+  Observer -. uses .-> Workflow
   PromptGuard -. uses .-> Input
   PromptGuard -. uses .-> Workflow
   StopOrchestrator -. uses .-> Input
@@ -153,8 +150,7 @@ flowchart TD
     Drift --> ContextSync["context-contract-sync or capability-context request"]
     PostGuard --> Handoff[".claude/.task-handoff.md + .ai/harness/handoff/current.md"]
     PostBash --> Checks["Bash result/check evidence"]
-    Trace --> TraceLog[".claude/.trace.jsonl"]
-    Pressure --> Budget["context-budget + handoff on orange/red"]
+    Observer --> TraceLog[".claude/.trace.jsonl"]
     PromptGuard --> PlanGate["plan start/capture/execution/done/archive gates"]
     PromptGuard --> Hints["Waza / CodeGraph / CrossReview / TDD / BDD hints"]
     StopOrchestrator --> StopHandoff["workflow_write_handoff(session-stop)"]

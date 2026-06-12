@@ -161,7 +161,7 @@ run_brain_doc_sync
 run_continuous_contract_verification
 
 case "$FILE_PATH" in
-  tasks/todo.md|plans/*.md|tasks/reviews/*.review.md|.ai/harness/checks/latest.json)
+  tasks/todos.md|plans/*.md|tasks/reviews/*.review.md|.ai/harness/checks/latest.json)
     ;;
   *)
     exit 0
@@ -169,7 +169,7 @@ case "$FILE_PATH" in
 esac
 
 active_plan="$(get_active_plan || true)"
-if [[ "$FILE_PATH" == "tasks/todo.md" && -z "$active_plan" ]] && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todo.md; then
+if [[ "$FILE_PATH" == "tasks/todos.md" && -z "$active_plan" ]] && grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todos.md; then
   rm -f "$(workflow_task_state_file)" ".claude/.task-handoff.md"
   echo "[TaskHandoff] Deferred-goal ledger updated; active execution remains in the plan Task Breakdown."
   exit 0
@@ -180,8 +180,8 @@ mkdir -p .claude
 STATE_FILE="$(workflow_task_state_file)"
 HANDOFF_FILE=".claude/.task-handoff.md"
 
-if [[ "$FILE_PATH" == "tasks/todo.md" ]] && [[ -f "tasks/todo.md" ]] && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todo.md; then
-  workflow_sync_task_state_from_todo "tasks/todo.md" "$STATE_FILE"
+if [[ "$FILE_PATH" == "tasks/todos.md" ]] && [[ -f "tasks/todos.md" ]] && ! grep -Eq '^> \*\*Status\*\*:[[:space:]]*Backlog[[:space:]]*$' tasks/todos.md; then
+  workflow_sync_task_state_from_todo "tasks/todos.md" "$STATE_FILE"
 fi
 
 task_state="$(workflow_plan_task_state "$active_plan")"

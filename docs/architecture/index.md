@@ -49,7 +49,7 @@ Project
 - `.ai/context/capabilities.json` owns declared capability prefixes and longest-prefix matching.
 - Local `AGENTS.md` / `CLAUDE.md` contract blocks own agent-facing context projection.
 - `tasks/workstreams/<domain>/<capability>/` owns durable multi-session progress.
-- `tasks/todo.md` owns deferred medium/long-term goals with tradeoff and revisit trigger; current execution slices stay in the active plan's `## Task Breakdown`.
+- `tasks/todos.md` owns deferred medium/long-term goals with tradeoff and revisit trigger; current execution slices stay in the active plan's `## Task Breakdown`.
 
 ## Domains
 
