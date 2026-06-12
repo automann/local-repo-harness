@@ -1,8 +1,7 @@
 # Release Filing: repo-harness 0.4.2
 
 Date: 2026-06-13
-Status: Prepared; npm publish, registry readback, GitHub tag, and GitHub release
-remain pending
+Status: Published; registry readback, Git tag, and GitHub release verified
 
 ## Scope
 
@@ -10,7 +9,7 @@ remain pending
 - Current npm latest at preflight: `repo-harness@0.4.1`
 - Base npm tag: `v0.4.1`
 - Target branch: `main`
-- Source commit: pending release-prep commit
+- Source commit: `087c7be3e1febd50db0847cffe91286f888285df`
 - Release tag: `v0.4.2`
 - Version surfaces bumped before publish:
   - `package.json`
@@ -79,22 +78,34 @@ runtime path alignment for publish.
   - filename: `repo-harness-0.4.2.tgz`
   - entries: `291`
   - shasum: `16f1bc7cb9239fc35188de7f086a0937846b5be5`
+- npm publish:
+  - `npm publish --access public --registry https://registry.npmjs.org/`
+  - Result: published `repo-harness@0.4.2` with `latest` dist-tag after the
+    `prepublishOnly` release gate passed.
+- Registry readback after publish:
+  - `npm view repo-harness@0.4.2 version dist-tags dist.tarball gitHead
+    dist.shasum --json --registry https://registry.npmjs.org/`
+  - Returned `version=0.4.2`, `latest=0.4.2`,
+    `gitHead=087c7be3e1febd50db0847cffe91286f888285df`, and
+    `dist.shasum=16f1bc7cb9239fc35188de7f086a0937846b5be5`.
+- Clean-room npm smoke:
+  - `npx --yes --registry https://registry.npmjs.org/ repo-harness@0.4.2
+    --version`
+  - Result: `0.4.2`.
+- GitHub release:
+  - `https://github.com/Ancienttwo/repo-harness/releases/tag/v0.4.2`
 
-## Required Release Actions
+## Publish Artifacts
 
-- `npm publish --access public --registry https://registry.npmjs.org/`
-- Registry readback for `repo-harness@0.4.2`
-- Clean-room `npx --yes repo-harness@0.4.2 --version`
-- Git tag `v0.4.2`
-- GitHub release for `v0.4.2`
-
-Rerun `bash scripts/check-npm-release.sh` before publish if any package,
-template, test, workflow, or release-document files change after this filing.
+- npm package: `repo-harness@0.4.2`
+- npm tarball: `https://registry.npmjs.org/repo-harness/-/repo-harness-0.4.2.tgz`
+- npm shasum: `16f1bc7cb9239fc35188de7f086a0937846b5be5`
+- Git tag: `v0.4.2`
+- GitHub release:
+  `https://github.com/Ancienttwo/repo-harness/releases/tag/v0.4.2`
 
 ## Publish Status
 
-- npm: pending.
-- GitHub release: pending.
-- Hold reason: npm registry authentication is missing on this machine
-  (`npm whoami --registry https://registry.npmjs.org/` returned `ENEEDAUTH`), so
-  publish/readback/tag/release steps have not run yet in this filing.
+- npm: published and read back as latest.
+- GitHub release: published, non-draft, non-prerelease.
+- Hold reason: none.

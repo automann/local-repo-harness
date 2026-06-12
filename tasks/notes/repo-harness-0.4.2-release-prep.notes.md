@@ -30,6 +30,14 @@ Prepare the npm release metadata and user-facing release docs for
   and pack dry-run.
 - `npm pack --dry-run --json` produced `repo-harness-0.4.2.tgz`, 291 entries,
   shasum `16f1bc7cb9239fc35188de7f086a0937846b5be5`.
-- `npm whoami --registry https://registry.npmjs.org/` returned `ENEEDAUTH`, so
-  npm publish, registry readback, tag, and GitHub release were intentionally
-  left pending.
+- The raw token in `_ops/env/npm.env` was wrapped in a temporary npmrc for
+  registry commands. The token was not committed.
+- `npm publish --access public --registry https://registry.npmjs.org/`
+  completed after the `prepublishOnly` gate passed.
+- Registry readback returned `version=0.4.2`, `latest=0.4.2`,
+  `gitHead=087c7be3e1febd50db0847cffe91286f888285df`, and
+  `dist.shasum=16f1bc7cb9239fc35188de7f086a0937846b5be5`.
+- Clean-room `npx --yes --registry https://registry.npmjs.org/
+  repo-harness@0.4.2 --version` returned `0.4.2`.
+- Tagged and released `v0.4.2` from commit
+  `087c7be3e1febd50db0847cffe91286f888285df`.
