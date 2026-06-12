@@ -14,9 +14,18 @@ import { spawnSync } from "child_process";
 
 const ROOT = join(import.meta.dir, "..");
 const MIGRATION_INTEGRATION_TIMEOUT = 60000;
+const REFERENCE_STUB_MARKER = "<!-- repo-harness: reference-config-stub v1 -->";
 
 function read(relPath: string): string {
   return readFileSync(join(ROOT, relPath), "utf-8");
+}
+
+function expectReferenceConfigStub(repo: string, docId: string): void {
+  const content = readFileSync(join(repo, "docs/reference-configs", `${docId}.md`), "utf-8");
+  expect(content).toContain(REFERENCE_STUB_MARKER);
+  expect(content).toContain(`> **Doc ID**: ${docId}`);
+  expect(content).toContain(`repo-harness docs path ${docId}`);
+  expect(content).toContain(`repo-harness docs show ${docId}`);
 }
 
 describe("Migration script contract", () => {
@@ -307,6 +316,9 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "docs/reference-configs/sprint-contracts.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/heartbeat-triage.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/global-working-rules.md"))).toBe(true);
+      expectReferenceConfigStub(repo, "harness-overview");
+      expectReferenceConfigStub(repo, "agentic-development-flow");
+      expectReferenceConfigStub(repo, "external-tooling");
       expect(existsSync(join(repo, "docs/reference-configs/spa-day-protocol.md"))).toBe(false);
       expect(existsSync(join(repo, "docs/reference-configs/hook-operations.md"))).toBe(false);
       const architectureIndex = readFileSync(join(repo, "docs/architecture/index.md"), "utf-8");
@@ -397,6 +409,9 @@ describe("Migration script contract", () => {
       expect(policy.information_lifecycle.external_knowledge.sync_script).toBe(".ai/harness/scripts/sync-brain-docs.sh");
       expect(policy.information_lifecycle.assets.promotion_rule).toContain("verified reuse across tasks");
       expect(policy.documentation.profile).toBe("minimal-agentic");
+      expect(policy.documentation.reference_source).toBe("user-level-runtime-docs");
+      expect(policy.documentation.reference_stub_marker).toBe(REFERENCE_STUB_MARKER);
+      expect(policy.documentation.reference_resolver).toBe("repo-harness docs path <doc-id>");
       expect(policy.lsp_profiles.default).toBe("typescript-lsp");
       expect(policy.worktree_strategy.auto_for_contract_tasks).toBe(true);
       expect(policy.worktree_strategy.start_script).toBe(".ai/harness/scripts/contract-worktree.sh start --plan <plan-file>");
@@ -421,6 +436,10 @@ describe("Migration script contract", () => {
       const workflowContract = JSON.parse(readFileSync(join(repo, ".ai/harness/workflow-contract.json"), "utf-8"));
       expect(workflowContract.helpers.runtimeDirectory).toBe(".ai/harness/scripts");
       expect(workflowContract.helpers.compatibilityDirectory).toBe("scripts");
+      expect(workflowContract.documentation.referenceConfigs.source).toBe("user-level-runtime-docs");
+      expect(workflowContract.documentation.referenceConfigs.repoStubDirectory).toBe("docs/reference-configs");
+      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("repo-harness docs path <doc-id>");
+      expect(workflowContract.documentation.referenceConfigs.stubMarker).toBe(REFERENCE_STUB_MARKER);
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
       expect(workflowContract.helpers.scripts).toContain("sync-brain-docs.sh");
@@ -504,6 +523,31 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("--- External Tooling ---");
       expect(res.stdout).toContain("External Tooling Report");
       expect(res.stdout).toContain("Host hook adapters are user-level:");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test("should replace managed reference docs with stubs while preserving custom docs", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-reference-stubs-"));
+    try {
+      mkdirSync(join(repo, "docs/reference-configs"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+      writeFileSync(join(repo, "docs/reference-configs/harness-overview.md"), "# Harness Overview\n\nOld copied prose.\n");
+      writeFileSync(join(repo, "docs/reference-configs/external-tooling.md"), "# Project Tooling\n\nKeep this project-specific tooling note.\n");
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expectReferenceConfigStub(repo, "harness-overview");
+      const customDoc = readFileSync(join(repo, "docs/reference-configs/external-tooling.md"), "utf-8");
+      expect(customDoc).toContain("# Project Tooling");
+      expect(customDoc).not.toContain(REFERENCE_STUB_MARKER);
+      expect(res.stdout).toContain("preserved user-authored reference config: docs/reference-configs/external-tooling.md");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

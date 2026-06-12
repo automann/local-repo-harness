@@ -416,6 +416,7 @@ PI_DOCUMENTATION_PROFILE_DEFAULT="minimal-agentic"
 PI_DEFAULT_LSP_PROFILE="typescript-lsp"
 PI_MINIMAL_REFERENCE_CONFIGS="harness-overview.md agentic-development-flow.md external-tooling.md sprint-contracts.md heartbeat-triage.md handoff-protocol.md document-generation.md global-working-rules.md"
 PI_FULL_REFERENCE_CONFIGS="agentic-development-flow.md ai-workflows.md changelog-versioning.md coding-standards.md development-protocol.md document-generation.md evaluator-rubric.md external-tooling.md git-strategy.md global-working-rules.md heartbeat-triage.md handoff-protocol.md harness-overview.md hook-operations.md release-deploy.md spa-day-protocol.md sprint-contracts.md workflow-orchestration.md"
+PI_REFERENCE_CONFIG_STUB_MARKER="<!-- repo-harness: reference-config-stub v1 -->"
 
 pi_write_file_if_apply() {
   local mode="${1:-apply}"
@@ -1299,7 +1300,10 @@ pi_reference_config_names() {
   local name
 
   if pi_should_generate_full_docs; then
-    find "$ref_assets_dir" -maxdepth 1 -type f -name '*.md' -print 2>/dev/null | sort | while IFS= read -r ref_file; do
+    find "$ref_assets_dir" -maxdepth 1 -type f -name '*.md' \
+      ! -name 'AGENTS.md' \
+      ! -name 'CLAUDE.md' \
+      -print 2>/dev/null | sort | while IFS= read -r ref_file; do
       basename "$ref_file"
     done
     return 0
@@ -1317,9 +1321,10 @@ pi_install_reference_configs() {
   local mode="${3:-apply}"
   local ref_dir="$target_dir/docs/reference-configs"
   local name
+  local source_repo_target=0
 
   if [[ "$mode" != "apply" ]]; then
-    echo "[dry-run] install $(pi_documentation_profile) reference configs into $ref_dir"
+    echo "[dry-run] install $(pi_documentation_profile) reference config stubs into $ref_dir"
     return 0
   fi
 
@@ -1328,10 +1333,112 @@ pi_install_reference_configs() {
     return 0
   fi
 
+  if [[ -d "$target_dir/assets/reference-configs" ]]; then
+    local target_refs_abs refs_abs
+    target_refs_abs="$(cd "$target_dir/assets/reference-configs" && pwd)"
+    refs_abs="$(cd "$ref_assets_dir" && pwd)"
+    if [[ "$target_refs_abs" == "$refs_abs" ]]; then
+      source_repo_target=1
+    fi
+  fi
+
   while IFS= read -r name; do
     [[ -n "$name" ]] || continue
-    cp "$ref_assets_dir/$name" "$ref_dir/$name"
+    if [[ "$source_repo_target" -eq 1 ]]; then
+      cp "$ref_assets_dir/$name" "$ref_dir/$name"
+      continue
+    fi
+
+    if pi_should_preserve_reference_config "$ref_dir/$name" "$ref_assets_dir/$name"; then
+      echo "[repo-harness] preserved user-authored reference config: docs/reference-configs/$name"
+      continue
+    fi
+
+    pi_write_reference_config_stub "$ref_dir/$name" "$name" "$ref_assets_dir"
   done < <(pi_reference_config_names "$ref_assets_dir")
+}
+
+pi_reference_config_doc_id() {
+  local name="$1"
+  printf '%s\n' "${name%.md}"
+}
+
+pi_repo_harness_version_for_refs() {
+  local ref_assets_dir="$1"
+  local root_dir
+  root_dir="$(cd "$ref_assets_dir/../.." 2>/dev/null && pwd || true)"
+  if [[ -z "$root_dir" ]]; then
+    printf '%s\n' "unknown"
+    return 0
+  fi
+  local version_file="$root_dir/assets/skill-version.json"
+
+  if [[ -f "$version_file" ]]; then
+    sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$version_file" | head -n 1
+    return 0
+  fi
+
+  printf '%s\n' "unknown"
+}
+
+pi_should_preserve_reference_config() {
+  local target_file="$1"
+  local asset_file="$2"
+
+  [[ -f "$target_file" ]] || return 1
+  if [[ -f "$asset_file" ]] && cmp -s "$target_file" "$asset_file"; then
+    return 1
+  fi
+  if grep -Fq "$PI_REFERENCE_CONFIG_STUB_MARKER" "$target_file"; then
+    return 1
+  fi
+  local target_heading asset_heading
+  target_heading="$(pi_reference_config_first_heading "$target_file")"
+  asset_heading="$(pi_reference_config_first_heading "$asset_file")"
+  if [[ -n "$asset_heading" && "$target_heading" == "$asset_heading" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+pi_reference_config_first_heading() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  sed -n 's/^# //p' "$file" | head -n 1
+}
+
+pi_write_reference_config_stub() {
+  local output_file="$1"
+  local name="$2"
+  local ref_assets_dir="$3"
+  local doc_id
+  local version
+
+  doc_id="$(pi_reference_config_doc_id "$name")"
+  version="$(pi_repo_harness_version_for_refs "$ref_assets_dir")"
+
+  cat > "$output_file" <<EOF_REFERENCE_STUB
+$PI_REFERENCE_CONFIG_STUB_MARKER
+# repo-harness Reference: $doc_id
+
+> **Runtime Docs**: user-level repo-harness reference
+> **Doc ID**: $doc_id
+> **Version**: $version
+> **Source Command**: \`repo-harness docs path $doc_id\`
+
+This repo keeps workflow facts and runtime artifacts locally under \`.ai/\`.
+The full generic runtime guide is supplied by the installed repo-harness
+package/user-level runtime so each repository does not need to refresh a full
+copy of shared documentation.
+
+Use:
+
+\`\`\`bash
+repo-harness docs path $doc_id
+repo-harness docs show $doc_id
+\`\`\`
+EOF_REFERENCE_STUB
 }
 
 pi_policy_reference_config_names() {
@@ -1831,10 +1938,13 @@ pi_write_harness_policy() {
   },
   "documentation": {
     "profile": "$(pi_documentation_profile)",
+    "reference_source": "user-level-runtime-docs",
+    "reference_stub_marker": "$PI_REFERENCE_CONFIG_STUB_MARKER",
+    "reference_resolver": "repo-harness docs path <doc-id>",
     "required": ["docs/spec.md", "docs/architecture/index.md"],
     "on_demand": ["docs/brief.md", "docs/tech-stack.md", "docs/decisions.md", "docs/architecture.md", "docs/packages.md"],
     "reference_configs": [$(pi_policy_reference_config_names | pi_json_string_array_from_lines)],
-    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks"
+    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package repo-harness install"
   },
   "lsp_profiles": {
     "default": "$(pi_lsp_profile)",

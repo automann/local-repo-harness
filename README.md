@@ -540,6 +540,22 @@ bun scripts/inspect-project-state.ts --repo . --format text
 bash scripts/migrate-project-template.sh --repo . --dry-run
 ```
 
+### Runtime reference docs
+
+Generic repo-harness runtime/reference docs live in the installed package under
+`assets/reference-configs/` and are resolved through the CLI:
+
+```bash
+repo-harness docs list
+repo-harness docs path harness-overview
+repo-harness docs show harness-overview
+```
+
+Generated and migrated repos still keep `docs/reference-configs/*.md`, but
+those files are deterministic pointer stubs. Repo-local workflow state,
+policy, checks, runs, handoff packets, context maps, and helper snapshots stay
+under `.ai/`.
+
 ### Explicit template assembly
 
 ```bash
@@ -569,8 +585,9 @@ bun run benchmark:skills --eval repair-agents-task-sync
 - Plan mapping: `assets/plan-map.json`
 - Question-pack: `assets/initializer-question-pack.v4.json`
 - Shared hooks: `assets/hooks/`
+- Runtime reference docs: `assets/reference-configs/` via `repo-harness docs`
 - Workflow contract: `assets/workflow-contract.v1.json`
-- Hook operations reference: `docs/reference-configs/hook-operations.md`
+- Source repo reference docs: `docs/reference-configs/*.md`
 - Template assembler: `scripts/assemble-template.ts`
 - Question inference helper: `scripts/initializer-question-pack.ts`
 - State inspector: `scripts/inspect-project-state.ts`

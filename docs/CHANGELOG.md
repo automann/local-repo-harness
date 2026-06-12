@@ -4,6 +4,20 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Added `repo-harness docs list|path|show` so bundled runtime/reference docs
+  resolve from the user-level/package install instead of copied repo prose.
+
+### Changed
+
+- Generated and migrated repos now write deterministic
+  `docs/reference-configs/*.md` pointer stubs while keeping `.ai/harness/*` and
+  `.ai/context/*` as repo-local runtime artifacts.
+- Retired `AGENTS.md` and `CLAUDE.md` from the reference-doc asset surface and
+  stopped publishing duplicate `docs/reference-configs/` runtime docs in the
+  npm package file list.
+
 ## [0.4.2] - 2026-06-13
 
 ### Added
