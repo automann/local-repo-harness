@@ -30,3 +30,16 @@ should not block normal tool execution during the central-first hook migration.
 - `bash scripts/check-npm-release.sh` for the final 0.4.1 publish gate:
   681 pass, 0 fail, plus deploy SQL, architecture sync, task sync, brain sync,
   strict workflow, inspect, migration dry-run, and npm pack.
+
+## Release Closeout
+
+`repo-harness@0.4.1` was published from commit
+`bcd0b1e7a8c0050af3323441ad8ba003f1572ab7`. Registry readback reports
+`latest=0.4.1`, clean-room `npx repo-harness@0.4.1 --version` returns `0.4.1`,
+and the local Bun/npm global install plus Codex/Claude global adapters were
+refreshed. The post-publish local runtime checks passed:
+
+- `repo-harness status --json`
+- `repo-harness doctor --json`
+- `repo-harness security scan --json`
+- neutral Codex `SessionStart` hook smoke

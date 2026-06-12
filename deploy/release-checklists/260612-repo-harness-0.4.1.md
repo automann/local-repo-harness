@@ -1,16 +1,16 @@
 # Release Filing: repo-harness 0.4.1
 
 Date: 2026-06-12
-Status: Version bumped; release gate passed; not published
+Status: Published; registry, GitHub release, and local runtime refreshed
 
 ## Scope
 
 - Package target: `repo-harness@0.4.1`
-- Current npm latest: `repo-harness@0.4.0`
+- Current npm latest: `repo-harness@0.4.1`
 - Base npm tag: `v0.4.0`
 - Target branch: `main`
-- Source commit: pending; current working tree contains the `0.4.1` release
-  bump and still needs commit, tag, and publish actions.
+- Source commit: `bcd0b1e7a8c0050af3323441ad8ba003f1572ab7`
+- Release tag: `v0.4.1`
 - Version surfaces bumped before publish:
   - `package.json`
   - `assets/skill-version.json`
@@ -67,13 +67,17 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
 
 ## Verification So Far
 
-- Final release gate after version bump:
+- Final release gate after the version bump and `PostToolUse.always` soft-skip
+  fix:
   - `bash scripts/check-npm-release.sh`
   - Result: pass
-  - Summary: `679 pass, 0 fail, 6520 expectations across 66 files`; deploy SQL,
+  - Summary: `681 pass, 0 fail, 6541 expectations across 66 files`; deploy SQL,
     architecture sync, task sync, brain sync, strict workflow, inspect,
     migration dry-run, and `npm pack --dry-run --json` all completed.
-- `bun test`: 678 pass, 0 fail, 6514 expectations across 66 files.
+- `npm publish --access public --registry https://registry.npmjs.org/` completed
+  and reran `prepublishOnly` successfully.
+- `bun test`: 681 pass, 0 fail, 6541 expectations across 66 files in the final
+  release gate.
 - Focused affected suites passed:
   - `bun test tests/cli/hook.test.ts`
   - `bun test tests/workflow-contract.test.ts`
@@ -93,17 +97,47 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
 - Registry preflight:
   - `npm view repo-harness version --registry https://registry.npmjs.org/`
     returned `0.4.0`.
+- Registry readback after publish:
+  - `npm view repo-harness@0.4.1 version dist-tags dist.tarball gitHead
+    dist.shasum --json --registry https://registry.npmjs.org/`
+  - Returned `version=0.4.1`, `latest=0.4.1`,
+    `gitHead=bcd0b1e7a8c0050af3323441ad8ba003f1572ab7`, and
+    `dist.shasum=98dd3352f15b5ede56bfc970bae33037e3db08a9`.
+- Clean-room npm smoke:
+  - `npx --yes repo-harness@0.4.1 --version` returned `0.4.1`.
+  - `npx --yes repo-harness@0.4.1 update --help` printed the expected update
+    command surface.
 
-## Publish Hold Points
+## Local Runtime Refresh
 
-- npm publish has not been attempted.
-- GitHub tag/release for `v0.4.1` has not been created.
-- `enterprise-brain` downstream refresh produced a dirty migration diff that
-  should be reviewed separately from the `agentic-dev` release commit.
+- Refreshed Bun global package:
+  - `bun install -g repo-harness@0.4.1`
+- Refreshed npm global package under the active npm prefix:
+  - `npm install -g --prefix "$(npm prefix -g)" repo-harness@0.4.1 --registry
+    https://registry.npmjs.org/`
+- Refreshed global Codex and Claude adapters:
+  - `repo-harness install --target both --location global`
+  - Result: Codex and Claude adapters were already configured and unchanged.
+- Verified local runtime:
+  - `repo-harness --version` returned `0.4.1`.
+  - `repo-harness status --json` reported CLI `0.4.1`, Codex installed with
+    `7/7` managed routes, Claude installed with `7/7` managed routes, and this
+    repo opted in.
+  - `repo-harness doctor --json` reported `ok=11`, `warn=0`, `fail=0`.
+  - `repo-harness security scan --json` reported `status=ok` with no findings.
+  - Neutral Codex `SessionStart` hook smoke exited `0` and produced output.
+
+## Publish Artifacts
+
+- npm package: `repo-harness@0.4.1`
+- npm tarball: `https://registry.npmjs.org/repo-harness/-/repo-harness-0.4.1.tgz`
+- npm shasum: `98dd3352f15b5ede56bfc970bae33037e3db08a9`
+- Git tag: `v0.4.1`
+- GitHub release:
+  `https://github.com/Ancienttwo/repo-harness/releases/tag/v0.4.1`
 
 ## Publish Status
 
-- npm: not published.
-- GitHub release: not created.
-- Hold reason: release documentation is prepared first; version bump, final
-  release gate, publish, and registry readback remain separate actions.
+- npm: published and read back as latest.
+- GitHub release: published, non-draft, non-prerelease.
+- Hold reason: none.
