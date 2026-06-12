@@ -4,6 +4,44 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-12
+
+### Added
+
+- Added a loop-engine evidence surface: `repo-harness-hook state-snapshot
+  --json`, an NL decision-table reference, route NL-vs-TS benchmark fixtures,
+  and a cutover gate that keeps TypeScript routing authoritative unless
+  measured evidence passes.
+- Added `scripts/architecture-queue.sh` plus
+  `scripts/check-architecture-sync.sh` for derived architecture request indexes,
+  stale-index detection, and strict/advisory finish gates.
+- Added contract delegation metadata (`budget`, `permission_scope`, and
+  `roles`) to contract templates and generated workflow contracts.
+- Added `scripts/contract-run.ts`, a repo-local pilot runner that executes
+  explicit worker/verifier child commands and validates the verifier output
+  against contract exit criteria.
+- Added `scripts/heartbeat-triage.sh` and the `.ai/harness/triage/` surface for
+  scheduled workflow, sprint-next, and architecture-request triage.
+
+### Changed
+
+- Productized architecture queue assets into both self-host scripts and
+  generated-repo templates, including workflow contract inventory, reference
+  docs, migration handling, and scaffold parity tests.
+- Updated session-start/current-status projection and task workflow checks to
+  account for archived sprint plans, archived notes, contract delegation fields,
+  and the completed loop-engine sprint.
+- Retired the separate generated workflow compatibility `5.x` line; package,
+  skill, and template stamps now share the `repo-harness@0.4.0` release line.
+- Added `check:architecture-sync` to the npm scripts and release verification
+  surface.
+
+### Removed
+
+- Retired `scripts/architecture-drift.sh` and its helper-template copy in favor
+  of `architecture-queue.sh`; migrations remove legacy copies from downstream
+  repos.
+
 ## [0.3.0] - 2026-06-11
 
 ### Added

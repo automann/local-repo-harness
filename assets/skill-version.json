@@ -1,6 +1,6 @@
 {
-  "version": "5.2.3",
-  "templateVersion": "5.2.3",
+  "version": "0.4.0",
+  "templateVersion": "0.4.0",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -107,6 +107,10 @@
     {
       "version": "5.2.3",
       "description": "Expands anchored approval intent variants so natural post-plan approval wording reaches capture and projection gates without broadening bug-fix implementation wording"
+    },
+    {
+      "version": "0.4.0",
+      "description": "Retires the separate 5.x generated workflow compatibility line; package, skill, and template stamps now share the repo-harness npm release version"
     }
   ],
   "generatedProjectStamp": {

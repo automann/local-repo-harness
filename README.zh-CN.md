@@ -23,25 +23,21 @@ repo-local workflow 的自托管样例。
   做渐进式上下文加载：一份小而稳定的 root context（约 12KB），加上只在改到对应文件时才加载的
   capability 块。agent 读一份 1KB 的 capability 合约或查索引，而不是花上千 token 重新摸清结构。
 
-## 0.3.0 新特性
+## 0.4.0 新特性
 
-- **Sprint program layer。** `repo-harness-sprint`、`tasks/sprints/`、sprint
-  template、active sprint marker 和 `scripts/sprint-backlog.sh` 现在承接 program
-  PRD 与有序 backlog，不再把 `tasks/todo.md` 当成活跃执行 checklist。
-- **Central-first hook runtime。** User-level Claude/Codex adapters 进入
-  `repo-harness-hook`；默认跑 central packaged hooks，本仓库自托管开发时仍可通过
-  `"hook_source": "repo"` 钉回 repo 内 `.ai/hooks`。
-- **Prompt decision 进入 TypeScript。** Prompt-text intent classifier 在
-  `src/cli/hook/prompt-intents.ts` 里处理 Unicode，shell hook 只接收一行 verdict
-  JSON，prompt 层的 plan/spec/contract gate 退为 advisory。
-- **Edit-layer enforcement。** 真正的实现写入由 `pre-edit-guard.sh` 拦截，依据路径、
-  active plan state 和仓库文件判断，不再靠自然语言猜测。
-- **Always-on hooks 更轻。** `trace-event.sh` 与 `context-pressure-hook.sh` 合并为
-  `post-tool-observer.sh`：一次 dispatch、一次 stdin parse、一份 trace 文件，并抽样跑
-  context-budget probes。
-- **Legacy surface 清理。** 已退休的 `repo-harness-skill`、`project-initializer`、
-  `PROJECT_INITIALIZER_*` fallbacks、重复 shell classifier table、孤立 version checker
-  和拆分 observer hooks 都已移除。
+- **Loop-engine 证据面。** `repo-harness-hook state-snapshot --json`、NL
+  decision-table、route A/B eval 和 cutover gate 让 prompt-routing 实验可度量；
+  在证据达标前，TypeScript classifier 仍是权威路径。
+- **Architecture queue gate。** `scripts/architecture-queue.sh`、
+  `scripts/check-architecture-sync.sh` 和扩展后的 architecture event helper
+  取代已退休的 append-only drift 脚本，用派生 request index 检查 stale 架构状态。
+- **Contract delegation pilot。** Contract template 新增 `budget`、
+  `permission_scope`、`roles`，`scripts/contract-run.ts` 可用显式
+  worker/verifier child commands 按 contract exit criteria 执行试点。
+- **Heartbeat triage。** `scripts/heartbeat-triage.sh` 把定时 workflow checks、
+  sprint-next 信号和 architecture request 状态写入 repo-local triage inbox。
+- **Workflow asset sync。** 新 helpers、docs、tests 和 generated-repo assets
+  保持 self-host runtime 与安装模板副本同步。
 
 ## 产品做什么
 
@@ -90,7 +86,9 @@ classifier/state-machine 层不再散落在 shell 条件分支里。
 下面这张图假设目标仓库已经安装 harness。它展示的是从 program sprint backlog
 到单个 contract task 的正常闭环：先选择或形成任务，再投射到执行文件，需要时
 checkout 隔离 worktree，在 hooks 保护下实现，然后验证、review、external acceptance，
-必要时标记 sprint task 完成，最后 closeout。
+必要时标记 sprint task 完成，最后 closeout。0.4.0 的 loop-system surface
+新增 heartbeat 定时发现、state-snapshot/eval 证据、architecture queue freshness，
+以及可选的 contract-run 委派，但 source of truth 仍然是 repo 内文件合约。
 
 ```mermaid
 flowchart TD
@@ -98,10 +96,12 @@ flowchart TD
   Sprint -->|是| SprintDoc["Sprint PRD + backlog<br/>tasks/sprints/*.sprint.md"]
   SprintDoc --> NextTask["选择下一个 sprint task<br/>sprint-backlog.sh next"]
   Sprint -->|否| UserTask["用户任务或 planning prompt"]
+  Heartbeat["Heartbeat triage<br/>scripts/heartbeat-triage.sh<br/>.ai/harness/triage/"] --> UserTask
   NextTask --> UserTask
 
   UserTask --> Discovery["前置调查<br/>P1 map, P2 trace, P3 decision"]
-  Discovery --> PlanDraft["Draft plan<br/>plans/plan-*.md"]
+  Discovery --> LoopEvidence["路由变更时的 loop evidence<br/>state-snapshot --json<br/>route-nl-vs-ts / cutover gate"]
+  LoopEvidence --> PlanDraft["Draft plan<br/>plans/plan-*.md"]
   PlanDraft --> PlanReview{"Plan 是否可执行?"}
   PlanReview -->|否| Refine["收敛 scope 和 evidence contract"]
   Refine --> PlanDraft
@@ -114,18 +114,23 @@ flowchart TD
   Project --> ReviewFile["Review file<br/>tasks/reviews/YYYYMMDD-HHMM-task-slug.review.md"]
   Project --> Notes["Task notes<br/>tasks/notes/YYYYMMDD-HHMM-task-slug.notes.md"]
 
-  Contract --> WorktreePolicy{"是否需要 contract worktree?"}
+  Contract --> Delegation["Delegation contract<br/>budget / permission_scope / roles"]
+  Delegation --> Delegate{"是否使用 contract-run 委派?"}
+  Delegate -->|是| ContractRun["Worker/verifier child run<br/>scripts/contract-run.ts"]
+  Delegate -->|否| WorktreePolicy{"是否需要 contract worktree?"}
   WorktreePolicy -->|是| Checkout["Checkout 隔离 worktree<br/>contract-worktree.sh start --plan<br/>branch codex/task-slug"]
   WorktreePolicy -->|否| CurrentTree["使用当前 worktree<br/>小任务或明确允许的 slice"]
   Checkout --> Implement
   CurrentTree --> Implement
+  ContractRun --> Changes
 
   Implement["编辑和运行命令"] --> PreHooks["Pre-edit guards<br/>PlanStatusGuard, ContractScopeGuard, WorktreeGuard"]
   PreHooks -->|blocked| ScopeFix["修正 plan、contract、worktree 或 scope"]
   ScopeFix --> Implement
   PreHooks -->|allowed| Changes["代码、文档、测试或配置改动"]
   Changes --> PostHooks["Post-edit / post-bash hooks<br/>trace, drift request, handoff, check evidence"]
-  PostHooks --> Verify["运行验证<br/>tests plus repo workflow checks"]
+  PostHooks --> ArchQueue["Architecture queue<br/>architecture-queue.sh record/reindex<br/>check-architecture-sync.sh"]
+  ArchQueue --> Verify["运行验证<br/>tests plus repo workflow checks"]
 
   Verify --> Checks["结构化 evidence<br/>.ai/harness/checks/latest.json<br/>.ai/harness/runs/*.json"]
   Checks --> CheckReview["Evaluator review<br/>Waza /check -> review file"]
@@ -171,11 +176,11 @@ npx -y repo-harness update
 安装或刷新 workflow files、hook assets、host adapters、skill aliases 和
 repo-local verification surfaces。
 
-npm package release line 现在是 `0.3.x`；生成的 workflow compatibility model line
-单独以 `5.x` 追踪。`repo-harness@0.3.0` 继续把首次全局引导（`repo-harness init`）
-和 repo-local 刷新（`repo-harness update`）拆开，新增 sprint program layer，把 hook
-执行切到 central-first runtime resolution，把 prompt decision 移进 TypeScript，在
-edit boundary 执行实现写入门，并把 always-on hook observers 合并为更轻的一条路径。
+npm package 和 generated workflow stamp 现在共用 `0.4.x` release line。
+`repo-harness@0.4.0` 继续把首次全局引导（`repo-harness init`）
+和 repo-local 刷新（`repo-harness update`）拆开，同时新增 loop-engine state
+snapshot、architecture queue gate、contract delegation pilot、heartbeat triage
+helper，以及这些 workflow surfaces 的 generated asset sync。
 这些能力叠加在改名后的 CLI、user-level hook adapter bootstrap、AI-native scaffold overlays、
 typed prompt-guard decision engine、plan-stem task artifact 命名、`REPO_HARNESS_*`
 runtime aliases、Waza runtime skill sync，以及 maintainer 发布 npm 前使用的 release gate 之上。
@@ -314,12 +319,12 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 
 ## 当前 Release
 
-- npm package：`repo-harness@0.3.0`
-- Generated workflow compatibility：`5.2.3`
+- npm package：`repo-harness@0.4.0`
+- Generated workflow stamp：`repo-harness@0.4.0+template@0.4.0`
 - GitHub repository：`Ancienttwo/repo-harness`
 - Release history：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
-## Current Model (5.2.3)
+## Current Model
 
 - Question flow 使用 **12 grouped decision points**，先推断 harness defaults。
 - Plan menu 分层：**Core Plans (A-F)** 优先，**Custom Presets (G-K)** 只在需要时出现。

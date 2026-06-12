@@ -186,8 +186,8 @@ adoptar este workflow.
 npx -y repo-harness init
 ```
 
-La npm package release line es ahora `0.3.x`; el workflow compatibility model line
-generado se rastrea por separado como `5.x`. `repo-harness init` es el bootstrap
+La npm package release line y el generated workflow stamp usan ahora la misma
+línea `0.4.x`. `repo-harness init` es el bootstrap
 global y `repo-harness update` es el refresco repo-local. `repo-harness init`
 configura el CLI, los hook adapters de nivel usuario, Waza, Mermaid, el brain
 root y CodeGraph MCP; el viejo camino Claude plugin `scripts/setup-plugins.sh`
@@ -325,12 +325,12 @@ Guards habituales:
 
 ## Release actual
 
-- npm package: `repo-harness@0.3.0`
-- Generated workflow compatibility: `5.2.3`
+- npm package: `repo-harness@0.4.0`
+- Generated workflow stamp: `repo-harness@0.4.0+template@0.4.0`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
-## Current Model (5.2.3)
+## Current Model
 
 - El question flow usa **12 grouped decision points**, infiriendo primero los harness defaults.
 - El plan menu está por capas: los **Core Plans (A-F)** primero, los **Custom Presets (G-K)** solo cuando hace falta.

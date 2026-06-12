@@ -22,6 +22,7 @@ export interface ConsistencyResult {
   consistent: boolean;
   packageJsonVersion: string | null;
   skillVersionJsonVersion: string;
+  templateVersionJsonVersion: string;
   skillVersionSource: string;
   warnings: string[];
   errors: string[];
@@ -63,12 +64,29 @@ export function checkConsistency(repoRoot: string = REPO_ROOT): ConsistencyResul
   }
   const sv = JSON.parse(readFileSync(svPath, "utf-8"));
   const skillVersionJsonVersion = sv.version as string;
+  const templateVersionJsonVersion = sv.templateVersion as string;
+  const usingLocalSkillManifest = svPath === localSvPath;
 
-  // package.json.version is product release metadata. skill-version.json is the
-  // generated workflow/template compatibility line.
-  if (packageJsonVersion !== null) {
+  if (
+    usingLocalSkillManifest &&
+    pkg.name === "repo-harness" &&
+    packageJsonVersion !== null &&
+    packageJsonVersion !== skillVersionJsonVersion
+  ) {
+    errors.push(
+      `package.json.version (${packageJsonVersion}) must match assets/skill-version.json version (${skillVersionJsonVersion})`
+    );
+  }
+
+  if (usingLocalSkillManifest && templateVersionJsonVersion !== skillVersionJsonVersion) {
+    errors.push(
+      `assets/skill-version.json templateVersion (${templateVersionJsonVersion}) must match version (${skillVersionJsonVersion})`
+    );
+  }
+
+  if (!usingLocalSkillManifest && packageJsonVersion !== null) {
     warnings.push(
-      `package.json.version (${packageJsonVersion}) is treated as product release metadata; workflow parity uses upstream repo-harness skill-version.json only`
+      `package.json.version (${packageJsonVersion}) belongs to the target repo; workflow stamp uses upstream repo-harness skill-version.json`
     );
   }
 
@@ -76,6 +94,7 @@ export function checkConsistency(repoRoot: string = REPO_ROOT): ConsistencyResul
     consistent: errors.length === 0,
     packageJsonVersion,
     skillVersionJsonVersion,
+    templateVersionJsonVersion,
     skillVersionSource: svPath,
     warnings,
     errors,
@@ -132,7 +151,7 @@ if (import.meta.main) {
 
     if (result.consistent) {
       console.log(
-        `Workflow version check passed: upstream skill-version.json=${result.skillVersionJsonVersion}`
+        `Workflow version check passed: repo-harness=${result.skillVersionJsonVersion}, template=${result.templateVersionJsonVersion}`
       );
       console.log(`Workflow version source: ${result.skillVersionSource}`);
       for (const warning of result.warnings) {

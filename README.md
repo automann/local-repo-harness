@@ -34,28 +34,25 @@ This repository now dogfoods its own tasks-first contract. It is both:
   read a 1KB capability contract or query the index instead of spending thousands of
   tokens rediscovering structure.
 
-## What's New in 0.3.0
+## What's New in 0.4.0
 
-- **Sprint program layer.** `repo-harness-sprint`, `tasks/sprints/`, sprint
-  templates, active sprint markers, and `scripts/sprint-backlog.sh` now capture
-  program-level PRDs and ordered backlogs without turning `tasks/todo.md` into
-  an active execution checklist.
-- **Central-first hook runtime.** User-level Claude/Codex adapters dispatch into
-  `repo-harness-hook`; central packaged hooks are the default runtime, while
-  this self-host repo can still pin `"hook_source": "repo"` for live hook
-  development.
-- **Prompt decisions moved to TypeScript.** Prompt-text intent classification is
-  Unicode-aware in `src/cli/hook/prompt-intents.ts`, the shell hook receives one
-  verdict JSON line, and prompt-layer plan/spec/contract gates are advisory.
-- **Edit-layer enforcement.** Implementation writes are enforced at
-  `pre-edit-guard.sh`, where the guard can key off path, active plan state, and
-  repo files instead of natural-language guesses.
-- **Cheaper always-on hooks.** `trace-event.sh` and `context-pressure-hook.sh`
-  are merged into `post-tool-observer.sh`: one dispatch, one stdin parse, one
-  trace file, and sampled context-budget probes.
-- **Legacy surface cleanup.** The retired `repo-harness-skill`,
-  `project-initializer`, `PROJECT_INITIALIZER_*` fallbacks, duplicate shell
-  classifier table, orphan version checker, and split observer hooks are gone.
+- **Loop-engine evidence surfaces.** `repo-harness-hook state-snapshot --json`,
+  the NL decision-table reference, route A/B evals, and the cutover gate make
+  prompt-routing experiments measurable while keeping the TypeScript classifier
+  authoritative until evidence says otherwise.
+- **Architecture queue gate.** `scripts/architecture-queue.sh`,
+  `scripts/check-architecture-sync.sh`, and the expanded architecture event
+  helper replace the retired append-only drift script with a derived request
+  index that can gate stale architecture state.
+- **Contract delegation pilot.** Contract templates now include
+  `budget`, `permission_scope`, and `roles`, and `scripts/contract-run.ts`
+  can run explicit worker/verifier child commands against contract exit
+  criteria.
+- **Heartbeat triage.** `scripts/heartbeat-triage.sh` records scheduled
+  workflow checks, sprint-next signals, and architecture request state into the
+  repo-local triage inbox.
+- **Workflow asset sync.** New helpers, docs, tests, and generated-repo assets
+  keep the self-host runtime and installed template copies aligned.
 
 ## What repo-harness Does
 
@@ -118,7 +115,10 @@ The diagram below assumes the harness is already installed in the repo. It shows
 the normal lifecycle from a program sprint backlog down to one contract task:
 draft or select the task, project it into execution files, check out the
 contract worktree when policy requires it, implement under hooks, verify, review,
-complete the sprint task when applicable, and close out.
+complete the sprint task when applicable, and close out. The 0.4.0 loop-system
+surfaces add scheduled heartbeat discovery, state-snapshot/eval evidence for
+routing changes, architecture queue freshness, and optional contract-run
+delegation without changing the file-backed authority model.
 
 ```mermaid
 flowchart TD
@@ -126,10 +126,12 @@ flowchart TD
   Sprint -->|yes| SprintDoc["Sprint PRD + backlog<br/>tasks/sprints/*.sprint.md"]
   SprintDoc --> NextTask["Select next sprint task<br/>sprint-backlog.sh next"]
   Sprint -->|no| UserTask["User task or planning prompt"]
+  Heartbeat["Heartbeat triage<br/>scripts/heartbeat-triage.sh<br/>.ai/harness/triage/"] --> UserTask
   NextTask --> UserTask
 
   UserTask --> Discovery["Due diligence<br/>P1 map, P2 trace, P3 decision"]
-  Discovery --> PlanDraft["Draft plan<br/>plans/plan-*.md"]
+  Discovery --> LoopEvidence["Loop evidence when routing changes<br/>state-snapshot --json<br/>route-nl-vs-ts / cutover gate"]
+  LoopEvidence --> PlanDraft["Draft plan<br/>plans/plan-*.md"]
   PlanDraft --> PlanReview{"Plan ready for execution?"}
   PlanReview -->|no| Refine["Refine plan, scope, evidence contract"]
   Refine --> PlanDraft
@@ -142,18 +144,23 @@ flowchart TD
   Project --> ReviewFile["Review file<br/>tasks/reviews/YYYYMMDD-HHMM-task-slug.review.md"]
   Project --> Notes["Task notes<br/>tasks/notes/YYYYMMDD-HHMM-task-slug.notes.md"]
 
-  Contract --> WorktreePolicy{"Contract worktree required?"}
+  Contract --> Delegation["Delegation contract<br/>budget / permission_scope / roles"]
+  Delegation --> Delegate{"Use contract-run delegation?"}
+  Delegate -->|yes| ContractRun["Worker/verifier child run<br/>scripts/contract-run.ts"]
+  Delegate -->|no| WorktreePolicy{"Contract worktree required?"}
   WorktreePolicy -->|yes| Checkout["Checkout isolated worktree<br/>contract-worktree.sh start --plan<br/>branch codex/task-slug"]
   WorktreePolicy -->|no| CurrentTree["Use current worktree<br/>small or explicitly allowed slice"]
   Checkout --> Implement
   CurrentTree --> Implement
+  ContractRun --> Changes
 
   Implement["Edit and run commands"] --> PreHooks["Pre-edit guards<br/>PlanStatusGuard, ContractScopeGuard, WorktreeGuard"]
   PreHooks -->|blocked| ScopeFix["Fix plan, contract, worktree, or scope"]
   ScopeFix --> Implement
   PreHooks -->|allowed| Changes["Code, docs, tests, or config changes"]
   Changes --> PostHooks["Post-edit and post-bash hooks<br/>trace, drift request, handoff, check evidence"]
-  PostHooks --> Verify["Run verification<br/>tests plus repo workflow checks"]
+  PostHooks --> ArchQueue["Architecture queue<br/>architecture-queue.sh record/reindex<br/>check-architecture-sync.sh"]
+  ArchQueue --> Verify["Run verification<br/>tests plus repo workflow checks"]
 
   Verify --> Checks["Structured evidence<br/>.ai/harness/checks/latest.json<br/>.ai/harness/runs/*.json"]
   Checks --> CheckReview["Evaluator review<br/>Waza /check -> review file"]
@@ -201,13 +208,12 @@ npx -y repo-harness update
 repository to install or refresh workflow files, hook assets, host adapters,
 skill aliases, and repo-local verification surfaces from the current npm package.
 
-The npm package release line is now `0.3.x`; generated workflow compatibility is
-tracked separately as the `5.x` model line. The `0.3.0` package keeps first-run
+The npm package and generated workflow stamp now share the `0.4.x` release line.
+The `0.4.0` package keeps first-run
 global bootstrap (`repo-harness init`) separate from repo-local refresh
-(`repo-harness update`), adds the sprint program layer, moves hook execution to
-central-first runtime resolution, moves prompt decisions into TypeScript,
-enforces implementation writes at the edit boundary, and merges always-on hook
-observers into one cheaper path.
+(`repo-harness update`) while adding the loop-engine state snapshot, architecture
+queue gate, contract delegation pilot, heartbeat triage helper, and generated
+asset sync for those workflow surfaces.
 These sit on top of the renamed `repo-harness` CLI, user-level hook
 adapter bootstrap, AI-native scaffold overlays, the typed prompt-guard decision
 engine, plan-stem task artifact naming, `REPO_HARNESS_*` runtime aliases, Waza
@@ -358,12 +364,12 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.3.0`
-- Generated workflow compatibility: `5.2.3`
+- npm package: `repo-harness@0.4.0`
+- Generated workflow stamp: `repo-harness@0.4.0+template@0.4.0`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
-## Current Model (5.2.3)
+## Current Model
 
 - Question flow uses **12 grouped decision points** with harness defaults inferred first.
 - Plan menu is tiered:
