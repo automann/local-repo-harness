@@ -262,9 +262,12 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(repo, "scripts/skill-factory-check.sh"))).toBe(false);
-      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(true);
-      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
-      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/memory-intake.sh"))).toBe(false);
@@ -626,6 +629,61 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".claude/hooks/memory-intake.sh"))).toBe(false);
       expect(existsSync(join(repo, ".claude/skill-factory"))).toBe(false);
       expect(existsSync(join(repo, ".claude/settings.json"))).toBe(false);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, MIGRATION_INTEGRATION_TIMEOUT);
+
+  test("should prune stale repo-local hook runtime when hook_source repo is not pinned", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-prune-hooks-"));
+    try {
+      mkdirSync(join(repo, ".ai/hooks/lib"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+      writeFileSync(join(repo, ".ai/hooks/run-hook.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/post-edit-guard.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/session-start-context.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(repo, ".ai/hooks/lib/workflow-state.sh"), "#!/bin/bash\necho old\n");
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(false);
+      expect(readFileSync(join(repo, ".ai/hooks/lib/workflow-state.sh"), "utf-8")).toContain(
+        "workflow_policy_file"
+      );
+      expect(existsSync(join(repo, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, MIGRATION_INTEGRATION_TIMEOUT);
+
+  test("should keep full vendored hook runtime for repos that pin hook_source repo", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-pinned-hooks-"));
+    try {
+      mkdirSync(join(repo, ".ai/harness"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+      writeFileSync(join(repo, ".ai/harness/policy.json"), '{ "hook_source": "repo" }\n');
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        { cwd: ROOT, encoding: "utf-8" }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/post-tool-observer.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(false);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

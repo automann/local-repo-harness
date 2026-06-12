@@ -116,11 +116,14 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/codex-handoff-resume.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/skill-factory-check.sh"))).toBe(false);
-      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
-      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/lib/skill-factory.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/lib/memory-state.sh"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/memory-intake.sh"))).toBe(false);
@@ -136,9 +139,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, ".claude/skill-factory/rubric.template.json"))).toBe(false);
       expect(existsSync(join(cwd, ".claude/skill-factory/registry.json"))).toBe(false);
 
-      expect(existsSync(join(cwd, ".ai/hooks/post-tool-observer.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
-      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-tool-observer.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
 
       const architectureIndex = readFileSync(join(cwd, "docs/architecture/index.md"), "utf-8");
       expect(architectureIndex).toContain("<!-- BEGIN ARCHITECTURE PENDING REQUESTS -->");
@@ -537,6 +540,53 @@ describe("create-project-dirs runtime smoke", () => {
       const policy = JSON.parse(readFileSync(join(cwd, ".ai/harness/policy.json"), "utf-8"));
       expect(policy.documentation.profile).toBe("full");
       expect(policy.documentation.reference_configs).toContain("spa-day-protocol.md");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("should scaffold full hook runtime when hook_source repo is pinned", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "create-project-dirs-pinned-hooks-"));
+    try {
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/policy.json"), '{ "hook_source": "repo" }\n');
+
+      const res = spawnSync("bash", [join(ROOT, "scripts/create-project-dirs.sh")], {
+        cwd,
+        encoding: "utf-8",
+      });
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/session-start-context.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/lib/session-state.sh"))).toBe(true);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("should prune stale repo-local hook runtime when hook_source repo is not pinned", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "create-project-dirs-prune-hooks-"));
+    try {
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/hooks/run-hook.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(cwd, ".ai/hooks/post-edit-guard.sh"), "#!/bin/bash\necho stale\n");
+      writeFileSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"), "#!/bin/bash\necho old\n");
+
+      const res = spawnSync("bash", [join(ROOT, "scripts/create-project-dirs.sh")], {
+        cwd,
+        encoding: "utf-8",
+      });
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);
+      expect(existsSync(join(cwd, ".ai/hooks/run-hook.sh"))).toBe(false);
+      expect(existsSync(join(cwd, ".ai/hooks/post-edit-guard.sh"))).toBe(false);
+      expect(readFileSync(join(cwd, ".ai/hooks/lib/workflow-state.sh"), "utf-8")).toContain(
+        "workflow_policy_file"
+      );
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

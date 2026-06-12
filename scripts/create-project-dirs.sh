@@ -51,19 +51,7 @@ create_contract_directories() {
 }
 
 install_hook_assets() {
-  mkdir -p .ai/hooks
-
-  if [[ -d "$ASSETS_HOOKS_DIR" ]]; then
-    find "$ASSETS_HOOKS_DIR" -mindepth 1 -maxdepth 1 \( -type f -name '*.sh' -o -type d -name 'lib' \) | while read -r asset; do
-      if [[ -d "$asset" ]]; then
-        cp -R "$asset" .ai/hooks/
-      else
-        cp "$asset" .ai/hooks/
-      fi
-    done
-  fi
-
-  find .ai/hooks -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
+  pi_install_hook_assets "$PWD" "$ASSETS_HOOKS_DIR" "apply"
 }
 
 ensure_task_sync_package_script() {

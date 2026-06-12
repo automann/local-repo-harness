@@ -62,25 +62,8 @@ ensure_gitignore_entry() {
 }
 
 install_hook_assets() {
-    if [ ! -d "$ASSETS_HOOKS_DIR" ]; then
-        echo -e "${YELLOW}Warning: Hook scripts not found at $ASSETS_HOOKS_DIR${NC}"
-        echo -e "${YELLOW}  User-level host adapters need repo-local .ai/hooks/ scripts to dispatch into.${NC}"
-        echo -e "${YELLOW}  Add shared hook scripts to .ai/hooks/ or refresh repo-harness assets.${NC}"
-        return
-    fi
-
-    mkdir -p .ai/hooks
-
-    find "$ASSETS_HOOKS_DIR" -mindepth 1 -maxdepth 1 \( -type f -name '*.sh' -o -type d -name 'lib' \) | while read -r asset; do
-        if [ -d "$asset" ]; then
-            cp -R "$asset" .ai/hooks/
-        else
-            cp "$asset" .ai/hooks/
-        fi
-    done
-
-    find .ai/hooks -type f -name '*.sh' -exec chmod +x {} + 2>/dev/null || true
-    echo -e "${GREEN}Shared hooks installed to .ai/hooks/${NC}"
+    pi_install_hook_assets "$PWD" "$ASSETS_HOOKS_DIR" "apply"
+    echo -e "${GREEN}Repo-local hook fallback installed to .ai/hooks/${NC}"
 }
 
 install_workflow_contract() {

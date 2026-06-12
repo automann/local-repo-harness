@@ -521,6 +521,135 @@ pi_print_codex_hook_trust_notice() {
   echo "Host hook adapters are user-level: run repo-harness install --target both --location global, then trust ~/.codex/hooks.json in Codex Settings."
 }
 
+pi_repo_pins_hook_source() {
+  local repo="$1"
+  local policy_file="$repo/.ai/harness/policy.json"
+
+  if [[ "${REPO_HARNESS_HOOK_SOURCE:-}" == "repo" ]]; then
+    return 0
+  fi
+
+  [[ -f "$policy_file" ]] || return 1
+  grep -Eq '"hook_source"[[:space:]]*:[[:space:]]*"repo"' "$policy_file"
+}
+
+pi_write_hook_runtime_readme() {
+  local hooks_dir="$1"
+  local mode="${2:-apply}"
+  local readme="$hooks_dir/README.md"
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] write $readme"
+    return 0
+  fi
+
+  mkdir -p "$hooks_dir"
+  cat > "$readme" <<'EOF_HOOK_README'
+# Repo-Local Hook Fallback
+
+This repo does not pin `"hook_source": "repo"`, so active hook execution is
+user-level and central-first:
+
+`~/.codex/hooks.json` / `~/.claude/settings.json` -> `repo-harness-hook` ->
+packaged hooks from the installed repo-harness runtime.
+
+The files under `.ai/hooks/lib/` are kept only for repo workflow helper scripts
+that source shared shell utilities. Full hook runtime scripts are not vendored
+here by default because stale copies can be mistaken for the active hook path.
+
+Set `"hook_source": "repo"` in `.ai/harness/policy.json` only for self-hosted
+hook development or an explicitly reviewed repo-local hook override.
+EOF_HOOK_README
+}
+
+pi_prune_repo_local_hook_runtime() {
+  local hooks_dir="$1"
+  local mode="${2:-apply}"
+
+  if [[ ! -d "$hooks_dir" ]]; then
+    return 0
+  fi
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] remove repo-local hook entry scripts from $hooks_dir unless hook_source is repo"
+    return 0
+  fi
+
+  find "$hooks_dir" -mindepth 1 -maxdepth 1 -type f \
+    \( -name '*.sh' \
+      -o -name 'AGENTS.md' \
+      -o -name 'CLAUDE.md' \
+      -o -name 'settings.template.json' \
+      -o -name 'codex.hooks.template.json' \
+      -o -name '.version' \) \
+    -delete
+}
+
+pi_install_hook_assets() {
+  local target_dir="$1"
+  local hooks_assets_dir="$2"
+  local mode="${3:-apply}"
+  local hooks_dir="$target_dir/.ai/hooks"
+
+  if [[ ! -d "$hooks_assets_dir" ]]; then
+    echo "[project-init] Warning: hook assets not found at $hooks_assets_dir" >&2
+    echo "[project-init] User-level host adapters dispatch through repo-harness-hook packaged hooks." >&2
+    return 0
+  fi
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] mkdir -p \"$hooks_dir\""
+  else
+    mkdir -p "$hooks_dir"
+  fi
+
+  if pi_repo_pins_hook_source "$target_dir"; then
+    while IFS= read -r hook; do
+      local rel_path rel_dir dest_dir hook_name
+      rel_path="${hook#"$hooks_assets_dir"/}"
+      rel_dir="$(dirname "$rel_path")"
+      if [[ "$rel_dir" == "." ]]; then
+        dest_dir="$hooks_dir"
+      else
+        dest_dir="$hooks_dir/$rel_dir"
+      fi
+      hook_name="$(basename "$hook")"
+      if [[ "$mode" != "apply" ]]; then
+        echo "[dry-run] mkdir -p \"$dest_dir\""
+        echo "[dry-run] cp \"$hook\" \"$dest_dir/$hook_name\""
+        continue
+      fi
+      mkdir -p "$dest_dir"
+      cp "$hook" "$dest_dir/$hook_name"
+      chmod +x "$dest_dir/$hook_name" 2>/dev/null || true
+    done < <(find "$hooks_assets_dir" -type f -name '*.sh' | sort)
+    return 0
+  fi
+
+  pi_prune_repo_local_hook_runtime "$hooks_dir" "$mode"
+
+  if [[ "$mode" != "apply" ]]; then
+    echo "[dry-run] mkdir -p \"$hooks_dir/lib\""
+  else
+    mkdir -p "$hooks_dir/lib"
+  fi
+
+  if [[ -d "$hooks_assets_dir/lib" ]]; then
+    while IFS= read -r hook_lib; do
+      local lib_name
+      lib_name="$(basename "$hook_lib")"
+      if [[ "$mode" != "apply" ]]; then
+        echo "[dry-run] cp \"$hook_lib\" \"$hooks_dir/lib/$lib_name\""
+        continue
+      fi
+      cp "$hook_lib" "$hooks_dir/lib/$lib_name"
+      chmod +x "$hooks_dir/lib/$lib_name" 2>/dev/null || true
+    done < <(find "$hooks_assets_dir/lib" -maxdepth 1 -type f -name '*.sh' | sort)
+  fi
+
+  pi_write_hook_runtime_readme "$hooks_dir" "$mode"
+}
+
 pi_ensure_executable_if_apply() {
   local mode="${1:-apply}"
   shift || true

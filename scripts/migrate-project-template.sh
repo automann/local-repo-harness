@@ -693,24 +693,9 @@ inspect_project_state() {
 
 migrate_hooks() {
   local repo="$1"
-  local project_claude_dir="$repo/.claude"
-  local project_ai_hooks_dir="$repo/.ai/hooks"
-
-  run_or_echo "mkdir -p \"$project_claude_dir\" \"$project_ai_hooks_dir\""
-
-  while IFS= read -r hook; do
-    local rel_path dest_dir hook_name
-    rel_path="${hook#"$HOOK_ASSETS_DIR"/}"
-    dest_dir="$project_ai_hooks_dir/$(dirname "$rel_path")"
-    hook_name="$(basename "$hook")"
-    run_or_echo "mkdir -p \"$dest_dir\""
-    run_or_echo "cp \"$hook\" \"$dest_dir/$hook_name\""
-    if [[ "$MODE" == "apply" ]]; then
-      chmod +x "$dest_dir/$hook_name" 2>/dev/null || true
-    fi
-  done < <(find "$HOOK_ASSETS_DIR" -type f -name '*.sh' | sort)
 
   cleanup_removed_workflow_assets "$repo"
+  pi_install_hook_assets "$repo" "$HOOK_ASSETS_DIR" "$MODE"
   pi_install_hook_adapters "$repo" "$HOOK_ASSETS_DIR" "$MODE"
 }
 
@@ -805,7 +790,7 @@ print_report() {
     echo "--- Inspection ---"
     printf '%s\n' "$INSPECT_OUTPUT"
   fi
-  echo "- Project hooks synced from: $HOOK_ASSETS_DIR"
+  echo "- Project hooks synced from: $HOOK_ASSETS_DIR (repo-local fallback; lib-only unless hook_source=repo)"
   echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
   echo "- $(pi_print_codex_hook_trust_notice)"
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"
