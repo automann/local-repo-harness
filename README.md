@@ -34,6 +34,15 @@ This repository now dogfoods its own tasks-first contract. It is both:
   read a 1KB capability contract or query the index instead of spending thousands of
   tokens rediscovering structure.
 
+In an adopted repo, the surface area is intentionally small:
+
+| Surface | Purpose |
+| --- | --- |
+| `docs/spec.md` and `docs/reference-configs/` | Shared standards and stable product intent that every agent session can read. |
+| `plans/`, `plans/prds/`, and `plans/sprints/` | Decision-complete work packages before implementation starts. |
+| `tasks/contracts/`, `tasks/reviews/`, and `.ai/harness/checks/` | Scope, verification, and review evidence for proving the work is done. |
+| `.ai/harness/handoff/` and `tasks/current.md` | Session journal and resumable status, derived from workflow artifacts instead of chat memory. |
+
 ## What's New in 0.4.2
 
 - **PRD-to-Sprint planning hierarchy.** `repo-harness-prd` now owns
@@ -200,9 +209,11 @@ concrete sprint instead of reinterpreting the original chat.
 ## First 5 Minutes
 
 This is the fastest path for an AI tooling owner evaluating whether the workflow is
-safe to adopt in a real repo.
+safe to adopt in a real repo. It separates the machine-level runtime bootstrap
+from the repo-local contract install, so a dry run can show exactly what will
+change before anything is applied.
 
-### Initial bootstrap
+### 1. Bootstrap the host runtime once
 
 ```bash
 npx -y repo-harness init
@@ -214,27 +225,30 @@ user-level hook adapters, configures Waza runtime skills, persists a brain root
 under `~/.repo-harness/config.json`, and configures CodeGraph MCP. It does not
 apply repo-local workflow files to the current directory.
 
-### Install or refresh a repo-local harness
+### 2. Preview the repo-local contract
 
 ```bash
 npx -y repo-harness update --dry-run
-npx -y repo-harness update
 ```
 
-`update` is the existing-repo install and refresh path. Run it from a target
-repository to install or refresh workflow files, hook assets, host adapters,
-skill aliases, and repo-local verification surfaces from the current npm package.
+Run the dry run from the target repository root. It reports the specs, task
+state, helper runtime, hook adapter target, and verification files that would be
+created or refreshed. It should not create an application stack; existing repos
+use `repo-harness update`, while new projects or modules use
+`repo-harness-scaffold`.
 
-The npm package and generated workflow stamp now share the `0.4.x` release line.
-The `0.4.2` package keeps first-run
-global bootstrap (`repo-harness init`) separate from repo-local refresh
-(`repo-harness update`) while adding the PRD-to-Sprint planning hierarchy,
-isolated generated-project helper runtime, subagent return-channel guard, and
-release-path alignment on top of the `0.4.0` loop-engine surfaces.
-These sit on top of the renamed `repo-harness` CLI, user-level hook
-adapter bootstrap, AI-native scaffold overlays, the typed prompt-guard decision
-engine, plan-stem task artifact naming, `REPO_HARNESS_*` runtime aliases, Waza
-runtime skill sync, and the maintainer release gate.
+### 3. Apply, then prove the workflow
+
+```bash
+npx -y repo-harness update
+bash scripts/check-task-workflow.sh --strict
+bun test
+```
+
+After apply, the repo should have a reviewable file-backed contract rather than
+tool-specific chat setup. Agents should be able to find the stable intent in
+`docs/spec.md`, execution state in `plans/` and `tasks/`, and resume state in
+`.ai/harness/handoff/`.
 
 Only maintainers editing the package need a source checkout:
 
@@ -292,13 +306,6 @@ The command should end with `=== Migration Report ===` and summarize:
 - `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
 - `Helper runtime:` to show `.ai/harness/scripts/*` implementations and `scripts/*` compatibility wrappers after apply
 - `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
-
-### Next two commands
-
-```bash
-bash scripts/check-task-workflow.sh --strict
-bun test
-```
 
 If the dry-run output looks wrong, stop there and inspect
 [`docs/reference-configs/hook-operations.md`](docs/reference-configs/hook-operations.md)

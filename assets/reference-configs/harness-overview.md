@@ -2,6 +2,25 @@
 
 This repo uses a shared long-running harness. The durable workflow lives in repo-local artifacts, not in chat memory.
 
+## Adoption Model
+
+Use this file as the first onboarding map after `repo-harness update` installs
+or refreshes a repo. The harness gives agents three durable surfaces:
+
+- **Shared standards**: `docs/spec.md`, `docs/reference-configs/`, root
+  `AGENTS.md`, and root `CLAUDE.md` explain stable product intent, coding
+  rules, and local workflow boundaries.
+- **Task contracts**: `plans/`, `tasks/contracts/`, `tasks/reviews/`, and
+  `.ai/harness/checks/` turn a request into scoped implementation work with
+  evidence-backed completion.
+- **Session journal**: `.ai/harness/handoff/`, `tasks/current.md`, and
+  `.ai/harness/events.jsonl` let a new agent session resume from repo state
+  without treating chat history as authority.
+
+The install is not an app scaffold or an agent gateway. It adds a reviewable
+workflow contract around an existing repo, then leaves product code ownership
+with the project.
+
 ## Roles
 
 - **Planner** updates `docs/spec.md`, researches constraints, and writes or approves `plans/plan-*.md`.
