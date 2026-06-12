@@ -402,6 +402,40 @@ describe("init command", () => {
     }
   });
 
+  test("does not insert global working rules when the user already has them", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-global-rules-existing-${Date.now()}`);
+    const source = join(tmp, "source");
+    const home = join(tmp, "home");
+    const existing = [
+      "# Global Working Rules",
+      "",
+      "- Custom user-owned rule.",
+      "",
+    ].join("\n");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      setupFakeSource(source);
+      mkdirSync(join(home, ".codex"), { recursive: true });
+      writeFileSync(join(home, ".codex", "AGENTS.md"), existing);
+
+      const result = writeGlobalContextFiles(
+        source,
+        "codex",
+        { reportLanguageInstruction: "Use Chinese to report to user." },
+        { ...process.env, HOME: home },
+      );
+
+      expect(result.status).toBe("ok");
+      expect(result.detail).toContain(`unchanged:${join(home, ".codex", "AGENTS.md")}`);
+      const codex = readFileSync(join(home, ".codex", "AGENTS.md"), "utf-8");
+      expect(codex).toBe(existing);
+      expect(codex).not.toContain("<!-- BEGIN: repo-harness global-working-rules -->");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   test("resolves brain roots from REPO_HARNESS_BRAIN_ROOT", () => {
     const tmp = join(tmpdir(), `repo-harness-brain-root-${Date.now()}`);
     try {

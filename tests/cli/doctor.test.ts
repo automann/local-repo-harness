@@ -26,6 +26,23 @@ function withTempHome(fn: (home: string) => void): void {
   }
 }
 
+function withEnv(values: Record<string, string | undefined>, fn: () => void): void {
+  const previous = new Map<string, string | undefined>();
+  for (const [key, value] of Object.entries(values)) {
+    previous.set(key, process.env[key]);
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  try {
+    fn();
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
 function writeExecutable(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content);
   fs.chmodSync(filePath, 0o755);
@@ -123,6 +140,7 @@ describe('doctor command (Phase 1C)', () => {
       const ids = r.checks.map((c) => c.id);
       expect(ids).toContain('cli-on-path');
       expect(ids).toContain('cli-version');
+      expect(ids).toContain('cli-update');
       expect(ids).toContain('codex-adapter');
       expect(ids).toContain('claude-adapter');
       expect(ids).toContain('codex-trust-state');
@@ -181,6 +199,30 @@ describe('doctor command (Phase 1C)', () => {
       const r = runDoctor();
       const trust = r.checks.find((c) => c.id === 'codex-trust-state')!;
       expect(trust.status).toBe('na');
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('cli-update is agent-triggered and does not check npm by default', () => {
+    withTempHome(() => {
+      withEnv({ REPO_HARNESS_CHECK_UPDATES: undefined, REPO_HARNESS_LATEST_VERSION: undefined }, () => {
+        const r = runDoctor();
+        const update = r.checks.find((c) => c.id === 'cli-update')!;
+        expect(update.status).toBe('na');
+        expect(update.detail).toContain('Agent can run REPO_HARNESS_CHECK_UPDATES=1 repo-harness doctor --json');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('cli-update warns with an Agent action when the package is stale', () => {
+    withTempHome(() => {
+      withEnv({ REPO_HARNESS_CHECK_UPDATES: '1', REPO_HARNESS_LATEST_VERSION: '99.0.0' }, () => {
+        const r = runDoctor();
+        const update = r.checks.find((c) => c.id === 'cli-update')!;
+        expect(update.status).toBe('warn');
+        expect(update.detail).toContain('current=');
+        expect(update.detail).toContain('latest=99.0.0');
+        expect(update.detail).toContain('agent_action=npm install -g repo-harness@latest && repo-harness init');
+      });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 

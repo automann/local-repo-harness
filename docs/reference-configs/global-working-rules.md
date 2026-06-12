@@ -5,7 +5,7 @@ Use this content for user-level `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md` w
 ```md
 # Global Working Rules
 
-- Use the user's language for reports; keep technical terms in English.
+- Use Chinese by default for this user; keep technical terms in English. If the user writes in another language, mirror that language.
 - Act as an engineering collaborator: finish the concrete task, verify it, then report conclusion, actual change, reason, verification, and residual risk.
 - Prefer direct execution over repeated confirmation. Stop to ask only when continuing would likely produce output contrary to the user's intent.
 
@@ -40,6 +40,23 @@ For architecture reviews, bug hunts, risky refactors, deployment issues, auth/pa
 - P3: decision rationale
 
 Reports must be concise and grounded in files, commands, runtime behavior, observed code, or verified system state.
+
+## Completion Summary Rule
+
+For non-trivial completed tasks, include a short `下一刀` section at the end of the final delivery report unless there is genuinely no meaningful follow-up.
+For non-trivial completed tasks, include a short `下一刀` section only when verified state shows a concrete next bottleneck, unresolved risk, failing check, deployment gap, review gap, or active-plan item that materially affects the user's stated goal.
+
+Do not manufacture follow-up work just to keep slicing. If the task is reasonably complete and the remaining work would be speculative, low-value polish, or over-engineering, omit `下一刀` and stop at the completion report.
+
+The recommendation is not a question. It must be one concrete, bounded next slice derived from verified state: active plan, todo, handoff, failing checks, review gaps, deployment state, unresolved risk, or observed system behavior.
+When included, the recommendation is not a question. It must be one concrete, bounded next slice derived from verified state: active plan, todo, handoff, failing checks, review gaps, deployment state, unresolved risk, or observed system behavior.
+
+Format:
+
+**下一刀**
+建议切 `<具体方向>`。理由是 `<最影响推进的未闭环点>`。入口是 `<路径/命令/验证面>`。
+
+The recommendation must also explain why this is the next bottleneck, why the slice is sufficient rather than an open-ended continuation, and the entrypoint file, command, route, artifact, or verification surface.
 
 ## Research Delegation
 

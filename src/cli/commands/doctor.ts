@@ -18,6 +18,9 @@ import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
 
 const TRUST_STATE_LINE = /^\[hooks\.state\."[^"]+\/\.codex\/hooks\.json:/;
+const PACKAGE_NAME = 'repo-harness';
+const UPDATE_CHECK_ENV = 'REPO_HARNESS_CHECK_UPDATES';
+const LATEST_VERSION_ENV = 'REPO_HARNESS_LATEST_VERSION';
 
 export type CheckStatus = 'ok' | 'warn' | 'fail' | 'na';
 
@@ -71,6 +74,75 @@ function checkPath(): DoctorCheckResult {
 
 function checkVersion(): DoctorCheckResult {
   return { id: 'cli-version', describe: 'repo-harness CLI version', status: 'ok', detail: CLI_VERSION };
+}
+
+function parseVersion(value: string): number[] | null {
+  const match = value.trim().replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+  if (!match) return null;
+  return match.slice(1).map((part) => Number(part));
+}
+
+function compareVersions(a: string, b: string): number | null {
+  const left = parseVersion(a);
+  const right = parseVersion(b);
+  if (!left || !right) return null;
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
+function readLatestPackageVersion(): { version?: string; error?: string } {
+  if (process.env[LATEST_VERSION_ENV]) {
+    return { version: process.env[LATEST_VERSION_ENV] };
+  }
+
+  const result = spawnSync('npm', ['view', PACKAGE_NAME, 'version', '--json'], {
+    encoding: 'utf-8',
+    timeout: 5000,
+  });
+  if (result.status !== 0 || result.error) {
+    return { error: result.stderr || result.stdout || String(result.error?.message ?? result.error ?? 'npm view failed') };
+  }
+  try {
+    const parsed = JSON.parse(result.stdout);
+    return { version: typeof parsed === 'string' ? parsed : String(parsed) };
+  } catch {
+    return { version: result.stdout.trim().replace(/^"|"$/g, '') };
+  }
+}
+
+function checkCliUpdate(): DoctorCheckResult {
+  const id = 'cli-update';
+  const describe = 'repo-harness latest version advisory';
+  if (process.env[UPDATE_CHECK_ENV] !== '1') {
+    return {
+      id,
+      describe,
+      status: 'na',
+      detail: `disabled; Agent can run ${UPDATE_CHECK_ENV}=1 repo-harness doctor --json before updating`,
+    };
+  }
+
+  const latest = readLatestPackageVersion();
+  if (!latest.version) {
+    return { id, describe, status: 'na', detail: `latest unavailable; ${latest.error ?? 'unknown error'}` };
+  }
+
+  const comparison = compareVersions(CLI_VERSION, latest.version);
+  if (comparison === null) {
+    return { id, describe, status: 'warn', detail: `current=${CLI_VERSION}; latest=${latest.version}; unable to compare versions` };
+  }
+  if (comparison < 0) {
+    return {
+      id,
+      describe,
+      status: 'warn',
+      detail: `current=${CLI_VERSION}; latest=${latest.version}; agent_action=npm install -g ${PACKAGE_NAME}@latest && repo-harness init`,
+    };
+  }
+  return { id, describe, status: 'ok', detail: `current=${CLI_VERSION}; latest=${latest.version}` };
 }
 
 function checkTargetInstall(target: (typeof ALL_TARGETS)[number]): DoctorCheckResult {
@@ -343,6 +415,7 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   const securityReport = runSecurityScan({ cwd });
   checks.push(checkPath());
   checks.push(checkVersion());
+  checks.push(checkCliUpdate());
   for (const target of ALL_TARGETS) {
     if (target.supportsLocation('global')) {
       checks.push(checkTargetInstall(target));

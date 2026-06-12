@@ -225,6 +225,12 @@ user-level hook adapters, configures Waza runtime skills, persists a brain root
 under `~/.repo-harness/config.json`, and configures CodeGraph MCP. It does not
 apply repo-local workflow files to the current directory.
 
+For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness
+init-hook --json` or add `--check-updates` for version advisories. `init-hook`
+is not a runtime hook: it does not write user-level files, install updates, or
+register adapters. It emits `agent_actions` with the reason, risk, target files,
+optional command, and verification surface for the Agent to execute deliberately.
+
 ### 2. Preview the repo-local contract
 
 ```bash

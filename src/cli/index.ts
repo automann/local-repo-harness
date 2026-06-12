@@ -12,6 +12,7 @@ import { runInit, runInteractiveInit, type InitBrainMode } from './commands/init
 import { runHook } from './commands/hook';
 import { CLI_VERSION, formatStatus, runStatus } from './commands/status';
 import { formatDoctor, runDoctor } from './commands/doctor';
+import { buildInitHookCommand } from './commands/init-hook';
 import { formatMigratePlan, runMigrate } from './commands/migrate';
 import { buildToolsCommand } from './commands/tools';
 import { buildBrainCommand } from './commands/brain';
@@ -24,6 +25,7 @@ import type { HookEvent, RouteId } from './hook/route-registry';
 
 export const SUBCOMMANDS = [
   'init',
+  'init-hook',
   'install',
   'hook',
   'status',
@@ -221,6 +223,8 @@ export function buildProgram(): Command {
       console.log(formatDoctor(report, rawOpts.json === true));
       process.exit(report.summary.fail > 0 ? 1 : 0);
     });
+
+  program.addCommand(buildInitHookCommand());
 
   program
     .command('migrate')

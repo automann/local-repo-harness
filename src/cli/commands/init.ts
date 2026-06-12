@@ -206,6 +206,17 @@ function mergeManagedBlock(current: string, block: string): string {
     const afterEnd = end + GLOBAL_RULES_END.length;
     return `${current.slice(0, start)}${block.trimEnd()}${current.slice(afterEnd).replace(/^\n?/, "\n")}`;
   }
+  if (
+    /^# Global Working Rules\s*$/m.test(current) ||
+    (
+      current.includes("## Progressive Due Diligence") &&
+      current.includes("### P1: Architecture Map") &&
+      current.includes("### P2: Concrete Trace") &&
+      current.includes("### P3: Design Decision")
+    )
+  ) {
+    return current;
+  }
   const trimmed = current.trimEnd();
   return `${trimmed}${trimmed ? "\n\n" : ""}${block}`;
 }
