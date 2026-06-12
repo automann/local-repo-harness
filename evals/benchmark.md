@@ -1,10 +1,10 @@
 # Skill Benchmark Report
 
-Latest iteration: `iteration-20260612-040450-route-nl-vs-ts-codex`
+Latest iteration: `iteration-20260612-112618-route-nl-vs-ts-codex-rerun`
 
 Workspace root: `/Users/chris/Projects/repo-harness-workspace`
 
-Generated: 2026-06-11T20:07:07.766Z
+Generated: 2026-06-12T03:28:53.231Z
 
 ## Quality Metrics
 
@@ -22,18 +22,18 @@ Effectiveness evidence is authoritative for this benchmark run.
 
 | Agent | Profile | Command |
 | --- | --- | --- |
-| codex | with_skill | `codex exec -C /Users/chris/Projects/repo-harness-workspace/iteration-20260612-040450-route-nl-vs-ts-codex/codex/with_skill/route-nl-vs-ts --dangerously-bypass-approvals-and-sandbox -o /Users/chris/Projects/repo-harness-workspace/iteration-20260612-040450-route-nl-vs-ts-codex/codex/with_skill/route-nl-vs-ts/final-response.md --add-dir /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval 'Run the route-nl-vs-ts shadow eval for the loop engine. Locate the mounted repo-harness skill root: use .skill-src when it exists, otherwise use .claude/skills/repo-harness. Create .ai/harness/runs/. Write scenarios with `bun "$SKILL_ROOT/scripts/route-nl-vs-ts-eval.ts" --emit-scenarios > .ai/harness/runs/route-nl-vs-ts-scenarios.json`. Read `$SKILL_ROOT/docs/reference-configs/loop-engine-nl-decision-table.md`, then make your own NL decision-table routing choices for every scenario and write `.ai/harness/runs/route-nl-vs-ts-decisions.json` with a top-level `decisions` array of `{scenario_id,intent,action,rationale}` objects. Do not use `--write-expected-decisions` for the NL arm. Run `bun "$SKILL_ROOT/scripts/route-nl-vs-ts-eval.ts" --agent benchmark --decisions .ai/harness/runs/route-nl-vs-ts-decisions.json --out .ai/harness/runs/route-nl-vs-ts-report.json`. Final response must summarize compliance_rate, false_positive_count, false_negative_count, estimated_token_delta_per_prompt, and go/no-go. Do not edit source files.'` |
+| codex | with_skill | `codex exec -C /Users/chris/Projects/repo-harness-workspace/iteration-20260612-112618-route-nl-vs-ts-codex-rerun/codex/with_skill/route-nl-vs-ts --dangerously-bypass-approvals-and-sandbox -o /Users/chris/Projects/repo-harness-workspace/iteration-20260612-112618-route-nl-vs-ts-codex-rerun/codex/with_skill/route-nl-vs-ts/final-response.md --add-dir /Users/chris/Projects/agentic-dev-wt-loop-engine-02-routing-ab-eval-clean 'Run the route-nl-vs-ts shadow eval for the loop engine. Locate the mounted repo-harness skill root: use .skill-src when it exists, otherwise use .claude/skills/repo-harness. Create .ai/harness/runs/. Write scenarios with `bun "$SKILL_ROOT/scripts/route-nl-vs-ts-eval.ts" --emit-scenarios > .ai/harness/runs/route-nl-vs-ts-scenarios.json`. Read `$SKILL_ROOT/docs/reference-configs/loop-engine-nl-decision-table.md`, then make your own NL decision-table routing choices for every scenario and write `.ai/harness/runs/route-nl-vs-ts-decisions.json` with a top-level `decisions` array of `{scenario_id,intent,action,rationale}` objects. Do not use `--write-expected-decisions` for the NL arm. Run `bun "$SKILL_ROOT/scripts/route-nl-vs-ts-eval.ts" --agent benchmark --decisions .ai/harness/runs/route-nl-vs-ts-decisions.json --out .ai/harness/runs/route-nl-vs-ts-report.json`. Final response must summarize compliance_rate, false_positive_count, false_negative_count, estimated_token_delta_per_prompt, and go/no-go. Do not edit source files.'` |
 
 ## codex / with_skill
 
 | Eval | Status | Exit / Graders | Duration | Changed Files | Raw Artifacts |
 | --- | --- | --- | ---: | ---: | --- |
-| route-nl-vs-ts | success | 0 / graders pass | 137164ms | 3 | [workspace](../repo-harness-workspace/iteration-20260612-040450-route-nl-vs-ts-codex/codex/with_skill/route-nl-vs-ts) |
+| route-nl-vs-ts | success | 0 / graders pass | 154450ms | 3 | [workspace](../repo-harness-workspace/iteration-20260612-112618-route-nl-vs-ts-codex-rerun/codex/with_skill/route-nl-vs-ts) |
 
 ### route-nl-vs-ts
 
 - Eval: `25`
-- Workspace: [../repo-harness-workspace/iteration-20260612-040450-route-nl-vs-ts-codex/codex/with_skill/route-nl-vs-ts](../repo-harness-workspace/iteration-20260612-040450-route-nl-vs-ts-codex/codex/with_skill/route-nl-vs-ts)
+- Workspace: [../repo-harness-workspace/iteration-20260612-112618-route-nl-vs-ts-codex-rerun/codex/with_skill/route-nl-vs-ts](../repo-harness-workspace/iteration-20260612-112618-route-nl-vs-ts-codex-rerun/codex/with_skill/route-nl-vs-ts)
 - Changed files: `.ai/harness/runs/route-nl-vs-ts-decisions.json`, `.ai/harness/runs/route-nl-vs-ts-report.json`, `.ai/harness/runs/route-nl-vs-ts-scenarios.json`
 - Diff summary: .ai/harness/runs/route-nl-vs-ts-decisions.json |  52 ++++++
  .ai/harness/runs/route-nl-vs-ts-report.json    | 231 +++++++++++++++++++++++++
@@ -41,7 +41,7 @@ Effectiveness evidence is authoritative for this benchmark run.
  3 files changed, 414 insertions(+)
 - Agent status: success (exit 0)
 - Graders: passed (14/14 passed)
-- Final response excerpt: Completed the route-nl-vs-ts shadow eval. Created: - `.ai/harness/runs/route-nl-vs-ts-scenarios.json` - `.ai/harness/runs/route-nl-vs-ts-decisions.json` - `.ai/harness/runs/route-nl-vs-ts-report.json` Report metrics: - …
+- Final response excerpt: 已完成 route-nl-vs-ts shadow eval，`SKILL_ROOT=.skill-src`。 生成的 artifacts： - `.ai/harness/runs/route-nl-vs-ts-scenarios.json` - `.ai/harness/runs/route-nl-vs-ts-decisions.json` - `.ai/harness/runs/route-nl-vs-ts-report.json…
 - Expectations:
   - Runs the existing TS prompt-guard verdict as the A arm without changing it.
   - Uses the natural-language decision table as the B arm and writes agent-made route decisions.

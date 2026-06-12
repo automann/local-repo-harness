@@ -6,7 +6,7 @@
 > **Capability ID**: root
 > **Last Updated**: 2026-06-12 03:50
 > **Review File**: `tasks/reviews/20260612-0350-loop-engine-02-routing-ab-eval.review.md`
-> **Notes File**: `tasks/notes/20260612-0350-loop-engine-02-routing-ab-eval.notes.md`
+> **Notes File**: `tasks/archive/notes-20260612-0433-loop-engine-02-routing-ab-eval.md`
 
 ## Goal
 
@@ -33,7 +33,7 @@ the classifier.
 - Source plan: `plans/plan-20260612-0350-loop-engine-02-routing-ab-eval.md`
 - Deferred-goal ledger: `tasks/todo.md`
 - Review file: `tasks/reviews/20260612-0350-loop-engine-02-routing-ab-eval.review.md`
-- Notes file: `tasks/notes/20260612-0350-loop-engine-02-routing-ab-eval.notes.md`
+- Notes file: `tasks/archive/notes-20260612-0433-loop-engine-02-routing-ab-eval.md`
 - Checks file: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope gate: edit only paths listed under `allowed_paths`; update this contract before widening scope.
@@ -49,7 +49,7 @@ allowed_paths:
   - tasks/sprints/20260612-0236-loop-engine.sprint.md
   - tasks/contracts/20260612-0350-loop-engine-02-routing-ab-eval.contract.md
   - tasks/reviews/20260612-0350-loop-engine-02-routing-ab-eval.review.md
-  - tasks/notes/20260612-0350-loop-engine-02-routing-ab-eval.notes.md
+  - tasks/archive/notes-20260612-0433-loop-engine-02-routing-ab-eval.md
   - .ai/context/capabilities.json
   - .ai/harness/runs/
   - evals/
@@ -72,7 +72,7 @@ exit_criteria:
     - .ai/harness/checks/latest.json
     - .ai/harness/runs/route-nl-vs-ts-report.json
     - .ai/harness/runs/loop-engine-02-routing-ab-eval.json
-    - tasks/notes/20260612-0350-loop-engine-02-routing-ab-eval.notes.md
+    - tasks/archive/notes-20260612-0433-loop-engine-02-routing-ab-eval.md
   tests_pass:
     - path: tests/route-nl-vs-ts-eval.test.ts
   commands_succeed:
@@ -82,7 +82,7 @@ exit_criteria:
     - path: .ai/harness/runs/route-nl-vs-ts-report.json
       pattern: '"go_no_go"'
     - path: tasks/reviews/20260612-0350-loop-engine-02-routing-ab-eval.review.md
-      pattern: "Manual Override"
+      pattern: "G1 no-go"
   qa_scores:
     - dimension: functionality
       min: 7
@@ -90,9 +90,9 @@ exit_criteria:
 
 ## Acceptance Notes (Human Review)
 
-- Functional behavior: deterministic script and benchmark manifest are implemented; Codex with_skill non-dry-run produced a `go` report.
+- Functional behavior: deterministic script and benchmark manifest are implemented; Codex with_skill non-dry-run produced a `go` report, while Claude direct non-dry-run produced a `no-go` report.
 - Edge cases: missing or mismatched NL decisions become `no-go` evidence instead of crashing the harness.
-- Regression risks: Claude with_skill non-dry-run was skipped by explicit owner override in this Goal; cross-agent confidence is lower than the original row wording but accepted for continuation.
+- Regression risks: G1 is no-go; shadow injection and classifier deletion remain blocked until the NL action vocabulary/output schema is repaired and rerun.
 
 ## Rollback Point
 
