@@ -232,6 +232,37 @@ describe('hook command (Phase 1B)', () => {
     );
   });
 
+  test('opt-in + missing observer script on PostToolUse.always → soft-skips, exits 0', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      const result = runHook({
+        event: 'PostToolUse',
+        routeId: 'always',
+        cwd: repoRoot,
+        stdio: 'ignore',
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.reason).toBe('ok');
+      expect(result.scriptsRun).toEqual([]);
+      expect(result.skippedScripts).toEqual(['post-tool-observer.sh']);
+      expect(result.failedScript).toBeUndefined();
+    });
+  });
+
+  test('PostToolUse.always missing observer emits sync hint instead of hard error', () => {
+    withTempRepo({ optIn: true }, (repoRoot) => {
+      const res = spawnSync(
+        process.execPath,
+        [HOOK_ENTRY, 'PostToolUse', '--route', 'always'],
+        { cwd: repoRoot, encoding: 'utf-8' },
+      );
+      expect(res.status).toBe(0);
+      expect(res.stderr).toContain('skipping missing script');
+      expect(res.stderr).toContain('post-tool-observer.sh');
+      expect(res.stderr).toContain(`repo-harness update --repo ${repoRoot}`);
+      expect(res.stderr).not.toContain('script not found');
+    });
+  });
+
   test('opt-in + first script fails → stops at failure, propagates exit code', () => {
     withTempRepo(
       {

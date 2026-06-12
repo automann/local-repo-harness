@@ -16,6 +16,9 @@ All notable changes to this skill are documented here.
 - Prevented stale repo-local hook scripts from racing user-level host adapters:
   generated and migrated repos now prune top-level `.ai/hooks/*.sh` unless
   `.ai/harness/policy.json` explicitly pins `"hook_source": "repo"`.
+- Treated a missing `post-tool-observer.sh` on `PostToolUse.always` as a
+  soft-missing advisory route with an update hint, instead of hard-failing the
+  hook runtime when a copied repo-local hook set is stale.
 
 ### Changed
 

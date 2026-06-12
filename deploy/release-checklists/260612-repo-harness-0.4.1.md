@@ -40,6 +40,9 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
   and central-first.
 - Repos that explicitly set `"hook_source": "repo"` still receive the full
   vendored hook runtime for self-hosted hook development.
+- Stale pinned hook runtimes that are missing `post-tool-observer.sh` now
+  soft-skip `PostToolUse.always` and print a `repo-harness update --repo ...`
+  hint instead of failing the hook with `script not found`.
 - Active workflow docs now use `tasks/todos.md` for deferred goals and
   `docs/researches/*.md` for topic-scoped durable research. Legacy
   `tasks/todo.md` and `tasks/research.md` are migration inputs only.
@@ -72,6 +75,7 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
     migration dry-run, and `npm pack --dry-run --json` all completed.
 - `bun test`: 678 pass, 0 fail, 6514 expectations across 66 files.
 - Focused affected suites passed:
+  - `bun test tests/cli/hook.test.ts`
   - `bun test tests/workflow-contract.test.ts`
   - `bun test tests/create-project-dirs.runtime.test.ts
     tests/init-project.settings.runtime.test.ts`
