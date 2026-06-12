@@ -31,6 +31,9 @@ bun test --timeout "$BUN_TEST_TIMEOUT_MS" --max-concurrency "$BUN_TEST_MAX_CONCU
 bash scripts/check-deploy-sql-order.sh
 bash scripts/check-architecture-sync.sh
 bash scripts/check-task-sync.sh
+if [[ -f scripts/prepare-handoff.sh ]]; then
+  REPO_HARNESS_SKIP_RESUME_REFRESH=1 bash scripts/prepare-handoff.sh "release gate" >/dev/null
+fi
 if [[ -f scripts/codex-handoff-resume.sh ]]; then
   bash scripts/codex-handoff-resume.sh --cwd . --reason "release gate" >/dev/null
 fi

@@ -124,6 +124,27 @@ describe('init-hook command', () => {
     });
   });
 
+  test('reports an unreadable Global Working Rules file instead of crashing', () => {
+    withTempHome((home, repo) => {
+      // A directory at the expected file path makes readFileSync throw EISDIR.
+      mkdirSync(join(home, '.codex', 'AGENTS.md'), { recursive: true });
+
+      const report = runInitHook({
+        cwd: repo,
+        target: 'codex',
+        env: { ...process.env, HOME: home },
+        statusReport: baseStatusReport(),
+        doctorReport: baseDoctorReport(),
+        toolingReport: baseToolingReport(),
+      });
+
+      const globalRules = report.checks.find((entry) => entry.id === 'global-rules.codex');
+      expect(globalRules?.status).toBe('needs_agent');
+      expect(globalRules?.detail).toContain('unreadable');
+      expect(report.agent_actions.find((entry) => entry.id === 'global-rules.insert')).toBeDefined();
+    });
+  });
+
   test('turns adapter count drift into an install action', () => {
     withTempHome((home, repo) => {
       mkdirSync(join(home, '.codex'), { recursive: true });

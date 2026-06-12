@@ -43,20 +43,20 @@ In an adopted repo, the surface area is intentionally small:
 | `tasks/contracts/`, `tasks/reviews/`, and `.ai/harness/checks/` | Scope, verification, and review evidence for proving the work is done. |
 | `.ai/harness/handoff/` and `tasks/current.md` | Session journal and resumable status, derived from workflow artifacts instead of chat memory. |
 
-## What's New in 0.4.2
+## What's New in 0.4.3
 
-- **PRD-to-Sprint planning hierarchy.** `repo-harness-prd` now owns
-  upper-layer product requirements under `plans/prds/`, while
-  `repo-harness-sprint` derives ordered execution backlogs under
-  `plans/sprints/*.sprint.md`.
-- **Generated helper runtime isolation.** Downstream installs place real helper
-  implementations under `.ai/harness/scripts/` and keep root `scripts/*` as
-  compatibility wrappers; this self-host repo remains the source runtime.
-- **Subagent return-channel guard.** Managed hook routes include a guard that
-  keeps delegated runs reporting back through the parent session instead of
-  bypassing the file-backed contract.
-- **Release path alignment.** PRD/Sprint eval fixtures, workflow checks, and
-  command guidance now point at the same installed helper runtime.
+- **Runtime docs lookup.** `repo-harness docs list|path|show` resolves bundled
+  runtime/reference docs from the installed package instead of requiring copied
+  repo prose.
+- **Init-hook bootstrap audit.** `repo-harness init-hook --json` reports concrete
+  Agent actions for missing working rules, adapter drift, stale CLI installs,
+  and tooling readiness.
+- **First-principles edit guard.** Managed hook routes now include
+  anti-overengineering guidance for implementation edits while keeping the guard
+  advisory.
+- **Slimmer generated reference docs.** Generated and migrated repos write
+  deterministic `docs/reference-configs/*.md` pointer stubs while `.ai/harness/*`
+  and `.ai/context/*` remain local runtime artifacts.
 
 ## What repo-harness Does
 
@@ -394,8 +394,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.4.2`
-- Generated workflow stamp: `repo-harness@0.4.2+template@0.4.2`
+- npm package: `repo-harness@0.4.3`
+- Generated workflow stamp: `repo-harness@0.4.3+template@0.4.3`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

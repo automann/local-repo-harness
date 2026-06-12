@@ -1,6 +1,6 @@
 {
-  "version": "0.4.2",
-  "templateVersion": "0.4.2",
+  "version": "0.4.3",
+  "templateVersion": "0.4.3",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -119,6 +119,10 @@
     {
       "version": "0.4.2",
       "description": "Adds the PRD-to-Sprint planning hierarchy, isolates generated-project helper runtime under .ai/harness/scripts, and installs the subagent return-channel guard"
+    },
+    {
+      "version": "0.4.3",
+      "description": "Adds bundled runtime docs lookup, init-hook bootstrap audit guidance, first-principles edit guard coverage, and slimmer generated reference-doc assets"
     }
   ],
   "generatedProjectStamp": {

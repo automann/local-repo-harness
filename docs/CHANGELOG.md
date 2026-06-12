@@ -4,10 +4,18 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+- (empty)
+
+## [0.4.3] - 2026-06-13
+
 ### Added
 
 - Added `repo-harness docs list|path|show` so bundled runtime/reference docs
   resolve from the user-level/package install instead of copied repo prose.
+- Added `repo-harness init-hook --json` bootstrap audit guidance for working
+  rules, adapter drift, stale CLI installs, and tooling readiness.
+- Added first-principles edit guard coverage to the managed hook route set as
+  advisory anti-overengineering guidance.
 
 ### Changed
 
@@ -17,6 +25,20 @@ All notable changes to this skill are documented here.
 - Retired `AGENTS.md` and `CLAUDE.md` from the reference-doc asset surface and
   stopped publishing duplicate `docs/reference-configs/` runtime docs in the
   npm package file list.
+
+### Fixed
+
+- Clarified plan-completeness capture wording so release/readiness checks do
+  not mistake a Draft scan plan for executable implementation state.
+- Made `scripts/check-npm-release.sh` refresh the current handoff before the
+  Codex resume packet so the release gate works from a clean checkout without
+  ignored runtime handoff files.
+
+### Release Notes
+
+- Prepared the `repo-harness@0.4.3` package line for publish; npm publish,
+  registry readback, and GitHub release creation remain explicit release
+  actions.
 
 ## [0.4.2] - 2026-06-13
 

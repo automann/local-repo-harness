@@ -58,7 +58,7 @@ describe("Bootstrap Script Contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     const cliEntry = read("src/cli/index.ts");
     expect(pkg.name).toBe("repo-harness");
-    expect(pkg.version).toBe("0.4.2");
+    expect(pkg.version).toBe("0.4.3");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin["repo-harness-hook"]).toBe("src/cli/hook-entry.ts");
@@ -74,6 +74,17 @@ describe("Bootstrap Script Contracts", () => {
     expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
     expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
     expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");
+  });
+
+  test("release gate should refresh handoff current before resume packet", () => {
+    const releaseGate = read("scripts/check-npm-release.sh");
+    const prepare = 'REPO_HARNESS_SKIP_RESUME_REFRESH=1 bash scripts/prepare-handoff.sh "release gate"';
+    const resume = 'bash scripts/codex-handoff-resume.sh --cwd . --reason "release gate"';
+
+    expect(releaseGate).toContain(prepare);
+    expect(releaseGate).toContain(resume);
+    expect(releaseGate.indexOf(prepare)).toBeLessThan(releaseGate.indexOf(resume));
+    expect(releaseGate.indexOf(resume)).toBeLessThan(releaseGate.indexOf("bash scripts/check-task-workflow.sh --strict"));
   });
 
   test("create-project-dirs should create tasks primary files", () => {

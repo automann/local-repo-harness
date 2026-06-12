@@ -32,19 +32,18 @@ repo-local workflow 的自托管样例。
 | `tasks/contracts/`、`tasks/reviews/`、`.ai/harness/checks/` | 证明完成所需的 scope、verification 和 review evidence。 |
 | `.ai/harness/handoff/` 和 `tasks/current.md` | session journal 与可恢复状态，从 workflow artifacts 派生，而不是依赖聊天记忆。 |
 
-## 0.4.2 新特性
+## 0.4.3 新特性
 
-- **PRD-to-Sprint planning hierarchy。** `repo-harness-prd` 负责
-  `plans/prds/` 下的上层产品需求，`repo-harness-sprint` 负责把 PRD 或明确
-  slice 推成 `plans/sprints/*.sprint.md` 下的有序执行 backlog。
-- **Generated helper runtime isolation。** 下游安装把真实 helper 实现放到
-  `.ai/harness/scripts/`，root `scripts/*` 只保留 compatibility wrappers；
-  自托管源码仓库继续以 root `scripts/` 作为 source runtime。
-- **Subagent return-channel guard。** Managed hook routes 增加 return-channel
-  guard，要求 delegated runs 回到 parent session 汇报，避免绕过 file-backed
-  contract。
-- **Release path alignment。** PRD/Sprint eval fixtures、workflow checks 和
-  command guidance 现在都指向同一个 installed helper runtime。
+- **Runtime docs lookup。** `repo-harness docs list|path|show` 从已安装 package
+  解析 bundled runtime/reference docs，不再要求把完整 repo prose 复制到下游。
+- **Init-hook bootstrap audit。** `repo-harness init-hook --json` 会把缺失的
+  working rules、adapter drift、stale CLI install 和 tooling readiness 汇成
+  具体 Agent actions。
+- **First-principles edit guard。** Managed hook routes 增加实现编辑时的
+  anti-overengineering guidance，同时保持 advisory，不把风格判断变成硬拦截。
+- **更轻的 generated reference docs。** 生成和迁移的仓库写入确定性的
+  `docs/reference-configs/*.md` pointer stubs，`.ai/harness/*` 和 `.ai/context/*`
+  继续作为 repo-local runtime artifacts。
 
 ## 产品做什么
 
@@ -344,8 +343,8 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 
 ## 当前 Release
 
-- npm package：`repo-harness@0.4.2`
-- Generated workflow stamp：`repo-harness@0.4.2+template@0.4.2`
+- npm package：`repo-harness@0.4.3`
+- Generated workflow stamp：`repo-harness@0.4.3+template@0.4.3`
 - GitHub repository：`Ancienttwo/repo-harness`
 - Release history：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

@@ -300,7 +300,15 @@ function globalRulesChecks(
   const checks: InitHookCheck[] = [];
   const missing: string[] = [];
   for (const entry of files) {
-    const content = existsSync(entry.filePath) ? readFileSync(entry.filePath, 'utf-8') : '';
+    let content = '';
+    let readError: string | undefined;
+    if (existsSync(entry.filePath)) {
+      try {
+        content = readFileSync(entry.filePath, 'utf-8');
+      } catch (error) {
+        readError = (error as Error).message;
+      }
+    }
     const present = content ? hasGlobalWorkingRules(content) : false;
     checks.push({
       id: `global-rules.${entry.target}`,
@@ -309,7 +317,9 @@ function globalRulesChecks(
       source: 'global-rules',
       detail: present
         ? `present at ${entry.filePath}`
-        : `${existsSync(entry.filePath) ? 'not found in existing file' : 'file missing'}: ${entry.filePath}`,
+        : readError
+          ? `unreadable (${readError}): ${entry.filePath}`
+          : `${existsSync(entry.filePath) ? 'not found in existing file' : 'file missing'}: ${entry.filePath}`,
     });
     if (!present) missing.push(entry.filePath);
   }
