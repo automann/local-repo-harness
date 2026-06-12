@@ -4,7 +4,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { runPromptGuardVerdictFromPrompt, type PromptGuardVerdict } from "../src/cli/commands/prompt-guard-decision";
-import type { PromptGuardAction, PromptGuardState } from "../src/cli/hook/prompt-guard-decision";
+import {
+  PROMPT_GUARD_ACTIONS,
+  PROMPT_GUARD_INTENTS,
+  type PromptGuardAction,
+  type PromptGuardIntent,
+  type PromptGuardState,
+} from "../src/cli/hook/prompt-guard-decision";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,6 +40,8 @@ export interface RouteNlDecision {
 export interface RouteScenarioPack {
   protocol: "route-nl-vs-ts/scenarios/v1";
   decision_table: string;
+  allowed_intents: readonly PromptGuardIntent[];
+  allowed_actions: readonly PromptGuardAction[];
   instructions: string[];
   scenarios: Array<{
     scenario_id: string;
@@ -47,6 +55,7 @@ export interface RouteScenarioPack {
 interface ArmComparison {
   compliance_rate: number;
   compliant_count: number;
+  normalization_count: number;
   false_positive_count: number;
   false_negative_count: number;
   mismatch_count: number;
@@ -57,6 +66,8 @@ interface ArmComparison {
     expected_action: PromptGuardAction;
     actual_intent: string | null;
     actual_action: string | null;
+    raw_intent?: string | null;
+    raw_action?: string | null;
     compliant: boolean;
     error_type: "false_positive" | "false_negative" | "mismatch" | "missing" | null;
   }>;
@@ -218,6 +229,40 @@ const STATE_ENV: Record<keyof PromptGuardState, string> = {
   evidence: "PROMPT_GUARD_EVIDENCE_STATE",
 };
 
+export const ROUTE_NL_ALLOWED_INTENTS = PROMPT_GUARD_INTENTS;
+export const ROUTE_NL_ALLOWED_ACTIONS = PROMPT_GUARD_ACTIONS;
+
+const ACTION_ALIASES: Record<string, PromptGuardAction> = {
+  emit_stale_marker_advice: "stale_active_plan_advice",
+  stale_marker_advice: "stale_active_plan_advice",
+  clear_stale_marker_advice: "stale_active_plan_advice",
+  capture_pending_plan: "plan_capture_pending_advice",
+  pending_plan_capture: "plan_capture_pending_advice",
+  request_plan_capture_approval: "plan_capture_draft_advice",
+  request_plan_approval: "plan_capture_draft_advice",
+  scaffold_contract: "plan_execution_scaffold_advice",
+  project_contract: "plan_execution_scaffold_advice",
+  enter_done_gate: "done_gate",
+  completion_gate: "done_gate",
+};
+
+const INTENT_ALIASES: Record<string, PromptGuardIntent> = {
+  question: "none",
+  informational: "none",
+  information: "none",
+  no_execution: "none",
+};
+
+const NON_EXECUTION_ALLOW_INTENTS = new Set<PromptGuardIntent>([
+  "planning_start",
+  "planning_discussion",
+  "review_release",
+  "passive_worktree_status",
+  "passive_completion_report",
+  "passive_next_slice_report",
+  "none",
+]);
+
 function cloneState(state: PromptGuardState): PromptGuardState {
   return { ...state };
 }
@@ -246,8 +291,12 @@ export function buildScenarioPack(): RouteScenarioPack {
   return {
     protocol: "route-nl-vs-ts/scenarios/v1",
     decision_table: "docs/reference-configs/loop-engine-nl-decision-table.md",
+    allowed_intents: ROUTE_NL_ALLOWED_INTENTS,
+    allowed_actions: ROUTE_NL_ALLOWED_ACTIONS,
     instructions: [
       "Use the NL decision table to choose exactly one intent and action for each scenario.",
+      "The intent and action values must be exact strings from allowed_intents and allowed_actions.",
+      "Do not invent synonyms such as enter_done_gate, capture_pending_plan, or scaffold_contract.",
       "Do not use the TypeScript prompt classifier for the NL arm.",
       "Write decisions as JSON with a top-level decisions array.",
     ],
@@ -278,6 +327,40 @@ function actionIsAllow(action: string | null): boolean {
   return action === "allow";
 }
 
+function normalizeToken(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+export function normalizeRouteAction(action: string): string {
+  const token = normalizeToken(action);
+  if (ROUTE_NL_ALLOWED_ACTIONS.includes(token as PromptGuardAction)) return token;
+  return ACTION_ALIASES[token] ?? token;
+}
+
+export function normalizeRouteIntent(intent: string): string {
+  const token = normalizeToken(intent);
+  if (ROUTE_NL_ALLOWED_INTENTS.includes(token as PromptGuardIntent)) return token;
+  return INTENT_ALIASES[token] ?? token;
+}
+
+function intentIsCompliant(params: {
+  expectedIntent: string;
+  expectedAction: PromptGuardAction;
+  actualIntent: string | null;
+  actualAction: string | null;
+}): boolean {
+  if (params.actualIntent === params.expectedIntent) return true;
+  if (
+    params.expectedIntent === "none" &&
+    params.expectedAction === "allow" &&
+    params.actualAction === "allow" &&
+    NON_EXECUTION_ALLOW_INTENTS.has(params.actualIntent as PromptGuardIntent)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function classifyError(
   expectedAction: PromptGuardAction,
   actualAction: string | null,
@@ -290,13 +373,25 @@ function classifyError(
   return "mismatch";
 }
 
-function summarizeComparison(
-  actualByScenario: Map<string, { intent: string; action: string }>,
-): ArmComparison {
+function summarizeComparison(actualByScenario: Map<string, { intent: string; action: string }>): ArmComparison {
   const results = ROUTE_SCENARIOS.map((scenario) => {
-    const actual = actualByScenario.get(scenario.id) ?? null;
+    const rawActual = actualByScenario.get(scenario.id) ?? null;
+    const actual = rawActual
+      ? {
+          intent: normalizeRouteIntent(rawActual.intent),
+          action: normalizeRouteAction(rawActual.action),
+          rawIntent: rawActual.intent,
+          rawAction: rawActual.action,
+        }
+      : null;
     const compliant =
-      actual?.intent === scenario.expected.intent && actual?.action === scenario.expected.action;
+      actual?.action === scenario.expected.action &&
+      intentIsCompliant({
+        expectedIntent: scenario.expected.intent,
+        expectedAction: scenario.expected.action,
+        actualIntent: actual?.intent ?? null,
+        actualAction: actual?.action ?? null,
+      });
     const errorType = classifyError(
       scenario.expected.action,
       actual?.action ?? null,
@@ -309,15 +404,19 @@ function summarizeComparison(
       expected_action: scenario.expected.action,
       actual_intent: actual?.intent ?? null,
       actual_action: actual?.action ?? null,
+      raw_intent: actual?.rawIntent === actual?.intent ? undefined : actual?.rawIntent ?? null,
+      raw_action: actual?.rawAction === actual?.action ? undefined : actual?.rawAction ?? null,
       compliant,
       error_type: errorType,
     };
   });
 
   const compliantCount = results.filter((result) => result.compliant).length;
+  const normalizationCount = results.filter((result) => result.raw_intent || result.raw_action).length;
   return {
     compliance_rate: ROUTE_SCENARIOS.length === 0 ? 0 : compliantCount / ROUTE_SCENARIOS.length,
     compliant_count: compliantCount,
+    normalization_count: normalizationCount,
     false_positive_count: results.filter((result) => result.error_type === "false_positive").length,
     false_negative_count: results.filter((result) => result.error_type === "false_negative").length,
     mismatch_count: results.filter((result) => result.error_type === "mismatch").length,
