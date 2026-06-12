@@ -5,6 +5,15 @@ import { join } from "path";
 import { spawnSync } from "child_process";
 
 const ROOT = join(import.meta.dir, "..");
+const REFERENCE_STUB_MARKER = "<!-- repo-harness: reference-config-stub v1 -->";
+
+function expectReferenceConfigStub(cwd: string, docId: string): void {
+  const content = readFileSync(join(cwd, "docs/reference-configs", `${docId}.md`), "utf-8");
+  expect(content).toContain(REFERENCE_STUB_MARKER);
+  expect(content).toContain(`> **Doc ID**: ${docId}`);
+  expect(content).toContain(`repo-harness docs path ${docId}`);
+  expect(content).toContain(`repo-harness docs show ${docId}`);
+}
 
 describe("create-project-dirs runtime smoke", () => {
   test("should scaffold 3.1 harness artifacts", () => {
@@ -45,6 +54,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "docs/reference-configs/heartbeat-triage.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/reference-configs/document-generation.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/reference-configs/global-working-rules.md"))).toBe(true);
+      expectReferenceConfigStub(cwd, "harness-overview");
+      expectReferenceConfigStub(cwd, "agentic-development-flow");
+      expectReferenceConfigStub(cwd, "external-tooling");
       expect(existsSync(join(cwd, "docs/brief.md"))).toBe(false);
       expect(existsSync(join(cwd, "docs/tech-stack.md"))).toBe(false);
       expect(existsSync(join(cwd, "docs/decisions.md"))).toBe(false);
@@ -170,6 +182,10 @@ describe("create-project-dirs runtime smoke", () => {
       const workflowContract = JSON.parse(readFileSync(join(cwd, ".ai/harness/workflow-contract.json"), "utf-8"));
       expect(workflowContract.helpers.runtimeDirectory).toBe(".ai/harness/scripts");
       expect(workflowContract.helpers.compatibilityDirectory).toBe("scripts");
+      expect(workflowContract.documentation.referenceConfigs.source).toBe("user-level-runtime-docs");
+      expect(workflowContract.documentation.referenceConfigs.repoStubDirectory).toBe("docs/reference-configs");
+      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("repo-harness docs path <doc-id>");
+      expect(workflowContract.documentation.referenceConfigs.stubMarker).toBe(REFERENCE_STUB_MARKER);
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
       expect(workflowContract.helpers.scripts).toContain("sync-brain-docs.sh");
@@ -300,6 +316,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.context.capability_resolver).toBe(".ai/harness/scripts/capability-resolver.ts");
       expect(policy.context.capability_config).toBe(".ai/harness/scripts/capability-config.ts");
       expect(policy.documentation.profile).toBe("minimal-agentic");
+      expect(policy.documentation.reference_source).toBe("user-level-runtime-docs");
+      expect(policy.documentation.reference_stub_marker).toBe(REFERENCE_STUB_MARKER);
+      expect(policy.documentation.reference_resolver).toBe("repo-harness docs path <doc-id>");
       expect(policy.documentation.required).toContain("docs/architecture/index.md");
       expect(policy.architecture.diagram_skill).toBe("mermaid");
       expect(policy.architecture.vendoring_policy).toBe("do-not-vendor-diagram-skill-assets");
@@ -613,8 +632,12 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "docs/decisions.md"))).toBe(true);
       expect(existsSync(join(cwd, "docs/api"))).toBe(true);
       expect(existsSync(join(cwd, "docs/reference-configs/spa-day-protocol.md"))).toBe(true);
+      expect(existsSync(join(cwd, "docs/reference-configs/AGENTS.md"))).toBe(false);
+      expect(existsSync(join(cwd, "docs/reference-configs/CLAUDE.md"))).toBe(false);
+      expectReferenceConfigStub(cwd, "spa-day-protocol");
       const policy = JSON.parse(readFileSync(join(cwd, ".ai/harness/policy.json"), "utf-8"));
       expect(policy.documentation.profile).toBe("full");
+      expect(policy.documentation.reference_source).toBe("user-level-runtime-docs");
       expect(policy.documentation.reference_configs).toContain("spa-day-protocol.md");
     } finally {
       rmSync(cwd, { recursive: true, force: true });

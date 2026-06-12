@@ -432,6 +432,32 @@ check_required_file() {
   report_issue "Missing required file: $path"
 }
 
+check_reference_config_stub() {
+  local path="$1"
+  [[ -f "$path" ]] || return 0
+  grep -Fq "<!-- repo-harness: reference-config-stub v1 -->" "$path" || return 0
+
+  local name="${path##*/}"
+  local doc_id="${name%.md}"
+  if ! grep -Fq "> **Doc ID**: $doc_id" "$path"; then
+    report_issue "Reference config stub has wrong or missing Doc ID: $path"
+  fi
+  if ! grep -Fq "repo-harness docs path $doc_id" "$path"; then
+    report_issue "Reference config stub is missing resolver command: $path"
+  fi
+}
+
+check_reference_config_stubs() {
+  local path
+  if [[ ! -d "docs/reference-configs" ]]; then
+    return 0
+  fi
+  for path in docs/reference-configs/*.md; do
+    [[ -e "$path" ]] || continue
+    check_reference_config_stub "$path"
+  done
+}
+
 check_required_dir() {
   local path="$1"
   if [[ -d "$path" ]]; then
@@ -584,6 +610,8 @@ else
     done < <(contract_query_lines "artifacts.requiredFiles")
   fi
 fi
+
+check_reference_config_stubs
 
 if [[ -f "docs/plan.md" ]]; then
   report_issue "Legacy docs/plan.md detected; migrate or archive it into plans/."

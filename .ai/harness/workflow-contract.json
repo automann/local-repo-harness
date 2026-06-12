@@ -72,6 +72,15 @@
       ]
     }
   },
+  "documentation": {
+    "referenceConfigs": {
+      "source": "user-level-runtime-docs",
+      "repoStubDirectory": "docs/reference-configs",
+      "packageDirectory": "assets/reference-configs",
+      "resolverCommand": "repo-harness docs path <doc-id>",
+      "stubMarker": "<!-- repo-harness: reference-config-stub v1 -->"
+    }
+  },
   "helpers": {
     "runtimeDirectory": ".ai/harness/scripts",
     "compatibilityDirectory": "scripts",

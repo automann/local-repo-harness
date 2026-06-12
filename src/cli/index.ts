@@ -16,6 +16,7 @@ import { formatMigratePlan, runMigrate } from './commands/migrate';
 import { buildToolsCommand } from './commands/tools';
 import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
+import { buildDocsCommand } from './commands/docs';
 import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
@@ -34,6 +35,7 @@ export const SUBCOMMANDS = [
   'tools',
   'brain',
   'capability-context',
+  'docs',
 ] as const;
 export type Subcommand = (typeof SUBCOMMANDS)[number];
 
@@ -251,6 +253,7 @@ export function buildProgram(): Command {
   program.addCommand(buildToolsCommand());
   program.addCommand(buildBrainCommand());
   program.addCommand(buildCapabilityContextCommand());
+  program.addCommand(buildDocsCommand());
   program
     .command('prompt-guard-decide', { hidden: true })
     .description('Internal prompt-guard intent/state decision engine')

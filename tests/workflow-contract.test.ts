@@ -88,6 +88,11 @@ describe("workflow contract manifest", () => {
     expect(contract.externalTooling?.codexAutomationProfile?.vendoringPolicy).toBe("do-not-vendor-skill-body");
     expect(contract.externalTooling?.diagramDesign?.skillName).toBe("mermaid");
     expect(contract.externalTooling?.diagramDesign?.vendoringPolicy).toBe("do-not-vendor");
+    expect(contract.documentation?.referenceConfigs?.source).toBe("user-level-runtime-docs");
+    expect(contract.documentation?.referenceConfigs?.repoStubDirectory).toBe("docs/reference-configs");
+    expect(contract.documentation?.referenceConfigs?.packageDirectory).toBe("assets/reference-configs");
+    expect(contract.documentation?.referenceConfigs?.resolverCommand).toBe("repo-harness docs path <doc-id>");
+    expect(contract.documentation?.referenceConfigs?.stubMarker).toBe("<!-- repo-harness: reference-config-stub v1 -->");
     expect(contract.agenticDevelopment?.routing.complexEngineeringPlan).toBe("gstack:plan-eng-review");
     expect(contract.agenticDevelopment?.routing.bugOrRegression).toBe("waza:hunt");
     expect(contract.agenticDevelopment?.dueDiligence.levels).toContain("P2_DATA_FLOW_TRACE");

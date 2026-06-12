@@ -903,7 +903,10 @@ ARCHITECTURE_INDEX_EOF
     "required": ["docs/spec.md", "docs/architecture/index.md"],
     "on_demand": ["docs/brief.md", "docs/tech-stack.md", "docs/decisions.md", "docs/architecture.md", "docs/packages.md"],
     "reference_configs": ["harness-overview.md", "agentic-development-flow.md", "external-tooling.md", "sprint-contracts.md", "handoff-protocol.md", "document-generation.md", "global-working-rules.md"],
-    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks"
+    "reference_source": "user-level-runtime-docs",
+    "reference_stub_marker": "<!-- repo-harness: reference-config-stub v1 -->",
+    "reference_resolver": "repo-harness docs path <doc-id>",
+    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package repo-harness install"
   },
   "lsp_profiles": {
     "default": "typescript-lsp",

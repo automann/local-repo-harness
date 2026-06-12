@@ -238,17 +238,8 @@ TESTS_README_EOF
 if [[ -d "$ASSETS_REF_DIR" ]]; then
   pi_install_reference_configs "$PWD" "$ASSETS_REF_DIR" "apply"
 else
-  cat > docs/reference-configs/agentic-development-flow.md << 'REF_AGENTIC_FLOW_EOF'
-# Agentic Development Flow
-
-Use this file for gstack/Waza routing, P1/P2/P3 reporting triggers, and daily agentic development flow.
-REF_AGENTIC_FLOW_EOF
-
-  cat > docs/reference-configs/external-tooling.md << 'REF_EXTERNAL_TOOLING_EOF'
-# External Tooling Reference
-
-Use this file for external tool routing, install commands, update commands, and gbrain MCP guidance.
-REF_EXTERNAL_TOOLING_EOF
+  pi_write_reference_config_stub "docs/reference-configs/agentic-development-flow.md" "agentic-development-flow.md" "$SCRIPT_DIR/../assets/reference-configs"
+  pi_write_reference_config_stub "docs/reference-configs/external-tooling.md" "external-tooling.md" "$SCRIPT_DIR/../assets/reference-configs"
 fi
 
 touch deploy/env/.gitkeep

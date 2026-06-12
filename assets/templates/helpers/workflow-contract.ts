@@ -53,6 +53,15 @@ export type WorkflowContract = {
       explicitReportRequiredFor: string[];
     };
   };
+  documentation?: {
+    referenceConfigs?: {
+      source: string;
+      repoStubDirectory: string;
+      packageDirectory: string;
+      resolverCommand: string;
+      stubMarker: string;
+    };
+  };
   helpers: {
     runtimeDirectory?: string;
     compatibilityDirectory?: string;
