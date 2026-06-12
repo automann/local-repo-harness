@@ -373,6 +373,16 @@ decision rationale 的要求，来自他的贡献与启发。
 product discovery、plan/design review、release 文档、knowledge sync 和
 handoff retrieval 的工作流设计。
 
+感谢 OpenAI Codex 作为本仓库主要执行 agent 参与实现、验证和收口。Codex 对某个
+commit 有实质贡献时，GitHub contributor 署名使用显式 trailer：
+
+```text
+Co-authored-by: codex <codex@openai.com>
+```
+
+这条署名保持逐 commit 显式添加，不把它藏进下游 `repo-harness` commit 脚本或 hook
+里，除非目标仓库自己采用同样策略。
+
 ## Action Command Skills
 
 公共 command facades 在 `assets/skill-commands/`；它们保留 host skill discovery

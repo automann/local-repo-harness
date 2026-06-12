@@ -431,7 +431,8 @@ Most common guards:
 
 ## Acknowledgements and Workflow Influences
 
-`repo-harness` is built around a small set of external skills and repos that
+`repo-harness` is built around a small set of external skills, repos, and agent
+runtimes that
 proved useful while this project was being designed, debugged, and released.
 They are acknowledged here because they shaped the workflow contract, but they
 are not ordinary bundled product dependencies.
@@ -443,6 +444,20 @@ are not ordinary bundled product dependencies.
 | gstack skills and `gbrain` by [Garry Tan](https://x.com/garrytan) | Product discovery, plan review, design review, post-ship documentation hygiene, knowledge sync, handoff retrieval, and long-form repo memory | External operator workflow plus optional external CLI/index; advisory by default |
 | `mermaid` | Human-readable architecture and system-flow diagrams when Mermaid is not enough | Runtime-referenced skill, not vendored into generated repos |
 | CodeGraph (`@colbymchenry/codegraph`) | Symbol-aware navigation, impact tracing, and readiness checks for this self-host repo | Dev dependency in this repo; generated repos stay global-MCP-first unless policy opts in |
+| OpenAI Codex | Primary execution agent for repo-local implementation, verification, and GitHub contributor attribution when a commit materially includes Codex-authored work | External agent runtime; attribution is an explicit commit trailer, not hidden hook automation |
+
+### GitHub Contributor Attribution
+
+When Codex materially contributes to a commit, use GitHub's standard co-author
+trailer format at the end of the commit message:
+
+```text
+Co-authored-by: codex <codex@openai.com>
+```
+
+Keep this opt-in and visible per commit. Do not bake it into downstream
+repo-harness commit scripts or hooks unless that repo explicitly adopts the same
+policy.
 
 ## Action Command Skills
 

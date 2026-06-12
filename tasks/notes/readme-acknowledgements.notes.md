@@ -18,3 +18,13 @@ Decision:
 Tradeoff: this records the skills and repos that shaped the workflow without
 expanding the README into a full dependency guide. Detailed install/update
 instructions stay in `docs/reference-configs/external-tooling.md`.
+
+## 2026-06-12 Codex contributor attribution
+
+- Added OpenAI Codex to the README acknowledgement surface.
+- Documented the explicit GitHub co-author trailer
+  `Co-authored-by: codex <codex@openai.com>` for commits that materially include
+  Codex-authored work.
+- Kept attribution opt-in per commit instead of changing repo-harness commit
+  scripts or hooks, so generated downstream repos do not inherit hidden AI
+  trailer behavior.

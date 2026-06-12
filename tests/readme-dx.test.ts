@@ -107,6 +107,17 @@ describe("README DX contract", () => {
     expect(verification).not.toContain("bun run benchmark:skills --dry-run");
   });
 
+  test("documents explicit Codex GitHub contributor attribution", () => {
+    const readme = read("README.md");
+    const zhReadme = read("README.zh-CN.md");
+
+    expect(readme).toContain("Co-authored-by: codex <codex@openai.com>");
+    expect(readme).toContain("explicit commit trailer");
+    expect(readme).toContain("not hidden hook automation");
+    expect(zhReadme).toContain("Co-authored-by: codex <codex@openai.com>");
+    expect(zhReadme).toContain("逐 commit 显式添加");
+  });
+
   test("dry-run keeps the migration report onboarding signals", () => {
     const res = spawnSync("bash", ["scripts/migrate-project-template.sh", "--repo", ".", "--dry-run"], {
       cwd: ROOT,
