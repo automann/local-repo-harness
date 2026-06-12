@@ -1,16 +1,16 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-12T14:01:00+0800 -->
+<!-- updated_at: 2026-06-12T14:09:07+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: Active
-> **Updated At**: 2026-06-12T14:01:00+0800
-> **Source Branch**: codex/loop-engine-no-go-stack-reconcile
-> **Source Commit**: 4ff5458
+> **Updated At**: 2026-06-12T14:09:07+0800
+> **Source Branch**: main
+> **Source Commit**: 39e346d
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: loop-engine-row6-closeout-integrated
+> **Reason**: loop-engine-row7-cutover-gate-integrated
 > **Derived From**: active-plan, active-sprint, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
@@ -31,11 +31,14 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Active Work
 
-- /Users/chris/Projects/agentic-dev-wt-loop-engine-03-no-go-router-schema-repair: plans/plan-20260612-1355-loop-engine-07-cutover-after-repair.md
+- /Users/chris/Projects/agentic-dev-wt-loop-engine-03-no-go-router-schema-repair: plans/plan-20260612-1402-loop-engine-08-hook-diet-stretch.md
 - /Users/chris/Projects/agentic-dev-wt-loop-engine-03-no-go-router-schema-repair: active-worktree owner -> /Users/chris/Projects/agentic-dev-wt-loop-engine-03-no-go-router-schema-repair
 ## Active Sprint
 
-- Sprint: (none)
+- Sprint: `tasks/sprints/20260612-0236-loop-engine.sprint.md`
+- Sprint Status: Executing
+- Backlog: 7/8
+- Next Sprint Task: loop-engine-08-hook-diet-stretch
 ## Workstreams
 
 - `tasks/workstreams/workflow-engine/contract-assets/cleanup-script-policy.md`: status=completed, current_slice=todo-01, source_plan=(none)
@@ -45,7 +48,7 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Checks
 
-- status=(none), source=(none), file=.ai/harness/checks/latest.json
+- status=pass, source=post-bash, exit_code=0, file=.ai/harness/checks/latest.json
 
 ## Git Status
 
