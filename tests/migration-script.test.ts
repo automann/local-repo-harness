@@ -104,6 +104,7 @@ describe("Migration script contract", () => {
     expect(workflowContract).toContain("ensure-task-workflow.sh");
     expect(workflowContract).toContain("check-task-workflow.sh");
     expect(workflowContract).toContain("maintenance-triage.sh");
+    expect(workflowContract).toContain("heartbeat-triage.sh");
     expect(workflowContract).toContain("context-budget.ts");
     expect(workflowContract).toContain("capability-resolver.ts");
     expect(workflowContract).toContain("architecture-event.ts");
@@ -216,6 +217,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".ai/harness/brain-manifest.json"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/runs/.gitkeep"))).toBe(true);
       expect(existsSync(join(repo, ".ai/harness/worktrees/.gitkeep"))).toBe(true);
+      expect(existsSync(join(repo, ".ai/harness/triage/.gitkeep"))).toBe(true);
       expect(existsSync(join(repo, "deploy/README.md"))).toBe(true);
       expect(existsSync(join(repo, "deploy/scripts/.gitkeep"))).toBe(true);
       expect(existsSync(join(repo, "deploy/submissions/.gitkeep"))).toBe(true);
@@ -244,6 +246,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/ensure-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/check-task-workflow.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/maintenance-triage.sh"))).toBe(true);
+      expect(existsSync(join(repo, "scripts/heartbeat-triage.sh"))).toBe(true);
       expect(existsSync(join(repo, "scripts/workflow-contract.ts"))).toBe(true);
       expect(existsSync(join(repo, "scripts/inspect-project-state.ts"))).toBe(true);
       expect(existsSync(join(repo, "scripts/migrate-workflow-docs.ts"))).toBe(true);
@@ -280,6 +283,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "docs/reference-configs/agentic-development-flow.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/external-tooling.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/sprint-contracts.md"))).toBe(true);
+      expect(existsSync(join(repo, "docs/reference-configs/heartbeat-triage.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/global-working-rules.md"))).toBe(true);
       expect(existsSync(join(repo, "docs/reference-configs/spa-day-protocol.md"))).toBe(false);
       expect(existsSync(join(repo, "docs/reference-configs/hook-operations.md"))).toBe(false);
@@ -397,6 +401,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.scripts).toContain("refresh-current-status.sh");
       expect(workflowContract.helpers.scripts).toContain("check-context-files.sh");
       expect(workflowContract.helpers.scripts).toContain("maintenance-triage.sh");
+      expect(workflowContract.helpers.scripts).toContain("heartbeat-triage.sh");
       expect(workflowContract.helpers.scripts).toContain("context-budget.ts");
       expect(workflowContract.helpers.scripts).toContain("capability-resolver.ts");
       expect(workflowContract.helpers.scripts).toContain("architecture-event.ts");
@@ -406,9 +411,11 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/contract-run.ts");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/ship-worktrees.sh");
+      expect(workflowContract.artifacts.requiredFiles).toContain("scripts/heartbeat-triage.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
       expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/worktrees");
+      expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/triage");
       expect(workflowContract.artifacts.requiredDirectories).toContain(".ai/harness/planning");
       expect(workflowContract.artifacts.requiredDirectories).toContain("deploy/sql");
       expect(workflowContract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
@@ -419,6 +426,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/agentic-development-flow.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/document-generation.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/global-working-rules.md");
+      expect(workflowContract.artifacts.requiredFiles).toContain("docs/reference-configs/heartbeat-triage.md");
       expect(workflowContract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain("tasks/notes");
       expect(workflowContract.artifacts.requiredDirectories).toContain("tasks/workstreams");
@@ -428,6 +436,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-plan");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-worktree");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/planning/");
+      expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/triage/inbox.md");
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
 
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
