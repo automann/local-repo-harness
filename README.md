@@ -34,25 +34,21 @@ This repository now dogfoods its own tasks-first contract. It is both:
   read a 1KB capability contract or query the index instead of spending thousands of
   tokens rediscovering structure.
 
-## What's New in 0.4.0
+## What's New in 0.4.1
 
-- **Loop-engine evidence surfaces.** `repo-harness-hook state-snapshot --json`,
-  the NL decision-table reference, route A/B evals, and the cutover gate make
-  prompt-routing experiments measurable while keeping the TypeScript classifier
-  authoritative until evidence says otherwise.
-- **Architecture queue gate.** `scripts/architecture-queue.sh`,
-  `scripts/check-architecture-sync.sh`, and the expanded architecture event
-  helper replace the retired append-only drift script with a derived request
-  index that can gate stale architecture state.
-- **Contract delegation pilot.** Contract templates now include
-  `budget`, `permission_scope`, and `roles`, and `scripts/contract-run.ts`
-  can run explicit worker/verifier child commands against contract exit
-  criteria.
-- **Heartbeat triage.** `scripts/heartbeat-triage.sh` records scheduled
-  workflow checks, sprint-next signals, and architecture request state into the
-  repo-local triage inbox.
-- **Workflow asset sync.** New helpers, docs, tests, and generated-repo assets
-  keep the self-host runtime and installed template copies aligned.
+- **Session-scoped CodeGraph nudges.** Hook stdin `session_id` now drives the
+  one-shot CodeGraph route hint, so stale local session files no longer suppress
+  or repeat guidance across independent Claude/Codex sessions.
+- **Central-first hook safety.** Generated and migrated repos stay on the
+  user-level hook runtime by default; repo-local top-level hook scripts are
+  pruned unless `.ai/harness/policy.json` explicitly pins `"hook_source": "repo"`.
+- **Workflow document migration.** Active workflow docs now use
+  `tasks/todos.md` for deferred goals and `docs/researches/*.md` for durable
+  research, with legacy `tasks/todo.md` and `tasks/research.md` treated as
+  migration inputs.
+- **Release-gate stability.** Runtime ignore rules cover transient
+  `tasks/.current.md.tmp.*` and `.claude/.plan-state/` state, and the default
+  Bun test timeout matches the release gate budget.
 
 ## What repo-harness Does
 
@@ -115,7 +111,7 @@ The diagram below assumes the harness is already installed in the repo. It shows
 the normal lifecycle from a program sprint backlog down to one contract task:
 draft or select the task, project it into execution files, check out the
 contract worktree when policy requires it, implement under hooks, verify, review,
-complete the sprint task when applicable, and close out. The 0.4.0 loop-system
+complete the sprint task when applicable, and close out. The 0.4.x loop-system
 surfaces add scheduled heartbeat discovery, state-snapshot/eval evidence for
 routing changes, architecture queue freshness, and optional contract-run
 delegation without changing the file-backed authority model.
@@ -229,11 +225,11 @@ repository to install or refresh workflow files, hook assets, host adapters,
 skill aliases, and repo-local verification surfaces from the current npm package.
 
 The npm package and generated workflow stamp now share the `0.4.x` release line.
-The `0.4.0` package keeps first-run
+The `0.4.1` package keeps first-run
 global bootstrap (`repo-harness init`) separate from repo-local refresh
-(`repo-harness update`) while adding the loop-engine state snapshot, architecture
-queue gate, contract delegation pilot, heartbeat triage helper, and generated
-asset sync for those workflow surfaces.
+(`repo-harness update`) while hardening session-scoped hook state, central-first
+hook execution, workflow-document migration, and release-gate stability on top
+of the `0.4.0` loop-engine surfaces.
 These sit on top of the renamed `repo-harness` CLI, user-level hook
 adapter bootstrap, AI-native scaffold overlays, the typed prompt-guard decision
 engine, plan-stem task artifact naming, `REPO_HARNESS_*` runtime aliases, Waza
@@ -384,8 +380,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.4.0`
-- Generated workflow stamp: `repo-harness@0.4.0+template@0.4.0`
+- npm package: `repo-harness@0.4.1`
+- Generated workflow stamp: `repo-harness@0.4.1+template@0.4.1`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

@@ -1,6 +1,6 @@
 {
-  "version": "0.4.0",
-  "templateVersion": "0.4.0",
+  "version": "0.4.1",
+  "templateVersion": "0.4.1",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -111,6 +111,10 @@
     {
       "version": "0.4.0",
       "description": "Retires the separate 5.x generated workflow compatibility line; package, skill, and template stamps now share the repo-harness npm release version"
+    },
+    {
+      "version": "0.4.1",
+      "description": "Adds runtime safety fixes for session-scoped CodeGraph routing, central-first hook execution, and the tasks/todos workflow-document migration"
     }
   ],
   "generatedProjectStamp": {

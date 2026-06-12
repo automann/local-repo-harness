@@ -1,7 +1,7 @@
 # Release Filing: repo-harness 0.4.1
 
 Date: 2026-06-12
-Status: Draft release prep, not published
+Status: Version bumped; release gate passed; not published
 
 ## Scope
 
@@ -9,9 +9,9 @@ Status: Draft release prep, not published
 - Current npm latest: `repo-harness@0.4.0`
 - Base npm tag: `v0.4.0`
 - Target branch: `main`
-- Source commit: pending; current working tree is dirty and not staged for
-  release.
-- Version surfaces still to bump before publish:
+- Source commit: pending; current working tree contains the `0.4.1` release
+  bump and still needs commit, tag, and publish actions.
+- Version surfaces bumped before publish:
   - `package.json`
   - `assets/skill-version.json`
   - `src/cli/commands/status.ts`
@@ -64,6 +64,12 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
 
 ## Verification So Far
 
+- Final release gate after version bump:
+  - `bash scripts/check-npm-release.sh`
+  - Result: pass
+  - Summary: `679 pass, 0 fail, 6520 expectations across 66 files`; deploy SQL,
+    architecture sync, task sync, brain sync, strict workflow, inspect,
+    migration dry-run, and `npm pack --dry-run --json` all completed.
 - `bun test`: 678 pass, 0 fail, 6514 expectations across 66 files.
 - Focused affected suites passed:
   - `bun test tests/workflow-contract.test.ts`
@@ -86,10 +92,6 @@ surface migration to `tasks/todos.md` plus `docs/researches/`.
 
 ## Publish Hold Points
 
-- Version bump has not been applied.
-- Final `bash scripts/check-npm-release.sh` has not been rerun after the release
-  documentation edits and future version bump.
-- `npm pack --dry-run --json` has not been rerun for `repo-harness@0.4.1`.
 - npm publish has not been attempted.
 - GitHub tag/release for `v0.4.1` has not been created.
 - `enterprise-brain` downstream refresh produced a dirty migration diff that

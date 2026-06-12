@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "hook_source": "repo",
   "active_plan": {
     "marker_file": ".ai/harness/active-plan",
     "legacy_marker_file": ".claude/.active-plan",
@@ -14,11 +13,11 @@
     "todo_file": "tasks/todos.md",
     "current_status_file": "tasks/current.md",
     "lessons_file": "tasks/lessons.md",
+    "research_dir": "docs/researches",
     "workstreams_dir": "tasks/workstreams",
     "contracts_dir": "tasks/contracts",
     "reviews_dir": "tasks/reviews",
-    "notes_dir": "tasks/notes",
-    "research_dir": "docs/researches"
+    "notes_dir": "tasks/notes"
   },
   "sprints": {
     "dir": "plans/prds",
@@ -178,6 +177,7 @@
   },
   "sidecar_research": {
     "default": true,
+    "output_dir": "docs/researches",
     "preferred_runners": [
       "subagent",
       "codex exec --json",
@@ -185,8 +185,7 @@
     ],
     "spawn_decision": "main agent decides from task breadth, context impact, raw-log volume, and callable runner availability; do not ask the user for spawn confirmation",
     "fallback_runner": "main-thread trace",
-    "main_thread_policy": "if spawning is not worthwhile or no sidecar runner is callable, perform bounded research in the main thread; consume conclusions and evidence paths, not raw logs",
-    "output_dir": "docs/researches"
+    "main_thread_policy": "if spawning is not worthwhile or no sidecar runner is callable, perform bounded research in the main thread; consume conclusions and evidence paths, not raw logs"
   },
   "documentation": {
     "profile": "minimal-agentic",
@@ -208,7 +207,8 @@
       "sprint-contracts.md",
       "handoff-protocol.md",
       "document-generation.md",
-      "global-working-rules.md"
+      "global-working-rules.md",
+      "heartbeat-triage.md"
     ],
     "rule": "create optional docs only when the agent has concrete repo evidence or the user asks"
   },
@@ -373,5 +373,6 @@
     "worktree_guard": "warn-by-default",
     "verification_gate": "contract-and-review",
     "completion_requires_checks": true
-  }
+  },
+  "hook_source": "repo"
 }

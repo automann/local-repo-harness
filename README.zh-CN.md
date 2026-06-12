@@ -23,21 +23,20 @@ repo-local workflow 的自托管样例。
   做渐进式上下文加载：一份小而稳定的 root context（约 12KB），加上只在改到对应文件时才加载的
   capability 块。agent 读一份 1KB 的 capability 合约或查索引，而不是花上千 token 重新摸清结构。
 
-## 0.4.0 新特性
+## 0.4.1 新特性
 
-- **Loop-engine 证据面。** `repo-harness-hook state-snapshot --json`、NL
-  decision-table、route A/B eval 和 cutover gate 让 prompt-routing 实验可度量；
-  在证据达标前，TypeScript classifier 仍是权威路径。
-- **Architecture queue gate。** `scripts/architecture-queue.sh`、
-  `scripts/check-architecture-sync.sh` 和扩展后的 architecture event helper
-  取代已退休的 append-only drift 脚本，用派生 request index 检查 stale 架构状态。
-- **Contract delegation pilot。** Contract template 新增 `budget`、
-  `permission_scope`、`roles`，`scripts/contract-run.ts` 可用显式
-  worker/verifier child commands 按 contract exit criteria 执行试点。
-- **Heartbeat triage。** `scripts/heartbeat-triage.sh` 把定时 workflow checks、
-  sprint-next 信号和 architecture request 状态写入 repo-local triage inbox。
-- **Workflow asset sync。** 新 helpers、docs、tests 和 generated-repo assets
-  保持 self-host runtime 与安装模板副本同步。
+- **Session-scoped CodeGraph 提醒。** Hook stdin 里的 `session_id` 现在会驱动
+  一次性 CodeGraph route hint，避免 stale 本地 session 文件跨 Claude/Codex
+  会话误抑制或重复提醒。
+- **Central-first hook safety。** Generated 和 migrated repos 默认继续使用
+  user-level hook runtime；只有 `.ai/harness/policy.json` 明确设置
+  `"hook_source": "repo"` 时，才保留 repo-local top-level hook scripts。
+- **Workflow 文档迁移。** Active workflow docs 统一使用 `tasks/todos.md`
+  记录 deferred goals，使用 `docs/researches/*.md` 保存 durable research；
+  legacy `tasks/todo.md` 和 `tasks/research.md` 只作为 migration inputs。
+- **Release-gate 稳定性。** Runtime ignore rules 覆盖
+  `tasks/.current.md.tmp.*` 和 `.claude/.plan-state/` 这类 transient state，
+  默认 Bun test timeout 也和 release gate budget 对齐。
 
 ## 产品做什么
 
@@ -86,7 +85,7 @@ classifier/state-machine 层不再散落在 shell 条件分支里。
 下面这张图假设目标仓库已经安装 harness。它展示的是从 program sprint backlog
 到单个 contract task 的正常闭环：先选择或形成任务，再投射到执行文件，需要时
 checkout 隔离 worktree，在 hooks 保护下实现，然后验证、review、external acceptance，
-必要时标记 sprint task 完成，最后 closeout。0.4.0 的 loop-system surface
+必要时标记 sprint task 完成，最后 closeout。0.4.x 的 loop-system surface
 新增 heartbeat 定时发现、state-snapshot/eval 证据、architecture queue freshness，
 以及可选的 contract-run 委派，但 source of truth 仍然是 repo 内文件合约。
 
@@ -193,10 +192,10 @@ npx -y repo-harness update
 repo-local verification surfaces。
 
 npm package 和 generated workflow stamp 现在共用 `0.4.x` release line。
-`repo-harness@0.4.0` 继续把首次全局引导（`repo-harness init`）
-和 repo-local 刷新（`repo-harness update`）拆开，同时新增 loop-engine state
-snapshot、architecture queue gate、contract delegation pilot、heartbeat triage
-helper，以及这些 workflow surfaces 的 generated asset sync。
+`repo-harness@0.4.1` 继续把首次全局引导（`repo-harness init`）
+和 repo-local 刷新（`repo-harness update`）拆开，并在 `0.4.0` loop-engine
+surfaces 之上强化 session-scoped hook state、central-first hook execution、
+workflow-document migration 和 release-gate stability。
 这些能力叠加在改名后的 CLI、user-level hook adapter bootstrap、AI-native scaffold overlays、
 typed prompt-guard decision engine、plan-stem task artifact 命名、`REPO_HARNESS_*`
 runtime aliases、Waza runtime skill sync，以及 maintainer 发布 npm 前使用的 release gate 之上。
@@ -335,8 +334,8 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 
 ## 当前 Release
 
-- npm package：`repo-harness@0.4.0`
-- Generated workflow stamp：`repo-harness@0.4.0+template@0.4.0`
+- npm package：`repo-harness@0.4.1`
+- Generated workflow stamp：`repo-harness@0.4.1+template@0.4.1`
 - GitHub repository：`Ancienttwo/repo-harness`
 - Release history：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

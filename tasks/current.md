@@ -1,16 +1,16 @@
 # Current Status Snapshot
 
 <!-- generated-by: repo-harness refresh-current-status v1 -->
-<!-- updated_at: 2026-06-12T20:57:08+0800 -->
+<!-- updated_at: 2026-06-12T21:18:54+0800 -->
 <!-- stale_after: 24h -->
 
 > **Status**: Active
-> **Updated At**: 2026-06-12T20:57:08+0800
+> **Updated At**: 2026-06-12T21:18:54+0800
 > **Source Branch**: main
-> **Source Commit**: bef7cdc
+> **Source Commit**: bb6022d
 > **Target Branch**: main
 > **Stale After**: 24h
-> **Reason**: plans-prds-canonicalization
+> **Reason**: 0.4.1-release-bump
 > **Derived From**: active-plan, active-sprint, workstreams, handoff, checks, git status
 
 This file is a tracked mainline snapshot derived from repo artifacts. It is not a live lock, not a kanban board, and not an implementation gate. If it is stale, read the source artifacts below.
@@ -52,49 +52,22 @@ This file is a tracked mainline snapshot derived from repo artifacts. It is not 
 
 ## Git Status
 
-- Summary: 137 changed/untracked path(s)
+- Summary: 13 changed/untracked path(s)
 
 ```
-M  .ai/context/context-map.json
-D  .ai/harness/context-budget/.gitkeep
-MM .ai/harness/policy.json
-MM .ai/harness/workflow-contract.json
-M  .ai/hooks/hook-input.sh
-M  .ai/hooks/lib/session-state.sh
-M  .ai/hooks/lib/workflow-state.sh
-M  .ai/hooks/post-edit-guard.sh
-M  .ai/hooks/post-tool-observer.sh
-M  .ai/hooks/prompt-guard.sh
-M  .ai/hooks/session-start-context.sh
-M  .claude/templates/contract.template.md
-M  .claude/templates/plan.template.md
-M  .claude/templates/sprint.template.md
-M  .gitignore
-MM AGENTS.md
-MM CLAUDE.md
-MM README.es.md
-MM README.fr.md
-MM README.ja.md
-MM README.md
-MM README.zh-CN.md
-M  SKILL.md
-M  assets/AGENTS.md
-M  assets/CLAUDE.md
-M  assets/hooks/hook-input.sh
-M  assets/hooks/lib/session-state.sh
-M  assets/hooks/lib/workflow-state.sh
-M  assets/hooks/post-edit-guard.sh
-M  assets/hooks/post-tool-observer.sh
-M  assets/hooks/prompt-guard.sh
-M  assets/hooks/session-start-context.sh
-M  assets/partials-agents/02-operating-mode.partial.md
-M  assets/partials-agents/03-orchestration.partial.md
-M  assets/partials-agents/04-task-protocol.partial.md
-M  assets/partials-agents/08-deep-docs.partial.md
-M  assets/partials/05-workflow.partial.md
-M  assets/partials/07-footer.partial.md
-MM assets/reference-configs/agentic-development-flow.md
-M  assets/reference-configs/development-protocol.md
+ M .ai/harness/policy.json
+ M .claude/.skill-version
+ M README.es.md
+ M README.fr.md
+ M README.ja.md
+ M README.md
+ M README.zh-CN.md
+ M assets/skill-version.json
+ M deploy/release-checklists/260612-repo-harness-0.4.1.md
+ M docs/CHANGELOG.md
+ M package.json
+ M src/cli/commands/status.ts
+ M tests/bootstrap-files.test.ts
 ```
 
 ## Source Artifacts

@@ -4,6 +4,8 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-12
+
 ### Fixed
 
 - Scoped the CodeGraph route nudge to the real hook stdin `session_id` by
@@ -28,9 +30,9 @@ All notable changes to this skill are documented here.
 
 ### Release Notes
 
-- Prepared the `repo-harness@0.4.1` release filing with pre-publish hold points:
-  version bump, final release gate, npm pack, npm publish, and registry
-  readback remain outstanding.
+- Prepared the `repo-harness@0.4.1` package line for publish; npm publish,
+  registry readback, and GitHub release creation remain explicit release
+  actions.
 
 ## [0.4.0] - 2026-06-12
 
