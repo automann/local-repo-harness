@@ -4,7 +4,7 @@
 > **Plan**: (none)
 > **Contract**: (none)
 > **Review**: (none)
-> **Last Updated**: 2026-06-13 19:50
+> **Last Updated**: 2026-06-13 23:57
 > **Lifecycle**: notes
 
 ## Design Decisions
@@ -12,8 +12,9 @@
 - Keep `repo-harness-project-scoped-install-prd.md` inside the fork checkout for
   local implementation planning, but ignore it so the fork does not accidentally
   publish a working PRD artifact.
-- Keep generated advisor handoff plans under `plans/` as local scratch output in
-  this fork checkout; do not publish them unless a product plan explicitly
+- Keep generated advisor handoff plans under `dev-plans/` as local scratch
+  output in this fork checkout, separate from the repo's tracked `plans/`
+  workflow artifacts; do not publish them unless a product plan explicitly
   promotes them to tracked repo-harness workflow artifacts.
 - Limit this slice to local repository housekeeping and architecture analysis;
   no product code path changed.
