@@ -1,7 +1,7 @@
 # Release Filing: repo-harness 0.5.0
 
 Date: 2026-06-14
-Status: Prepared; npm publish and GitHub release not executed in this filing yet
+Status: Published to npm and GitHub; local runtime refreshed
 
 ## Scope
 
@@ -73,6 +73,12 @@ by Claude/Codex adapters.
   - `bash scripts/migrate-project-template.sh --repo . --dry-run`
   - `npm pack --dry-run --json`
   - Result: `[release] OK: npm package gate passed.`
+- A publish-time retry used `BUN_TEST_TIMEOUT_MS=180000` and
+  `BUN_TEST_MAX_CONCURRENCY=1` after one earlier publish attempt timed out in
+  `Hook runtime behavior > run-hook preserves Codex failure status without
+  surfacing telemetry JSON`. The focused test passed four direct reproductions,
+  and the final publish gate passed the full suite with `727 pass`, `0 fail`,
+  and `7099` expectations.
 - Visible `npm pack --dry-run --json` inspection reported
   `repo-harness-0.5.0.tgz`, `276` files, package size `4670437`, unpacked size
   `6469936`, shasum `61f9ca3c64a9fa1ebeaf10e941e087b91df7ba00`, and included
@@ -86,14 +92,39 @@ by Claude/Codex adapters.
 
 ## Publish Follow-through
 
-- npm: pending.
-- Git tag: pending.
-- GitHub release: pending.
-- Registry readback: pending.
+- npm: `npm publish --access public --registry https://registry.npmjs.org/`
+  completed and returned `+ repo-harness@0.5.0`.
+- Registry readback:
+  `npm view repo-harness@0.5.0 version dist-tags dist.tarball gitHead dist.shasum --json --registry https://registry.npmjs.org/`
+  returned version `0.5.0`, `latest=0.5.0`, tarball
+  `https://registry.npmjs.org/repo-harness/-/repo-harness-0.5.0.tgz`,
+  gitHead `79746b3254bc151e66d5154d0579c886f8156f68`, and shasum
+  `61f9ca3c64a9fa1ebeaf10e941e087b91df7ba00`.
+- Clean-room npm execution:
+  `npx --yes --package repo-harness@0.5.0 repo-harness --version` returned
+  `0.5.0`.
+- Git tag: annotated `v0.5.0` pushed to `origin`; peeled tag target is
+  `79746b3254bc151e66d5154d0579c886f8156f68`.
+- GitHub release: `repo-harness 0.5.0`, non-draft, non-prerelease, latest:
+  `https://github.com/Ancienttwo/repo-harness/releases/tag/v0.5.0`.
+- Local runtime refresh:
+  - `bun install -g repo-harness@0.5.0 --registry https://registry.npmjs.org/`
+    installed `repo-harness` and `repo-harness-hook`.
+  - `npm install -g --prefix /Users/ancienttwo/.nvm/versions/node/v22.22.0 repo-harness@0.5.0 --registry https://registry.npmjs.org/`
+    refreshed the NVM Node 22 install.
+  - `zsh -lic 'repo-harness update --version 0.5.0'` completed through the
+    real shell entrypoint.
+  - Bun, NVM, npx, and `/opt/homebrew/bin/repo-harness` all returned `0.5.0`.
+  - `repo-harness status --json` returned CLI `0.5.0`, Codex and Claude global
+    adapters installed, and `8` managed routes.
+  - `repo-harness doctor --json` returned summary `ok=11`, `warn=0`,
+    `fail=0`, `na=1`.
+  - `repo-harness security scan --json` returned status `ok` with no findings.
+  - `HOOK_HOST=codex repo-harness-hook state-snapshot --json` and
+    `HOOK_HOST=claude repo-harness-hook state-snapshot --json` both returned
+    valid state snapshot JSON.
 
 ## Hold Reason
 
-- None for release preparation. Irreversible publish actions are pending because
-  this slice prepared and verified the `0.5.0` package line; `npm publish`,
-  registry readback, git tag push, and GitHub release creation still need the
-  explicit publish step.
+- None. The package, registry, Git tag, GitHub release, and local runtime
+  refresh are closed for `0.5.0`.
