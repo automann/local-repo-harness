@@ -27,6 +27,37 @@
     }
   },
   "externalTooling": {
+    "repoHarnessSkills": {
+      "owner": "repo-harness",
+      "defaultScope": "user",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectPaths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      },
+      "userPaths": {
+        "codex": "~/.codex/skills",
+        "claude": "~/.claude/skills"
+      },
+      "crossReview": {
+        "codexHostSkill": "claude-review",
+        "claudeHostSkill": "codex-review",
+        "scopeSource": "skillScope"
+      }
+    },
+    "skillsCli": {
+      "projectInstall": "supported",
+      "projectIsDefault": true,
+      "globalFlag": "-g",
+      "projectPaths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      }
+    },
     "waza": {
       "sourceRepo": "tw93/Waza",
       "managedSkills": [
@@ -37,9 +68,17 @@
       ],
       "primaryHost": "codex",
       "codexPrimaryPath": "~/.codex/skills",
+      "codexProjectPath": ".agents/skills",
+      "claudeProjectPath": ".claude/skills",
       "stagingCachePath": "~/.agents/skills",
       "syncMode": "stage-upstream-then-copy-to-codex",
-      "hostDriftPolicy": "report-per-host-version-staging-and-upstream-drift"
+      "hostDriftPolicy": "report-per-host-version-staging-and-upstream-drift",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectInstall": "skills-cli-without-global-flag"
     },
     "codexAutomationProfile": {
       "requiredSkills": [
@@ -61,8 +100,44 @@
       "skillName": "mermaid",
       "primaryHost": "codex",
       "codexPrimaryPath": "~/.codex/skills/mermaid",
+      "codexProjectPath": ".agents/skills/mermaid",
+      "claudeProjectPath": ".claude/skills/mermaid",
       "syncMode": "external-installed-skill",
-      "vendoringPolicy": "do-not-vendor"
+      "vendoringPolicy": "do-not-vendor",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectInstall": "skills-cli-without-global-flag"
+    },
+    "codegraph": {
+      "package": "@colbymchenry/codegraph",
+      "indexScope": "project",
+      "indexDir": ".codegraph",
+      "mcpScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectMcp": {
+        "codexConfigPath": ".codex/config.toml",
+        "claudeConfigPath": ".mcp.json",
+        "installCommand": "codegraph install --target <codex|claude|both> --location local --yes"
+      },
+      "userMcp": {
+        "codexConfigPath": "~/.codex/config.toml",
+        "claudeConfigPath": "~/.claude.json",
+        "installCommand": "repo-harness tools configure codegraph --target <codex|claude|both> --location global"
+      },
+      "vendoringPolicy": "self-host-dev-dependency; downstream-generated-default-remains-do-not-add-package-dependency"
+    },
+    "gbrain": {
+      "mode": "manual-or-manifest-only",
+      "projectOnlyMode": "manifest-only",
+      "mcp": "candidate-disabled",
+      "installCommand": "bun add -g gbrain",
+      "syncCommand": "gbrain sync --repo <path>"
     }
   },
   "agenticDevelopment": {

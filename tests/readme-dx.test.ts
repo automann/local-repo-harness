@@ -36,6 +36,9 @@ function isAllowedRuntimeReference(file: string, line: string): boolean {
   if (file === "docs/reference-configs/external-tooling.md" && /~\/\.claude\/skills\/gstack/.test(line)) {
     return true;
   }
+  if (file === "docs/reference-configs/external-tooling.md" && /\.agents\/skills/.test(line)) {
+    return true;
+  }
   return false;
 }
 

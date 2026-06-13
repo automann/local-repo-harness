@@ -240,7 +240,8 @@ function claudeRootConfigPath(env?: NodeJS.ProcessEnv): string | null {
   return home ? join(home, ".claude.json") : null;
 }
 
-function codexConfigPath(env?: NodeJS.ProcessEnv): string | null {
+function codexConfigPath(location: CodegraphConfigureLocation, repoRoot: string, env?: NodeJS.ProcessEnv): string | null {
+  if (location === "local") return join(repoRoot, ".codex", "config.toml");
   const home = env?.HOME ?? process.env.HOME ?? process.env.USERPROFILE;
   return home ? join(home, ".codex", "config.toml") : null;
 }
@@ -251,8 +252,13 @@ function codegraphArgsAreScoped(args: unknown): boolean {
     args.every((arg, index) => arg === CODEGRAPH_SCOPED_MCP_ARGS[index]);
 }
 
-function configureCodexProjectPath(actions: CodegraphAction[], env?: NodeJS.ProcessEnv): void {
-  const path = codexConfigPath(env);
+function configureCodexProjectPath(
+  actions: CodegraphAction[],
+  repoRoot: string,
+  location: CodegraphConfigureLocation,
+  env?: NodeJS.ProcessEnv,
+): void {
+  const path = codexConfigPath(location, repoRoot, env);
   const command = ["codex-config", "scope-codegraph-mcp", path ?? "<HOME>/.codex/config.toml"];
 
   if (!path) {
@@ -336,8 +342,12 @@ function configureClaudeProjectPath(
   location: CodegraphConfigureLocation,
   env?: NodeJS.ProcessEnv,
 ): void {
-  const path = claudeRootConfigPath(env);
-  const command = ["claude-root-config", "scope-codegraph-mcp", path ?? "<HOME>/.claude.json"];
+  const path = location === "local" ? join(repoRoot, ".mcp.json") : claudeRootConfigPath(env);
+  const command = [
+    location === "local" ? "claude-project-config" : "claude-root-config",
+    "scope-codegraph-mcp",
+    path ?? "<HOME>/.claude.json",
+  ];
 
   if (!path) {
     actions.push({
@@ -357,7 +367,7 @@ function configureClaudeProjectPath(
       action: "claude-project-path",
       status: "skipped",
       command,
-      stderr: `${path} not found; CodeGraph did not create a Claude root MCP config.`,
+      stderr: `${path} not found; CodeGraph did not create a Claude ${location} MCP config.`,
     });
     return;
   }
@@ -378,7 +388,7 @@ function configureClaudeProjectPath(
   const mcpServers =
     location === "global"
       ? parsed?.mcpServers
-      : parsed?.projects?.[repoRoot]?.mcpServers;
+      : parsed?.mcpServers;
   const server = mcpServers?.[CLAUDE_CODEGRAPH_SERVER_NAME];
   if (!server || typeof server !== "object" || Array.isArray(server)) {
     actions.push({
@@ -427,6 +437,15 @@ function configureClaudeAlwaysLoad(
   location: CodegraphConfigureLocation,
   env?: NodeJS.ProcessEnv,
 ): void {
+  if (location === "local") {
+    actions.push({
+      action: "claude-always-load",
+      status: "skipped",
+      command: ["claude-project-config", "set-codegraph-always-load", join(repoRoot, ".mcp.json")],
+      stderr: "Project-local Claude MCP config does not require user-level alwaysLoad mutation.",
+    });
+    return;
+  }
   const path = claudeRootConfigPath(env);
   const command = ["claude-root-config", "set-codegraph-always-load", path ?? "<HOME>/.claude.json"];
 
@@ -619,21 +638,6 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
     const command = [binPath ?? "codegraph", "install", "--target", target, "--location", opts.location, "--yes"];
     const actionName = `configure-${target}`;
 
-    if (target === "codex" && opts.location === "local") {
-      const reason = "Codex has no project-local MCP configuration; use --location global.";
-      if (opts.target === "codex") {
-        actions.push({
-          action: actionName,
-          status: "failed",
-          command,
-          stderr: reason,
-        });
-      } else {
-        appendSkippedAction(actions, actionName, command, reason);
-      }
-      continue;
-    }
-
     if (!binPath) {
       actions.push({
         action: actionName,
@@ -654,13 +658,13 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
     }
 
     if (target === "codex") {
-      configureCodexProjectPath(actions, opts.env);
+      configureCodexProjectPath(actions, opts.repoRoot, opts.location, opts.env);
     }
 
     if (target === "claude") {
       configureClaudeProjectPath(actions, opts.repoRoot, opts.location, opts.env);
       configureClaudeAlwaysLoad(actions, opts.repoRoot, opts.location, opts.env);
-      configureClaudeAllowedTools(actions, opts.env);
+      if (opts.location === "global") configureClaudeAllowedTools(actions, opts.env);
     }
   }
 

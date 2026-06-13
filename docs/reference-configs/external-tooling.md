@@ -5,20 +5,38 @@ skill routing lives in `docs/reference-configs/agentic-development-flow.md`.
 
 - `gstack` supplies `office-hours`, `plan-eng-review`, and `plan-design-review`
 - `Waza` supplies `/think`, `/hunt`, and `/check` for daily small/medium work
-- Codex automation requires `health`, `check`, and `mermaid` from `~/.codex/skills`
+- Codex automation can use `health`, `check`, and `mermaid` from project
+  `.agents/skills` or user `~/.codex/skills`
 - `gbrain` supports knowledge capture, repo sync, and handoff retrieval
 - `CodeGraph` is required agent readiness for code navigation and impact tracing
 
 Waza is Codex-first in this contract. `~/.codex/skills` is the Codex runtime
 source, while `~/.agents/skills` is only the skills CLI staging/cache path used
 to receive upstream `tw93/Waza` updates before syncing verified copies into
-Codex.
+Codex. In project-scoped mode, the skills CLI writes Codex skills to
+`.agents/skills` and Claude Code skills to `.claude/skills`; do not use
+`.codex/skills` as the repo-local Codex target.
 
 `repo-harness init` is allowed to bootstrap the workflow-owned global runtime in
 one pass: the `repo-harness` CLI, repo-harness runtime aliases, user-level
 Codex/Claude hook adapters, Waza (`think`, `hunt`, `check`, `health`), brain
 root persistence, Mermaid, and CodeGraph CLI/MCP configuration. It must not
 silently install unrelated toolchains or Claude marketplace plugins.
+
+`repo-harness update` keeps user-level behavior by default, but explicit scope
+flags can isolate the install to the current repo:
+
+```bash
+repo-harness update \
+  --host-adapter-scope project \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project
+```
+
+Project scope must not write Waza, Mermaid, cross-review, CodeGraph MCP, or
+brain state into user-level roots. If a third-party project install cannot be
+completed, report that failure instead of falling back to global writes.
 
 The cross-review skills are **harness-owned and self-contained** — their source
 lives in `assets/skills/<skill>/` and they wrap the peer CLI (`codex exec` /
@@ -31,6 +49,10 @@ Codex for an independent review) and `claude-review` only into `~/.codex/skills`
 zero-dependency baseline that always ships with `init` and the peer acceptance
 gate surface for `## External Acceptance Advice`.
 
+In project scope, cross-review skills install to host project skill roots:
+`codex-review` goes to `.claude/skills`, and `claude-review` goes to
+`.agents/skills`.
+
 The review scope is the current reviewable diff, not just committed branch
 history: branch diff against the default base, staged changes, unstaged tracked
 changes, and untracked files are all in scope. A timeout or missing peer CLI is
@@ -38,8 +60,8 @@ reported as unavailable review evidence, not as a pass.
 
 The Codex automation profile is a runtime reference, not a vendored copy. It
 requires Waza `health`, Waza `check`, and the standalone `mermaid` skill to
-exist under `~/.codex/skills`; the skill bodies stay owned by their original
-installations.
+exist under the active Codex skill root; the skill bodies stay owned by their
+original installations.
 
 ## Detect Safely
 
@@ -108,6 +130,13 @@ npx -y skills add tw93/Waza -g -a claude-code -s think hunt check health -y
 
 Replace `claude-code` with `codex` when installing for Codex only.
 
+Project-scoped install omits `-g` and runs from the target repo:
+
+```bash
+npx -y skills add tw93/Waza -a claude-code codex -s think hunt check health -y --copy
+npx -y skills add BfdCampos/dotfiles -a claude-code codex -s mermaid -y --copy
+```
+
 After installing or updating through the skills CLI, verify Codex has its own
 runtime copy:
 
@@ -158,6 +187,17 @@ Local index mutation:
 codegraph init -i .
 codegraph sync .
 ```
+
+Project-local MCP registration should use CodeGraph's local installer and host
+project config:
+
+```bash
+repo-harness tools configure codegraph --target both --location local
+```
+
+Expected project-level config files are `.codex/config.toml` for Codex and
+`.mcp.json` for Claude Code. This mode must not edit `~/.codex/config.toml`,
+`~/.claude.json`, or `~/.claude/settings.json`.
 
 Do not ask users to copy MCP TOML or Claude JSON by hand. The user-facing path
 is one terminal command, or explicit authorization for their agent to run the
@@ -275,6 +315,10 @@ npm install -g @colbymchenry/codegraph@latest && mkdir -p ~/.local/bin && ln -sf
 ```bash
 gbrain sync --repo <path>
 ```
+
+In project-scoped repo-harness mode, keep gbrain manual or manifest-only. Do not
+auto-install `gbrain`, register gbrain MCP, or write remote tokens while applying
+project-only harness changes.
 
 ## Default Brain Vault
 

@@ -1260,10 +1260,10 @@ pi_external_tooling_defaults_summary() {
 - Hosts: claude-code, codex
 - Mode: agent-readiness-required
 - Detection: init-migrate
-- Waza: Codex-first, managed skills think/hunt/check/health, stage upstream in ~/.agents/skills, sync verified copies into ~/.codex/skills
-- Codex automation profile: required health/check/mermaid from ~/.codex/skills; do not vendor skill bodies
+- Waza: Codex-first, managed skills think/hunt/check/health, user scope stages upstream in ~/.agents/skills and syncs verified copies into ~/.codex/skills; project scope installs into .agents/skills and .claude/skills
+- Codex automation profile: required health/check/mermaid from active Codex skill root; do not vendor skill bodies
 - gbrain MCP: candidate-disabled
-- CodeGraph: required agent code-navigation readiness tool, target-aware MCP configure by explicit user command or authorized agent action, per-repo ignored .codegraph/ index; generated repos do not add it as a package dependency unless local policy opts in
+- CodeGraph: required agent code-navigation readiness tool, user or project MCP configure by explicit user command or authorized agent action, per-repo ignored .codegraph/ index; generated repos do not add it as a package dependency unless local policy opts in
 - Auto-actions: never install, upgrade, serve, sync, or enable MCP automatically
 EOF_EXTERNAL_TOOLING_DEFAULTS
 }

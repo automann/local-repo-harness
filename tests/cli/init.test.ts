@@ -32,6 +32,12 @@ function makeExecutable(path: string, body: string): void {
 function setupFakeSource(root: string): void {
   mkdirSync(join(root, "scripts"), { recursive: true });
   mkdirSync(join(root, "assets", "reference-configs"), { recursive: true });
+  mkdirSync(join(root, "assets", "skill-commands", "repo-harness-plan"), { recursive: true });
+  writeFileSync(join(root, "SKILL.md"), "---\nname: repo-harness\n---\n");
+  writeFileSync(
+    join(root, "assets", "skill-commands", "repo-harness-plan", "SKILL.md"),
+    "---\nname: repo-harness-plan\n---\n",
+  );
   writeFileSync(
     join(root, "assets", "reference-configs", "global-working-rules.md"),
     [
@@ -125,7 +131,29 @@ function writeFakeCodegraph(fakeBin: string, logFile: string): void {
       "    ;;",
       "  \"init\") mkdir -p .codegraph; touch .codegraph/initialized; echo 'initialized' ;;",
       "  \"sync\") mkdir -p .codegraph; touch .codegraph/initialized; echo 'synced' ;;",
-      "  \"install\") echo 'installed' ;;",
+      "  \"install\")",
+      "    if [[ \" $* \" == *\" --location local \"* && \" $* \" == *\" --target codex \"* ]]; then",
+      "      mkdir -p .codex",
+      "      cat > .codex/config.toml <<'TOML'",
+      "[mcp_servers.codegraph]",
+      "command = \"codegraph\"",
+      "args = [\"serve\", \"--mcp\"]",
+      "TOML",
+      "    fi",
+      "    if [[ \" $* \" == *\" --location local \"* && \" $* \" == *\" --target claude \"* ]]; then",
+      "      cat > .mcp.json <<'JSON'",
+      "{",
+      "  \"mcpServers\": {",
+      "    \"codegraph\": {",
+      "      \"type\": \"stdio\",",
+      "      \"command\": \"codegraph\",",
+      "      \"args\": [\"serve\", \"--mcp\"]",
+      "    }",
+      "  }",
+      "}",
+      "JSON",
+      "    fi",
+      "    echo 'installed' ;;",
       "  *) exit 1 ;;",
       "esac",
       "",
@@ -206,6 +234,101 @@ describe("init command", () => {
       expect(existsSync(join(home, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(home, ".codex", "skills", "codex-review", "SKILL.md"))).toBe(false);
       expect(existsSync(join(home, ".claude", "skills", "claude-review", "SKILL.md"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("project scopes install repo-harness skills and third-party skills without user-level writes", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-project-skills-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    const fakeBin = join(tmp, "bin");
+    const npxLog = join(tmp, "npx.log");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      setupFakeSource(source);
+      makeExecutable(
+        join(fakeBin, "npx"),
+        [
+          "#!/bin/bash",
+          "set -euo pipefail",
+          `printf 'PWD=%s ARGS=%s\\n' "$PWD" "$*" >> "${npxLog}"`,
+          "if [[ \" $* \" == *\" -g \"* ]]; then",
+          "  echo 'global flag forbidden in project mode' >&2",
+          "  exit 2",
+          "fi",
+          "exit 0",
+          "",
+        ].join("\n"),
+      );
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: true,
+        skillScope: "project",
+        hostAdapters: false,
+        externalToolScope: "project",
+        codegraph: false,
+        verify: false,
+        env: {
+          ...process.env,
+          HOME: home,
+          PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "assets", "skill-commands", "repo-harness-plan", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".claude", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".agents", "skills", "claude-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "skills"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "skills"))).toBe(false);
+
+      const log = readFileSync(npxLog, "utf-8");
+      expect(log).toContain(`PWD=${realpathSync(repo)} ARGS=-y skills add tw93/Waza -a claude-code codex -s think hunt check health -y --copy`);
+      expect(log).toContain(`PWD=${realpathSync(repo)} ARGS=-y skills add BfdCampos/dotfiles -a claude-code codex -s mermaid -y --copy`);
+      expect(log).not.toContain(" -g ");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("project repo-harness skill install supports sourceRoot equal to repoRoot", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-project-self-source-${Date.now()}`);
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(repo, { recursive: true });
+      setupFakeSource(repo);
+
+      const result = runInit({
+        repo,
+        sourceRoot: repo,
+        syncSkill: true,
+        skillScope: "project",
+        hostAdapters: false,
+        externalSkills: false,
+        externalToolScope: "none",
+        codegraph: false,
+        verify: false,
+        env: {
+          ...process.env,
+          HOME: home,
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".claude", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", ".agents"))).toBe(false);
+      expect(existsSync(join(repo, ".claude", "skills", "repo-harness", ".claude", "skills"))).toBe(false);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -389,6 +512,9 @@ describe("init command", () => {
     expect(res.stdout).toContain("--repo <path>");
     expect(res.stdout).toContain("--dry-run");
     expect(res.stdout).toContain("--host-adapter-scope <scope>");
+    expect(res.stdout).toContain("--skill-scope <scope>");
+    expect(res.stdout).toContain("--external-tool-scope <scope>");
+    expect(res.stdout).toContain("--codegraph-mcp-scope <scope>");
     expect(res.stdout).toContain("--runtime <runtime>");
     expect(res.stdout).toContain("--no-codegraph");
   });
@@ -401,6 +527,16 @@ describe("init command", () => {
 
     expect(res.status).toBe(2);
     expect(res.stderr).toContain('invalid --runtime "bogus"');
+  });
+
+  test("CLI update validates tooling scope flags", () => {
+    const res = spawnSync("bun", [CLI, "update", "--skill-scope", "bogus"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+
+    expect(res.status).toBe(2);
+    expect(res.stderr).toContain('invalid --skill-scope "bogus"');
   });
 
   test("configures CodeGraph MCP only when explicitly requested", () => {
@@ -422,6 +558,7 @@ describe("init command", () => {
         repo,
         sourceRoot: source,
         syncSkill: false,
+        skillScope: "none",
         hostAdapters: false,
         externalSkills: false,
         verify: false,
@@ -447,6 +584,58 @@ describe("init command", () => {
       expect(log).toContain("codegraph init -i .");
       expect(log).toContain("codegraph install --target codex --location global --yes");
       expect(log).toContain("codegraph install --target claude --location global --yes");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("codegraphMcpScope=project configures local MCP without user-level host config", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-codegraph-project-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    const fakeBin = join(tmp, "bin");
+    const logFile = join(tmp, "codegraph.log");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      setupFakeSource(source);
+      writeFakeCodegraph(fakeBin, logFile);
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapters: false,
+        externalSkills: false,
+        verify: false,
+        codegraphMcpScope: "project",
+        env: {
+          ...process.env,
+          HOME: home,
+          PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      const configureStep = result.steps.find((step) => step.step === "configure codegraph mcp");
+      expect(configureStep?.status).toBe("ok");
+      expect(configureStep?.detail).toContain("scope=project");
+      expect(readFileSync(logFile, "utf-8")).toContain("codegraph install --target codex --location local --yes");
+      expect(readFileSync(logFile, "utf-8")).toContain("codegraph install --target claude --location local --yes");
+      expect(readFileSync(join(repo, ".codex", "config.toml"), "utf-8")).toContain('args = ["serve", "--mcp", "--path", "."]');
+      expect(JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph.args).toEqual([
+        "serve",
+        "--mcp",
+        "--path",
+        ".",
+      ]);
+      expect(existsSync(join(home, ".codex", "config.toml"))).toBe(false);
+      expect(existsSync(join(home, ".claude.json"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -651,6 +840,32 @@ describe("syncCrossReviewSkills", () => {
       syncCrossReviewSkills(source, "codex", { ...process.env, HOME: codexHome });
       expect(existsSync(join(codexHome, ".codex", "skills", "claude-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(codexHome, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("project scope writes cross-review skills into host project skill roots", () => {
+    const tmp = join(tmpdir(), `cross-review-project-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      makeSource(source);
+
+      const steps = syncCrossReviewSkills(source, "both", { ...process.env, HOME: home }, {
+        scope: "project",
+        repoRoot: repo,
+      });
+
+      expect(steps.every((s) => s.status === "ok")).toBe(true);
+      expect(existsSync(join(repo, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(repo, ".agents", "skills", "claude-review", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(home, ".claude", "skills"))).toBe(false);
+      expect(existsSync(join(home, ".codex", "skills"))).toBe(false);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
