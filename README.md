@@ -1,7 +1,7 @@
 # repo-harness
 
 <p align="center">
-  <img src="docs/images/repo-harness-hook-carrot.png" alt="repo-harness hooks leading Codex and Claude forward with repo-local workflow state" width="900">
+  <img src="docs/images/image.png" alt="One next button joining Claude and Codex under repo-harness workflow rules" width="760">
 </p>
 
 Repo-local agentic development harness CLI and skill runtime for Claude/Codex
@@ -43,20 +43,21 @@ In an adopted repo, the surface area is intentionally small:
 | `tasks/contracts/`, `tasks/reviews/`, and `.ai/harness/checks/` | Scope, verification, and review evidence for proving the work is done. |
 | `.ai/harness/handoff/` and `tasks/current.md` | Session journal and resumable status, derived from workflow artifacts instead of chat memory. |
 
-## What's New in 0.4.3
+## What's New in 0.5.0
 
-- **Runtime docs lookup.** `repo-harness docs list|path|show` resolves bundled
-  runtime/reference docs from the installed package instead of requiring copied
-  repo prose.
-- **Setup bootstrap audit.** `repo-harness setup check --json` reports concrete
-  Agent actions for missing working rules, adapter drift, stale CLI installs,
-  and tooling readiness. `repo-harness init-hook` remains a compatibility alias.
-- **First-principles edit guard.** Managed hook routes now include
-  anti-overengineering guidance for implementation edits while keeping the guard
-  advisory.
-- **Slimmer generated reference docs.** Generated and migrated repos write
-  deterministic `docs/reference-configs/*.md` pointer stubs while `.ai/harness/*`
-  and `.ai/context/*` remain local runtime artifacts.
+- **Clean command boundary.** `repo-harness update` now refreshes only the
+  user-level CLI/runtime surface, while `repo-harness adopt` owns repo-local
+  workflow install, refresh, and migration.
+- **Package-dispatched helper runtime.** Generated `scripts/*` wrappers can
+  delegate through `repo-harness run <helper>`, so adopted repos do not need to
+  vendor every helper implementation when the installed package already owns it.
+- **Eight managed hook routes.** The README now documents the exact hook route
+  matrix that Claude and Codex adapters install: session context, edit guards,
+  delegated-agent routing, post-edit and post-bash observers, always-on trace,
+  prompt routing, and stop closeout.
+- **Release-ready install examples.** The first-run and refresh commands now
+  show the split between machine bootstrap, user-level updates, read-only setup
+  audit, and repo-local adoption.
 
 ## What repo-harness Does
 
@@ -232,6 +233,22 @@ register adapters. It emits `agent_actions` with the reason, risk, target files,
 optional command, and verification surface for the Agent to execute deliberately.
 `repo-harness init-hook` remains a compatibility alias.
 
+### Install and refresh examples
+
+```bash
+# First machine bootstrap: global CLI, skills, host adapters, Waza, brain, CodeGraph.
+npx -y repo-harness init
+
+# Refresh user-level CLI/runtime pieces after a package update.
+repo-harness update
+
+# Ask for read-only repair guidance without writing files.
+repo-harness update --check
+
+# Refresh repo-local workflow files in an adopted repository.
+repo-harness adopt --repo /path/to/repo
+```
+
 ### 2. Preview the repo-local contract
 
 ```bash
@@ -328,6 +345,21 @@ before applying anything.
 - Debug in this order: user-level adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
 - If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness adopt --repo <root>`.
 
+The installed adapter owns eight managed hook routes. The route tuple
+`event + routeId + matcher` is the stable contract; script names are the current
+implementation under `assets/hooks/` or a repo-pinned `.ai/hooks/` copy.
+
+| Route | Matcher | Scripts | Function |
+| --- | --- | --- | --- |
+| `SessionStart.default` | all sessions | `session-start-context.sh`, `security-sentinel.sh` | Injects prior handoff, sprint status, and read-only config-security findings before work starts. |
+| `PreToolUse.edit` | `Edit|Write` | `worktree-guard.sh`, `pre-edit-guard.sh` | Enforces worktree policy and plan/contract readiness before implementation edits. |
+| `PreToolUse.subagent` | `Task|Agent|SendUserMessage` | `subagent-return-channel-guard.sh` | Keeps delegated work returning through the parent session instead of leaking completion claims. |
+| `PostToolUse.edit` | `Edit|Write` | `post-edit-guard.sh` | Records edit traces, refreshes handoff/task status, and queues architecture drift when controlled files change. |
+| `PostToolUse.bash` | `Bash` | `post-bash.sh` | Observes command results and captures verification evidence without replacing the command runner. |
+| `PostToolUse.always` | all tools | `post-tool-observer.sh` | Provides low-noise always-on trace and runtime observation; stale pinned copies soft-skip with a refresh hint. |
+| `UserPromptSubmit.default` | all prompts | `prompt-guard.sh` | Classifies prompt intent, routes planning/check/hunt hints, and renders host-safe workflow guidance. |
+| `Stop.default` | session stop | `stop-orchestrator.sh` | Finalizes handoff and guards against ending with unresolved draft-plan or completion evidence gaps. |
+
 `SessionStart` resolves hooks central-first, then runs two ordered scripts before
 work begins:
 
@@ -395,8 +427,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.4.3`
-- Generated workflow stamp: `repo-harness@0.4.3+template@0.4.3`
+- npm package: `repo-harness@0.5.0`
+- Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

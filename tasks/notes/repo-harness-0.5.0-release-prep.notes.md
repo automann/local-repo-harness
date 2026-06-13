@@ -1,0 +1,34 @@
+# repo-harness 0.5.0 Release Prep Notes
+
+## Scope
+
+Prepare the npm/package release line `repo-harness@0.5.0` after the command
+boundary refactor split user-level runtime refresh from repo-local adoption.
+
+## Decisions
+
+| Decision | Rationale | Consequence |
+| --- | --- | --- |
+| Use `0.5.0` | `repo-harness update` changed public lifecycle ownership and no longer means repo-local refresh. | Treat the release as a minor version instead of another 0.4.x patch. |
+| Keep one package/template version line | The 0.4.0 release retired the old generated-workflow compatibility split. | Downstream generated stamps move together to `repo-harness@0.5.0+template@0.5.0`. |
+| Document eight hook routes in README | `src/cli/hook/route-registry.ts` exposes eight managed adapter routes across five host events. | The README now explains route behavior without implying there are eight host event types. |
+| Stop at preparation for irreversible publish | The requested slice says prepare the npm and GitHub release, and npm/GitHub publish actions are irreversible. | The release filing records publish/readback as pending until an explicit publish step runs. |
+
+## Verification
+
+- `bun test tests/bootstrap-files.test.ts tests/skill-version.test.ts tests/cli/status.test.ts tests/cli/global-runtime-init.test.ts tests/cli/run.test.ts tests/reclaim-runtime.test.ts`
+  passed with 51 tests, 0 failures.
+- First `bash scripts/check-npm-release.sh` run reached full `bun test` with
+  727 pass, 0 fail, then stopped at `check-task-sync` because this task note did
+  not exist yet.
+- Final `bash scripts/check-npm-release.sh` passed after adding this task note:
+  727 pass, 0 fail, deploy SQL, architecture sync, task sync, brain sync,
+  strict workflow, inspector, migration dry-run, and npm pack dry-run all
+  completed.
+- `npm pack --dry-run --json` reported `repo-harness-0.5.0.tgz`, 276 files,
+  shasum `61f9ca3c64a9fa1ebeaf10e941e087b91df7ba00`, and included
+  `docs/images/image.png`.
+- `npm view repo-harness@0.5.0 version --json --registry https://registry.npmjs.org/`
+  returned `E404`, proving the target version is unpublished before publish.
+- `gh release view v0.4.3 --repo Ancienttwo/repo-harness --json ...` confirmed
+  the base release is published, non-draft, and non-prerelease.

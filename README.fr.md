@@ -350,8 +350,8 @@ Guards courants :
 
 ## Release actuelle
 
-- npm package : `repo-harness@0.4.3`
-- Generated workflow stamp : `repo-harness@0.4.3+template@0.4.3`
+- npm package : `repo-harness@0.5.0`
+- Generated workflow stamp : `repo-harness@0.5.0+template@0.5.0`
 - GitHub repository : `Ancienttwo/repo-harness`
 - Release history : [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

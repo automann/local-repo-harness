@@ -4,6 +4,18 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-14
+
+### Added
+
+- Added README release art from `docs/images/image.png` and documented the
+  install/refresh split for first-run bootstrap, user-level runtime updates,
+  read-only setup audit, and repo-local adoption.
+- Documented the eight managed hook routes installed by the Claude/Codex
+  adapters: `SessionStart.default`, `PreToolUse.edit`,
+  `PreToolUse.subagent`, `PostToolUse.edit`, `PostToolUse.bash`,
+  `PostToolUse.always`, `UserPromptSubmit.default`, and `Stop.default`.
+
 ### Changed
 
 - Breaking: `repo-harness update` now owns CLI/user-level runtime refresh only;
@@ -20,6 +32,12 @@ All notable changes to this skill are documented here.
 - Refused `$HOME` as a repo adoption target before any mutation and hardened
   legacy context discovery so vendored/cache trees such as `go/pkg/mod`,
   nested `node_modules`, and `vendor` are not mirrored into.
+
+### Release Notes
+
+- Prepared the `repo-harness@0.5.0` package line for publish; npm publish,
+  registry readback, and GitHub release creation remain explicit release
+  actions.
 
 ## [0.4.3] - 2026-06-13
 
