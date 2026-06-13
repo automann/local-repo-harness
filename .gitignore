@@ -63,6 +63,8 @@ tasks/.current.md.tmp.*
 # Project-specific
 artifacts/
 autoresearch/
+plans/
+repo-harness-project-scoped-install-prd.md
 *.tar.gz
 *.tgz
 _ref/
