@@ -274,7 +274,7 @@ describe('hook command (Phase 1B)', () => {
       expect(res.status).toBe(0);
       expect(res.stderr).toContain('skipping missing script');
       expect(res.stderr).toContain('post-tool-observer.sh');
-      expect(res.stderr).toContain(`repo-harness update --repo ${repoRoot}`);
+      expect(res.stderr).toContain(`repo-harness adopt --repo ${repoRoot}`);
       expect(res.stderr).not.toContain('script not found');
     });
   });

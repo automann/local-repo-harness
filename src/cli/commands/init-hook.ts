@@ -128,7 +128,7 @@ function homeDir(env?: NodeJS.ProcessEnv): string {
 }
 
 function verificationCommand(target: InitHookTarget, checkUpdates: boolean): string {
-  return `repo-harness init-hook --target ${target}${checkUpdates ? ' --check-updates' : ''} --json`;
+  return `repo-harness setup check --target ${target}${checkUpdates ? ' --check-updates' : ''} --json`;
 }
 
 function addAction(actions: InitHookAction[], action: InitHookAction): void {
@@ -551,7 +551,7 @@ export function runInitHook(opts: InitHookOptions = {}): InitHookReport {
 export function formatInitHook(report: InitHookReport, asJson = false): string {
   if (asJson) return JSON.stringify(report, null, 2);
   const lines: string[] = [];
-  lines.push(`repo-harness init-hook: ${report.status}`);
+  lines.push(`repo-harness setup check: ${report.status}`);
   lines.push(`target=${report.target}; check-updates=${report.checkUpdates ? 'on' : 'off'}`);
   lines.push(
     `summary: ${report.summary.ok} ok, ${report.summary.warn} warn, ${report.summary.fail} fail, ${report.summary.na} n/a, ${report.summary.needs_agent} needs-agent`,
@@ -598,5 +598,33 @@ export function buildInitHookCommand(): Command {
       console.log(formatInitHook(report, rawOpts.json === true));
       process.exit(report.status === 'blocked' ? 1 : 0);
     });
+  return command;
+}
+
+export function buildSetupCommand(): Command {
+  const command = new Command('setup');
+  command.description('User-level repo-harness setup utilities');
+
+  command
+    .command('check')
+    .description('Run a read-only Agent bootstrap checklist for user-level repo-harness readiness')
+    .option('--target <target>', `Host target to inspect: ${VALID_TARGETS.join('|')}`, 'both')
+    .option('--check-updates', 'Include network-backed version update advisories')
+    .option('--json', 'Output JSON instead of human-readable text')
+    .action((rawOpts: { target: string; checkUpdates?: boolean; json?: boolean }) => {
+      if (!VALID_TARGETS.includes(rawOpts.target as InitHookTarget)) {
+        console.error(
+          `repo-harness setup check: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      const report = runInitHook({
+        target: rawOpts.target as InitHookTarget,
+        checkUpdates: rawOpts.checkUpdates === true,
+      });
+      console.log(formatInitHook(report, rawOpts.json === true));
+      process.exit(report.status === 'blocked' ? 1 : 0);
+    });
+
   return command;
 }

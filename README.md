@@ -48,9 +48,9 @@ In an adopted repo, the surface area is intentionally small:
 - **Runtime docs lookup.** `repo-harness docs list|path|show` resolves bundled
   runtime/reference docs from the installed package instead of requiring copied
   repo prose.
-- **Init-hook bootstrap audit.** `repo-harness init-hook --json` reports concrete
+- **Setup bootstrap audit.** `repo-harness setup check --json` reports concrete
   Agent actions for missing working rules, adapter drift, stale CLI installs,
-  and tooling readiness.
+  and tooling readiness. `repo-harness init-hook` remains a compatibility alias.
 - **First-principles edit guard.** Managed hook routes now include
   anti-overengineering guidance for implementation edits while keeping the guard
   advisory.
@@ -81,7 +81,7 @@ The design has three layers:
 
 1. **Source package**: this repository owns the CLI, CLI-backed command facades,
    templates, hook assets, workflow contract, tests, and release gate.
-2. **Target repo contract**: `repo-harness update` or migration writes repo-local
+2. **Target repo contract**: `repo-harness adopt` or migration writes repo-local
    files such as `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts, and `.ai/hooks/`.
 3. **Host adapters**: user-level `~/.claude/settings.json` and
@@ -225,28 +225,29 @@ user-level hook adapters, configures Waza runtime skills, persists a brain root
 under `~/.repo-harness/config.json`, and configures CodeGraph MCP. It does not
 apply repo-local workflow files to the current directory.
 
-For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness
-init-hook --json` or add `--check-updates` for version advisories. `init-hook`
-is not a runtime hook: it does not write user-level files, install updates, or
+For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness setup
+check --json` or add `--check-updates` for version advisories. `setup check` is
+not a runtime hook: it does not write user-level files, install updates, or
 register adapters. It emits `agent_actions` with the reason, risk, target files,
 optional command, and verification surface for the Agent to execute deliberately.
+`repo-harness init-hook` remains a compatibility alias.
 
 ### 2. Preview the repo-local contract
 
 ```bash
-npx -y repo-harness update --dry-run
+npx -y repo-harness adopt --dry-run
 ```
 
 Run the dry run from the target repository root. It reports the specs, task
 state, helper runtime, hook adapter target, and verification files that would be
 created or refreshed. It should not create an application stack; existing repos
-use `repo-harness update`, while new projects or modules use
+use `repo-harness adopt`, while new projects or modules use
 `repo-harness-scaffold`.
 
 ### 3. Apply, then prove the workflow
 
 ```bash
-npx -y repo-harness update
+npx -y repo-harness adopt
 bash scripts/check-task-workflow.sh --strict
 bun test
 ```
@@ -289,17 +290,17 @@ Claude/Codex paths are symlink-backed runtime entrypoints. Only
 For an existing repo, run from the repo root:
 
 ```bash
-npx -y repo-harness update --dry-run
+npx -y repo-harness adopt --dry-run
 ```
 
 Apply only after the dry-run report looks correct:
 
 ```bash
-npx -y repo-harness update
+npx -y repo-harness adopt
 ```
 
 For a new project or module, use the branch command `repo-harness-scaffold`. For
-an existing repo, use `repo-harness update`; it installs or refreshes the harness
+an existing repo, use `repo-harness adopt`; it installs or refreshes the harness
 without creating an application stack.
 
 ### Success looks like this
@@ -325,7 +326,7 @@ before applying anything.
 - Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
 - Codex must mark `~/.codex/hooks.json` as trusted in Codex Settings before those hooks run.
 - Debug in this order: user-level adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
-- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness update --repo <root>`.
+- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness adopt --repo <root>`.
 
 `SessionStart` resolves hooks central-first, then runs two ordered scripts before
 work begins:
@@ -484,7 +485,7 @@ skill discovery compatible while the CLI and hooks own execution:
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation command: `repo-harness-scaffold`
 
-`repo-harness update` is for an existing repo; `repo-harness-scaffold` creates a
+`repo-harness adopt` is for an existing repo; `repo-harness-scaffold` creates a
 new project or module scaffold as a side command. `hooks-init`, `docs-init`, and
 `create-project-dirs` are internal steps, not public commands.
 

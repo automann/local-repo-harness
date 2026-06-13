@@ -113,7 +113,9 @@ export type WorkflowContract = {
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = SCRIPT_DIR.endsWith("/.ai/harness/scripts")
   ? join(SCRIPT_DIR, "../../..")
-  : join(SCRIPT_DIR, "..");
+  : SCRIPT_DIR.endsWith("/assets/templates/helpers")
+    ? join(SCRIPT_DIR, "../../..")
+    : join(SCRIPT_DIR, "..");
 const LOCAL_ASSET_PATH = join(REPO_ROOT, "assets", "workflow-contract.v1.json");
 
 export function resolveAgenticDevRoot(_repoRoot = REPO_ROOT): string {

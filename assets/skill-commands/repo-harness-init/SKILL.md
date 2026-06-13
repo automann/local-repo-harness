@@ -11,18 +11,18 @@ Use this command for an existing repository that needs the repo-local agentic wo
 ## Protocol
 
 1. Confirm the target repo path.
-2. If running from the target repo root, use `repo-harness update`; do not require `--repo .`.
+2. If running from the target repo root, use `repo-harness adopt`; do not require `--repo .`.
 3. Run `bun scripts/inspect-project-state.ts --repo <repo> --format text`.
 4. If the repo is legacy, route to `repo-harness-migrate`.
-5. Otherwise run the safe path through `repo-harness update` or `bash scripts/migrate-project-template.sh --repo <repo> --apply`.
-6. Bootstrap the expected host runtime dependencies in the same pass: Waza (`think`, `hunt`, `check`, `health`) and the bundled cross-review skills when source copies are available.
+5. Otherwise run the safe path through `repo-harness adopt` or `bash scripts/migrate-project-template.sh --repo <repo> --apply`.
+6. If user-level runtime dependencies are missing, run `repo-harness update` separately; repo adoption must not write HOME.
 7. Verify with `bash .ai/harness/scripts/check-task-workflow.sh --strict` inside the target repo when the helper exists.
 
 ## Failure Modes
 
 - If the repo has legacy workflow docs, route to `repo-harness-migrate`.
 - If the user asks for a new product skeleton, route to `repo-harness-scaffold`.
-- If global runtime setup fails, report the exact target and rerun the focused install command.
+- If global runtime setup is missing, report the exact target and rerun the focused `repo-harness update` command.
 
 ## Boundaries
 

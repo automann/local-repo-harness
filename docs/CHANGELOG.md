@@ -4,7 +4,22 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
-- (empty)
+### Changed
+
+- Breaking: `repo-harness update` now owns CLI/user-level runtime refresh only;
+  use `repo-harness adopt` for repo-local workflow install, refresh, and
+  migration.
+- `repo-harness update --check` / `--no-runtime-refresh` now route to the
+  read-only setup checklist, and third-party skill/CodeGraph refreshes require
+  explicit opt-in.
+- Added `repo-harness setup check` as the productized read-only readiness
+  command while keeping `repo-harness init-hook` as a compatibility alias.
+
+### Fixed
+
+- Refused `$HOME` as a repo adoption target before any mutation and hardened
+  legacy context discovery so vendored/cache trees such as `go/pkg/mod`,
+  nested `node_modules`, and `vendor` are not mirrored into.
 
 ## [0.4.3] - 2026-06-13
 

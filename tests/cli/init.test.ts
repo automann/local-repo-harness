@@ -22,6 +22,7 @@ import { configuredBrainRoot } from "../../src/cli/commands/brain-root";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const CLI = join(ROOT, "src/cli/index.ts");
+const CODEGRAPH_INIT_TIMEOUT_MS = 30000;
 
 function makeExecutable(path: string, body: string): void {
   writeFileSync(path, body);
@@ -142,6 +143,7 @@ describe("init command", () => {
       mkdirSync(source, { recursive: true });
       mkdirSync(repo, { recursive: true });
       setupFakeSource(source);
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
       process.chdir(repo);
 
       const result = runInit({
@@ -162,7 +164,7 @@ describe("init command", () => {
     }
   });
 
-  test("bootstraps core Waza, Mermaid, and cross-review skills for Claude and Codex during update", () => {
+  test("runInit can bootstrap core Waza, Mermaid, and cross-review skills for Claude and Codex", () => {
     const tmp = join(tmpdir(), `repo-harness-init-skills-${Date.now()}`);
     const source = join(tmp, "source");
     const repo = join(tmp, "repo");
@@ -268,7 +270,7 @@ describe("init command", () => {
     }
   });
 
-  test("CLI update --no-codegraph disables the CodeGraph step", () => {
+  test("CLI adopt --no-codegraph disables the CodeGraph step", () => {
     const tmp = join(tmpdir(), `repo-harness-init-cli-codegraph-${Date.now()}`);
     try {
       mkdirSync(tmp, { recursive: true });
@@ -276,7 +278,7 @@ describe("init command", () => {
         "bun",
         [
           CLI,
-          "update",
+          "adopt",
           "--repo",
           tmp,
           "--dry-run",
@@ -301,20 +303,85 @@ describe("init command", () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
-  }, 15000);
+  }, 30000);
 
-  test("CLI exposes update help for repo-local refresh", () => {
-    const res = spawnSync("bun", [CLI, "update", "--help"], {
+  test("CLI exposes adopt help for repo-local refresh", () => {
+    const res = spawnSync("bun", [CLI, "adopt", "--help"], {
       cwd: ROOT,
       encoding: "utf-8",
     });
 
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain("Usage: repo-harness update");
+    expect(res.stdout).toContain("Usage: repo-harness adopt");
     expect(res.stdout).toContain("--repo <path>");
     expect(res.stdout).toContain("--dry-run");
     expect(res.stdout).toContain("--no-codegraph");
   });
+
+  test("CLI update rejects repo refresh flags with an adopt hint", () => {
+    const res = spawnSync("bun", [CLI, "update", "--repo", ".", "--json"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+
+    expect(res.status).toBe(2);
+    expect(res.stderr).toContain("repo-harness update no longer refreshes repositories");
+    expect(res.stderr).toContain("repo-harness adopt --repo <path>");
+  });
+
+  test("CLI adopt rejects user-level brain configuration flags", () => {
+    const tmp = join(tmpdir(), `repo-harness-adopt-brain-${Date.now()}`);
+    try {
+      mkdirSync(tmp, { recursive: true });
+      const res = spawnSync("bun", [CLI, "adopt", "--repo", tmp, "--brain-mode", "manifest-only", "--json"], {
+        cwd: ROOT,
+        encoding: "utf-8",
+      });
+
+      expect(res.status).toBe(2);
+      expect(res.stderr).toContain("brain configuration writes user-level state");
+      expect(existsSync(join(tmp, ".repo-harness"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("adopt refuses HOME before running migration or host bootstrap", () => {
+    const tmp = join(tmpdir(), `repo-harness-adopt-home-${Date.now()}`);
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(home, { recursive: true });
+      const res = spawnSync(
+        "bun",
+        [
+          CLI,
+          "adopt",
+          "--dry-run",
+          "--no-sync-skill",
+          "--no-host-adapters",
+          "--no-external-skills",
+          "--no-verify",
+          "--no-codegraph",
+          "--json",
+        ],
+        {
+          cwd: home,
+          encoding: "utf-8",
+          env: { ...process.env, HOME: home },
+        },
+      );
+
+      expect(res.status).toBe(2);
+      const result = JSON.parse(res.stdout);
+      expect(result.steps[0].step).toBe("validate repo target");
+      expect(result.steps[0].detail).toContain("refusing to apply repo harness to HOME");
+      expect(existsSync(join(home, ".ai"))).toBe(false);
+      expect(existsSync(join(home, ".codex"))).toBe(false);
+      expect(existsSync(join(home, ".claude"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 15000);
 
   test("configures CodeGraph MCP only when explicitly requested", () => {
     const tmp = join(tmpdir(), `repo-harness-init-configure-codegraph-${Date.now()}`);
@@ -363,7 +430,7 @@ describe("init command", () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
-  }, 15000);
+  }, CODEGRAPH_INIT_TIMEOUT_MS);
 
   test("writes global working rules as an idempotent managed block", () => {
     const tmp = join(tmpdir(), `repo-harness-init-global-rules-${Date.now()}`);
@@ -505,7 +572,7 @@ describe("init command", () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
-  }, 15000);
+  }, CODEGRAPH_INIT_TIMEOUT_MS);
 });
 
 describe("syncCrossReviewSkills", () => {

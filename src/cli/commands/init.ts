@@ -1,7 +1,7 @@
 /**
  * Existing-repo harness bootstrap/update implementation.
  *
- * This backs the public `repo-harness update` command and the legacy
+ * This backs the public `repo-harness adopt` command and the legacy
  * `repo-harness-init` skill facade: default the target repo to cwd,
  * install/refresh the machine runtime pieces, apply the repo-local workflow
  * migration, then verify the installed harness.
@@ -174,6 +174,41 @@ function samePath(a: string, b: string): boolean {
   } catch {
     return resolve(a) === resolve(b);
   }
+}
+
+function isGitWorkTree(repoRoot: string, env?: NodeJS.ProcessEnv): boolean {
+  const result = spawnSync("git", ["-C", repoRoot, "rev-parse", "--is-inside-work-tree"], {
+    encoding: "utf-8",
+    env: { ...process.env, ...(env ?? {}) },
+  });
+  return result.status === 0 && result.stdout.trim() === "true";
+}
+
+function validateRepoAdoptionTarget(
+  repoRoot: string,
+  explicitRepo: boolean,
+  env?: NodeJS.ProcessEnv,
+): InitStep | null {
+  const home = homeDir(env);
+  if (home && samePath(repoRoot, home)) {
+    return {
+      step: "validate repo target",
+      status: "failed",
+      detail:
+        `refusing to apply repo harness to HOME (${repoRoot}); run repo-harness adopt --repo <git-repo> from an intended project`,
+    };
+  }
+
+  if (!explicitRepo && !isGitWorkTree(repoRoot, env)) {
+    return {
+      step: "validate repo target",
+      status: "failed",
+      detail:
+        `cwd is not inside a git work tree (${repoRoot}); pass --repo <project-path> explicitly for non-git scaffolds`,
+    };
+  }
+
+  return null;
 }
 
 function languageInstruction(preset: ReportingLanguagePreset, custom?: string): string {
@@ -362,6 +397,17 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
 
   if (opts.brainRoot) {
     commandEnv = { ...(commandEnv ?? {}), REPO_HARNESS_BRAIN_ROOT: opts.brainRoot };
+  }
+
+  const targetError = validateRepoAdoptionTarget(repoRoot, opts.repo !== undefined, commandEnv);
+  if (targetError) {
+    const steps = [targetError];
+    return {
+      exitCode: 2,
+      repoRoot,
+      steps,
+      lines: steps.flatMap(renderStep),
+    };
   }
 
   if (syncSkill && apply) {

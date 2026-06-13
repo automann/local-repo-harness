@@ -144,7 +144,7 @@ describe("repo-harness action command skills", () => {
 
     expect(init).toContain("existing repository");
     expect(init).toContain("Does not create a new application stack");
-    expect(init).toContain("repo-harness update");
+    expect(init).toContain("repo-harness adopt");
     expect(init).toContain("migrate-project-template.sh --repo <repo> --apply");
     expect(scaffold).toContain("new project");
     expect(scaffold).toContain("plan catalog A-K");

@@ -17,10 +17,13 @@ import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { spawnSync } from "child_process";
 
+const HOOK_RUNTIME_TIMEOUT_MS = 60000;
+const HOOK_RUNTIME_SPAWN_BUFFER_BYTES = 16 * 1024 * 1024;
+
 // Every test here spawns bash hook scripts (each forking git/jq/bun
 // subprocesses) several times; one invocation can exceed 2s under parallel
 // session load, so the 5s bun default flakes on multi-invocation tests.
-setDefaultTimeout(20000);
+setDefaultTimeout(HOOK_RUNTIME_TIMEOUT_MS);
 
 const ROOT = join(import.meta.dir, "..");
 const ASSETS_HOOKS_DIR = join(ROOT, "assets/hooks");
@@ -118,7 +121,11 @@ function externalAcceptanceAdvice(reviewer = "Codex", source = "codex-review"): 
 }
 
 function run(cmd: string, args: string[], cwd: string) {
-  return spawnSync(cmd, args, { cwd, encoding: "utf-8" });
+  return spawnSync(cmd, args, {
+    cwd,
+    encoding: "utf-8",
+    maxBuffer: HOOK_RUNTIME_SPAWN_BUFFER_BYTES,
+  });
 }
 
 function resolveTestNodePath(): string | undefined {
@@ -149,6 +156,7 @@ function runHook(
     cwd,
     input: options?.stdin ?? "",
     encoding: "utf-8",
+    maxBuffer: HOOK_RUNTIME_SPAWN_BUFFER_BYTES,
     env: {
       ...process.env,
       REPO_HARNESS_CLI: join(ROOT, "src/cli/index.ts"),
@@ -287,7 +295,7 @@ describe("Hook runtime behavior", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: initializes missing CodeGraph index before first structural route hint", () => {
     const cwd = tmpWorkspace("codegraph-route-init");
@@ -331,7 +339,7 @@ describe("Hook runtime behavior", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: emits host-aware [ExternalAcceptance] prompt at merge and [CrossReview] at debug moments", () => {
     const cwd = tmpWorkspace("cross-review-hint");
@@ -944,7 +952,7 @@ describe("Hook runtime behavior", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("workstream-sync creates capability ledger and projects pointers into local contract", () => {
     const cwd = tmpWorkspace("workstream-sync");
@@ -2929,7 +2937,7 @@ describe("Hook runtime behavior", () => {
       rmSync(worktreePath, { recursive: true, force: true });
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: treats retrospective completion reports as passive evidence", () => {
     const cwd = tmpWorkspace("prompt-guard-retrospective-completion-report");
@@ -3095,7 +3103,7 @@ describe("Hook runtime behavior", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: lets approved plan projection run on terse approval", () => {
     const cwd = tmpWorkspace("prompt-guard-approval-plan-to-todo");
@@ -3127,7 +3135,7 @@ describe("Hook runtime behavior", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: does not treat unrelated go phrases as implementation approval", () => {
     const cwd = tmpWorkspace("prompt-guard-go-over");
@@ -3484,7 +3492,7 @@ describe("Hook runtime behavior", () => {
         rmSync(cwd, { recursive: true, force: true });
       }
     }
-  }, 15000);
+  }, HOOK_RUNTIME_TIMEOUT_MS);
 
   test("prompt-guard: blocks done intent when contract verification fails", () => {
     const cwd = tmpWorkspace("prompt-guard-contract-fail");

@@ -42,7 +42,7 @@ workflow repo-local qu'il génère lui-même pour les projets en aval.
   optionnels selon le type de projet, et quatre hook profiles (`standard`,
   `minimal`, `biome`, `biome-strict`). Exécutez
   `npx -y repo-harness init` ; aucun clone du dépôt source n'est nécessaire.
-- **Commande de rafraîchissement du dépôt (`repo-harness update`).** L'installation
+- **Commande d'adoption du dépôt (`repo-harness adopt`).** L'installation
   et le rafraîchissement des dépôts existants ont leur propre surface de commande,
   tout en conservant l'ancien chemin de migration repo-local et en gardant `init`
   dédié au runtime global.
@@ -102,7 +102,7 @@ L'ensemble se découpe en trois couches :
 1. **Couche package source** : ce dépôt maintient le CLI, les command skill
    facades, les templates, les hook assets, le workflow contract, les tests et le
    release gate.
-2. **Couche contrat du dépôt cible** : `repo-harness update` ou une migration écrit
+2. **Couche contrat du dépôt cible** : `repo-harness adopt` ou une migration écrit
    `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`, `.ai/harness/`, les helper
    scripts et `.ai/hooks/`.
 3. **Couche host adapter** : les `~/.claude/settings.json` et `~/.codex/hooks.json`
@@ -213,8 +213,8 @@ npx -y repo-harness init
 
 La release line du package npm et le generated workflow stamp utilisent
 désormais la même ligne `0.4.x`. `repo-harness init`
-sert au bootstrap global et `repo-harness update` sert au rafraîchissement
-repo-local. `repo-harness init` configure le CLI, les hook adapters de niveau
+sert au bootstrap global, `repo-harness update` au rafraîchissement
+user-level, et `repo-harness adopt` au rafraîchissement repo-local. `repo-harness init` configure le CLI, les hook adapters de niveau
 utilisateur, Waza, Mermaid, le brain root et CodeGraph MCP ; l'ancien chemin
 Claude plugin `scripts/setup-plugins.sh` est retiré.
 
@@ -250,17 +250,17 @@ sont supprimés par `scripts/sync-codex-installed-copies.sh`.
 Pour un dépôt existant, exécutez depuis le repo root :
 
 ```bash
-npx -y repo-harness update --dry-run
+npx -y repo-harness adopt --dry-run
 ```
 
 Appliquez seulement une fois que le rapport du dry-run est correct :
 
 ```bash
-npx -y repo-harness update
+npx -y repo-harness adopt
 ```
 
 Pour un nouveau projet ou un nouveau module, utilisez la branch command
-`repo-harness-scaffold`. Pour un dépôt existant, utilisez `repo-harness update` ;
+`repo-harness-scaffold`. Pour un dépôt existant, utilisez `repo-harness adopt` ;
 il installe ou rafraîchit le harness sans créer de stack applicatif.
 
 ### À quoi ressemble le succès
@@ -365,7 +365,7 @@ Guards courants :
   - `assets/workflow-contract.v1.json`
 - Les generated repos utilisent par défaut le repo-local harness flow :
   - `docs/spec.md -> plans/ -> tasks/contracts/ -> tasks/reviews/ -> .ai/context/context-map.json -> .ai/harness/*`
-- `repo-harness update` rafraîchit les runtime pieces :
+- `repo-harness update` rafraîchit les runtime pieces utilisateur :
   - les `repo-harness` skill aliases
   - les global Codex/Claude hook adapters
   - les Waza skills : `think`, `hunt`, `check`, `health`
@@ -399,7 +399,7 @@ aux hooks :
 - Repo workflow actions : `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation : `repo-harness-scaffold`
 
-`repo-harness update` sert aux dépôts existants ; `repo-harness-scaffold` sert de
+`repo-harness adopt` sert aux dépôts existants ; `repo-harness-scaffold` sert de
 branch command pour créer un nouveau projet ou module. `hooks-init`, `docs-init` et
 `create-project-dirs` sont des étapes internes, pas des commands publiques.
 

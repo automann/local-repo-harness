@@ -164,8 +164,96 @@ describe('init command global runtime bootstrap', () => {
     expect(res.stdout).toContain('--target <target>');
     expect(res.stdout).toContain('--no-cli');
     expect(res.stdout).toContain('--brain-root <path>');
+    expect(res.stdout).toContain('--refresh');
     expect(res.stdout).not.toContain('--with-optional');
     expect(res.stdout).not.toContain('--project-type');
     expect(res.stdout).not.toContain('setup-plugins');
+  });
+
+  test('CLI update refreshes user-level runtime without touching the current repo', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'repo-harness-cli-update-'));
+    const home = join(tmp, 'home');
+    const repo = join(tmp, 'repo');
+    const fakeBin = join(tmp, 'bin');
+    const npmLog = join(tmp, 'npm.log');
+    try {
+      mkdirSync(home, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      writeExecutable(join(fakeBin, 'npm'), `#!/bin/bash\nprintf '%s\\n' "$*" >> "${npmLog}"\nexit 0\n`);
+
+      const res = spawnSync(
+        'bun',
+        [
+          CLI,
+          'update',
+          '--no-sync-skill',
+          '--no-hooks',
+          '--no-external-skills',
+          '--no-codegraph',
+          '--json',
+        ],
+        {
+          cwd: repo,
+          encoding: 'utf-8',
+          env: { ...process.env, HOME: home, PATH: `${fakeBin}:${process.env.PATH ?? ''}` },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      const result = JSON.parse(res.stdout);
+      expect(readFileSync(npmLog, 'utf-8')).toContain('install -g repo-harness@latest');
+      expect(result.steps.find((step: { step: string }) => step.step === 'configure brain root')?.status).toBe('ok');
+      expect(existsSync(join(home, '.repo-harness', 'config.json'))).toBe(true);
+      expect(existsSync(join(repo, '.ai'))).toBe(false);
+      expect(existsSync(join(repo, 'tasks'))).toBe(false);
+      expect(existsSync(join(repo, 'plans'))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('CLI update --check is read-only setup readiness output', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'repo-harness-cli-update-check-'));
+    const home = join(tmp, 'home');
+    const repo = join(tmp, 'repo');
+    try {
+      mkdirSync(home, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+
+      const res = spawnSync('bun', [CLI, 'update', '--check', '--target', 'codex', '--json'], {
+        cwd: repo,
+        encoding: 'utf-8',
+        env: { ...process.env, HOME: home },
+      });
+
+      expect([0, 1]).toContain(res.status);
+      const report = JSON.parse(res.stdout);
+      expect(report.version).toBe(1);
+      expect(report.target).toBe('codex');
+      expect(existsSync(join(home, '.repo-harness'))).toBe(false);
+      expect(existsSync(join(repo, '.ai'))).toBe(false);
+      expect(existsSync(join(repo, 'tasks'))).toBe(false);
+      expect(existsSync(join(repo, 'plans'))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test('CLI exposes update help for user-level refresh', () => {
+    const res = spawnSync('bun', [CLI, 'update', '--help'], {
+      cwd: ROOT,
+      encoding: 'utf-8',
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('Usage: repo-harness update');
+    expect(res.stdout).toContain('--version <version>');
+    expect(res.stdout).toContain('--channel <channel>');
+    expect(res.stdout).toContain('--check');
+    expect(res.stdout).toContain('--no-runtime-refresh');
+    expect(res.stdout).toContain('--with-external-skills');
+    expect(res.stdout).toContain('--configure-codegraph');
+    expect(res.stdout).toContain('--no-cli');
+    expect(res.stdout).toContain('Deprecated: use repo-harness adopt --repo <path>');
   });
 });

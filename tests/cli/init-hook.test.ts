@@ -190,7 +190,7 @@ describe('init-hook command', () => {
 
       const action = report.agent_actions.find((entry) => entry.id === 'cli.update');
       expect(action?.command).toBe('npm install -g repo-harness@latest && repo-harness init');
-      expect(action?.verification).toBe('repo-harness init-hook --target codex --check-updates --json');
+      expect(action?.verification).toBe('repo-harness setup check --target codex --check-updates --json');
     });
   });
 
@@ -256,6 +256,17 @@ describe('init-hook command', () => {
     });
     expect(res.status).toBe(0);
     expect(res.stdout).toContain('Usage: repo-harness init-hook');
+    expect(res.stdout).toContain('--target <target>');
+    expect(res.stdout).toContain('--check-updates');
+  });
+
+  test('CLI exposes setup check help', () => {
+    const res = spawnSync('bun', [CLI, 'setup', 'check', '--help'], {
+      cwd: ROOT,
+      encoding: 'utf-8',
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('Usage: repo-harness setup check');
     expect(res.stdout).toContain('--target <target>');
     expect(res.stdout).toContain('--check-updates');
   });

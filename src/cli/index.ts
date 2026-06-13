@@ -12,15 +12,17 @@ import { runInit, runInteractiveInit, type InitBrainMode } from './commands/init
 import { runHook } from './commands/hook';
 import { CLI_VERSION, formatStatus, runStatus } from './commands/status';
 import { formatDoctor, runDoctor } from './commands/doctor';
-import { buildInitHookCommand } from './commands/init-hook';
+import { buildInitHookCommand, buildSetupCommand, formatInitHook, runInitHook } from './commands/init-hook';
 import { formatMigratePlan, runMigrate } from './commands/migrate';
 import { buildToolsCommand } from './commands/tools';
 import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
 import { buildDocsCommand } from './commands/docs';
+import { buildRunCommand } from './commands/run';
 import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
+import { runRuntimeReclaim, runRuntimeRollback } from './repo-adoption/reclaim-runtime';
 import type { Location } from './installer/types';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
@@ -34,6 +36,9 @@ export const SUBCOMMANDS = [
   'migrate',
   'security',
   'update',
+  'adopt',
+  'run',
+  'setup',
   'tools',
   'brain',
   'capability-context',
@@ -62,6 +67,7 @@ export function buildProgram(): Command {
     .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-codegraph', 'Skip CodeGraph CLI/MCP configuration')
     .option('--brain-root <path>', 'Brain vault root to persist for repo-harness brain commands')
+    .option('--refresh', 'Refresh the idempotent user-level runtime after a CLI package update')
     .option('--json', 'Output JSON instead of human-readable text')
     .action((rawOpts: {
       target: string;
@@ -71,6 +77,7 @@ export function buildProgram(): Command {
       externalSkills?: boolean;
       codegraph?: boolean;
       brainRoot?: string;
+      refresh?: boolean;
       json?: boolean;
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
@@ -98,34 +105,42 @@ export function buildProgram(): Command {
 
   program
     .command('update')
-    .description('Install or refresh the repo-local harness workflow in an existing repo')
-    .option('--repo <path>', 'Target repository path (defaults to cwd)')
-    .option('--dry-run', 'Plan repo harness changes without applying them')
-    .option('--target <target>', `Host target for adapters and external skills: ${VALID_TARGETS.join('|')}`, 'both')
+    .description('Update the global repo-harness CLI and user-level managed runtime')
+    .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
+    .option('--version <version>', 'Install a specific repo-harness package version')
+    .option('--channel <channel>', 'Install package channel: latest|next')
+    .option('--check', 'Run the read-only setup check without refreshing runtime')
+    .option('--check-updates', 'Include network-backed version update advisories in setup check output')
+    .option('--no-runtime-refresh', 'Skip runtime refresh and run the read-only setup check only')
+    .option('--no-cli', 'Skip installing the repo-harness CLI globally')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
-    .option('--no-host-adapters', 'Skip writing global Codex/Claude hook adapters')
-    .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
-    .option('--no-verify', 'Skip repo workflow verification after apply')
-    .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
-    .option('--configure-codegraph', 'Auto-register the CodeGraph MCP server for Codex and Claude (global)')
-    .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
+    .option('--no-hooks', 'Skip global hook adapter installation')
+    .option('--with-external-skills', 'Also bootstrap third-party Waza, Mermaid, and cross-review skills')
+    .option('--no-external-skills', 'Compatibility no-op; update no longer bootstraps third-party skills by default')
+    .option('--configure-codegraph', 'Also configure CodeGraph CLI/MCP during runtime refresh')
+    .option('--no-codegraph', 'Compatibility no-op; update no longer configures CodeGraph by default')
     .option('--brain-root <path>', 'Brain vault root for manifest sync')
-    .option('--brain-mode <mode>', 'Brain sync mode: skip|manifest-only|install-gbrain-cli', 'skip')
-    .option('--interactive', 'Run the numbered interactive install planner')
+    .option('--repo <path>', 'Deprecated: use repo-harness adopt --repo <path>')
+    .option('--dry-run', 'Deprecated: use repo-harness adopt --dry-run for repo-level planning')
+    .option('--interactive', 'Deprecated: use repo-harness adopt --interactive for repo-level planning')
     .option('--json', 'Output JSON instead of human-readable text')
-    .action(async (rawOpts: {
+    .action((rawOpts: {
       repo?: string;
       dryRun?: boolean;
       target: string;
+      version?: string;
+      channel?: string;
+      check?: boolean;
+      checkUpdates?: boolean;
+      runtimeRefresh?: boolean;
+      cli?: boolean;
       syncSkill?: boolean;
-      hostAdapters?: boolean;
+      hooks?: string | false;
+      withExternalSkills?: boolean;
       externalSkills?: boolean;
-      verify?: boolean;
       codegraph?: boolean;
       configureCodegraph?: boolean;
-      syncCodegraph?: boolean;
       brainRoot?: string;
-      brainMode?: string;
       interactive?: boolean;
       json?: boolean;
     }) => {
@@ -135,20 +150,140 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (rawOpts.channel !== undefined && !['latest', 'next'].includes(rawOpts.channel)) {
+        console.error('repo-harness update: invalid --channel (expected: latest, next)');
+        process.exit(2);
+      }
+      if (rawOpts.repo || rawOpts.dryRun || rawOpts.interactive) {
+        console.error(
+          'repo-harness update no longer refreshes repositories. For repo-level refresh, run: repo-harness adopt --repo <path>',
+        );
+        process.exit(2);
+      }
+      if (rawOpts.check === true || rawOpts.runtimeRefresh === false) {
+        const report = runInitHook({
+          target: rawOpts.target as InstallTargetSpec,
+          checkUpdates: rawOpts.checkUpdates === true,
+        });
+        console.log(formatInitHook(report, rawOpts.json === true));
+        process.exit(report.status === 'blocked' ? 1 : 0);
+      }
+      const installSpec = rawOpts.version
+        ? `repo-harness@${rawOpts.version}`
+        : rawOpts.channel
+          ? `repo-harness@${rawOpts.channel}`
+          : 'repo-harness@latest';
+      const result = runGlobalRuntimeSetup({
+        target: rawOpts.target as InstallTargetSpec,
+        installCli: rawOpts.cli !== false,
+        installSpec,
+        syncSkill: rawOpts.syncSkill !== false,
+        hostAdapters: rawOpts.hooks !== false,
+        externalSkills: rawOpts.withExternalSkills === true,
+        codegraph: rawOpts.configureCodegraph === true,
+        brainRoot: rawOpts.brainRoot,
+      });
+      if (rawOpts.json === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        for (const line of result.lines) console.log(line);
+      }
+      process.exit(result.exitCode);
+    });
+
+  program
+    .command('adopt')
+    .description('Install or refresh the repo-local harness workflow in an existing repo')
+    .argument('[action]', 'Optional action: rollback')
+    .option('--repo <path>', 'Target repository path (defaults to cwd)')
+    .option('--archive <path>', 'Runtime reclaim archive to restore when action is rollback')
+    .option('--dry-run', 'Plan repo harness changes without applying them')
+    .option('--target <target>', `Host target for readiness checks and optional global bootstrap: ${VALID_TARGETS.join('|')}`, 'both')
+    .option('--no-sync-skill', 'Compatibility no-op; adopt never refreshes user-level skill aliases')
+    .option('--no-host-adapters', 'Compatibility no-op; adopt never writes global Codex/Claude hook adapters')
+    .option('--no-external-skills', 'Compatibility no-op; adopt never bootstraps user-level external skills')
+    .option('--no-verify', 'Skip repo workflow verification after apply')
+    .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
+    .option('--reclaim-runtime', 'Reclaim generated repo-local hook/helper runtime copies after replacement paths verify')
+    .option('--compact', 'Compact repo surface; includes --reclaim-runtime plus package script rewrite')
+    .option('--mode <mode>', 'Adoption mode: minimal|standard|self-host', 'standard')
+    .option('--configure-codegraph', 'Deprecated: user-level MCP config belongs to repo-harness update/setup')
+    .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
+    .option('--brain-root <path>', 'Deprecated: user-level brain config belongs to repo-harness update/setup')
+    .option('--brain-mode <mode>', 'Deprecated: adopt does not perform user-level brain sync', 'skip')
+    .option('--interactive', 'Run the numbered interactive install planner')
+    .option('--json', 'Output JSON instead of human-readable text')
+    .action(async (action: string | undefined, rawOpts: {
+      repo?: string;
+      archive?: string;
+      dryRun?: boolean;
+      target: string;
+      syncSkill?: boolean;
+      hostAdapters?: boolean;
+      externalSkills?: boolean;
+      verify?: boolean;
+      codegraph?: boolean;
+      reclaimRuntime?: boolean;
+      compact?: boolean;
+      mode?: string;
+      configureCodegraph?: boolean;
+      syncCodegraph?: boolean;
+      brainRoot?: string;
+      brainMode?: string;
+      interactive?: boolean;
+      json?: boolean;
+    }) => {
+      if (action) {
+        if (action !== 'rollback') {
+          console.error(`repo-harness adopt: unknown action "${action}"`);
+          process.exit(2);
+        }
+        if (!rawOpts.archive) {
+          console.error('repo-harness adopt rollback: --archive is required');
+          process.exit(2);
+        }
+        const rollback = runRuntimeRollback({ repo: rawOpts.repo, archive: rawOpts.archive });
+        if (rawOpts.json === true) {
+          console.log(JSON.stringify(rollback, null, 2));
+        } else {
+          console.log(`[adopt] ${rollback.status}: rollback runtime archive ${rollback.archive}`);
+          for (const restored of rollback.restored) console.log(`[adopt] restored: ${restored}`);
+          for (const missing of rollback.missing) console.log(`[adopt] missing: ${missing}`);
+        }
+        process.exit(rollback.status === 'ok' ? 0 : 1);
+      }
+      if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
+        console.error(
+          `repo-harness adopt: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+        );
+        process.exit(2);
+      }
       if (!['skip', 'manifest-only', 'install-gbrain-cli'].includes(rawOpts.brainMode ?? 'skip')) {
-        console.error('repo-harness update: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
+        console.error('repo-harness adopt: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
+        process.exit(2);
+      }
+      if (!['minimal', 'standard', 'self-host'].includes(rawOpts.mode ?? 'standard')) {
+        console.error('repo-harness adopt: invalid --mode (expected: minimal, standard, self-host)');
+        process.exit(2);
+      }
+      if (rawOpts.configureCodegraph === true) {
+        console.error('repo-harness adopt: --configure-codegraph writes user-level MCP config; run repo-harness update instead');
+        process.exit(2);
+      }
+      if (rawOpts.brainRoot || rawOpts.brainMode !== 'skip') {
+        console.error('repo-harness adopt: brain configuration writes user-level state; run repo-harness update instead');
         process.exit(2);
       }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
         target: rawOpts.target as InstallTargetSpec,
-        syncSkill: rawOpts.syncSkill !== false,
-        hostAdapters: rawOpts.hostAdapters !== false,
-        externalSkills: rawOpts.externalSkills !== false,
+        syncSkill: false,
+        hostAdapters: false,
+        externalSkills: false,
         verify: rawOpts.verify !== false,
         codegraph: rawOpts.codegraph !== false,
-        configureCodegraphMcp: rawOpts.configureCodegraph === true,
+        configureCodegraphMcp: false,
         syncCodegraph: rawOpts.syncCodegraph === true,
         brainRoot: rawOpts.brainRoot,
         brainMode: rawOpts.brainMode as InitBrainMode,
@@ -159,12 +294,27 @@ export function buildProgram(): Command {
             output: rawOpts.json === true ? process.stderr : process.stdout,
           })
         : runInit(common);
+      const shouldReclaim = rawOpts.reclaimRuntime === true || rawOpts.compact === true;
+      const reclaim = shouldReclaim && (result.exitCode === 0 || rawOpts.dryRun === true)
+        ? runRuntimeReclaim({
+            repo: result.repoRoot,
+            apply: rawOpts.dryRun !== true,
+            compact: rawOpts.compact === true,
+            verify: rawOpts.verify !== false,
+            mode: rawOpts.mode as 'minimal' | 'standard' | 'self-host',
+          })
+        : null;
       if (rawOpts.json === true) {
-        console.log(JSON.stringify(result, null, 2));
+        console.log(JSON.stringify(reclaim ? { adopt: result, runtime_reclaim: reclaim } : result, null, 2));
       } else {
         for (const line of result.lines) console.log(line);
+        if (reclaim) {
+          console.log(`[adopt] ${reclaim.status}: reclaim runtime - files=${reclaim.runtime_reclaim.files.length}`);
+          if (reclaim.runtime_reclaim.archive) console.log(`[adopt] archive: ${reclaim.runtime_reclaim.archive}`);
+          for (const blocked of reclaim.runtime_reclaim.blocked) console.log(`[adopt] blocked: ${blocked}`);
+        }
       }
-      process.exit(result.exitCode);
+      process.exit(result.exitCode || (reclaim?.status === 'blocked' ? 1 : 0));
     });
 
   program
@@ -227,6 +377,7 @@ export function buildProgram(): Command {
     });
 
   program.addCommand(buildInitHookCommand());
+  program.addCommand(buildSetupCommand());
 
   program
     .command('migrate')
@@ -258,6 +409,7 @@ export function buildProgram(): Command {
   program.addCommand(buildBrainCommand());
   program.addCommand(buildCapabilityContextCommand());
   program.addCommand(buildDocsCommand());
+  program.addCommand(buildRunCommand());
   program
     .command('prompt-guard-decide', { hidden: true })
     .description('Internal prompt-guard intent/state decision engine')

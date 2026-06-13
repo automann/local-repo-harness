@@ -400,7 +400,7 @@ function checkHookScriptDrift(cwd: string): DoctorCheckResult {
   const remediation =
     resolved.source === 'packaged'
       ? 'npm install -g repo-harness@latest'
-      : `repo-harness update --repo ${repoRoot}`;
+      : `repo-harness adopt --repo ${repoRoot}`;
   return {
     id,
     describe,
