@@ -19,6 +19,7 @@ import {
   writeGlobalContextFiles,
 } from "../../src/cli/commands/init";
 import { configuredBrainRoot } from "../../src/cli/commands/brain-root";
+import { PROJECT_HOOK_BIN_REL } from "../../src/cli/installer/project-runtime";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const CLI = join(ROOT, "src/cli/index.ts");
@@ -269,8 +270,10 @@ describe("init command", () => {
       const hostStep = result.steps.find((step) => step.step === "install host adapters");
       expect(hostStep?.status).toBe("ok");
       expect(hostStep?.detail).toContain("scope=project");
+      expect(hostStep?.detail).toContain("runtime=project-vendored-bun");
       expect(existsSync(join(repo, ".codex", "hooks.json"))).toBe(true);
       expect(existsSync(join(repo, ".claude", "settings.json"))).toBe(true);
+      expect(existsSync(join(repo, PROJECT_HOOK_BIN_REL))).toBe(true);
       expect(existsSync(join(home, ".codex", "hooks.json"))).toBe(false);
       expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
     } finally {
@@ -386,7 +389,18 @@ describe("init command", () => {
     expect(res.stdout).toContain("--repo <path>");
     expect(res.stdout).toContain("--dry-run");
     expect(res.stdout).toContain("--host-adapter-scope <scope>");
+    expect(res.stdout).toContain("--runtime <runtime>");
     expect(res.stdout).toContain("--no-codegraph");
+  });
+
+  test("CLI update validates runtime mode", () => {
+    const res = spawnSync("bun", [CLI, "update", "--runtime", "bogus"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+
+    expect(res.status).toBe(2);
+    expect(res.stderr).toContain('invalid --runtime "bogus"');
   });
 
   test("configures CodeGraph MCP only when explicitly requested", () => {

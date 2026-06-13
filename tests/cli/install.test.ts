@@ -4,6 +4,10 @@ import * as path from 'path';
 import * as os from 'os';
 import { execSync, spawnSync } from 'child_process';
 import { runInstall } from '../../src/cli/commands/install';
+import {
+  PROJECT_HOOK_BIN_REL,
+  PROJECT_RUNTIME_VERSION_REL,
+} from '../../src/cli/installer/project-runtime';
 
 function withTempHome(fn: (home: string) => void): void {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-install-')));
@@ -34,6 +38,17 @@ describe('install command (Phase 1B)', () => {
         const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
         const total = Object.values(data.hooks as Record<string, unknown[]>).flat().length;
         expect(total).toBe(8);
+        expect(fs.existsSync(path.join(repo, PROJECT_HOOK_BIN_REL))).toBe(true);
+        expect(fs.existsSync(path.join(repo, PROJECT_RUNTIME_VERSION_REL))).toBe(true);
+        expect(result.lines.some((l) => l.startsWith('[runtime]'))).toBe(true);
+        for (const entries of Object.values(data.hooks) as { hooks: { command: string }[] }[][]) {
+          for (const entry of entries) {
+            const command = entry.hooks[0].command;
+            expect(command).toContain('.ai/harness/bin/repo-harness-hook');
+            expect(command).not.toContain('command -v repo-harness-hook');
+            expect(command).not.toContain('exec repo-harness hook');
+          }
+        }
       } finally {
         fs.rmSync(repo, { recursive: true, force: true });
       }
@@ -143,6 +158,7 @@ describe('install command (Phase 1B)', () => {
 
         expect(result.exitCode).toBe(0);
         expect(fs.existsSync(path.join(repo, '.codex/hooks.json'))).toBe(true);
+        expect(fs.existsSync(path.join(repo, PROJECT_HOOK_BIN_REL))).toBe(true);
         expect(fs.existsSync(path.join(subdir, '.codex/hooks.json'))).toBe(false);
       } finally {
         fs.rmSync(repo, { recursive: true, force: true });
@@ -246,11 +262,51 @@ describe('install command (Phase 1B)', () => {
         expect(result.exitCode).toBe(0);
         expect(fs.existsSync(path.join(repo, '.codex/hooks.json'))).toBe(true);
         expect(fs.existsSync(path.join(repo, '.claude/settings.json'))).toBe(true);
+        expect(fs.existsSync(path.join(repo, PROJECT_HOOK_BIN_REL))).toBe(true);
         expect(fs.existsSync(path.join(home, '.codex/hooks.json'))).toBe(false);
         expect(fs.existsSync(path.join(home, '.claude/settings.json'))).toBe(false);
       } finally {
         fs.rmSync(repo, { recursive: true, force: true });
       }
+    });
+  });
+
+  test('project scope can explicitly opt out to the global PATH runtime', () => {
+    withTempHome(() => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-install-global-runtime-')),
+      );
+      try {
+        const result = runInstall({
+          target: 'codex',
+          scope: 'project',
+          cwd: repo,
+          runtime: 'global-path',
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.lines).toContain('[runtime] warning: project scope is using global PATH runtime; isolation is weaker.');
+        expect(fs.existsSync(path.join(repo, PROJECT_HOOK_BIN_REL))).toBe(false);
+
+        const data = JSON.parse(fs.readFileSync(path.join(repo, '.codex/hooks.json'), 'utf-8'));
+        const commands = Object.values(data.hooks as Record<string, { hooks: { command: string }[] }[]>)
+          .flat()
+          .map((entry) => entry.hooks[0].command);
+        expect(commands.every((command) => command.includes('command -v repo-harness-hook'))).toBe(true);
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test('user/global scope rejects project-vendored runtime mode', () => {
+    withTempHome(() => {
+      const result = runInstall({
+        target: 'codex',
+        scope: 'user',
+        runtime: 'project-vendored-bun',
+      });
+      expect(result.exitCode).toBe(2);
+      expect(result.lines.join('\n')).toContain('--runtime project-vendored-bun requires --scope project');
     });
   });
 

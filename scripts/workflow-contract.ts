@@ -9,6 +9,21 @@ export type WorkflowContract = {
     agents: string[];
     repoLocalFirst: boolean;
   };
+  hostAdapters?: {
+    defaultScope: string;
+    runtimeSelection: string;
+    runtimeModes: string[];
+    projectRuntime?: {
+      runtimeScope: string;
+      hookRuntimeMode: string;
+      binDirectory: string;
+      executable: string;
+      runtimeDirectory: string;
+      versionFile: string;
+      requiredRuntime: string;
+      networkDuringHookExecution: boolean;
+    };
+  };
   externalTooling?: {
     waza?: {
       sourceRepo: string;
@@ -72,6 +87,7 @@ export type WorkflowContract = {
     requiredDirectories: string[];
     requiredFiles: string[];
     runtimeFiles?: string[];
+    projectRuntimeFiles?: string[];
   };
   documents: {
     spec: string;

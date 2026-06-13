@@ -93,6 +93,14 @@ describe("workflow contract manifest", () => {
     expect(contract.documentation?.referenceConfigs?.packageDirectory).toBe("assets/reference-configs");
     expect(contract.documentation?.referenceConfigs?.resolverCommand).toBe("repo-harness docs path <doc-id>");
     expect(contract.documentation?.referenceConfigs?.stubMarker).toBe("<!-- repo-harness: reference-config-stub v1 -->");
+    expect(contract.hostAdapters?.defaultScope).toBe("user");
+    expect(contract.hostAdapters?.runtimeSelection).toBe("auto");
+    expect(contract.hostAdapters?.runtimeModes).toContain("global-path");
+    expect(contract.hostAdapters?.runtimeModes).toContain("project-vendored-bun");
+    expect(contract.hostAdapters?.projectRuntime?.runtimeScope).toBe("project");
+    expect(contract.hostAdapters?.projectRuntime?.hookRuntimeMode).toBe("project-vendored-bun");
+    expect(contract.hostAdapters?.projectRuntime?.executable).toBe(".ai/harness/bin/repo-harness-hook");
+    expect(contract.hostAdapters?.projectRuntime?.networkDuringHookExecution).toBe(false);
     expect(contract.agenticDevelopment?.routing.complexEngineeringPlan).toBe("gstack:plan-eng-review");
     expect(contract.agenticDevelopment?.routing.bugOrRegression).toBe("waza:hunt");
     expect(contract.agenticDevelopment?.dueDiligence.levels).toContain("P2_DATA_FLOW_TRACE");
@@ -145,6 +153,9 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/worktrees/");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/triage/inbox.md");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
+    expect(contract.artifacts.projectRuntimeFiles).toContain(".ai/harness/bin/repo-harness-hook");
+    expect(contract.artifacts.projectRuntimeFiles).toContain(".ai/harness/runtime/repo-harness/.version");
+    expect(contract.artifacts.projectRuntimeFiles).not.toContain(".codex/hooks.json");
     expect(contract.migrations.upgrade?.strategyVersion).toBe(1);
     expect(contract.migrations.upgrade?.actionClasses).toContain("reconfigure");
     expect(contract.migrations.upgrade?.safety.removeOnlyOwnership).toBe("known_generated");

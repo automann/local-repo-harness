@@ -31,6 +31,7 @@ import {
 } from "./brain-root";
 import { configureCodegraph, ensureCodegraph } from "../tools/codegraph";
 import { scopeToLocation, type InstallScope } from "../installer/types";
+import { resolveRuntimeMode, type RuntimeSelection } from "../installer/hook-command";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..", "..");
@@ -66,6 +67,7 @@ export interface InitCommandOptions {
   syncSkill?: boolean;
   hostAdapters?: boolean;
   hostAdapterScope?: InstallScope;
+  runtime?: RuntimeSelection;
   externalSkills?: boolean;
   codegraph?: boolean;
   configureCodegraphMcp?: boolean;
@@ -355,6 +357,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   const syncSkill = opts.syncSkill !== false;
   const hostAdapters = opts.hostAdapters !== false;
   const hostAdapterScope = opts.hostAdapterScope ?? "user";
+  const runtimeSelection = opts.runtime ?? "auto";
   const externalSkills = opts.externalSkills !== false;
   const codegraph = opts.codegraph !== false;
   const configureCgMcp = opts.configureCodegraphMcp === true;
@@ -369,6 +372,9 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   commandEnv = {
     ...(commandEnv ?? {}),
     REPO_HARNESS_HOST_ADAPTER_SCOPE: hostAdapters ? hostAdapterScope : "none",
+    REPO_HARNESS_HOOK_RUNTIME_MODE: hostAdapters && hostAdapterScope !== "none"
+      ? resolveRuntimeMode(scopeToLocation(hostAdapterScope), runtimeSelection)
+      : "none",
   };
 
   if (syncSkill && apply) {
@@ -384,11 +390,17 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
 
   if (hostAdapters && hostAdapterScope !== "none" && apply) {
     const location = scopeToLocation(hostAdapterScope);
-    const installed = withProcessEnv(commandEnv, () => runInstall({ target, location, cwd: repoRoot }));
+    const runtimeMode = resolveRuntimeMode(location, runtimeSelection);
+    const installed = withProcessEnv(commandEnv, () => runInstall({
+      target,
+      location,
+      cwd: repoRoot,
+      runtime: runtimeSelection,
+    }));
     steps.push({
       step: "install host adapters",
       status: installed.exitCode === 0 ? "ok" : "failed",
-      detail: `scope=${hostAdapterScope}; ${installed.lines.join("; ")}`,
+      detail: `scope=${hostAdapterScope}; runtime=${runtimeMode}; ${installed.lines.join("; ")}`,
     });
   } else {
     steps.push({

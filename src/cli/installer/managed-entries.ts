@@ -4,20 +4,26 @@
  *
  *   { matcher?: string, hooks: [{ type: 'command', command: string }] }
  *
- * The `MANAGED_TAG` substring inside each command string identifies entries
- * the repo-harness installer wrote, so install can be idempotent and uninstall
- * can remove only its own entries (leaving sibling user hooks intact —
- * verified for Claude in Phase 0: `~/.claude/settings.json` already had a
- * non-repo-harness `rtk hook claude` entry that must survive install).
+ * The managed tag substring inside each command string identifies entries the
+ * repo-harness installer wrote, so install can be idempotent and uninstall can
+ * remove only its own entries (leaving sibling user hooks intact — verified
+ * for Claude in Phase 0: `~/.claude/settings.json` already had a non-
+ * repo-harness `rtk hook claude` entry that must survive install).
  *
- * Command shape includes the `command -v repo-harness || exit 0` shim
- * (Codex consult constraint #5: CLI-missing fallback — adapter must not
- * fail when CLI is uninstalled or not on PATH).
+ * User-scope command shape keeps the `command -v repo-harness || exit 0` shim
+ * (Codex consult constraint #5: CLI-missing fallback). Project-scope command
+ * shape uses the repo-owned `.ai/harness/bin/repo-harness-hook` runtime.
  */
 
 import { ROUTES, type Route } from '../hook/route-registry';
+import {
+  MANAGED_ENV_TAG,
+  buildHookCommand,
+  type RuntimeMode,
+} from './hook-command';
 
-export const MANAGED_TAG = 'repo-harness hook';
+export const MANAGED_TAG = MANAGED_ENV_TAG;
+export const LEGACY_MANAGED_TAG = 'repo-harness hook';
 
 export interface HookCommand {
   type: 'command';
@@ -33,13 +39,22 @@ export interface HookEntry {
 export type HooksByEvent = Record<string, HookEntry[]>;
 export type HookHost = 'claude' | 'codex';
 
-export function buildHookCommand(route: Route, host: HookHost): string {
-  return `if command -v repo-harness-hook >/dev/null 2>&1; then HOOK_HOST=${host} exec repo-harness-hook ${route.event} --route ${route.routeId}; fi; command -v repo-harness >/dev/null 2>&1 || exit 0; HOOK_HOST=${host} exec repo-harness hook ${route.event} --route ${route.routeId}`;
+export interface BuildManagedHooksOptions {
+  runtimeMode?: RuntimeMode;
 }
 
-export function buildHookEntry(route: Route, host: HookHost): HookEntry {
+export function buildHookEntry(
+  route: Route,
+  host: HookHost,
+  opts: BuildManagedHooksOptions = {},
+): HookEntry {
+  const runtimeMode = opts.runtimeMode ?? 'global-path';
   const entry: HookEntry = {
-    hooks: [{ type: 'command', command: buildHookCommand(route, host), timeout: 30 }],
+    hooks: [{
+      type: 'command',
+      command: buildHookCommand({ route, host, runtimeMode }),
+      timeout: 30,
+    }],
   };
   if (route.matcher !== undefined) entry.matcher = route.matcher;
   return entry;
@@ -47,14 +62,20 @@ export function buildHookEntry(route: Route, host: HookHost): HookEntry {
 
 export function isManagedEntry(entry: HookEntry): boolean {
   if (!entry || !Array.isArray(entry.hooks)) return false;
-  return entry.hooks.some((h) => typeof h?.command === 'string' && h.command.includes(MANAGED_TAG));
+  return entry.hooks.some((h) => (
+    typeof h?.command === 'string' &&
+    (h.command.includes(MANAGED_TAG) || h.command.includes(LEGACY_MANAGED_TAG))
+  ));
 }
 
-export function buildManagedHooks(host: HookHost): HooksByEvent {
+export function buildManagedHooks(
+  host: HookHost,
+  opts: BuildManagedHooksOptions = {},
+): HooksByEvent {
   const out: HooksByEvent = {};
   for (const route of ROUTES) {
     if (!out[route.event]) out[route.event] = [];
-    out[route.event].push(buildHookEntry(route, host));
+    out[route.event].push(buildHookEntry(route, host, opts));
   }
   return out;
 }

@@ -11,6 +11,8 @@
  * settings.json), not MCP server registration.
  */
 
+import type { RuntimeMode } from './hook-command';
+
 export type Location = 'global' | 'local';
 export type InstallScope = 'user' | 'project' | 'none';
 
@@ -64,6 +66,8 @@ export interface WriteResult {
 export interface InstallOptions {
   /** Target repo/project root for project-scoped installs. Defaults to cwd. */
   cwd?: string;
+  /** Hook runtime strategy used by generated adapter commands. */
+  runtimeMode?: RuntimeMode;
 }
 
 export interface DetectionOptions {

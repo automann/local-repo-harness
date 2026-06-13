@@ -22,6 +22,7 @@ import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
 import type { InstallScope, Location } from './installer/types';
+import { isRuntimeSelection, type RuntimeSelection } from './installer/hook-command';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
 export const SUBCOMMANDS = [
@@ -44,6 +45,7 @@ export type Subcommand = (typeof SUBCOMMANDS)[number];
 const VALID_TARGETS: readonly InstallTargetSpec[] = ['codex', 'claude', 'both'];
 const VALID_LOCATIONS: readonly Location[] = ['global', 'local'];
 const VALID_SCOPES: readonly InstallScope[] = ['user', 'project', 'none'];
+const VALID_RUNTIMES: readonly RuntimeSelection[] = ['auto', 'global-path', 'project-vendored-bun'];
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -106,6 +108,7 @@ export function buildProgram(): Command {
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters')
     .option('--host-adapter-scope <scope>', `Hook adapter scope: ${VALID_SCOPES.join('|')} (default: user)`, 'user')
+    .option('--runtime <runtime>', `Hook runtime mode: ${VALID_RUNTIMES.join('|')} (default: auto)`, 'auto')
     .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-verify', 'Skip repo workflow verification after apply')
     .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
@@ -122,6 +125,7 @@ export function buildProgram(): Command {
       syncSkill?: boolean;
       hostAdapters?: boolean;
       hostAdapterScope?: string;
+      runtime?: string;
       externalSkills?: boolean;
       verify?: boolean;
       codegraph?: boolean;
@@ -148,6 +152,12 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
+        console.error(
+          `repo-harness update: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
@@ -155,6 +165,7 @@ export function buildProgram(): Command {
         syncSkill: rawOpts.syncSkill !== false,
         hostAdapters: rawOpts.hostAdapters !== false,
         hostAdapterScope: rawOpts.hostAdapterScope as InstallScope,
+        runtime: rawOpts.runtime as RuntimeSelection,
         externalSkills: rawOpts.externalSkills !== false,
         verify: rawOpts.verify !== false,
         codegraph: rawOpts.codegraph !== false,
@@ -183,7 +194,8 @@ export function buildProgram(): Command {
     .requiredOption('--target <target>', `Target host: ${VALID_TARGETS.join('|')}`)
     .option('--location <location>', `Install location: ${VALID_LOCATIONS.join('|')}`)
     .option('--scope <scope>', `Install scope: ${VALID_SCOPES.join('|')}`)
-    .action((rawOpts: { target: string; location?: string; scope?: string }) => {
+    .option('--runtime <runtime>', `Hook runtime mode: ${VALID_RUNTIMES.join('|')} (default: auto)`, 'auto')
+    .action((rawOpts: { target: string; location?: string; scope?: string; runtime?: string }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
           `repo-harness install: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
@@ -210,10 +222,17 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
+        console.error(
+          `repo-harness install: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const result = runInstall({
         target: rawOpts.target as InstallTargetSpec,
         location: rawOpts.location as Location | undefined,
         scope: rawOpts.scope as InstallScope | undefined,
+        runtime: rawOpts.runtime as RuntimeSelection,
       });
       for (const line of result.lines) console.log(line);
       process.exit(result.exitCode);

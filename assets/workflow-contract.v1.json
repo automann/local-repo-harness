@@ -8,6 +8,24 @@
     ],
     "repoLocalFirst": true
   },
+  "hostAdapters": {
+    "defaultScope": "user",
+    "runtimeSelection": "auto",
+    "runtimeModes": [
+      "global-path",
+      "project-vendored-bun"
+    ],
+    "projectRuntime": {
+      "runtimeScope": "project",
+      "hookRuntimeMode": "project-vendored-bun",
+      "binDirectory": ".ai/harness/bin",
+      "executable": ".ai/harness/bin/repo-harness-hook",
+      "runtimeDirectory": ".ai/harness/runtime/repo-harness",
+      "versionFile": ".ai/harness/runtime/repo-harness/.version",
+      "requiredRuntime": "bun",
+      "networkDuringHookExecution": false
+    }
+  },
   "externalTooling": {
     "waza": {
       "sourceRepo": "tw93/Waza",
@@ -262,6 +280,14 @@
       ".ai/harness/runs/.gitkeep",
       ".ai/harness/triage/.gitkeep",
       ".ai/harness/triage/inbox.md"
+    ],
+    "projectRuntimeFiles": [
+      ".ai/harness/bin/",
+      ".ai/harness/bin/repo-harness-hook",
+      ".ai/harness/runtime/repo-harness/",
+      ".ai/harness/runtime/repo-harness/.version",
+      ".ai/harness/runtime/repo-harness/src/cli/hook-entry.ts",
+      ".ai/harness/runtime/repo-harness/assets/hooks/"
     ]
   },
   "documents": {
