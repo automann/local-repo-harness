@@ -57,7 +57,7 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("=== Migration Report ===");
     expect(firstFive).toContain("Project hooks synced from:");
     expect(firstFive).toContain("Host hook config target:");
-    expect(firstFive).toContain("Host hook adapters are user-level:");
+    expect(firstFive).toContain("Host hook adapters default to user scope:");
     expect(hookAuthority).toContain(".ai/hooks/");
     expect(hookAuthority).toContain("repo-harness-hook");
     expect(hookAuthority).toContain("route registry");
@@ -131,7 +131,7 @@ describe("README DX contract", () => {
     expect(res.stdout).toContain("Helper runtime:");
     expect(res.stdout).toContain(".ai/harness/scripts with scripts/* compatibility wrappers");
     expect(res.stdout).toContain("Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json");
-    expect(res.stdout).toContain("Host hook adapters are user-level:");
+    expect(res.stdout).toContain("Host hook adapters default to user scope:");
   }, 15000);
 
   test("runtime red-flag scan uses an explicit allowlist for install examples and legacy aliases", () => {

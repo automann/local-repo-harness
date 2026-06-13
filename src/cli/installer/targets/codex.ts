@@ -1,13 +1,11 @@
 /**
  * Codex CLI hook-runtime target.
  *
- * Writes 8 managed adapter entries to ~/.codex/hooks.json (Phase 0 verified
- * Codex 0.130.0+ supports user-level hooks at this path; trust prompt fires
- * once per new (command, key) tuple, byte-identical re-runs hash-skip).
- *
- * supportsLocation('local') returns false — Codex has no project-local hook
- * config concept (verified Phase 0 2026-05-28). The installer skips Codex
- * cleanly when the user picks --location local.
+ * Writes 8 managed adapter entries to either ~/.codex/hooks.json
+ * (--location global, user-scoped) or <repo>/.codex/hooks.json
+ * (--location local, project-scoped). Project hooks are loaded by Codex from
+ * the trusted project .codex layer; local installs intentionally do not mutate
+ * ~/.codex/config.toml.
  *
  * Tag-based managed entries (`MANAGED_TAG` from managed-entries.ts) ensure
  * uninstall removes only what install wrote, preserving any sibling
@@ -53,6 +51,14 @@ function globalTomlConfigPath(): string {
   return path.join(process.env.HOME ?? os.homedir(), '.codex', 'config.toml');
 }
 
+function projectConfigPath(cwd: string): string {
+  return path.join(cwd, '.codex', 'hooks.json');
+}
+
+function resolveHooksPath(loc: Location, cwd: string): string {
+  return loc === 'global' ? globalConfigPath() : projectConfigPath(cwd);
+}
+
 function ensureRequestUserInputToml(): WriteResult['files'][number] {
   const filePath = globalTomlConfigPath();
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -87,17 +93,14 @@ function ensureRequestUserInputToml(): WriteResult['files'][number] {
 class CodexTarget implements AgentTarget {
   readonly id = 'codex' as const;
   readonly displayName = 'Codex CLI';
-  readonly docsUrl = 'https://github.com/openai/codex';
+  readonly docsUrl = 'https://developers.openai.com/codex/config-advanced';
 
-  supportsLocation(loc: Location): boolean {
-    return loc === 'global';
+  supportsLocation(_loc: Location): boolean {
+    return true;
   }
 
-  detect(loc: Location): DetectionResult {
-    if (loc !== 'global') {
-      return { installed: false, alreadyConfigured: false };
-    }
-    const filePath = globalConfigPath();
+  detect(loc: Location, opts: InstallOptions = {}): DetectionResult {
+    const filePath = resolveHooksPath(loc, opts.cwd ?? process.cwd());
     const installed = fs.existsSync(path.dirname(filePath));
     let alreadyConfigured = false;
     if (fs.existsSync(filePath)) {
@@ -116,40 +119,40 @@ class CodexTarget implements AgentTarget {
     return { installed, alreadyConfigured, configPath: filePath };
   }
 
-  install(loc: Location, _opts: InstallOptions): WriteResult {
-    if (loc !== 'global') {
-      throw new Error(
-        'codexTarget.install: Codex has no project-local hook config; use --location global',
-      );
-    }
-    const filePath = globalConfigPath();
+  install(loc: Location, opts: InstallOptions): WriteResult {
+    const filePath = resolveHooksPath(loc, opts.cwd ?? process.cwd());
     const data = readJsonOrEmpty<HooksFile>(filePath);
     const cleaned = stripManagedEntries(data.hooks);
     const managed = buildManagedHooks('codex');
     const merged = mergeHooks(cleaned, managed);
     const next: HooksFile = { ...data, hooks: merged };
     const nextContent = formatJson(next);
-    const tomlResult = ensureRequestUserInputToml();
+    const files: WriteResult['files'] = [];
 
     const created = !fs.existsSync(filePath);
     if (!created) {
       const current = fs.readFileSync(filePath, 'utf-8');
       if (current === nextContent) {
-        return { files: [{ path: filePath, action: 'unchanged' }, tomlResult] };
+        files.push({ path: filePath, action: 'unchanged' });
+        if (loc === 'global') files.push(ensureRequestUserInputToml());
+        return { files };
       }
     }
     atomicWriteFileSync(filePath, nextContent);
+    files.push({ path: filePath, action: created ? 'created' : 'updated' });
+    if (loc === 'global') files.push(ensureRequestUserInputToml());
     return {
-      files: [{ path: filePath, action: created ? 'created' : 'updated' }, tomlResult],
-      notes: created
-        ? ['Restart Codex to register new hook trust hashes.']
-        : ['Existing hash entries stay trusted; only new (command, key) tuples re-prompt.'],
+      files,
+      notes: loc === 'global'
+        ? (created
+          ? ['Restart Codex to register new hook trust hashes.']
+          : ['Existing hash entries stay trusted; only new (command, key) tuples re-prompt.'])
+        : ['Trust the project .codex layer in Codex before project hooks run.'],
     };
   }
 
   uninstall(loc: Location): WriteResult {
-    if (loc !== 'global') return { files: [] };
-    const filePath = globalConfigPath();
+    const filePath = resolveHooksPath(loc, process.cwd());
     if (!fs.existsSync(filePath)) {
       return { files: [{ path: filePath, action: 'not-found' }] };
     }
@@ -160,14 +163,18 @@ class CodexTarget implements AgentTarget {
     }
     const next: HooksFile = { ...data, hooks: cleaned };
     atomicWriteFileSync(filePath, formatJson(next));
+    if (loc === 'local') {
+      return { files: [{ path: filePath, action: 'removed' }] };
+    }
     return {
       files: [{ path: filePath, action: 'removed' }],
       notes: ['~/.codex/config.toml [hooks.state] entries are not GC-ed by Codex; remove manually if desired.'],
     };
   }
 
-  describePaths(loc: Location): string[] {
-    return loc === 'global' ? [globalConfigPath(), globalTomlConfigPath()] : [];
+  describePaths(loc: Location, opts: InstallOptions = {}): string[] {
+    const hooksPath = resolveHooksPath(loc, opts.cwd ?? process.cwd());
+    return loc === 'global' ? [hooksPath, globalTomlConfigPath()] : [hooksPath];
   }
 }
 

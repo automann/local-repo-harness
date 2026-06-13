@@ -13,7 +13,7 @@ import { ALL_TARGETS } from '../installer/targets/registry';
 import { ROUTES } from '../hook/route-registry';
 import { isManagedEntry, type HooksByEvent } from '../installer/managed-entries';
 import { readJsonOrEmpty } from '../installer/shared';
-import type { Location } from '../installer/types';
+import { locationToScope, type InstallScope, type Location } from '../installer/types';
 
 export const CLI_VERSION = '0.4.3';
 
@@ -25,9 +25,11 @@ export interface StatusReport {
     id: string;
     displayName: string;
     location: Location;
+    scope: Exclude<InstallScope, 'none'>;
     installed: boolean;
     alreadyConfigured: boolean;
     configPath?: string;
+    detail?: string;
     managedEntryCount: number;
     expectedEntryCount: number;
   }>;
@@ -72,24 +74,6 @@ export function runStatus(cwd: string = process.cwd()): StatusReport {
     byEvent[r.event] = (byEvent[r.event] ?? 0) + 1;
   }
 
-  const targets: StatusReport['targets'] = [];
-  const expectedEntryCount = ROUTES.length;
-  for (const target of ALL_TARGETS) {
-    if (!target.supportsLocation('global')) continue;
-    const det = target.detect('global');
-    const managedEntryCount = det.configPath ? countManagedEntries(det.configPath) : 0;
-    targets.push({
-      id: target.id,
-      displayName: target.displayName,
-      location: 'global',
-      installed: det.installed,
-      alreadyConfigured: det.alreadyConfigured,
-      configPath: det.configPath,
-      managedEntryCount,
-      expectedEntryCount,
-    });
-  }
-
   const repoRoot = resolveRepoRoot(cwd);
   const repo: StatusReport['repo'] = {
     inGitRepo: repoRoot !== null,
@@ -99,6 +83,41 @@ export function runStatus(cwd: string = process.cwd()): StatusReport {
   if (repoRoot) {
     repo.repoRoot = repoRoot;
     repo.optIn = fs.existsSync(path.join(repoRoot, OPT_IN_MARKER));
+  }
+
+  const targets: StatusReport['targets'] = [];
+  const expectedEntryCount = ROUTES.length;
+  for (const target of ALL_TARGETS) {
+    for (const location of ['global', 'local'] as const) {
+      if (!target.supportsLocation(location)) continue;
+      if (location === 'local' && !repoRoot) {
+        targets.push({
+          id: target.id,
+          displayName: target.displayName,
+          location,
+          scope: locationToScope(location),
+          installed: false,
+          alreadyConfigured: false,
+          detail: 'not in a git repo',
+          managedEntryCount: 0,
+          expectedEntryCount,
+        });
+        continue;
+      }
+      const det = target.detect(location, { cwd: location === 'local' ? repoRoot ?? cwd : cwd });
+      const managedEntryCount = det.configPath ? countManagedEntries(det.configPath) : 0;
+      targets.push({
+        id: target.id,
+        displayName: target.displayName,
+        location,
+        scope: locationToScope(location),
+        installed: det.installed,
+        alreadyConfigured: det.alreadyConfigured,
+        configPath: det.configPath,
+        managedEntryCount,
+        expectedEntryCount,
+      });
+    }
   }
 
   return { cli: { version: CLI_VERSION }, targets, repo, routes: { total: ROUTES.length, byEvent } };
@@ -115,7 +134,8 @@ export function formatStatus(report: StatusReport, asJson = false): string {
     if (!t.installed) status = 'host not detected';
     else if (!t.alreadyConfigured) status = 'host present, repo-harness not installed';
     else status = `${t.managedEntryCount}/${t.expectedEntryCount} managed entries`;
-    lines.push(`  ${t.id} (${t.location}): ${status}`);
+    if (t.detail) status = `${status}; ${t.detail}`;
+    lines.push(`  ${t.id} (${t.scope}): ${status}`);
     if (t.configPath) lines.push(`    ${t.configPath}`);
   }
   lines.push('');

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Migrate an existing project to the repo-harness tasks-first harness model.
 # - Shared hook source of truth: .ai/hooks/
-# - User-level host adapters: ~/.claude/settings.json and ~/.codex/hooks.json
+# - Scope-aware host adapters: user ~/.claude/settings.json / ~/.codex/hooks.json,
+#   or project .claude/settings.json / .codex/hooks.json.
 # - Stable product truth: docs/spec.md
 # - Active-plan selector: .ai/harness/active-plan, with .claude/.active-plan legacy fallback
 # - Sprint artifacts: plans/sprints/, tasks/contracts/, tasks/reviews/, .ai/context/context-map.json
@@ -1007,7 +1008,17 @@ print_report() {
     printf '%s\n' "$INSPECT_OUTPUT"
   fi
   echo "- Project hooks synced from: $HOOK_ASSETS_DIR (repo-local fallback; lib-only unless hook_source=repo)"
-  echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
+  case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
+    project)
+      echo "- Host hook config target: project-level .claude/settings.json and .codex/hooks.json"
+      ;;
+    none)
+      echo "- Host hook config target: skipped"
+      ;;
+    *)
+      echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
+      ;;
+  esac
   echo "- $(pi_print_codex_hook_trust_notice)"
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"
   echo "- Workflow migration: docs/spec.md + plans/ + tasks/contracts + tasks/reviews + .ai/context/context-map.json + .ai/harness/*"

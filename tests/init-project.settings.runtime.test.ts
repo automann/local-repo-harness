@@ -7,7 +7,7 @@ import { spawnSync } from "child_process";
 const ROOT = join(import.meta.dir, "..");
 
 describe("init-project settings runtime", () => {
-  test("create_structure should keep hook adapters user-level", () => {
+  test("create_structure should keep hook adapters user-scoped by default", () => {
     const cwd = mkdtempSync(join(tmpdir(), "init-project-settings-"));
     try {
       const res = spawnSync(
@@ -27,7 +27,7 @@ describe("init-project settings runtime", () => {
       );
 
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Host hook adapters are user-level:");
+      expect(res.stdout).toContain("Host hook adapters default to user scope:");
       expect(existsSync(join(cwd, ".claude/settings.json"))).toBe(false);
       expect(existsSync(join(cwd, ".codex/hooks.json"))).toBe(false);
       expect(existsSync(join(cwd, ".ai/hooks/README.md"))).toBe(true);

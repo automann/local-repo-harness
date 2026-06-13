@@ -65,6 +65,7 @@ tasks/.current.md.tmp.*
 .ai/harness/triage/*
 !.ai/harness/triage/.gitkeep
 .codex/*
+!.codex/hooks.json
 .claude/.active-plan
 .claude/.plan-state/
 EOF_RUNTIME
@@ -459,10 +460,24 @@ pi_install_hook_adapters() {
   local repo="$1"
   local _hooks_dir="$2"
   local mode="${3:-apply}"
+  local scope="${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}"
 
-  pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.json"
-  pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.local.json"
-  pi_retire_project_hook_adapter "$mode" "$repo/.codex/hooks.json"
+  case "$scope" in
+    user|"")
+      pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.json"
+      pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.local.json"
+      pi_retire_project_hook_adapter "$mode" "$repo/.codex/hooks.json"
+      ;;
+    project)
+      pi_retire_project_hook_adapter "$mode" "$repo/.claude/settings.local.json"
+      ;;
+    none)
+      ;;
+    *)
+      echo "repo-harness: unknown REPO_HARNESS_HOST_ADAPTER_SCOPE=$scope" >&2
+      return 2
+      ;;
+  esac
 }
 
 pi_retire_project_hook_adapter() {
@@ -518,7 +533,17 @@ NODE_EOF
 }
 
 pi_print_codex_hook_trust_notice() {
-  echo "Host hook adapters are user-level: run repo-harness install --target both --location global, then trust ~/.codex/hooks.json in Codex Settings."
+  case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
+    project)
+      echo "Host hook adapters are project-scoped: run repo-harness install --target both --scope project, then trust <repo>/.codex/hooks.json in Codex Settings."
+      ;;
+    none)
+      echo "Host hook adapters are skipped: run repo-harness install --target both --scope user or --scope project when ready."
+      ;;
+    *)
+      echo "Host hook adapters default to user scope: run repo-harness install --target both --scope user, or use --scope project for repo-local adapters; trust the matching Codex hooks.json in Codex Settings."
+      ;;
+  esac
 }
 
 pi_repo_pins_hook_source() {

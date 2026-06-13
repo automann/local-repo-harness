@@ -68,8 +68,8 @@ class ClaudeTarget implements AgentTarget {
     return true;
   }
 
-  detect(loc: Location): DetectionResult {
-    const filePath = resolvePath(loc, process.cwd());
+  detect(loc: Location, opts: InstallOptions = {}): DetectionResult {
+    const filePath = resolvePath(loc, opts.cwd ?? process.cwd());
     const installed = fs.existsSync(path.dirname(filePath));
     let alreadyConfigured = false;
     if (fs.existsSync(filePath)) {
@@ -88,8 +88,8 @@ class ClaudeTarget implements AgentTarget {
     return { installed, alreadyConfigured, configPath: filePath };
   }
 
-  install(loc: Location, _opts: InstallOptions): WriteResult {
-    const filePath = resolvePath(loc, process.cwd());
+  install(loc: Location, opts: InstallOptions): WriteResult {
+    const filePath = resolvePath(loc, opts.cwd ?? process.cwd());
     const data = readJsonOrEmpty<SettingsFile>(filePath);
     const cleaned = stripManagedEntries(data.hooks);
     const managed = buildManagedHooks('claude');
@@ -128,8 +128,8 @@ class ClaudeTarget implements AgentTarget {
     return { files: [{ path: filePath, action: 'removed' }] };
   }
 
-  describePaths(loc: Location): string[] {
-    return [resolvePath(loc, process.cwd())];
+  describePaths(loc: Location, opts: InstallOptions = {}): string[] {
+    return [resolvePath(loc, opts.cwd ?? process.cwd())];
   }
 }
 

@@ -1,5 +1,6 @@
 /**
  * `repo-harness install --target codex|claude|both --location global|local`
+ * or `--scope user|project|none`
  *
  * Resolves --target to AgentTarget list, calls target.install(loc, opts)
  * for each, prints WriteResult lines. Idempotent: re-run with no diff
@@ -7,26 +8,40 @@
  *
  * Target/location matrix:
  *   - codex + global → writes ~/.codex/hooks.json
- *   - codex + local  → exit 2 (Codex has no project-local hook concept)
+ *   - codex + local  → writes <cwd>/.codex/hooks.json
  *   - claude + global → writes ~/.claude/settings.json
  *   - claude + local  → writes <cwd>/.claude/settings.json (Phase 1C concern)
  *   - both + global   → codex + claude
- *   - both + local    → codex skipped silently, claude installed
+ *   - both + local    → codex + claude project adapters
  */
 
-import type { Location } from '../installer/types';
+import {
+  scopeToLocation,
+  type InstallScope,
+  type Location,
+} from '../installer/types';
 import { ALL_TARGETS, getTarget, listTargetIds } from '../installer/targets/registry';
+import { execFileSync } from 'child_process';
 
 export type InstallTargetSpec = 'codex' | 'claude' | 'both';
 
 export interface InstallCommandOptions {
   target: InstallTargetSpec;
-  location: Location;
+  location?: Location;
+  scope?: InstallScope;
+  cwd?: string;
 }
 
 export interface InstallCommandResult {
   exitCode: number;
   lines: string[];
+}
+
+function resolveLocation(opts: InstallCommandOptions): Location | null {
+  if (opts.scope === 'none') return null;
+  if (opts.scope) return scopeToLocation(opts.scope);
+  if (opts.location) return opts.location;
+  throw new Error('repo-harness install: either location or scope is required');
 }
 
 function resolveTargets(spec: InstallTargetSpec) {
@@ -40,23 +55,45 @@ function resolveTargets(spec: InstallTargetSpec) {
   return [t];
 }
 
+function resolveProjectCwd(opts: InstallCommandOptions, location: Location): string | undefined {
+  if (location === 'global') return opts.cwd;
+  const cwd = opts.cwd ?? process.cwd();
+  try {
+    const out = execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.trim() || cwd;
+  } catch {
+    return cwd;
+  }
+}
+
 export function runInstall(opts: InstallCommandOptions): InstallCommandResult {
   const targets = resolveTargets(opts.target);
+  const location = resolveLocation(opts);
   const lines: string[] = [];
   let exitCode = 0;
 
+  if (location === null) {
+    for (const target of targets) {
+      lines.push(`[${target.id}] skipped: --scope none`);
+    }
+    return { exitCode: 0, lines };
+  }
+
   for (const target of targets) {
-    if (!target.supportsLocation(opts.location)) {
+    if (!target.supportsLocation(location)) {
       if (opts.target === 'both') {
-        lines.push(`[${target.id}] skipped: --location ${opts.location} not supported`);
+        lines.push(`[${target.id}] skipped: --location ${location} not supported`);
         continue;
       }
-      lines.push(`[${target.id}] error: --location ${opts.location} not supported`);
+      lines.push(`[${target.id}] error: --location ${location} not supported`);
       exitCode = 2;
       continue;
     }
     try {
-      const result = target.install(opts.location, {});
+      const result = target.install(location, { cwd: resolveProjectCwd(opts, location) });
       for (const file of result.files) {
         lines.push(`[${target.id}] ${file.action}: ${file.path}`);
       }

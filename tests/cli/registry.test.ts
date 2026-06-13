@@ -33,9 +33,9 @@ describe('installer target registry', () => {
     expect(listTargetIds()).toEqual(['codex', 'claude']);
   });
 
-  test('codex supportsLocation is global-only (Phase 0 verified contract)', () => {
+  test('codex supportsLocation accepts user and project scopes', () => {
     expect(codexTarget.supportsLocation('global')).toBe(true);
-    expect(codexTarget.supportsLocation('local')).toBe(false);
+    expect(codexTarget.supportsLocation('local')).toBe(true);
   });
 
   test('claude supportsLocation accepts both global and local', () => {
@@ -48,7 +48,7 @@ describe('installer target registry', () => {
     // absolute via $HOME / os.homedir(), so we assert the endpoint shape
     // rather than the literal prefix.
     expect(codexTarget.describePaths('global')[0]).toMatch(/\/\.codex\/hooks\.json$/);
-    expect(codexTarget.describePaths('local')).toEqual([]);
+    expect(codexTarget.describePaths('local')[0]).toMatch(/\/\.codex\/hooks\.json$/);
     expect(claudeTarget.describePaths('global')[0]).toMatch(/\/\.claude\/settings\.json$/);
     expect(claudeTarget.describePaths('local')[0]).toMatch(/\/\.claude\/settings\.json$/);
   });

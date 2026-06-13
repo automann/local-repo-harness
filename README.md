@@ -84,12 +84,15 @@ The design has three layers:
 2. **Target repo contract**: `repo-harness update` or migration writes repo-local
    files such as `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts, and `.ai/hooks/`.
-3. **Host adapters**: user-level `~/.claude/settings.json` and
+3. **Host adapters**: by default, user-level `~/.claude/settings.json` and
    `~/.codex/hooks.json` route Claude/Codex events into `repo-harness-hook`.
-   The hook entrypoint exits silently for non-opt-in repos. For opted-in repos,
-   it resolves hooks central-first through the packaged install or
-   `~/.repo-harness/hooks/`, with repo policy able to pin self-host development
-   back to `.ai/hooks/*`.
+   Projects that need repo-local isolation can instead install project-scoped
+   `.claude/settings.json` and `.codex/hooks.json` with
+   `repo-harness install --target both --scope project` or
+   `repo-harness update --host-adapter-scope project`. The hook entrypoint
+   exits silently for non-opt-in repos. For opted-in repos, it resolves hooks
+   central-first through the packaged install or `~/.repo-harness/hooks/`, with
+   repo policy able to pin self-host development back to `.ai/hooks/*`.
 
 For `UserPromptSubmit`, the public adapter contract stays
 `repo-harness-hook UserPromptSubmit --route default`. The CLI route registry
@@ -307,8 +310,8 @@ without creating an application stack.
 The command should end with `=== Migration Report ===` and summarize:
 
 - `Project hooks synced from:` to show where generated hook behavior comes from
-- `Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json` to show the adapter layer
-- `Host hook adapters are user-level:` to remind the user to install global adapters and trust `~/.codex/hooks.json`
+- `Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json` to show the default adapter layer
+- `Host hook adapters default to user scope:` to remind the user to install user adapters or opt into project-scoped adapters and trust the matching Codex hooks file
 - `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
 - `Helper runtime:` to show `.ai/harness/scripts/*` implementations and `scripts/*` compatibility wrappers after apply
 - `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
@@ -320,11 +323,11 @@ before applying anything.
 ## Hook Authority Map
 
 - `.ai/hooks/` is the only shared hook implementation you should edit first.
-- `~/.claude/settings.json` is the user-level Claude adapter that dispatches into opted-in repos.
-- `~/.codex/hooks.json` is the user-level Codex adapter that dispatches into the same runner.
-- Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
-- Codex must mark `~/.codex/hooks.json` as trusted in Codex Settings before those hooks run.
-- Debug in this order: user-level adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
+- `~/.claude/settings.json` and `~/.codex/hooks.json` are the default user-scoped adapters that dispatch into opted-in repos.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json` are supported project-scoped adapters for repos that should not register user-level hooks.
+- `repo-harness update` defaults to user-scoped adapters; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
+- Codex must mark the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`) as trusted in Codex Settings before those hooks run.
+- Debug in this order: active adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
 - If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness update --repo <root>`.
 
 `SessionStart` resolves hooks central-first, then runs two ordered scripts before
@@ -386,7 +389,7 @@ Most common guards:
 
 - Root routing docs: `CLAUDE.md`, `AGENTS.md`
 - Shared hook layer: `.ai/hooks/`
-- User-level adapter layer: `~/.claude/settings.json`, `~/.codex/hooks.json`
+- Adapter layer: default user-scoped `~/.claude/settings.json`, `~/.codex/hooks.json`; optional project-scoped `.claude/settings.json`, `.codex/hooks.json`
 - Active execution surface: `tasks/`
 - Plan source of truth: `plans/`
 - Durable progress: `tasks/workstreams/`

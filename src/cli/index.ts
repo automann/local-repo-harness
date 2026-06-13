@@ -21,7 +21,7 @@ import { buildDocsCommand } from './commands/docs';
 import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
-import type { Location } from './installer/types';
+import type { InstallScope, Location } from './installer/types';
 import type { HookEvent, RouteId } from './hook/route-registry';
 
 export const SUBCOMMANDS = [
@@ -43,6 +43,7 @@ export type Subcommand = (typeof SUBCOMMANDS)[number];
 
 const VALID_TARGETS: readonly InstallTargetSpec[] = ['codex', 'claude', 'both'];
 const VALID_LOCATIONS: readonly Location[] = ['global', 'local'];
+const VALID_SCOPES: readonly InstallScope[] = ['user', 'project', 'none'];
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -103,7 +104,8 @@ export function buildProgram(): Command {
     .option('--dry-run', 'Plan repo harness changes without applying them')
     .option('--target <target>', `Host target for adapters and external skills: ${VALID_TARGETS.join('|')}`, 'both')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
-    .option('--no-host-adapters', 'Skip writing global Codex/Claude hook adapters')
+    .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters')
+    .option('--host-adapter-scope <scope>', `Hook adapter scope: ${VALID_SCOPES.join('|')} (default: user)`, 'user')
     .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-verify', 'Skip repo workflow verification after apply')
     .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
@@ -119,6 +121,7 @@ export function buildProgram(): Command {
       target: string;
       syncSkill?: boolean;
       hostAdapters?: boolean;
+      hostAdapterScope?: string;
       externalSkills?: boolean;
       verify?: boolean;
       codegraph?: boolean;
@@ -139,12 +142,19 @@ export function buildProgram(): Command {
         console.error('repo-harness update: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
         process.exit(2);
       }
+      if (!VALID_SCOPES.includes(rawOpts.hostAdapterScope as InstallScope)) {
+        console.error(
+          `repo-harness update: invalid --host-adapter-scope "${rawOpts.hostAdapterScope}" (expected: ${VALID_SCOPES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
         target: rawOpts.target as InstallTargetSpec,
         syncSkill: rawOpts.syncSkill !== false,
         hostAdapters: rawOpts.hostAdapters !== false,
+        hostAdapterScope: rawOpts.hostAdapterScope as InstallScope,
         externalSkills: rawOpts.externalSkills !== false,
         verify: rawOpts.verify !== false,
         codegraph: rawOpts.codegraph !== false,
@@ -171,23 +181,39 @@ export function buildProgram(): Command {
     .command('install')
     .description('Install hook adapters into Codex and/or Claude host config')
     .requiredOption('--target <target>', `Target host: ${VALID_TARGETS.join('|')}`)
-    .requiredOption('--location <location>', `Install location: ${VALID_LOCATIONS.join('|')}`)
-    .action((rawOpts: { target: string; location: string }) => {
+    .option('--location <location>', `Install location: ${VALID_LOCATIONS.join('|')}`)
+    .option('--scope <scope>', `Install scope: ${VALID_SCOPES.join('|')}`)
+    .action((rawOpts: { target: string; location?: string; scope?: string }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
           `repo-harness install: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
-      if (!VALID_LOCATIONS.includes(rawOpts.location as Location)) {
+      if (rawOpts.location && rawOpts.scope) {
+        console.error('repo-harness install: use either --location or --scope, not both');
+        process.exit(2);
+      }
+      if (!rawOpts.location && !rawOpts.scope) {
+        console.error('repo-harness install: one of --location or --scope is required');
+        process.exit(2);
+      }
+      if (rawOpts.location && !VALID_LOCATIONS.includes(rawOpts.location as Location)) {
         console.error(
           `repo-harness install: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
         );
         process.exit(2);
       }
+      if (rawOpts.scope && !VALID_SCOPES.includes(rawOpts.scope as InstallScope)) {
+        console.error(
+          `repo-harness install: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const result = runInstall({
         target: rawOpts.target as InstallTargetSpec,
-        location: rawOpts.location as Location,
+        location: rawOpts.location as Location | undefined,
+        scope: rawOpts.scope as InstallScope | undefined,
       });
       for (const line of result.lines) console.log(line);
       process.exit(result.exitCode);

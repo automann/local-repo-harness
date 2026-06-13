@@ -43,6 +43,7 @@ describe("Migration script contract", () => {
     expect(script).toContain(".codex/hooks.json");
     expect(sharedLib).toContain("settings.local.json");
     expect(script).toContain("Host hook config target: user-level");
+    expect(sharedLib).toContain("REPO_HARNESS_HOST_ADAPTER_SCOPE");
     expect(script).toContain("migrate_workflow");
   });
 
@@ -132,7 +133,7 @@ describe("Migration script contract", () => {
     expect(sharedLib).toContain("check:task-workflow");
     expect(sharedLib).toContain(".claude/.trace.jsonl");
     expect(sharedLib).toContain(".codex/*");
-    expect(sharedLib).not.toContain("!.codex/hooks.json");
+    expect(sharedLib).toContain("!.codex/hooks.json");
     expect(sharedLib).toContain("pi_print_codex_hook_trust_notice");
     expect(sharedLib).toContain("_ref/");
     expect(sharedLib).toContain("_ops/");
@@ -171,7 +172,7 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("Advisory report (dry-run snapshot)");
       expect(res.stdout).toContain("upgrade_plan:");
       expect(res.stdout).toContain("Upgrade/reconfigure/cleanup plan");
-      expect(res.stdout).toContain("Host hook adapters are user-level:");
+      expect(res.stdout).toContain("Host hook adapters default to user scope:");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -514,7 +515,7 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).not.toContain("!.codex/hooks.json");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain(".codegraph/");
       expect(gitignore).toContain("_ops/");
@@ -522,7 +523,42 @@ describe("Migration script contract", () => {
       expect(gitignore).not.toContain("!_ops/env/.env.example");
       expect(res.stdout).toContain("--- External Tooling ---");
       expect(res.stdout).toContain("External Tooling Report");
-      expect(res.stdout).toContain("Host hook adapters are user-level:");
+      expect(res.stdout).toContain("Host hook adapters default to user scope:");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test("project host adapter scope preserves project Codex and Claude adapter files", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-project-adapters-"));
+    try {
+      mkdirSync(join(repo, "docs"), { recursive: true });
+      mkdirSync(join(repo, ".codex"), { recursive: true });
+      mkdirSync(join(repo, ".claude"), { recursive: true });
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+      writeFileSync(join(repo, ".codex/hooks.json"), JSON.stringify({ hooks: {} }, null, 2));
+      writeFileSync(join(repo, ".claude/settings.json"), JSON.stringify({ hooks: {} }, null, 2));
+      writeFileSync(join(repo, ".claude/settings.local.json"), JSON.stringify({ hooks: {} }, null, 2));
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        {
+          cwd: ROOT,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            REPO_HARNESS_HOST_ADAPTER_SCOPE: "project",
+          },
+        }
+      );
+
+      expect(res.status).toBe(0);
+      expect(existsSync(join(repo, ".codex/hooks.json"))).toBe(true);
+      expect(existsSync(join(repo, ".claude/settings.json"))).toBe(true);
+      expect(existsSync(join(repo, ".claude/settings.local.json"))).toBe(false);
+      expect(res.stdout).toContain("Host hook config target: project-level .claude/settings.json and .codex/hooks.json");
+      expect(res.stdout).toContain("Host hook adapters are project-scoped:");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -966,7 +1002,7 @@ describe("Migration script contract", () => {
       expect(gitignore).toContain(".claude/.trace.jsonl");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).not.toContain("!.codex/hooks.json");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain("_ops/");
       expect(gitignore).not.toContain(".claude/.memory-context.json");

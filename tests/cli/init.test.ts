@@ -241,6 +241,78 @@ describe("init command", () => {
     }
   });
 
+  test("hostAdapterScope=project installs project adapters without user-level hooks", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-project-hooks-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      setupFakeSource(source);
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapterScope: "project",
+        externalSkills: false,
+        verify: false,
+        codegraph: false,
+        env: {
+          ...process.env,
+          HOME: home,
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      const hostStep = result.steps.find((step) => step.step === "install host adapters");
+      expect(hostStep?.status).toBe("ok");
+      expect(hostStep?.detail).toContain("scope=project");
+      expect(existsSync(join(repo, ".codex", "hooks.json"))).toBe(true);
+      expect(existsSync(join(repo, ".claude", "settings.json"))).toBe(true);
+      expect(existsSync(join(home, ".codex", "hooks.json"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("hostAdapterScope=none skips adapter install and reports the scope", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-no-hooks-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      setupFakeSource(source);
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapterScope: "none",
+        externalSkills: false,
+        verify: false,
+        codegraph: false,
+        env: {
+          ...process.env,
+          HOME: home,
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.steps.find((step) => step.step === "install host adapters")?.detail).toBe("scope=none");
+      expect(existsSync(join(repo, ".codex", "hooks.json"))).toBe(false);
+      expect(existsSync(join(repo, ".claude", "settings.json"))).toBe(false);
+      expect(existsSync(join(home, ".codex", "hooks.json"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   test("npx cache sources force copy-based installed skill sync", () => {
     const tmp = join(tmpdir(), `repo-harness-init-npx-${Date.now()}`);
     const source = join(tmp, "_npx", "abc123", "node_modules", "repo-harness");
@@ -313,6 +385,7 @@ describe("init command", () => {
     expect(res.stdout).toContain("Usage: repo-harness update");
     expect(res.stdout).toContain("--repo <path>");
     expect(res.stdout).toContain("--dry-run");
+    expect(res.stdout).toContain("--host-adapter-scope <scope>");
     expect(res.stdout).toContain("--no-codegraph");
   });
 

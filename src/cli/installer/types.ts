@@ -12,6 +12,15 @@
  */
 
 export type Location = 'global' | 'local';
+export type InstallScope = 'user' | 'project' | 'none';
+
+export function scopeToLocation(scope: Exclude<InstallScope, 'none'>): Location {
+  return scope === 'user' ? 'global' : 'local';
+}
+
+export function locationToScope(location: Location): Exclude<InstallScope, 'none'> {
+  return location === 'global' ? 'user' : 'project';
+}
 
 /**
  * Stable id for the --target CLI flag and registry lookup.
@@ -52,21 +61,24 @@ export interface WriteResult {
  * Phase 1A keeps the parameter shape but ships no flags so call sites
  * don't have to change later.
  */
-export interface InstallOptions {}
+export interface InstallOptions {
+  /** Target repo/project root for project-scoped installs. Defaults to cwd. */
+  cwd?: string;
+}
+
+export interface DetectionOptions {
+  /** Target repo/project root for project-scoped detection. Defaults to cwd. */
+  cwd?: string;
+}
 
 export interface AgentTarget {
   readonly id: TargetId;
   readonly displayName: string;
   readonly docsUrl?: string;
-  /**
-   * Whether this target supports the given install location. Codex
-   * returns false for 'local' (no project-local hook concept verified
-   * Phase 0 2026-05-28); Claude returns true for both.
-   */
   supportsLocation(loc: Location): boolean;
-  detect(loc: Location): DetectionResult;
+  detect(loc: Location, opts?: DetectionOptions): DetectionResult;
   install(loc: Location, opts: InstallOptions): WriteResult;
   uninstall(loc: Location): WriteResult;
   /** Filesystem paths this target would write to at this location. */
-  describePaths(loc: Location): string[];
+  describePaths(loc: Location, opts?: DetectionOptions): string[];
 }

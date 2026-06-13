@@ -37,6 +37,12 @@ describe('status command (Phase 1C)', () => {
     withTempHome(() => {
       const r = runStatus();
       expect(r.targets.length).toBeGreaterThan(0);
+      expect(r.targets.map((t) => `${t.id}:${t.scope}`)).toEqual([
+        'codex:user',
+        'codex:project',
+        'claude:user',
+        'claude:project',
+      ]);
       for (const t of r.targets) {
         expect(t.alreadyConfigured).toBe(false);
         expect(t.managedEntryCount).toBe(0);
@@ -48,12 +54,33 @@ describe('status command (Phase 1C)', () => {
     withTempHome(() => {
       runInstall({ target: 'both', location: 'global' });
       const r = runStatus();
-      const codex = r.targets.find((t) => t.id === 'codex')!;
+      const codex = r.targets.find((t) => t.id === 'codex' && t.scope === 'user')!;
       expect(codex.alreadyConfigured).toBe(true);
       expect(codex.managedEntryCount).toBe(codex.expectedEntryCount);
       expect(codex.managedEntryCount).toBe(8);
-      const claude = r.targets.find((t) => t.id === 'claude')!;
+      const claude = r.targets.find((t) => t.id === 'claude' && t.scope === 'user')!;
       expect(claude.managedEntryCount).toBe(8);
+    });
+  });
+
+  test('after project install: status reports project adapters separately from user adapters', () => {
+    withTempHome(() => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-status-project-repo-')),
+      );
+      try {
+        execSync('git init', { cwd: repo, stdio: 'ignore' });
+        runInstall({ target: 'both', scope: 'project', cwd: repo });
+
+        const r = runStatus(repo);
+        const codexProject = r.targets.find((t) => t.id === 'codex' && t.scope === 'project')!;
+        expect(codexProject.alreadyConfigured).toBe(true);
+        expect(codexProject.configPath).toBe(path.join(repo, '.codex/hooks.json'));
+        const codexUser = r.targets.find((t) => t.id === 'codex' && t.scope === 'user')!;
+        expect(codexUser.alreadyConfigured).toBe(false);
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
     });
   });
 
@@ -94,6 +121,8 @@ describe('status command (Phase 1C)', () => {
       const text = formatStatus(runStatus(), false);
       expect(text).toContain('repo-harness');
       expect(text).toContain('Hosts:');
+      expect(text).toContain('codex (user):');
+      expect(text).toContain('codex (project):');
       expect(text).toContain('Routes:');
       expect(text).toContain('Current repo:');
     });

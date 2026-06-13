@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { execSync, spawnSync } from 'child_process';
 import { runInstall } from '../../src/cli/commands/install';
 
 function withTempHome(fn: (home: string) => void): void {
@@ -18,11 +19,24 @@ function withTempHome(fn: (home: string) => void): void {
 }
 
 describe('install command (Phase 1B)', () => {
-  test('codex --location local errors with exit 2 (no project-local hook concept)', () => {
-    withTempHome(() => {
-      const result = runInstall({ target: 'codex', location: 'local' });
-      expect(result.exitCode).toBe(2);
-      expect(result.lines.some((l) => l.includes('[codex]') && l.includes('not supported'))).toBe(true);
+  test('codex --location local creates project .codex/hooks.json without mutating user config.toml', () => {
+    withTempHome((home) => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-install-repo-')),
+      );
+      try {
+        const result = runInstall({ target: 'codex', location: 'local', cwd: repo });
+        expect(result.exitCode).toBe(0);
+        const filePath = path.join(repo, '.codex/hooks.json');
+        expect(fs.existsSync(filePath)).toBe(true);
+        expect(fs.existsSync(path.join(home, '.codex/config.toml'))).toBe(false);
+        expect(result.lines.some((l) => l.includes('Trust the project .codex layer'))).toBe(true);
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const total = Object.values(data.hooks as Record<string, unknown[]>).flat().length;
+        expect(total).toBe(8);
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
     });
   });
 
@@ -115,6 +129,40 @@ describe('install command (Phase 1B)', () => {
     });
   });
 
+  test('codex --scope project resolves a git subdirectory to the repo root', () => {
+    withTempHome(() => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-install-git-repo-')),
+      );
+      try {
+        execSync('git init', { cwd: repo, stdio: 'ignore' });
+        const subdir = path.join(repo, 'packages/demo');
+        fs.mkdirSync(subdir, { recursive: true });
+
+        const result = runInstall({ target: 'codex', scope: 'project', cwd: subdir });
+
+        expect(result.exitCode).toBe(0);
+        expect(fs.existsSync(path.join(repo, '.codex/hooks.json'))).toBe(true);
+        expect(fs.existsSync(path.join(subdir, '.codex/hooks.json'))).toBe(false);
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test('install --scope none skips without touching host files', () => {
+    withTempHome((home) => {
+      const result = runInstall({ target: 'both', scope: 'none' });
+      expect(result.exitCode).toBe(0);
+      expect(result.lines).toEqual([
+        '[codex] skipped: --scope none',
+        '[claude] skipped: --scope none',
+      ]);
+      expect(fs.existsSync(path.join(home, '.codex/hooks.json'))).toBe(false);
+      expect(fs.existsSync(path.join(home, '.claude/settings.json'))).toBe(false);
+    });
+  });
+
   test('claude --location global creates ~/.claude/settings.json with hooks segment', () => {
     withTempHome((home) => {
       const result = runInstall({ target: 'claude', location: 'global' });
@@ -186,5 +234,38 @@ describe('install command (Phase 1B)', () => {
       expect(result.lines.filter((l) => l.startsWith('[codex]')).length).toBeGreaterThan(0);
       expect(result.lines.filter((l) => l.startsWith('[claude]')).length).toBeGreaterThan(0);
     });
+  });
+
+  test('both --location local installs project adapters for both targets', () => {
+    withTempHome((home) => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-install-both-local-')),
+      );
+      try {
+        const result = runInstall({ target: 'both', location: 'local', cwd: repo });
+        expect(result.exitCode).toBe(0);
+        expect(fs.existsSync(path.join(repo, '.codex/hooks.json'))).toBe(true);
+        expect(fs.existsSync(path.join(repo, '.claude/settings.json'))).toBe(true);
+        expect(fs.existsSync(path.join(home, '.codex/hooks.json'))).toBe(false);
+        expect(fs.existsSync(path.join(home, '.claude/settings.json'))).toBe(false);
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
+    });
+  });
+
+  test('CLI install rejects using --location and --scope together', () => {
+    const root = path.join(import.meta.dir, '..', '..');
+    const res = spawnSync(
+      'bun',
+      [path.join(root, 'src/cli/index.ts'), 'install', '--target', 'codex', '--location', 'global', '--scope', 'user'],
+      {
+        cwd: root,
+        encoding: 'utf-8',
+      },
+    );
+
+    expect(res.status).toBe(2);
+    expect(res.stderr).toContain('use either --location or --scope');
   });
 });

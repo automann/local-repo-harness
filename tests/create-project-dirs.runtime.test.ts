@@ -24,7 +24,7 @@ describe("create-project-dirs runtime smoke", () => {
         encoding: "utf-8",
       });
       expect(res.status).toBe(0);
-      expect(res.stdout).toContain("Host hook adapters are user-level:");
+      expect(res.stdout).toContain("Host hook adapters default to user scope:");
 
       expect(existsSync(join(cwd, "interfaces/types.ts"))).toBe(true);
       expect(existsSync(join(cwd, "contracts"))).toBe(false);
@@ -84,6 +84,7 @@ describe("create-project-dirs runtime smoke", () => {
       const gitignore = readFileSync(join(cwd, ".gitignore"), "utf-8");
       expect(gitignore).toContain("tasks/.current.md.tmp.*");
       expect(gitignore).toContain(".claude/.plan-state/");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(existsSync(join(cwd, ".ai/context/context-map.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/context/capabilities.json"))).toBe(true);
       expect(existsSync(join(cwd, ".ai/harness/checks/latest.json"))).toBe(true);

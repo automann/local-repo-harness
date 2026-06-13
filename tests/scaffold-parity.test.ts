@@ -189,7 +189,7 @@ describe("create-project-dirs scaffold parity", () => {
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
       expect(gitignore).toContain(".claude/.codegraph-state/");
       expect(gitignore).toContain(".codex/*");
-      expect(gitignore).not.toContain("!.codex/hooks.json");
+      expect(gitignore).toContain("!.codex/hooks.json");
       expect(gitignore).toContain("_ref/");
       expect(gitignore).toContain(".codegraph/");
       expect(gitignore).toContain("_ops/");

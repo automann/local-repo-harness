@@ -30,6 +30,7 @@ import {
   type BrainRootChoice,
 } from "./brain-root";
 import { configureCodegraph, ensureCodegraph } from "../tools/codegraph";
+import { scopeToLocation, type InstallScope } from "../installer/types";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..", "..");
@@ -64,6 +65,7 @@ export interface InitCommandOptions {
   verify?: boolean;
   syncSkill?: boolean;
   hostAdapters?: boolean;
+  hostAdapterScope?: InstallScope;
   externalSkills?: boolean;
   codegraph?: boolean;
   configureCodegraphMcp?: boolean;
@@ -352,6 +354,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   const verify = opts.verify !== false;
   const syncSkill = opts.syncSkill !== false;
   const hostAdapters = opts.hostAdapters !== false;
+  const hostAdapterScope = opts.hostAdapterScope ?? "user";
   const externalSkills = opts.externalSkills !== false;
   const codegraph = opts.codegraph !== false;
   const configureCgMcp = opts.configureCodegraphMcp === true;
@@ -363,6 +366,10 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   if (opts.brainRoot) {
     commandEnv = { ...(commandEnv ?? {}), REPO_HARNESS_BRAIN_ROOT: opts.brainRoot };
   }
+  commandEnv = {
+    ...(commandEnv ?? {}),
+    REPO_HARNESS_HOST_ADAPTER_SCOPE: hostAdapters ? hostAdapterScope : "none",
+  };
 
   if (syncSkill && apply) {
     const step = runProcess("bash", [join(sourceRoot, "scripts", "sync-codex-installed-copies.sh")], sourceRoot, commandEnv);
@@ -375,18 +382,23 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     });
   }
 
-  if (hostAdapters && apply) {
-    const installed = withProcessEnv(commandEnv, () => runInstall({ target, location: "global" }));
+  if (hostAdapters && hostAdapterScope !== "none" && apply) {
+    const location = scopeToLocation(hostAdapterScope);
+    const installed = withProcessEnv(commandEnv, () => runInstall({ target, location, cwd: repoRoot }));
     steps.push({
       step: "install host adapters",
       status: installed.exitCode === 0 ? "ok" : "failed",
-      detail: installed.lines.join("; "),
+      detail: `scope=${hostAdapterScope}; ${installed.lines.join("; ")}`,
     });
   } else {
     steps.push({
       step: "install host adapters",
       status: "skipped",
-      detail: hostAdapters ? "dry-run" : "disabled",
+      detail: !hostAdapters
+        ? "disabled"
+        : hostAdapterScope === "none"
+          ? "scope=none"
+          : "dry-run",
     });
   }
 

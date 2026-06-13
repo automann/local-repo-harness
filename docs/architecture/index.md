@@ -88,5 +88,5 @@ Project
 
 ## Review Backlog
 
-- Treat user-level `~/.codex/hooks.json` and `~/.claude/settings.json` as host adapters. Keep hook implementation under `.ai/hooks/`, and treat repo-local `.claude/settings.json` / `.codex/hooks.json` hook adapters as retired legacy config.
+- Treat user-scoped `~/.codex/hooks.json` / `~/.claude/settings.json` as the default host adapters, with repo-local `.codex/hooks.json` / `.claude/settings.json` supported only when project adapter scope is selected. Keep hook implementation under `.ai/hooks/`.
 - Consider adding `bun scripts/capability-resolver.ts validate --format text` to the strict workflow gate after the architecture registry has been used through one more real slice.

@@ -16,13 +16,13 @@ Authoritative split:
 - `.ai/harness/scripts/`: installed workflow helper runtime for generated and
   downstream repos. This is not a hook route implementation surface; the
   self-host repo keeps source helpers under root `scripts/`.
-- `src/cli/installer/targets/*`: user-level adapter writers for `~/.claude/settings.json` and `~/.codex/hooks.json`.
+- `src/cli/installer/targets/*`: scope-aware adapter writers for default user-scoped `~/.claude/settings.json` / `~/.codex/hooks.json` and explicit project-scoped `.claude/settings.json` / `.codex/hooks.json`.
 - `src/cli/hook/*`: public route registry and compatibility runtime bridge.
 - `src/cli/hook-entry.ts`: minimal hook-only entrypoint that checks repo opt-in and dispatches ordered `.ai/hooks/*` scripts without loading the full CLI.
-- `src/cli/commands/security.ts`: read-only security scan for user-level hook config and VS Code folder-open task injection surfaces.
-- Repo-local `.claude/settings.json` and `.codex/hooks.json`: retired legacy project-level adapters cleaned by migration.
-- Repo-local `.codex/*`: ignored Codex runtime residue.
-- Codex Settings trust state: user-controlled runtime approval required before Codex executes `~/.codex/hooks.json`.
+- `src/cli/commands/security.ts`: read-only security scan for hook config and VS Code folder-open task injection surfaces.
+- Repo-local `.claude/settings.json` and `.codex/hooks.json`: supported project-scoped adapters when `--scope project` / `--host-adapter-scope project` is selected.
+- Repo-local `.codex/*`: ignored Codex runtime residue except `.codex/hooks.json`, which is trackable when project adapters are installed.
+- Codex Settings trust state: user-controlled runtime approval required before Codex executes the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`).
 - `scripts/run-skill-hook.ts`: skill lifecycle hook runner for pre/post migration events.
 
 Runtime state is stored under ignored `.ai/harness/*` paths and `.claude` runtime
@@ -31,13 +31,13 @@ files. It is not a product deliverable.
 ## P2 Trace
 
 Concrete route: Claude or Codex `PreToolUse` for edit/write -> host adapter
-runs `repo-harness-hook` from user-level config -> hook entry checks the current repo's
+runs `repo-harness-hook` from the active user or project adapter -> hook entry checks the current repo's
 `.ai/harness/workflow-contract.json` opt-in marker -> route registry selects
 the ordered scripts -> invokes `worktree-guard.sh` and `pre-edit-guard.sh`
 -> guards inspect policy, active plan state, protected paths, and task workflow
 expectations -> warning or block is returned to the agent.
-After adapter configuration, Codex still requires the user to trust
-`~/.codex/hooks.json` in Codex Settings before that route executes.
+After adapter configuration, Codex still requires the user to trust the active
+Codex hooks file in Codex Settings before that route executes.
 
 Subagent return route: Claude `PreToolUse` for `Task|Agent|SendUserMessage`
 uses the `subagent` route and runs `subagent-return-channel-guard.sh`. For
@@ -74,8 +74,8 @@ flowchart TD
     Init["repo-harness init/install"] --> Targets["installer targets: codex.ts / claude.ts"]
     Targets --> Managed["managed-entries.ts: buildManagedHooks()"]
     Managed --> Registry["route-registry.ts: ROUTES"]
-    Managed --> CodexCfg["~/.codex/hooks.json user-level"]
-    Managed --> ClaudeCfg["~/.claude/settings.json or .claude/settings.json"]
+    Managed --> CodexCfg["~/.codex/hooks.json user scope<br/>or .codex/hooks.json project scope"]
+    Managed --> ClaudeCfg["~/.claude/settings.json user scope<br/>or .claude/settings.json project scope"]
     CodexCfg --> Trust["Codex Settings trust hash"]
   end
 

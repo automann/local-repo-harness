@@ -6,7 +6,7 @@
 
 Start with the shortest truth path:
 
-1. `~/.claude/settings.json` and `~/.codex/hooks.json` wire host events into `repo-harness-hook` (bash-shim installs use `bash ~/.repo-harness/hook-shim.sh <hook>.sh`), with `repo-harness hook` as the compatibility fallback.
+1. User-scoped `~/.claude/settings.json` / `~/.codex/hooks.json`, or explicit project-scoped `.claude/settings.json` / `.codex/hooks.json`, wire host events into `repo-harness-hook` (bash-shim installs use `bash ~/.repo-harness/hook-shim.sh <hook>.sh`), with `repo-harness hook` as the compatibility fallback.
 2. The dispatcher checks whether the current repo is opted in through `.ai/harness/workflow-contract.json` (and, for the bash shim, that its primary root is trusted in `~/.repo-harness/trusted-repos`).
 3. The route registry selects the ordered hook scripts for that event and route.
 4. Hook scripts resolve **central-first**: env `REPO_HARNESS_HOOK_SOURCE` (`repo` | `central` | absolute dir) → repo policy pin `"hook_source": "repo"` in `.ai/harness/policy.json` → the central copy → vendored `<repo>/.ai/hooks` fallback. The central copy is `~/.repo-harness/hooks/` (installed by `scripts/repo-harness.sh install`, stamped with `.version`) on the bash chain, and the packaged `assets/hooks/` inside the globally installed CLI on the `repo-harness-hook` chain.
@@ -21,8 +21,8 @@ Generated host adapter commands carry a 30 second timeout; long-running work bel
 Prompt-layer plan/spec/contract gates are advisory routing only. Hard enforcement lives in `PreToolUse.edit`: `pre-edit-guard.sh` blocks implementation edits (paths outside plans/tasks/docs/deploy/harness/markdown surfaces) unless the active plan is Approved/Executing and `docs/spec.md` exists. Modes `enforce` (default) | `advice` | `off` via policy `.guards.edit_plan_gate` or `REPO_HARNESS_EDIT_PLAN_GATE`. Done-claim gates in the prompt layer keep blocking because they verify file-backed completion evidence, not language.
 
 If you are asking "which hook file should I edit?", default to `assets/hooks/` for product changes and mirror into `.ai/hooks/` only for this self-host repo or another repo that pins `"hook_source": "repo"`; runtime pickup outside repo-pinned development happens on the next `install`/CLI upgrade because hooks resolve central-first.
-After installing or refreshing `~/.codex/hooks.json`, open Codex Settings and mark the user-level hook config as trusted; otherwise Codex will not execute it.
-Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are legacy project-level config and should be retired during migration.
+After installing or refreshing Codex adapters, open Codex Settings and mark the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`) as trusted; otherwise Codex will not execute it.
+Repo-local `.claude/settings.json` and `.codex/hooks.json` hook adapters are supported when project scope is selected; default migrations still retire them when user scope is selected.
 
 `Stop.default` routes through `stop-orchestrator.sh`. On Codex, dispatcher stdout stays quiet for ordinary successful hooks, but valid Stop decision JSON is forwarded so Codex can honor a one-shot planning completeness block; success stderr such as handoff refresh noise remains suppressed.
 
