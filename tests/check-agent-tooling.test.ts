@@ -305,6 +305,8 @@ describe("check-agent-tooling", () => {
       expect(report.tools.waza.status).toBe("present");
       expect(report.tools.waza.source_repo).toBe("tw93/Waza");
       expect(report.tools.waza.primary_host).toBe("codex");
+      expect(report.tools.waza.hosts.codex.scope).toBe("user");
+      expect(report.tools.waza.hosts.codex.scope_summary.project.status).toBe("missing");
       expect(report.tools.waza.hosts.claude.installed_skills).toEqual(WAZA_SKILLS);
       expect(report.tools.waza.hosts.claude.skills[0].symlink_target).toBe("../../.agents/skills/think");
       expect(report.tools.waza.hosts.claude.shared_rules).toEqual(WAZA_RULES);
@@ -312,6 +314,7 @@ describe("check-agent-tooling", () => {
       expect(report.tools.waza.hosts.codex.shared_rules_staging_sync).toBe("synced");
       expect(report.tools.waza.hosts.codex.stale_status).toBe("not-checked");
       expect(report.tools.codex_automation_profile.status).toBe("present");
+      expect(report.tools.codex_automation_profile.scope).toBe("user");
       expect(report.tools.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(report.tools.codex_automation_profile.routes).toEqual({
         workflow_health: "waza:health",
@@ -320,6 +323,7 @@ describe("check-agent-tooling", () => {
       });
       expect(report.tools.codex_automation_profile.vendoring_policy).toBe("do-not-vendor-skill-body");
       expect(report.tools.gbrain.status).toBe("warning");
+      expect(report.tools.gbrain.scope).toBe("manual-or-manifest-only");
       expect(report.tools.gbrain.mcp_hosts.claude.status).toBe("disabled");
       expect(report.tools.gbrain.mcp_hosts.codex.status).toBe("disabled");
       expect(report.tools.gbrain.impact.knowledge_tasks).toBe("manual-only");
@@ -327,7 +331,9 @@ describe("check-agent-tooling", () => {
       expect(report.tools.codegraph.primary_host).toBe("codex");
       expect(report.tools.codegraph.source).toBe("global");
       expect(report.tools.codegraph.version).toBe("0.9.6");
+      expect(report.tools.codegraph.mcp_scope).toBe("user");
       expect(report.tools.codegraph.mcp_hosts.codex.status).toBe("configured");
+      expect(report.tools.codegraph.mcp_hosts.codex.scope).toBe("user");
       expect(report.tools.codegraph.project_index.status).toBe("up-to-date");
       expect(report.tools.codegraph.impact.code_navigation).toBe("missing");
     } finally {
@@ -393,6 +399,54 @@ describe("check-agent-tooling", () => {
       expect(report.tools.codegraph.mcp_hosts.claude.always_load).toBe(true);
       expect(report.tools.codegraph.mcp_hosts.claude.tool_search).toBe("always-load");
       expect(report.tools.codegraph.impact.code_navigation).toBe("full");
+    } finally {
+      rmSync(envRoot.root, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("reports project-scoped CodeGraph MCP from repo-local host config", () => {
+    const envRoot = setupFakeEnvironment("check-agent-tooling-codegraph-project-mcp");
+    try {
+      mkdirSync(join(envRoot.root, ".codex"), { recursive: true });
+      writeFileSync(
+        join(envRoot.root, ".codex", "config.toml"),
+        "[mcp_servers.codegraph]\ncommand = \"codegraph\"\nargs = [\"serve\", \"--mcp\", \"--path\", \".\"]\n",
+      );
+      writeFileSync(
+        join(envRoot.root, ".mcp.json"),
+        JSON.stringify({
+          mcpServers: {
+            codegraph: {
+              type: "stdio",
+              command: "codegraph",
+              args: ["serve", "--mcp", "--path", "."],
+            },
+          },
+        }, null, 2),
+      );
+      writeFakeNpx(envRoot.fakeBin);
+      writeFakeGbrain(envRoot.fakeBin);
+      writeFakeCodeGraph(envRoot.fakeBin);
+
+      const res = spawnSync("bash", [SCRIPT, "--json", "--host", "both"], {
+        cwd: envRoot.root,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: envRoot.home,
+          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      const report = JSON.parse(res.stdout);
+      expect(report.tools.codegraph.mcp_scope).toBe("project");
+      expect(report.tools.codegraph.mcp_hosts.codex.status).toBe("configured");
+      expect(report.tools.codegraph.mcp_hosts.codex.scope).toBe("project");
+      expect(report.tools.codegraph.mcp_hosts.claude.status).toBe("configured");
+      expect(report.tools.codegraph.mcp_hosts.claude.scope).toBe("project");
+      expect(report.tools.codegraph.mcp_hosts.claude.tool_search).toBe("project-config");
     } finally {
       rmSync(envRoot.root, { recursive: true, force: true });
     }

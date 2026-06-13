@@ -31,6 +31,12 @@ import {
 } from "./brain-root";
 import { configureCodegraph, ensureCodegraph } from "../tools/codegraph";
 import { scopeToLocation, type InstallScope } from "../installer/types";
+import { resolveRuntimeMode, type RuntimeSelection } from "../installer/hook-command";
+import {
+  installRepoHarnessProjectSkills,
+  skillRootFor,
+  type ToolingScope,
+} from "../skills/project-skills";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..", "..");
@@ -64,11 +70,15 @@ export interface InitCommandOptions {
   apply?: boolean;
   verify?: boolean;
   syncSkill?: boolean;
+  skillScope?: ToolingScope;
   hostAdapters?: boolean;
   hostAdapterScope?: InstallScope;
+  runtime?: RuntimeSelection;
   externalSkills?: boolean;
+  externalToolScope?: ToolingScope;
   codegraph?: boolean;
   configureCodegraphMcp?: boolean;
+  codegraphMcpScope?: ToolingScope;
   syncCodegraph?: boolean;
   globalContext?: GlobalContextOptions;
   brainRoot?: string;
@@ -255,6 +265,16 @@ export function writeGlobalContextFiles(
   return { step: "global working rules", status: "ok", detail: changes.join(", ") };
 }
 
+function scopeToCodegraphLocation(scope: ToolingScope): "global" | "local" {
+  return scope === "project" ? "local" : "global";
+}
+
+function scopeSkippedDetail(scope: ToolingScope, apply: boolean, enabled = true): string {
+  if (!enabled) return "disabled";
+  if (scope === "none") return "scope=none";
+  return apply ? "repo harness did not apply cleanly" : "dry-run";
+}
+
 /**
  * Install the bundled cross-review skills, each into the host where it is useful:
  * `codex-review` → `~/.claude/skills` (Claude calls Codex), `claude-review` →
@@ -266,23 +286,28 @@ export function syncCrossReviewSkills(
   sourceRoot: string,
   target: InstallTargetSpec,
   env?: NodeJS.ProcessEnv,
+  opts: { scope?: ToolingScope; repoRoot?: string } = {},
 ): InitStep[] {
-  const home = homeDir(env);
+  const scope = opts.scope ?? "user";
+  const repoRoot = opts.repoRoot ?? process.cwd();
   const steps: InitStep[] = [];
+  if (scope === "none") {
+    return [{ step: "cross-review skills", status: "skipped", detail: "scope=none" }];
+  }
   for (const { skill, host } of CROSS_REVIEW_SKILLS) {
     const step = `cross-review skill ${skill}`;
     if (target !== "both" && target !== host) continue;
-    if (!home) {
-      steps.push({ step, status: "failed", detail: "HOME is required to resolve host skill roots" });
-      continue;
-    }
     const source = join(sourceRoot, "assets", "skills", skill);
     const srcSkill = join(source, "SKILL.md");
     if (!existsSync(srcSkill)) {
       steps.push({ step, status: "skipped", detail: `bundled source not found at ${source}` });
       continue;
     }
-    const root = join(home, host === "claude" ? ".claude" : ".codex", "skills");
+    const root = skillRootFor({ scope, host, repoRoot, env });
+    if (!root) {
+      steps.push({ step, status: "failed", detail: `${scope} skill root could not be resolved` });
+      continue;
+    }
     const dest = join(root, skill);
     const destSkill = join(dest, "SKILL.md");
     mkdirSync(root, { recursive: true });
@@ -298,51 +323,63 @@ export function syncCrossReviewSkills(
       rmSync(dest, { recursive: true, force: true });
     }
     cpSync(source, dest, { recursive: true });
-    steps.push({ step, status: "ok", detail: `synced ${dest}` });
+    steps.push({ step, status: "ok", detail: `scope=${scope}; synced ${dest}` });
   }
   return steps;
 }
 
-function installExternalSkills(sourceRoot: string, target: InstallTargetSpec, env?: NodeJS.ProcessEnv): InitStep[] {
-  const steps: InitStep[] = [];
+function skillsCliArgs(
+  source: string,
+  target: InstallTargetSpec,
+  skills: string[],
+  scope: ToolingScope,
+): string[] {
   const agents = hostAgents(target);
+  const args = [
+    "-y",
+    "skills",
+    "add",
+    source,
+    "-a",
+    ...agents,
+    "-s",
+    ...skills,
+    "-y",
+  ];
+  if (scope === "user") args.splice(4, 0, "-g");
+  if (scope === "project") args.push("--copy");
+  return args;
+}
+
+function installExternalSkills(
+  sourceRoot: string,
+  repoRoot: string,
+  target: InstallTargetSpec,
+  scope: ToolingScope,
+  env?: NodeJS.ProcessEnv,
+): InitStep[] {
+  const steps: InitStep[] = [];
+  if (scope === "none") {
+    return [
+      { step: "external skills Waza", status: "skipped", detail: "scope=none" },
+      { step: "external skill mermaid", status: "skipped", detail: "scope=none" },
+    ];
+  }
+  const cwd = scope === "project" ? repoRoot : sourceRoot;
   const waza = runProcess(
     "npx",
-    [
-      "-y",
-      "skills",
-      "add",
-      "tw93/Waza",
-      "-g",
-      "-a",
-      ...agents,
-      "-s",
-      ...WAZA_SKILLS,
-      "-y",
-    ],
-    sourceRoot,
+    skillsCliArgs("tw93/Waza", target, WAZA_SKILLS, scope),
+    cwd,
     env,
   );
-  steps.push(withStepName(waza, "external skills Waza", `target=${target}`));
+  steps.push(withStepName(waza, "external skills Waza", `target=${target}; scope=${scope}`));
   const mermaid = runProcess(
     "npx",
-    [
-      "-y",
-      "skills",
-      "add",
-      "BfdCampos/dotfiles",
-      "-g",
-      "-a",
-      ...agents,
-      "-s",
-      "mermaid",
-      "-y",
-    ],
-    sourceRoot,
+    skillsCliArgs("BfdCampos/dotfiles", target, ["mermaid"], scope),
+    cwd,
     env,
   );
-  steps.push(withStepName(mermaid, "external skill mermaid", `target=${target}`));
-  steps.push(...syncCrossReviewSkills(sourceRoot, target, env));
+  steps.push(withStepName(mermaid, "external skill mermaid", `target=${target}; scope=${scope}`));
   return steps;
 }
 
@@ -353,11 +390,14 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   const apply = opts.apply !== false;
   const verify = opts.verify !== false;
   const syncSkill = opts.syncSkill !== false;
+  const skillScope = opts.skillScope ?? "user";
   const hostAdapters = opts.hostAdapters !== false;
   const hostAdapterScope = opts.hostAdapterScope ?? "user";
-  const externalSkills = opts.externalSkills !== false;
+  const runtimeSelection = opts.runtime ?? "auto";
+  const externalToolScope = opts.externalToolScope ?? (opts.externalSkills === false ? "none" : "user");
   const codegraph = opts.codegraph !== false;
   const configureCgMcp = opts.configureCodegraphMcp === true;
+  const codegraphMcpScope = opts.codegraphMcpScope ?? (configureCgMcp ? "user" : "none");
   const syncCodegraph = opts.syncCodegraph === true;
   const brainMode = opts.brainMode ?? "skip";
   const target = opts.target ?? "both";
@@ -369,26 +409,43 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   commandEnv = {
     ...(commandEnv ?? {}),
     REPO_HARNESS_HOST_ADAPTER_SCOPE: hostAdapters ? hostAdapterScope : "none",
+    REPO_HARNESS_HOOK_RUNTIME_MODE: hostAdapters && hostAdapterScope !== "none"
+      ? resolveRuntimeMode(scopeToLocation(hostAdapterScope), runtimeSelection)
+      : "none",
   };
 
-  if (syncSkill && apply) {
+  if (syncSkill && apply && skillScope === "user") {
     const step = runProcess("bash", [join(sourceRoot, "scripts", "sync-codex-installed-copies.sh")], sourceRoot, commandEnv);
-    steps.push(withStepName(step, "sync repo-harness skills", `target=${target}`));
+    steps.push(withStepName(step, "sync repo-harness skills", `target=${target}; scope=user`));
+  } else if (syncSkill && apply && skillScope === "project") {
+    steps.push(...installRepoHarnessProjectSkills({
+      sourceRoot,
+      repoRoot,
+      target,
+      scope: "project",
+      env: commandEnv,
+    }));
   } else {
     steps.push({
       step: "sync repo-harness skills",
       status: "skipped",
-      detail: syncSkill ? "dry-run" : "disabled",
+      detail: syncSkill ? (skillScope === "none" ? "scope=none" : "dry-run") : "disabled",
     });
   }
 
   if (hostAdapters && hostAdapterScope !== "none" && apply) {
     const location = scopeToLocation(hostAdapterScope);
-    const installed = withProcessEnv(commandEnv, () => runInstall({ target, location, cwd: repoRoot }));
+    const runtimeMode = resolveRuntimeMode(location, runtimeSelection);
+    const installed = withProcessEnv(commandEnv, () => runInstall({
+      target,
+      location,
+      cwd: repoRoot,
+      runtime: runtimeSelection,
+    }));
     steps.push({
       step: "install host adapters",
       status: installed.exitCode === 0 ? "ok" : "failed",
-      detail: `scope=${hostAdapterScope}; ${installed.lines.join("; ")}`,
+      detail: `scope=${hostAdapterScope}; runtime=${runtimeMode}; ${installed.lines.join("; ")}`,
     });
   } else {
     steps.push({
@@ -433,17 +490,19 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   );
   steps.push(withStepName(migrate, apply ? "apply repo harness" : "plan repo harness", repoRoot));
 
-  if (externalSkills && apply && migrate.status === "ok") {
-    steps.push(...installExternalSkills(sourceRoot, target, commandEnv));
+  if (apply && migrate.status === "ok") {
+    steps.push(...installExternalSkills(sourceRoot, repoRoot, target, externalToolScope, commandEnv));
+    steps.push(...syncCrossReviewSkills(sourceRoot, target, commandEnv, { scope: skillScope, repoRoot }));
   } else {
     steps.push({
       step: "external skills",
       status: "skipped",
-      detail: !externalSkills
-        ? "disabled"
-        : apply
-          ? "repo harness did not apply cleanly"
-          : "dry-run",
+      detail: scopeSkippedDetail(externalToolScope, apply, true),
+    });
+    steps.push({
+      step: "cross-review skills",
+      status: "skipped",
+      detail: scopeSkippedDetail(skillScope, apply, syncSkill),
     });
   }
 
@@ -468,12 +527,17 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
       ["codex", "claude"].every((host) => mcpHosts[host]?.status === "configured");
 
     if (cg.resolution.source !== "missing" && !mcpConfigured) {
-      if (configureCgMcp) {
-        const conf = configureCodegraph({ repoRoot, target, location: "global", env: commandEnv });
+      if (codegraphMcpScope !== "none") {
+        const conf = configureCodegraph({
+          repoRoot,
+          target,
+          location: scopeToCodegraphLocation(codegraphMcpScope),
+          env: commandEnv,
+        });
         steps.push({
           step: "configure codegraph mcp",
           status: conf.actions.some((entry) => entry.status === "failed") ? "failed" : "ok",
-          detail: conf.actions.map((entry) => `${entry.action}:${entry.status}`).join(", "),
+          detail: `scope=${codegraphMcpScope}; ${conf.actions.map((entry) => `${entry.action}:${entry.status}`).join(", ")}`,
         });
       } else {
         steps.push({

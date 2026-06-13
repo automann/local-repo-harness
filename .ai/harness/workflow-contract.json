@@ -8,7 +8,56 @@
     ],
     "repoLocalFirst": true
   },
+  "hostAdapters": {
+    "defaultScope": "user",
+    "runtimeSelection": "auto",
+    "runtimeModes": [
+      "global-path",
+      "project-vendored-bun"
+    ],
+    "projectRuntime": {
+      "runtimeScope": "project",
+      "hookRuntimeMode": "project-vendored-bun",
+      "binDirectory": ".ai/harness/bin",
+      "executable": ".ai/harness/bin/repo-harness-hook",
+      "runtimeDirectory": ".ai/harness/runtime/repo-harness",
+      "versionFile": ".ai/harness/runtime/repo-harness/.version",
+      "requiredRuntime": "bun",
+      "networkDuringHookExecution": false
+    }
+  },
   "externalTooling": {
+    "repoHarnessSkills": {
+      "owner": "repo-harness",
+      "defaultScope": "user",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectPaths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      },
+      "userPaths": {
+        "codex": "~/.codex/skills",
+        "claude": "~/.claude/skills"
+      },
+      "crossReview": {
+        "codexHostSkill": "claude-review",
+        "claudeHostSkill": "codex-review",
+        "scopeSource": "skillScope"
+      }
+    },
+    "skillsCli": {
+      "projectInstall": "supported",
+      "projectIsDefault": true,
+      "globalFlag": "-g",
+      "projectPaths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      }
+    },
     "waza": {
       "sourceRepo": "tw93/Waza",
       "managedSkills": [
@@ -19,9 +68,17 @@
       ],
       "primaryHost": "codex",
       "codexPrimaryPath": "~/.codex/skills",
+      "codexProjectPath": ".agents/skills",
+      "claudeProjectPath": ".claude/skills",
       "stagingCachePath": "~/.agents/skills",
       "syncMode": "stage-upstream-then-copy-to-codex",
-      "hostDriftPolicy": "report-per-host-version-staging-and-upstream-drift"
+      "hostDriftPolicy": "report-per-host-version-staging-and-upstream-drift",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectInstall": "skills-cli-without-global-flag"
     },
     "codexAutomationProfile": {
       "requiredSkills": [
@@ -43,8 +100,44 @@
       "skillName": "mermaid",
       "primaryHost": "codex",
       "codexPrimaryPath": "~/.codex/skills/mermaid",
+      "codexProjectPath": ".agents/skills/mermaid",
+      "claudeProjectPath": ".claude/skills/mermaid",
       "syncMode": "external-installed-skill",
-      "vendoringPolicy": "do-not-vendor"
+      "vendoringPolicy": "do-not-vendor",
+      "supportedScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectInstall": "skills-cli-without-global-flag"
+    },
+    "codegraph": {
+      "package": "@colbymchenry/codegraph",
+      "indexScope": "project",
+      "indexDir": ".codegraph",
+      "mcpScopes": [
+        "project",
+        "user",
+        "none"
+      ],
+      "projectMcp": {
+        "codexConfigPath": ".codex/config.toml",
+        "claudeConfigPath": ".mcp.json",
+        "installCommand": "codegraph install --target <codex|claude|both> --location local --yes"
+      },
+      "userMcp": {
+        "codexConfigPath": "~/.codex/config.toml",
+        "claudeConfigPath": "~/.claude.json",
+        "installCommand": "repo-harness tools configure codegraph --target <codex|claude|both> --location global"
+      },
+      "vendoringPolicy": "self-host-dev-dependency; downstream-generated-default-remains-do-not-add-package-dependency"
+    },
+    "gbrain": {
+      "mode": "manual-or-manifest-only",
+      "projectOnlyMode": "manifest-only",
+      "mcp": "candidate-disabled",
+      "installCommand": "bun add -g gbrain",
+      "syncCommand": "gbrain sync --repo <path>"
     }
   },
   "agenticDevelopment": {
@@ -262,6 +355,14 @@
       ".ai/harness/runs/.gitkeep",
       ".ai/harness/triage/.gitkeep",
       ".ai/harness/triage/inbox.md"
+    ],
+    "projectRuntimeFiles": [
+      ".ai/harness/bin/",
+      ".ai/harness/bin/repo-harness-hook",
+      ".ai/harness/runtime/repo-harness/",
+      ".ai/harness/runtime/repo-harness/.version",
+      ".ai/harness/runtime/repo-harness/src/cli/hook-entry.ts",
+      ".ai/harness/runtime/repo-harness/assets/hooks/"
     ]
   },
   "documents": {

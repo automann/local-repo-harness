@@ -218,6 +218,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-worktree");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/triage/inbox.md");
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
+      expect(workflowContract.artifacts.projectRuntimeFiles).toContain(".ai/harness/bin/repo-harness-hook");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/bin/repo-harness-hook");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain("plans/prds");
@@ -254,6 +256,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(contextMap.discoverable_contexts.map((entry: { path: string }) => entry.path)).toContain("tasks/workstreams/**/*.md");
       expect(contextMap.discoverable_contexts.find((entry: { path: string }) => entry.path === "tasks/workstreams/**/*.md").purpose).toBe("capability-workstream");
       const policy = JSON.parse(readFileSync(join(cwd, ".ai/harness/policy.json"), "utf-8"));
+      expect(policy.host_adapters.scope).toBe("user");
+      expect(policy.host_adapters.hook_runtime_mode).toBe("global-path");
+      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/repo-harness-hook");
       expect(policy.harness.helper_runtime_dir).toBe(".ai/harness/scripts");
       expect(policy.harness.helper_compat_dir).toBe("scripts");
       expect(policy.sprints.helper_script).toBe(".ai/harness/scripts/sprint-backlog.sh");

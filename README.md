@@ -246,6 +246,22 @@ created or refreshed. It should not create an application stack; existing repos
 use `repo-harness update`, while new projects or modules use
 `repo-harness-scaffold`.
 
+For a project-scoped install that avoids user-level hooks, skills, and
+CodeGraph MCP registration, make the scope explicit:
+
+```bash
+npx -y repo-harness update \
+  --host-adapter-scope project \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project
+```
+
+Project Codex skills live under `.agents/skills`; project Claude skills live
+under `.claude/skills`. Waza/Mermaid project installs use the skills CLI without
+`-g`; CodeGraph project MCP uses `.codex/config.toml` and `.mcp.json`. gbrain
+remains manual or manifest-only in project-only mode.
+
 ### 3. Apply, then prove the workflow
 
 ```bash
@@ -426,7 +442,8 @@ Most common guards:
   - `.ai/harness/policy.json`
 - Generated and migrated repos default `external_tooling` to:
   - `complex -> gstack`
-  - `simple -> Waza` with Codex-first runtime copies in `~/.codex/skills`
+  - `simple -> Waza` with Codex-first user runtime copies in `~/.codex/skills`,
+    or project copies in `.agents/skills` when project scope is selected
   - `knowledge -> gbrain`
 - `repo-harness init` bootstraps the Codex/Claude runtime pieces needed for the
   default workflow:
@@ -438,7 +455,8 @@ Most common guards:
 - Other external tooling stays advisory-only:
   - `bash scripts/check-agent-tooling.sh --host both --check-updates`
   - Waza update checks compare upstream `tw93/Waza` `SKILL.md` hashes without running `npx skills check`
-  - no automatic gstack, gbrain MCP, CodeGraph daemon, or provider setup
+  - no automatic gstack, gbrain MCP, CodeGraph daemon, or provider setup in
+    project-only mode
 - Manual distillation stays repo-local:
   - repeated corrections -> `tasks/lessons.md`
   - deep findings and hidden contracts -> topic-scoped `docs/researches/*.md`
@@ -460,7 +478,7 @@ are not ordinary bundled product dependencies.
 | Waza by [TW93](https://x.com/HiTw93), including `think`, `hunt`, `check`, and `health` | Daily planning, bug hunts, verification, health checks, and Codex-first skill sync | Installed through the skills CLI into host skill roots |
 | gstack skills and `gbrain` by [Garry Tan](https://x.com/garrytan) | Product discovery, plan review, design review, post-ship documentation hygiene, knowledge sync, handoff retrieval, and long-form repo memory | External operator workflow plus optional external CLI/index; advisory by default |
 | `mermaid` | Human-readable architecture and system-flow diagrams when Mermaid is not enough | Runtime-referenced skill, not vendored into generated repos |
-| CodeGraph (`@colbymchenry/codegraph`) | Symbol-aware navigation, impact tracing, and readiness checks for this self-host repo | Dev dependency in this repo; generated repos stay global-MCP-first unless policy opts in |
+| CodeGraph (`@colbymchenry/codegraph`) | Symbol-aware navigation, impact tracing, and readiness checks for this self-host repo | Dev dependency in this repo; generated repos can use project MCP/local index when policy opts in |
 | OpenAI Codex | Primary execution agent for repo-local implementation, verification, and GitHub contributor attribution when a commit materially includes Codex-authored work | External agent runtime; attribution is an explicit commit trailer, not hidden hook automation |
 
 ### GitHub Contributor Attribution

@@ -92,7 +92,9 @@ class ClaudeTarget implements AgentTarget {
     const filePath = resolvePath(loc, opts.cwd ?? process.cwd());
     const data = readJsonOrEmpty<SettingsFile>(filePath);
     const cleaned = stripManagedEntries(data.hooks);
-    const managed = buildManagedHooks('claude');
+    const managed = buildManagedHooks('claude', {
+      runtimeMode: opts.runtimeMode ?? (loc === 'local' ? 'project-vendored-bun' : 'global-path'),
+    });
     const merged = mergeHooks(cleaned, managed);
     const next: SettingsFile = { ...data, hooks: merged };
     const nextContent = formatJson(next);

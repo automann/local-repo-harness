@@ -524,6 +524,7 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("--- External Tooling ---");
       expect(res.stdout).toContain("External Tooling Report");
       expect(res.stdout).toContain("Host hook adapters default to user scope:");
+      expect(res.stdout).toContain("Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -557,7 +558,13 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, ".codex/hooks.json"))).toBe(true);
       expect(existsSync(join(repo, ".claude/settings.json"))).toBe(true);
       expect(existsSync(join(repo, ".claude/settings.local.json"))).toBe(false);
+      const policy = JSON.parse(readFileSync(join(repo, ".ai/harness/policy.json"), "utf-8"));
+      expect(policy.host_adapters.scope).toBe("project");
+      expect(policy.host_adapters.hook_runtime_mode).toBe("project-vendored-bun");
+      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/repo-harness-hook");
       expect(res.stdout).toContain("Host hook config target: project-level .claude/settings.json and .codex/hooks.json");
+      expect(res.stdout).toContain("Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook");
+      expect(res.stdout).toContain("Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version");
       expect(res.stdout).toContain("Host hook adapters are project-scoped:");
     } finally {
       rmSync(repo, { recursive: true, force: true });

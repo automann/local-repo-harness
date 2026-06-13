@@ -96,6 +96,7 @@ const HOSTS = {
     label: "Claude Code",
     agentLabel: "Claude Code",
     skillsDir: path.join(HOME, ".claude", "skills"),
+    projectSkillsDir: path.join(REPO_ROOT, ".claude", "skills"),
     gstackDir: path.join(HOME, ".claude", "skills", "gstack"),
     configPath: path.join(HOME, ".claude", "settings.json"),
   },
@@ -103,6 +104,7 @@ const HOSTS = {
     label: "Codex",
     agentLabel: "Codex",
     skillsDir: path.join(HOME, ".codex", "skills"),
+    projectSkillsDir: path.join(REPO_ROOT, ".agents", "skills"),
     gstackDir: path.join(HOME, ".codex", "skills", "gstack"),
     configPath: path.join(HOME, ".codex", "config.toml"),
   },
@@ -639,6 +641,31 @@ function inspectWazaSkill(host, skill, skillLock, skillItems, upstreamSkills) {
   };
 }
 
+function inspectScopedSkill(root, skill) {
+  const skillFile = path.join(root, skill, "SKILL.md");
+  const local = readSkillFile(skillFile);
+  return {
+    name: skill,
+    path: skillFile,
+    real_path: resolveRealPath(skillFile),
+    present: local.exists,
+    version: local.version,
+    hash: local.hash,
+  };
+}
+
+function scopedSkillSummary(skills, root) {
+  const installed = skills.filter((entry) => entry.present).map((entry) => entry.name);
+  const missing = skills.filter((entry) => !entry.present).map((entry) => entry.name);
+  return {
+    path: root,
+    status: missing.length === 0 ? "present" : installed.length > 0 ? "partial" : "missing",
+    installed_skills: installed,
+    missing_skills: missing,
+    skills,
+  };
+}
+
 function detectWaza() {
   const skillLockPath = path.join(HOME, ".agents", ".skill-lock.json");
   const skillLock = readJson(skillLockPath);
@@ -650,6 +677,8 @@ function detectWaza() {
 
   for (const host of SELECTED_HOSTS) {
     const skills = WAZA_MANAGED_SKILLS.map((skill) => inspectWazaSkill(host, skill, skillLock, skillItems, upstream.skills));
+    const projectSkills = WAZA_MANAGED_SKILLS.map((skill) => inspectScopedSkill(HOSTS[host].projectSkillsDir, skill));
+    const projectSummary = scopedSkillSummary(projectSkills, HOSTS[host].projectSkillsDir);
     const sharedRules = WAZA_SHARED_RULES.map((rule) => inspectWazaSharedRule(host, rule, upstream.rules));
     const installedSkills = skills.filter((entry) => entry.present).map((entry) => entry.name);
     const missingSkills = skills.filter((entry) => !entry.present).map((entry) => entry.name);
@@ -698,6 +727,9 @@ function detectWaza() {
     hostStatuses[host] = {
       label: HOSTS[host].label,
       path: HOSTS[host].skillsDir,
+      user_path: HOSTS[host].skillsDir,
+      project_path: HOSTS[host].projectSkillsDir,
+      scope: projectSummary.status === "present" ? "project" : status === "present" ? "user" : projectSummary.status === "partial" ? "project-partial" : status,
       status,
       present: status === "present",
       installed_skills: installedSkills,
@@ -715,6 +747,15 @@ function detectWaza() {
       stale_status: staleStatus,
       skills,
       shared_rule_details: sharedRules,
+      scope_summary: {
+        user: {
+          path: HOSTS[host].skillsDir,
+          status,
+          installed_skills: installedSkills,
+          missing_skills: missingSkills,
+        },
+        project: projectSummary,
+      },
       reason: status === "present"
         ? `Detected all ${WAZA_MANAGED_SKILLS.length} Waza skills for ${HOSTS[host].label} from the real host skill path.`
         : status === "partial"
@@ -795,8 +836,8 @@ function detectWaza() {
   };
 }
 
-function inspectCodexAutomationSkill(skill) {
-  const skillFile = path.join(HOSTS.codex.skillsDir, skill, "SKILL.md");
+function inspectCodexAutomationSkill(root, skill) {
+  const skillFile = path.join(root, skill, "SKILL.md");
   const local = readSkillFile(skillFile);
 
   return {
@@ -810,10 +851,21 @@ function inspectCodexAutomationSkill(skill) {
 }
 
 function detectCodexAutomationProfile() {
-  const skills = CODEX_AUTOMATION_SKILLS.map((skill) => inspectCodexAutomationSkill(skill));
+  const userSkills = CODEX_AUTOMATION_SKILLS.map((skill) => inspectCodexAutomationSkill(HOSTS.codex.skillsDir, skill));
+  const projectSkills = CODEX_AUTOMATION_SKILLS.map((skill) => inspectCodexAutomationSkill(HOSTS.codex.projectSkillsDir, skill));
+  const userSummary = scopedSkillSummary(userSkills, HOSTS.codex.skillsDir);
+  const projectSummary = scopedSkillSummary(projectSkills, HOSTS.codex.projectSkillsDir);
+  const skills = projectSummary.status === "present" ? projectSkills : userSkills;
   const installedSkills = skills.filter((entry) => entry.present).map((entry) => entry.name);
   const missingSkills = skills.filter((entry) => !entry.present).map((entry) => entry.name);
   const status = missingSkills.length === 0 ? "present" : installedSkills.length > 0 ? "partial" : "missing";
+  const scope = projectSummary.status === "present"
+    ? "project"
+    : userSummary.status === "present"
+      ? "user"
+      : projectSummary.status === "partial"
+        ? "project-partial"
+        : userSummary.status;
 
   return {
     name: "codex_automation_profile",
@@ -826,7 +878,10 @@ function detectCodexAutomationProfile() {
     required_skills: CODEX_AUTOMATION_SKILLS,
     optional_skills: [],
     mode: "codex-runtime-reference",
-    source: HOSTS.codex.skillsDir,
+    scope,
+    source: scope === "project" ? HOSTS.codex.projectSkillsDir : HOSTS.codex.skillsDir,
+    user_source: HOSTS.codex.skillsDir,
+    project_source: HOSTS.codex.projectSkillsDir,
     routes: {
       workflow_health: "waza:health",
       review_gate: "waza:check",
@@ -836,6 +891,10 @@ function detectCodexAutomationProfile() {
     installed_skills: installedSkills,
     missing_skills: missingSkills,
     skills,
+    scope_summary: {
+      user: userSummary,
+      project: projectSummary,
+    },
   };
 }
 
@@ -931,6 +990,7 @@ function detectGbrain() {
         ? `gbrain CLI is present; doctor status is ${doctorJson.status}.`
         : "gbrain CLI is present, but doctor output could not be parsed.",
     cli_present: present,
+    scope: mcpConfigured ? "user-mcp" : "manual-or-manifest-only",
     version,
     doctor_command: present ? `gbrain ${doctorCommand.join(" ")}` : null,
     doctor: doctorJson,
@@ -969,6 +1029,7 @@ function detectCodeGraphMcp(host) {
     if (entry.alwaysLoad === true) {
       return {
         status: "configured",
+        scope: source.startsWith("Claude project") ? "project" : "user",
         always_load: true,
         tool_search: "always-load",
         reason: `${source} contains a codegraph MCP server entry with alwaysLoad=true.`,
@@ -976,6 +1037,7 @@ function detectCodeGraphMcp(host) {
     }
     return {
       status: "deferred",
+      scope: source.startsWith("Claude project") ? "project" : "user",
       always_load: false,
       tool_search: "deferred",
       reason: `${source} contains a codegraph MCP server entry, but alwaysLoad is not true; Claude Code MCP Tool Search may defer CodeGraph tools.`,
@@ -984,10 +1046,39 @@ function detectCodeGraphMcp(host) {
   function claudeTextFallback(source, sourcePath) {
     return {
       status: "deferred",
+      scope: source.startsWith("Claude project") ? "project" : "user",
       always_load: false,
       tool_search: "unknown",
       reason: `${source} contains a codegraph MCP server entry at ${sourcePath}, but alwaysLoad could not be verified.`,
     };
+  }
+
+  if (host === "codex") {
+    const projectConfigPath = path.join(REPO_ROOT, ".codex", "config.toml");
+    const projectContent = readText(projectConfigPath);
+    if (/\[mcp_servers\.codegraph\]/.test(projectContent)) {
+      return {
+        status: "configured",
+        scope: "project",
+        config_path: projectConfigPath,
+        reason: "Project Codex config contains a codegraph MCP server entry.",
+      };
+    }
+  }
+
+  if (host === "claude") {
+    const projectMcpPath = path.join(REPO_ROOT, ".mcp.json");
+    const projectMcpJson = readJson(projectMcpPath);
+    const projectEntry = claudeEntryResult(projectMcpJson?.mcpServers?.codegraph, `Claude project config at ${projectMcpPath}`);
+    if (projectEntry) {
+      return {
+        ...projectEntry,
+        status: "configured",
+        tool_search: projectEntry.tool_search === "always-load" ? "always-load" : "project-config",
+        config_path: projectMcpPath,
+        reason: `Claude project config at ${projectMcpPath} contains a codegraph MCP server entry.`,
+      };
+    }
   }
 
   if (!content) {
@@ -995,7 +1086,7 @@ function detectCodeGraphMcp(host) {
       const claudeRootConfig = path.join(HOME, ".claude.json");
       const rootJson = readJson(claudeRootConfig);
       const rootEntry = claudeEntryResult(rootJson?.mcpServers?.codegraph, `Claude root config at ${claudeRootConfig}`);
-      if (rootEntry) return rootEntry;
+      if (rootEntry) return { ...rootEntry, config_path: claudeRootConfig };
       const rootContent = readText(claudeRootConfig);
       if (/codegraph/i.test(rootContent)) {
         return claudeTextFallback("Claude root config", claudeRootConfig);
@@ -1004,6 +1095,7 @@ function detectCodeGraphMcp(host) {
 
     return {
       status: "missing",
+      scope: "none",
       reason: `No ${meta.label} config found at ${meta.configPath}.`,
     };
   }
@@ -1012,19 +1104,22 @@ function detectCodeGraphMcp(host) {
     if (/\[mcp_servers\.codegraph\]/.test(content)) {
       return {
         status: "configured",
+        scope: "user",
+        config_path: meta.configPath,
         reason: "Codex config contains a codegraph MCP server entry.",
       };
     }
 
     return {
       status: "missing",
+      scope: "none",
       reason: "Codex config does not contain a codegraph MCP server entry.",
     };
   }
 
   const settingsJson = readJson(meta.configPath);
   const settingsEntry = claudeEntryResult(settingsJson?.mcpServers?.codegraph, `Claude settings at ${meta.configPath}`);
-  if (settingsEntry) return settingsEntry;
+  if (settingsEntry) return { ...settingsEntry, config_path: meta.configPath };
   if (/"mcpServers"\s*:\s*{[\s\S]*"codegraph"/i.test(content)) {
     return claudeTextFallback("Claude settings", meta.configPath);
   }
@@ -1032,7 +1127,7 @@ function detectCodeGraphMcp(host) {
   const claudeRootConfig = path.join(HOME, ".claude.json");
   const rootJson = readJson(claudeRootConfig);
   const rootEntry = claudeEntryResult(rootJson?.mcpServers?.codegraph, `Claude root config at ${claudeRootConfig}`);
-  if (rootEntry) return rootEntry;
+  if (rootEntry) return { ...rootEntry, config_path: claudeRootConfig };
   const rootContent = readText(claudeRootConfig);
   if (/"mcpServers"\s*:\s*{[\s\S]*"codegraph"/i.test(rootContent)) {
     return claudeTextFallback("Claude root config", claudeRootConfig);
@@ -1040,6 +1135,7 @@ function detectCodeGraphMcp(host) {
 
   return {
     status: "missing",
+    scope: "none",
     reason: "Claude config does not contain a codegraph MCP server entry.",
   };
 }
@@ -1160,6 +1256,14 @@ function detectCodeGraph() {
   }
 
   const selectedMcpConfigured = SELECTED_HOSTS.every((host) => mcpHosts[host]?.status === "configured");
+  const configuredMcpScopes = [...new Set(Object.values(mcpHosts)
+    .filter((entry) => entry.status === "configured")
+    .map((entry) => entry.scope || "unknown"))];
+  const mcpScope = configuredMcpScopes.length === 0
+    ? "none"
+    : configuredMcpScopes.length === 1
+      ? configuredMcpScopes[0]
+      : "mixed";
   const statusResult = cliPresent ? run(resolution.bin_path, ["status", "."], { timeoutMs: 1500 }) : null;
   const statusOutput = `${statusResult?.stdout || ""}\n${statusResult?.stderr || ""}`;
   const projectIndexStatus = cliPresent ? parseCodeGraphProjectStatus(statusOutput) : "unavailable";
@@ -1226,6 +1330,7 @@ function detectCodeGraph() {
           ? (String(latestVersion) === String(version) ? "Local CodeGraph matches npm latest." : "npm reports a newer CodeGraph version.")
           : "CodeGraph update status is unknown.",
     mcp_hosts: mcpHosts,
+    mcp_scope: mcpScope,
     project_index: {
       status: projectIndexStatus,
       initialized: indexInitialized,
@@ -1300,7 +1405,7 @@ function printText(result) {
     const versionBits = Object.entries(entry.versions)
       .map(([name, version]) => `${name}@${version || "unknown"}`)
       .join(", ");
-    console.log(`  - ${entry.label}: ${entry.status}, ${entry.installed_skills.length}/${waza.managed_skills.length} skills, sync=${entry.staging_sync}, stale=${entry.stale_status}`);
+    console.log(`  - ${entry.label}: ${entry.status}, scope=${entry.scope}, ${entry.installed_skills.length}/${waza.managed_skills.length} user skills, project=${entry.scope_summary.project.status}, sync=${entry.staging_sync}, stale=${entry.stale_status}`);
     if (versionBits) {
       console.log(`    versions: ${versionBits}`);
     }
@@ -1335,7 +1440,7 @@ function printText(result) {
   const codexAutomation = result.tools.codex_automation_profile;
   console.log(`Codex automation profile [${codexAutomation.status}]`);
   console.log(`  - Required: ${codexAutomation.required_skills.join(", ")}`);
-  console.log(`  - Source: ${codexAutomation.source}`);
+  console.log(`  - Source: ${codexAutomation.source} (scope=${codexAutomation.scope})`);
   console.log(`  - Mode: ${codexAutomation.mode}`);
   if (codexAutomation.missing_skills.length) {
     console.log(`  - Missing: ${codexAutomation.missing_skills.join(", ")}`);
@@ -1346,6 +1451,7 @@ function printText(result) {
 
   const gbrain = result.tools.gbrain;
   console.log(`gbrain [${gbrain.status}]`);
+  console.log(`  - Scope: ${gbrain.scope}`);
   console.log(`  - CLI: ${gbrain.cli_present ? `present${gbrain.version ? ` (v${gbrain.version})` : ""}` : "missing"}`);
   if (gbrain.doctor?.status) {
     console.log(`  - Doctor: ${gbrain.doctor.status} (score ${gbrain.doctor.health_score ?? "n/a"})`);
@@ -1373,8 +1479,9 @@ function printText(result) {
   for (const host of SELECTED_HOSTS) {
     const entry = codegraph.mcp_hosts[host];
     const suffix = entry.tool_search ? ` (${entry.tool_search})` : "";
-    console.log(`  - ${entry.label} MCP: ${entry.status}${suffix}`);
+    console.log(`  - ${entry.label} MCP: ${entry.status}, scope=${entry.scope}${suffix}`);
   }
+  console.log(`  - MCP scope: ${codegraph.mcp_scope}`);
   console.log(`  - Project index: ${codegraph.project_index.status}`);
   console.log(`  - Updates: ${codegraph.update_status} (${codegraph.update_reason})`);
   console.log(`  - Impact: code-navigation=${codegraph.impact.code_navigation}, hooks=${codegraph.impact.hook_correctness}`);

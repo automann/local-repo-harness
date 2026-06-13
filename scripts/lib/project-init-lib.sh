@@ -535,7 +535,11 @@ NODE_EOF
 pi_print_codex_hook_trust_notice() {
   case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
     project)
-      echo "Host hook adapters are project-scoped: run repo-harness install --target both --scope project, then trust <repo>/.codex/hooks.json in Codex Settings."
+      if [[ "${REPO_HARNESS_HOOK_RUNTIME_MODE:-project-vendored-bun}" == "global-path" ]]; then
+        echo "Host hook adapters are project-scoped with explicit global-path runtime: run repo-harness install --target both --scope project --runtime global-path, then trust <repo>/.codex/hooks.json in Codex Settings."
+      else
+        echo "Host hook adapters are project-scoped: run repo-harness install --target both --scope project --runtime project-vendored-bun, then trust <repo>/.codex/hooks.json in Codex Settings; no user-level repo-harness-hook is required."
+      fi
       ;;
     none)
       echo "Host hook adapters are skipped: run repo-harness install --target both --scope user or --scope project when ready."
@@ -573,10 +577,14 @@ pi_write_hook_runtime_readme() {
 # Repo-Local Hook Fallback
 
 This repo does not pin `"hook_source": "repo"`, so active hook execution is
-user-level and central-first:
+central-first. User-scoped adapters call the installed global runtime:
 
 `~/.codex/hooks.json` / `~/.claude/settings.json` -> `repo-harness-hook` ->
 packaged hooks from the installed repo-harness runtime.
+
+Project-scoped adapters instead call `.ai/harness/bin/repo-harness-hook`,
+which executes the project-vendored Bun runtime under
+`.ai/harness/runtime/repo-harness`.
 
 The files under `.ai/hooks/lib/` are kept only for repo workflow helper scripts
 that source shared shell utilities. Full hook runtime scripts are not vendored
@@ -1252,10 +1260,10 @@ pi_external_tooling_defaults_summary() {
 - Hosts: claude-code, codex
 - Mode: agent-readiness-required
 - Detection: init-migrate
-- Waza: Codex-first, managed skills think/hunt/check/health, stage upstream in ~/.agents/skills, sync verified copies into ~/.codex/skills
-- Codex automation profile: required health/check/mermaid from ~/.codex/skills; do not vendor skill bodies
+- Waza: Codex-first, managed skills think/hunt/check/health, user scope stages upstream in ~/.agents/skills and syncs verified copies into ~/.codex/skills; project scope installs into .agents/skills and .claude/skills
+- Codex automation profile: required health/check/mermaid from active Codex skill root; do not vendor skill bodies
 - gbrain MCP: candidate-disabled
-- CodeGraph: required agent code-navigation readiness tool, target-aware MCP configure by explicit user command or authorized agent action, per-repo ignored .codegraph/ index; generated repos do not add it as a package dependency unless local policy opts in
+- CodeGraph: required agent code-navigation readiness tool, user or project MCP configure by explicit user command or authorized agent action, per-repo ignored .codegraph/ index; generated repos do not add it as a package dependency unless local policy opts in
 - Auto-actions: never install, upgrade, serve, sync, or enable MCP automatically
 EOF_EXTERNAL_TOOLING_DEFAULTS
 }
@@ -1805,6 +1813,13 @@ pi_write_harness_policy() {
   cat > "$default_file" <<EOF_POLICY
 {
   "version": 1,
+  "host_adapters": {
+    "scope": "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}",
+    "runtime_selection": "auto",
+    "hook_runtime_mode": "${REPO_HARNESS_HOOK_RUNTIME_MODE:-global-path}",
+    "project_hook_executable": ".ai/harness/bin/repo-harness-hook",
+    "project_runtime_dir": ".ai/harness/runtime/repo-harness"
+  },
   "active_plan": {
     "marker_file": ".ai/harness/active-plan",
     "legacy_marker_file": ".claude/.active-plan",

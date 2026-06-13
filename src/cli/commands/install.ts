@@ -22,6 +22,11 @@ import {
 } from '../installer/types';
 import { ALL_TARGETS, getTarget, listTargetIds } from '../installer/targets/registry';
 import { execFileSync } from 'child_process';
+import {
+  resolveRuntimeMode,
+  type RuntimeSelection,
+} from '../installer/hook-command';
+import { installProjectRuntime } from '../installer/project-runtime';
 
 export type InstallTargetSpec = 'codex' | 'claude' | 'both';
 
@@ -30,6 +35,7 @@ export interface InstallCommandOptions {
   location?: Location;
   scope?: InstallScope;
   cwd?: string;
+  runtime?: RuntimeSelection;
 }
 
 export interface InstallCommandResult {
@@ -82,6 +88,30 @@ export function runInstall(opts: InstallCommandOptions): InstallCommandResult {
     return { exitCode: 0, lines };
   }
 
+  const projectCwd = resolveProjectCwd(opts, location);
+  const runtimeMode = resolveRuntimeMode(location, opts.runtime ?? 'auto');
+  if (location === 'global' && runtimeMode === 'project-vendored-bun') {
+    lines.push('[runtime] error: --runtime project-vendored-bun requires --scope project or --location local');
+    return { exitCode: 2, lines };
+  }
+  if (location === 'local' && runtimeMode === 'project-vendored-bun') {
+    try {
+      const runtime = installProjectRuntime(projectCwd ?? process.cwd());
+      for (const file of runtime.files) {
+        lines.push(`[runtime] ${file.action}: ${file.path}`);
+      }
+      for (const note of runtime.notes ?? []) {
+        lines.push(`[runtime] note: ${note}`);
+      }
+    } catch (err) {
+      lines.push(`[runtime] error: ${(err as Error).message}`);
+      exitCode = 1;
+      return { exitCode, lines };
+    }
+  } else if (location === 'local' && runtimeMode === 'global-path') {
+    lines.push('[runtime] warning: project scope is using global PATH runtime; isolation is weaker.');
+  }
+
   for (const target of targets) {
     if (!target.supportsLocation(location)) {
       if (opts.target === 'both') {
@@ -93,7 +123,7 @@ export function runInstall(opts: InstallCommandOptions): InstallCommandResult {
       continue;
     }
     try {
-      const result = target.install(location, { cwd: resolveProjectCwd(opts, location) });
+      const result = target.install(location, { cwd: projectCwd, runtimeMode });
       for (const file of result.files) {
         lines.push(`[${target.id}] ${file.action}: ${file.path}`);
       }

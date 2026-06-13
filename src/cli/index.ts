@@ -22,7 +22,9 @@ import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
 import type { InstallScope, Location } from './installer/types';
+import { isRuntimeSelection, type RuntimeSelection } from './installer/hook-command';
 import type { HookEvent, RouteId } from './hook/route-registry';
+import type { ToolingScope } from './skills/project-skills';
 
 export const SUBCOMMANDS = [
   'init',
@@ -44,6 +46,7 @@ export type Subcommand = (typeof SUBCOMMANDS)[number];
 const VALID_TARGETS: readonly InstallTargetSpec[] = ['codex', 'claude', 'both'];
 const VALID_LOCATIONS: readonly Location[] = ['global', 'local'];
 const VALID_SCOPES: readonly InstallScope[] = ['user', 'project', 'none'];
+const VALID_RUNTIMES: readonly RuntimeSelection[] = ['auto', 'global-path', 'project-vendored-bun'];
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -104,12 +107,16 @@ export function buildProgram(): Command {
     .option('--dry-run', 'Plan repo harness changes without applying them')
     .option('--target <target>', `Host target for adapters and external skills: ${VALID_TARGETS.join('|')}`, 'both')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
+    .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')} (default: user)`)
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters')
     .option('--host-adapter-scope <scope>', `Hook adapter scope: ${VALID_SCOPES.join('|')} (default: user)`, 'user')
-    .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
+    .option('--runtime <runtime>', `Hook runtime mode: ${VALID_RUNTIMES.join('|')} (default: auto)`, 'auto')
+    .option('--no-external-skills', 'Skip Waza and Mermaid third-party skill bootstrap')
+    .option('--external-tool-scope <scope>', `Third-party tooling scope: ${VALID_SCOPES.join('|')} (default: user)`)
     .option('--no-verify', 'Skip repo workflow verification after apply')
     .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check')
-    .option('--configure-codegraph', 'Auto-register the CodeGraph MCP server for Codex and Claude (global)')
+    .option('--configure-codegraph', 'Auto-register the CodeGraph MCP server for Codex and Claude (legacy shorthand for --codegraph-mcp-scope user)')
+    .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')} (default: none unless --configure-codegraph)`)
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
     .option('--brain-root <path>', 'Brain vault root for manifest sync')
     .option('--brain-mode <mode>', 'Brain sync mode: skip|manifest-only|install-gbrain-cli', 'skip')
@@ -120,12 +127,16 @@ export function buildProgram(): Command {
       dryRun?: boolean;
       target: string;
       syncSkill?: boolean;
+      skillScope?: string;
       hostAdapters?: boolean;
       hostAdapterScope?: string;
+      runtime?: string;
       externalSkills?: boolean;
+      externalToolScope?: string;
       verify?: boolean;
       codegraph?: boolean;
       configureCodegraph?: boolean;
+      codegraphMcpScope?: string;
       syncCodegraph?: boolean;
       brainRoot?: string;
       brainMode?: string;
@@ -148,17 +159,37 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      for (const [flag, value] of [
+        ['--skill-scope', rawOpts.skillScope],
+        ['--external-tool-scope', rawOpts.externalToolScope],
+        ['--codegraph-mcp-scope', rawOpts.codegraphMcpScope],
+      ] as const) {
+        if (value && !VALID_SCOPES.includes(value as InstallScope)) {
+          console.error(`repo-harness update: invalid ${flag} "${value}" (expected: ${VALID_SCOPES.join(', ')})`);
+          process.exit(2);
+        }
+      }
+      if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
+        console.error(
+          `repo-harness update: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
         target: rawOpts.target as InstallTargetSpec,
         syncSkill: rawOpts.syncSkill !== false,
+        skillScope: rawOpts.skillScope as ToolingScope | undefined,
         hostAdapters: rawOpts.hostAdapters !== false,
         hostAdapterScope: rawOpts.hostAdapterScope as InstallScope,
+        runtime: rawOpts.runtime as RuntimeSelection,
         externalSkills: rawOpts.externalSkills !== false,
+        externalToolScope: rawOpts.externalToolScope as ToolingScope | undefined,
         verify: rawOpts.verify !== false,
         codegraph: rawOpts.codegraph !== false,
         configureCodegraphMcp: rawOpts.configureCodegraph === true,
+        codegraphMcpScope: rawOpts.codegraphMcpScope as ToolingScope | undefined,
         syncCodegraph: rawOpts.syncCodegraph === true,
         brainRoot: rawOpts.brainRoot,
         brainMode: rawOpts.brainMode as InitBrainMode,
@@ -183,7 +214,8 @@ export function buildProgram(): Command {
     .requiredOption('--target <target>', `Target host: ${VALID_TARGETS.join('|')}`)
     .option('--location <location>', `Install location: ${VALID_LOCATIONS.join('|')}`)
     .option('--scope <scope>', `Install scope: ${VALID_SCOPES.join('|')}`)
-    .action((rawOpts: { target: string; location?: string; scope?: string }) => {
+    .option('--runtime <runtime>', `Hook runtime mode: ${VALID_RUNTIMES.join('|')} (default: auto)`, 'auto')
+    .action((rawOpts: { target: string; location?: string; scope?: string; runtime?: string }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
           `repo-harness install: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
@@ -210,10 +242,17 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
+        console.error(
+          `repo-harness install: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+        );
+        process.exit(2);
+      }
       const result = runInstall({
         target: rawOpts.target as InstallTargetSpec,
         location: rawOpts.location as Location | undefined,
         scope: rawOpts.scope as InstallScope | undefined,
+        runtime: rawOpts.runtime as RuntimeSelection,
       });
       for (const line of result.lines) console.log(line);
       process.exit(result.exitCode);

@@ -888,6 +888,24 @@ require_repo() {
   fi
 }
 
+resolve_host_adapter_runtime_mode() {
+  if [[ -n "${REPO_HARNESS_HOOK_RUNTIME_MODE:-}" ]]; then
+    return 0
+  fi
+
+  case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
+    project)
+      export REPO_HARNESS_HOOK_RUNTIME_MODE="project-vendored-bun"
+      ;;
+    none)
+      export REPO_HARNESS_HOOK_RUNTIME_MODE="none"
+      ;;
+    *)
+      export REPO_HARNESS_HOOK_RUNTIME_MODE="global-path"
+      ;;
+  esac
+}
+
 inspect_project_state() {
   local repo="$1"
   local inspector="$SCRIPT_DIR/inspect-project-state.ts"
@@ -1011,12 +1029,20 @@ print_report() {
   case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
     project)
       echo "- Host hook config target: project-level .claude/settings.json and .codex/hooks.json"
+      if [[ "${REPO_HARNESS_HOOK_RUNTIME_MODE:-project-vendored-bun}" == "global-path" ]]; then
+        echo "- Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH (explicit isolation opt-out)"
+      else
+        echo "- Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook; no user-level repo-harness-hook dependency"
+        echo "- Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version"
+      fi
       ;;
     none)
       echo "- Host hook config target: skipped"
+      echo "- Host hook runtime: skipped"
       ;;
     *)
       echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
+      echo "- Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH"
       ;;
   esac
   echo "- $(pi_print_codex_hook_trust_notice)"
@@ -1102,6 +1128,7 @@ STAMP_EOF
 main() {
   parse_args "$@"
   require_repo
+  resolve_host_adapter_runtime_mode
 
   TARGET_REPO="$(cd "$TARGET_REPO" && pwd)"
   log "Starting migration ($MODE) for $TARGET_REPO"
