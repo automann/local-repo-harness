@@ -1,6 +1,6 @@
 # Hook Operations Reference
 
-> Full troubleshooting runbook: `brain/repo-harness/runbooks/runbook-local-repo-harness-hook-troubleshooting.md` (`gbrain` slug `runbooks/runbook-local-repo-harness-hook-troubleshooting`).
+> Full troubleshooting runbook: brain_path `brain/repo-harness/runbooks/runbook-repo-harness-hook-troubleshooting.md`; gbrain_slug `runbooks/runbook-repo-harness-hook-troubleshooting`.
 
 ## Hook Authority Map
 
