@@ -62,6 +62,7 @@ tasks/.current.md.tmp.*
 .ai/harness/sprint/
 .ai/harness/worktrees/
 .ai/harness/runs/
+.ai/harness/codegraph-runtime/
 .ai/harness/triage/*
 !.ai/harness/triage/.gitkeep
 .codex/*

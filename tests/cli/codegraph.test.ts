@@ -28,6 +28,7 @@ function writeFakeCodeGraph(fakeBin: string, logFile: string) {
       "#!/bin/bash",
       "set -euo pipefail",
       `echo "codegraph $*" >> "${logFile}"`,
+      `echo "env CODEGRAPH_TELEMETRY=\${CODEGRAPH_TELEMETRY:-} DO_NOT_TRACK=\${DO_NOT_TRACK:-} CODEGRAPH_INSTALL_DIR=\${CODEGRAPH_INSTALL_DIR:-}" >> "${logFile}"`,
       "case \"${1:-}\" in",
       "  \"--version\") echo '0.9.6' ;;",
       "  \"status\") echo 'CodeGraph Status'; echo 'Index is up to date' ;;",
@@ -102,6 +103,7 @@ describe("tools ensure codegraph", () => {
       const log = readFileSync(logFile, "utf-8");
       expect(log).toContain("codegraph --version");
       expect(log).toContain("codegraph status .");
+      expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${ROOT}/.ai/harness/codegraph-runtime`);
       expect(log).not.toContain("codegraph init");
       expect(log).not.toContain("codegraph sync");
       expect(log).not.toContain("codegraph install");

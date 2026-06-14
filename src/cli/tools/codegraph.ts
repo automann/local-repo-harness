@@ -7,6 +7,11 @@ const CLAUDE_CODEGRAPH_ALLOWED_TOOLS_PATTERN = "mcp__codegraph__*";
 const CLAUDE_CODEGRAPH_SERVER_NAME = "codegraph";
 const CODEGRAPH_SCOPED_MCP_ARGS = ["serve", "--mcp", "--path", "."] as const;
 const CODEGRAPH_SCOPED_MCP_TOML_ARGS = `[${CODEGRAPH_SCOPED_MCP_ARGS.map((arg) => JSON.stringify(arg)).join(", ")}]`;
+const CODEGRAPH_RUNTIME_DIR_REL = ".ai/harness/codegraph-runtime";
+const CODEGRAPH_TELEMETRY_ENV = {
+  CODEGRAPH_TELEMETRY: "0",
+  DO_NOT_TRACK: "1",
+} as const;
 
 export type CodegraphSource = "local" | "global" | "missing";
 export type CodegraphStatus = "present" | "warning" | "partial" | "missing";
@@ -88,6 +93,29 @@ function runJson(command: string, args: string[], repoRoot: string, env?: NodeJS
   return JSON.parse(result.stdout);
 }
 
+function codegraphRuntimeEnv(repoRoot: string, env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return {
+    ...(env ?? {}),
+    ...CODEGRAPH_TELEMETRY_ENV,
+    CODEGRAPH_INSTALL_DIR:
+      env?.REPO_HARNESS_CODEGRAPH_INSTALL_DIR ??
+      process.env.REPO_HARNESS_CODEGRAPH_INSTALL_DIR ??
+      join(repoRoot, CODEGRAPH_RUNTIME_DIR_REL),
+  };
+}
+
+function codegraphMcpEnv(location: CodegraphConfigureLocation): Record<string, string> {
+  return location === "local"
+    ? { ...CODEGRAPH_TELEMETRY_ENV, CODEGRAPH_INSTALL_DIR: CODEGRAPH_RUNTIME_DIR_REL }
+    : { ...CODEGRAPH_TELEMETRY_ENV };
+}
+
+function renderTomlInlineEnv(env: Record<string, string>): string {
+  return `{ ${Object.entries(env)
+    .map(([key, value]) => `${key} = ${JSON.stringify(value)}`)
+    .join(", ")} }`;
+}
+
 function run(command: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv) {
   const result = spawnSync(command, args, {
     cwd,
@@ -119,7 +147,7 @@ function readJson(path: string) {
 
 function readToolingReport(repoRoot: string, env?: NodeJS.ProcessEnv, host: CodegraphHostTarget = "codex") {
   const checker = join(REPO_ROOT, "scripts", "check-agent-tooling.sh");
-  const report = runJson("bash", [checker, "--json", "--host", host], repoRoot, env);
+  const report = runJson("bash", [checker, "--json", "--host", host], repoRoot, codegraphRuntimeEnv(repoRoot, env));
   return report.tools.codegraph;
 }
 
@@ -216,13 +244,13 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): CodegraphEnsureRe
 
   const binPath = codegraph.bin_path;
   if (binPath && opts.init && codegraph.project_index?.status === "not-initialized") {
-    appendAction(actions, "init-index", [binPath, "init", "-i", "."], run(binPath, ["init", "-i", "."], opts.repoRoot, opts.env));
+    appendAction(actions, "init-index", [binPath, "init", "-i", "."], run(binPath, ["init", "-i", "."], opts.repoRoot, codegraphRuntimeEnv(opts.repoRoot, opts.env)));
     codegraph = readToolingReport(opts.repoRoot, opts.env, opts.host);
   }
 
   if (binPath && opts.sync) {
     mkdirSync(join(opts.repoRoot, ".codegraph"), { recursive: true });
-    appendAction(actions, "sync-index", [binPath, "sync", "."], run(binPath, ["sync", "."], opts.repoRoot, opts.env));
+    appendAction(actions, "sync-index", [binPath, "sync", "."], run(binPath, ["sync", "."], opts.repoRoot, codegraphRuntimeEnv(opts.repoRoot, opts.env)));
     codegraph = readToolingReport(opts.repoRoot, opts.env, opts.host);
   }
 
@@ -300,7 +328,7 @@ function configureCodexProjectPath(
   } catch (_error) {
     if (location === "local") {
       mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, renderCodexCodegraphConfig(repoRoot));
+      writeFileSync(path, renderCodexCodegraphConfig(repoRoot, location));
       actions.push({
         action: "codex-project-path",
         status: "changed",
@@ -320,7 +348,7 @@ function configureCodexProjectPath(
   const sectionMatch = raw.match(/(^\[mcp_servers\.codegraph\]\n)([\s\S]*?)(?=^\[|(?![\s\S]))/m);
   if (!sectionMatch) {
     if (location === "local") {
-      const next = `${raw.trimEnd()}${raw.trimEnd() ? "\n\n" : ""}${renderCodexCodegraphConfig(repoRoot)}`;
+      const next = `${raw.trimEnd()}${raw.trimEnd() ? "\n\n" : ""}${renderCodexCodegraphConfig(repoRoot, location)}`;
       writeFileSync(path, next);
       actions.push({
         action: "codex-project-path",
@@ -340,8 +368,16 @@ function configureCodexProjectPath(
 
   const [section, header, body] = sectionMatch;
   const desiredArgsLine = `args = ${CODEGRAPH_SCOPED_MCP_TOML_ARGS}`;
+  const desiredCommandLine = `command = ${JSON.stringify(localCodegraphCommand(repoRoot))}`;
+  const desiredEnvLine = `env = ${renderTomlInlineEnv(codegraphMcpEnv(location))}`;
+  const commandLine = body.match(/^command\s*=\s*(.+)$/m)?.[1]?.trim();
   const argsLine = body.match(/^args\s*=\s*(.+)$/m)?.[1]?.trim();
-  if (argsLine === CODEGRAPH_SCOPED_MCP_TOML_ARGS) {
+  const envLine = body.match(/^env\s*=\s*(.+)$/m)?.[1]?.trim();
+  if (
+    argsLine === CODEGRAPH_SCOPED_MCP_TOML_ARGS &&
+    envLine === renderTomlInlineEnv(codegraphMcpEnv(location)) &&
+    (location !== "local" || commandLine === JSON.stringify(localCodegraphCommand(repoRoot)))
+  ) {
     actions.push({
       action: "codex-project-path",
       status: "unchanged",
@@ -350,13 +386,27 @@ function configureCodexProjectPath(
     return;
   }
 
-  let nextBody: string;
+  let nextBody = body;
+  if (location === "local") {
+    if (/^command\s*=/m.test(nextBody)) {
+      nextBody = nextBody.replace(/^command\s*=.*$/m, desiredCommandLine);
+    } else {
+      nextBody = `${desiredCommandLine}\n${nextBody}`;
+    }
+  }
   if (/^args\s*=/m.test(body)) {
-    nextBody = body.replace(/^args\s*=.*$/m, desiredArgsLine);
-  } else if (/^command\s*=/m.test(body)) {
-    nextBody = body.replace(/^(command\s*=.*)$/m, `$1\n${desiredArgsLine}`);
+    nextBody = nextBody.replace(/^args\s*=.*$/m, desiredArgsLine);
+  } else if (/^command\s*=/m.test(nextBody)) {
+    nextBody = nextBody.replace(/^(command\s*=.*)$/m, `$1\n${desiredArgsLine}`);
   } else {
-    nextBody = `${desiredArgsLine}\n${body}`;
+    nextBody = `${desiredArgsLine}\n${nextBody}`;
+  }
+  if (/^env\s*=/m.test(nextBody)) {
+    nextBody = nextBody.replace(/^env\s*=.*$/m, desiredEnvLine);
+  } else if (/^args\s*=/m.test(nextBody)) {
+    nextBody = nextBody.replace(/^(args\s*=.*)$/m, `$1\n${desiredEnvLine}`);
+  } else {
+    nextBody = `${nextBody.trimEnd()}\n${desiredEnvLine}\n`;
   }
 
   const next = raw.replace(section, `${header}${nextBody}`);
@@ -384,11 +434,12 @@ function localCodegraphCommand(repoRoot: string): string {
   return existsSync(localBin) ? "./node_modules/.bin/codegraph" : "codegraph";
 }
 
-function renderCodexCodegraphConfig(repoRoot: string): string {
+function renderCodexCodegraphConfig(repoRoot: string, location: CodegraphConfigureLocation): string {
   return [
     "[mcp_servers.codegraph]",
     `command = ${JSON.stringify(localCodegraphCommand(repoRoot))}`,
     `args = ${CODEGRAPH_SCOPED_MCP_TOML_ARGS}`,
+    `env = ${renderTomlInlineEnv(codegraphMcpEnv(location))}`,
     "",
   ].join("\n");
 }
@@ -458,15 +509,31 @@ function configureClaudeProjectPath(
   }
 
   if (codegraphArgsAreScoped(server.args)) {
-    actions.push({
-      action: "claude-project-path",
-      status: "unchanged",
-      command,
-    });
-    return;
+    const desiredEnv = codegraphMcpEnv(location);
+    const existingEnv = server.env && typeof server.env === "object" && !Array.isArray(server.env)
+      ? server.env
+      : {};
+    const desiredCommand = location === "local" ? localCodegraphCommand(repoRoot) : server.command;
+    const envMatches = Object.entries(desiredEnv).every(([key, value]) => existingEnv[key] === value);
+    const commandMatches = location !== "local" || server.command === desiredCommand;
+    if (envMatches && commandMatches) {
+      actions.push({
+        action: "claude-project-path",
+        status: "unchanged",
+        command,
+      });
+      return;
+    }
   }
 
   server.args = [...CODEGRAPH_SCOPED_MCP_ARGS];
+  server.env = {
+    ...(server.env && typeof server.env === "object" && !Array.isArray(server.env) ? server.env : {}),
+    ...codegraphMcpEnv(location),
+  };
+  if (location === "local") {
+    server.command = localCodegraphCommand(repoRoot);
+  }
   const trailingNewline = raw.endsWith("\n") ? "\n" : "";
   const serialized = `${JSON.stringify(parsed, null, 2)}${trailingNewline}`;
   try {
@@ -711,7 +778,7 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
     if (target === "claude" && opts.location === "global" && isMcpHostConfigured(initial.raw, target)) {
       appendSkippedAction(actions, actionName, command, "Claude CodeGraph MCP is already configured.");
     } else {
-      appendCodegraphInstallAction(actions, actionName, command, run(binPath, command.slice(1), opts.repoRoot, opts.env));
+      appendCodegraphInstallAction(actions, actionName, command, run(binPath, command.slice(1), opts.repoRoot, codegraphRuntimeEnv(opts.repoRoot, opts.env)));
     }
 
     if (target === "codex") {

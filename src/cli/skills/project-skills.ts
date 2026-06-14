@@ -75,6 +75,7 @@ const RELATIVE_PREFIX_EXCLUDES = [
   ".claude/skills/",
   ".claude/.plan-state/",
   ".ai/harness/archive/",
+  ".ai/harness/codegraph-runtime/",
   ".ai/harness/runs/",
   ".ai/harness/worktrees/",
 ];

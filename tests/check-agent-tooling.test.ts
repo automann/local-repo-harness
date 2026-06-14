@@ -188,6 +188,7 @@ function writeFakeCodeGraph(
       "#!/bin/bash",
       "set -euo pipefail",
       options.logFile ? `echo "codegraph $*" >> "${options.logFile}"` : "",
+      options.logFile ? `echo "env CODEGRAPH_TELEMETRY=\${CODEGRAPH_TELEMETRY:-} DO_NOT_TRACK=\${DO_NOT_TRACK:-} CODEGRAPH_INSTALL_DIR=\${CODEGRAPH_INSTALL_DIR:-}" >> "${options.logFile}"` : "",
       "case \"${1:-}\" in",
       "  \"--version\")",
       `    echo '${version}'`,
@@ -538,6 +539,7 @@ describe("check-agent-tooling", () => {
       expect(log).toContain("gbrain integrations list --json");
       expect(log).toContain("codegraph --version");
       expect(log).toContain("codegraph status .");
+      expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${ROOT}/.ai/harness/codegraph-runtime`);
       expect(log).toContain("npm view @colbymchenry/codegraph version --json");
       expect(log).not.toContain("setup");
       expect(log).not.toContain("skills check");

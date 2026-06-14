@@ -118,6 +118,7 @@ function writeFakeCodegraph(fakeBin: string, logFile: string): void {
       "#!/bin/bash",
       "set -euo pipefail",
       `echo "codegraph $*" >> "${logFile}"`,
+      `echo "env CODEGRAPH_TELEMETRY=\${CODEGRAPH_TELEMETRY:-} DO_NOT_TRACK=\${DO_NOT_TRACK:-} CODEGRAPH_INSTALL_DIR=\${CODEGRAPH_INSTALL_DIR:-}" >> "${logFile}"`,
       "case \"${1:-}\" in",
       "  \"--version\") echo '0.9.6' ;;",
       "  \"status\")",
@@ -714,6 +715,7 @@ describe("init command", () => {
       expect(log).toContain("codegraph init -i .");
       expect(log).toContain("codegraph install --target codex --location global --yes");
       expect(log).toContain("codegraph install --target claude --location global --yes");
+      expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -754,15 +756,25 @@ describe("init command", () => {
       const configureStep = result.steps.find((step) => step.step === "configure codegraph mcp");
       expect(configureStep?.status).toBe("ok");
       expect(configureStep?.detail).toContain("scope=project");
-      expect(readFileSync(logFile, "utf-8")).toContain("codegraph install --target codex --location local --yes");
-      expect(readFileSync(logFile, "utf-8")).toContain("codegraph install --target claude --location local --yes");
-      expect(readFileSync(join(repo, ".codex", "config.toml"), "utf-8")).toContain('args = ["serve", "--mcp", "--path", "."]');
-      expect(JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph.args).toEqual([
+      const log = readFileSync(logFile, "utf-8");
+      expect(log).toContain("codegraph install --target codex --location local --yes");
+      expect(log).toContain("codegraph install --target claude --location local --yes");
+      expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
+      const codexConfig = readFileSync(join(repo, ".codex", "config.toml"), "utf-8");
+      expect(codexConfig).toContain('args = ["serve", "--mcp", "--path", "."]');
+      expect(codexConfig).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+      const claudeMcp = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph;
+      expect(claudeMcp.args).toEqual([
         "serve",
         "--mcp",
         "--path",
         ".",
       ]);
+      expect(claudeMcp.env).toEqual({
+        CODEGRAPH_TELEMETRY: "0",
+        DO_NOT_TRACK: "1",
+        CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+      });
       expect(existsSync(join(home, ".codex", "config.toml"))).toBe(false);
       expect(existsSync(join(home, ".claude.json"))).toBe(false);
       expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);

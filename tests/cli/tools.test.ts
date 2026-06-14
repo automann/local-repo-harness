@@ -32,6 +32,7 @@ function writeFakeCodeGraph(
       "#!/bin/bash",
       "set -euo pipefail",
       `echo "codegraph $*" >> "${logFile}"`,
+      `echo "env CODEGRAPH_TELEMETRY=\${CODEGRAPH_TELEMETRY:-} DO_NOT_TRACK=\${DO_NOT_TRACK:-} CODEGRAPH_INSTALL_DIR=\${CODEGRAPH_INSTALL_DIR:-}" >> "${logFile}"`,
       "case \"${1:-}\" in",
       "  \"--version\") echo '0.9.6' ;;",
       "  \"status\") echo 'CodeGraph Status'; echo 'Index is up to date' ;;",
@@ -156,6 +157,13 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
     writeFakeCodeGraph(envRoot.fakeBin, logFile, {
       codexLocalUnsupported: options.codexLocalUnsupported === true,
     });
+    if (location === "local") {
+      mkdirSync(join(repo, "node_modules", ".bin"), { recursive: true });
+      writeExecutable(
+        join(repo, "node_modules", ".bin", "codegraph"),
+        `#!/bin/bash\nexec "${join(envRoot.fakeBin, "codegraph")}" "$@"\n`,
+      );
+    }
     writeFakeGbrain(envRoot.fakeBin);
     writeFakeNpx(envRoot.fakeBin);
 
@@ -201,7 +209,7 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
     } catch (_error) {
       projectMcpAfter = null;
     }
-    return { res, log, claudeSettingsAfter, claudeRootConfigAfter, codexConfigAfter, projectCodexConfigAfter, projectMcpAfter };
+    return { res, log, repo, claudeSettingsAfter, claudeRootConfigAfter, codexConfigAfter, projectCodexConfigAfter, projectMcpAfter };
   } finally {
     rmSync(envRoot.root, { recursive: true, force: true });
   }
@@ -209,7 +217,7 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
 
 describe("tools configure codegraph", () => {
   test("configures Codex through the CodeGraph target adapter", () => {
-    const { res, log, codexConfigAfter } = runConfigure("codex");
+    const { res, log, repo, codexConfigAfter } = runConfigure("codex");
     expect(res.status).toBe(0);
     const result = JSON.parse(res.stdout);
     expect(result.target).toBe("codex");
@@ -219,11 +227,13 @@ describe("tools configure codegraph", () => {
       "codex-project-path",
     ]);
     expect(log).toContain("codegraph install --target codex --location global --yes");
+    expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
     expect(codexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
+    expect(codexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1" }');
   }, 15000);
 
   test("configures Claude and registers codegraph for eager schema load", () => {
-    const { res, log, claudeSettingsAfter, claudeRootConfigAfter } = runConfigure("claude");
+    const { res, log, repo, claudeSettingsAfter, claudeRootConfigAfter } = runConfigure("claude");
     expect(res.status).toBe(0);
     const result = JSON.parse(res.stdout);
     expect(result.target).toBe("claude");
@@ -234,6 +244,7 @@ describe("tools configure codegraph", () => {
       "claude-allowed-tools",
     ]);
     expect(log).toContain("codegraph install --target claude --location global --yes");
+    expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
 
     const alwaysLoad = (result.actions as Array<{ action: string; status: string }>).find(
       (entry) => entry.action === "claude-always-load",
@@ -244,11 +255,15 @@ describe("tools configure codegraph", () => {
     expect(alwaysLoad?.status).toBe("changed");
     expect(allowedTools?.status).toBe("changed");
     expect(claudeRootConfigAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
+    expect(claudeRootConfigAfter?.mcpServers?.codegraph?.env).toEqual({
+      CODEGRAPH_TELEMETRY: "0",
+      DO_NOT_TRACK: "1",
+    });
     expect(claudeRootConfigAfter?.mcpServers?.codegraph?.alwaysLoad).toBe(true);
     expect(claudeSettingsAfter?.allowedTools).toContain("mcp__codegraph__*");
   }, 15000);
 
-  test("claude-always-load is idempotent when CodeGraph is already pinned", () => {
+  test("claude project path adds telemetry opt-out when CodeGraph is already pinned", () => {
     const { res, claudeRootConfigAfter } = runConfigure("claude", {
       seedClaudeRootConfig: {
         mcpServers: {
@@ -269,9 +284,13 @@ describe("tools configure codegraph", () => {
     const projectPath = (result.actions as Array<{ action: string; status: string }>).find(
       (entry) => entry.action === "claude-project-path",
     );
-    expect(projectPath?.status).toBe("unchanged");
+    expect(projectPath?.status).toBe("changed");
     expect(alwaysLoad?.status).toBe("unchanged");
     expect(claudeRootConfigAfter?.mcpServers?.codegraph?.alwaysLoad).toBe(true);
+    expect(claudeRootConfigAfter?.mcpServers?.codegraph?.env).toEqual({
+      CODEGRAPH_TELEMETRY: "0",
+      DO_NOT_TRACK: "1",
+    });
   }, 15000);
 
   test("claude-allowed-tools is idempotent when the wildcard is already present", () => {
@@ -326,6 +345,7 @@ describe("tools configure codegraph", () => {
     const {
       res,
       log,
+      repo,
       claudeSettingsAfter,
       claudeRootConfigAfter,
       codexConfigAfter,
@@ -349,8 +369,16 @@ describe("tools configure codegraph", () => {
     ]);
     expect(log).toContain("codegraph install --target codex --location local --yes");
     expect(log).toContain("codegraph install --target claude --location local --yes");
+    expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./node_modules/.bin/codegraph");
     expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
+    expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
+      CODEGRAPH_TELEMETRY: "0",
+      DO_NOT_TRACK: "1",
+      CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+    });
     expect(codexConfigAfter).toBe("");
     expect(claudeRootConfigAfter).toBeNull();
     expect(claudeSettingsAfter).toBeNull();
@@ -376,8 +404,9 @@ describe("tools configure codegraph", () => {
     expect(configure?.status).toBe("skipped");
     expect(configure?.stderr ?? "").toContain("does not support --location=local");
     expect(projectPath?.status).toBe("changed");
-    expect(projectCodexConfigAfter).toContain('command = "codegraph"');
+    expect(projectCodexConfigAfter).toContain('command = "./node_modules/.bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
     expect(codexConfigAfter).toBe("");
   }, 15000);
 });

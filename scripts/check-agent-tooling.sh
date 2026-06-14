@@ -70,6 +70,12 @@ if (!["claude", "codex", "both"].includes(hostMode)) {
 const HOME = os.homedir();
 const REPO_ROOT = process.cwd();
 const SELECTED_HOSTS = hostMode === "both" ? ["claude", "codex"] : [hostMode];
+const CODEGRAPH_RUNTIME_DIR = path.join(REPO_ROOT, ".ai", "harness", "codegraph-runtime");
+const CODEGRAPH_RUNTIME_ENV = {
+  CODEGRAPH_TELEMETRY: "0",
+  DO_NOT_TRACK: "1",
+  CODEGRAPH_INSTALL_DIR: process.env.REPO_HARNESS_CODEGRAPH_INSTALL_DIR || CODEGRAPH_RUNTIME_DIR,
+};
 const WAZA_SOURCE_REPO = "tw93/Waza";
 const WAZA_SOURCE_URL = "https://github.com/tw93/Waza.git";
 const WAZA_RAW_BASE_URL = "https://raw.githubusercontent.com/tw93/Waza/main";
@@ -1226,10 +1232,10 @@ function resolveCodeGraphBinary() {
 
 function codeGraphVersion(binPath) {
   if (!binPath) return null;
-  const result = run(binPath, ["--version"], { timeoutMs: 1000 });
+  const result = run(binPath, ["--version"], { timeoutMs: 1000, env: CODEGRAPH_RUNTIME_ENV });
   if (result.ok) return result.stdout.trim() || null;
   if (result.timed_out) {
-    const retry = run(binPath, ["--version"], { timeoutMs: 1000 });
+    const retry = run(binPath, ["--version"], { timeoutMs: 1000, env: CODEGRAPH_RUNTIME_ENV });
     if (retry.ok) return retry.stdout.trim() || null;
   }
   return null;
@@ -1264,7 +1270,7 @@ function detectCodeGraph() {
     : configuredMcpScopes.length === 1
       ? configuredMcpScopes[0]
       : "mixed";
-  const statusResult = cliPresent ? run(resolution.bin_path, ["status", "."], { timeoutMs: 1500 }) : null;
+  const statusResult = cliPresent ? run(resolution.bin_path, ["status", "."], { timeoutMs: 1500, env: CODEGRAPH_RUNTIME_ENV }) : null;
   const statusOutput = `${statusResult?.stdout || ""}\n${statusResult?.stderr || ""}`;
   const projectIndexStatus = cliPresent ? parseCodeGraphProjectStatus(statusOutput) : "unavailable";
   const indexInitialized = fs.existsSync(path.join(REPO_ROOT, ".codegraph"))
