@@ -1448,6 +1448,74 @@ describe("Hook runtime behavior", () => {
     }
   });
 
+  test("session-start-context emits throttled tooling update agent actions", () => {
+    const cwd = tmpWorkspace("session-start-tooling-update");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/workflow-contract.json"), "{}\n");
+
+      const fakeBin = join(cwd, "fake-bin");
+      const logFile = join(cwd, "tooling-check.log");
+      mkdirSync(fakeBin, { recursive: true });
+      writeFileSync(
+        join(fakeBin, "repo-harness"),
+        [
+          "#!/bin/bash",
+          `printf '%s\\n' "$*" >> '${logFile}'`,
+          "cat <<'JSON'",
+          JSON.stringify(
+            {
+              version: 1,
+              status: "attention",
+              target: "codex",
+              checkUpdates: true,
+              agent_actions: [
+                {
+                  id: "tooling.codegraph.update",
+                  status: "needs_agent",
+                  reason: "codegraph reports update-available.",
+                  command: "bun update @colbymchenry/codegraph && bash scripts/ensure-codegraph.sh --sync",
+                  verification: "repo-harness setup check --target codex --check-updates --json",
+                },
+              ],
+            },
+            null,
+            2,
+          ),
+          "JSON",
+        ].join("\n") + "\n",
+        { mode: 0o755 },
+      );
+
+      const env = {
+        HOOK_HOST: "codex",
+        PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+        REPO_HARNESS_CLI: "",
+        REPO_HARNESS_TOOLING_ADVISORY_SYNC: "1",
+      };
+      const first = runHook("session-start-context.sh", cwd, { env });
+      expect(first.status).toBe(0);
+      expect(first.stdout).toContain("Tooling Update Advisory");
+      expect(first.stdout).toContain("tooling.codegraph.update");
+      expect(first.stdout).toContain("bun update @colbymchenry/codegraph");
+      expect(first.stdout).toContain("repo-harness setup check --target codex --check-updates --json");
+      expect(readFileSync(logFile, "utf-8").trim().split("\n")).toEqual([
+        "setup check --target codex --check-updates --json",
+      ]);
+
+      const second = runHook("session-start-context.sh", cwd, { env });
+      expect(second.status).toBe(0);
+      expect(second.stdout).toContain("Tooling Update Advisory");
+      expect(second.stdout).toContain("tooling.codegraph.update");
+      expect(readFileSync(logFile, "utf-8").trim().split("\n")).toEqual([
+        "setup check --target codex --check-updates --json",
+      ]);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("run-hook dispatcher resolves repo root from nested cwd", () => {
     const cwd = tmpWorkspace("run-hook-dispatch");
     try {

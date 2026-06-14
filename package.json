@@ -12,6 +12,8 @@
     "agents/",
     "assets/",
     "docs/images/",
+    "install.sh",
+    "install.ps1",
     "scripts/",
     "src/",
     "AGENTS.md",
@@ -42,7 +44,7 @@
     "sync:codex-installed": "bash scripts/sync-codex-installed-copies.sh"
   },
   "devDependencies": {
-    "@colbymchenry/codegraph": "^0.9.9",
+    "@colbymchenry/codegraph": "1.0.1",
     "@types/bun": "latest"
   },
   "dependencies": {

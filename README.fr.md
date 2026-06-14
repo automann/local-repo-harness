@@ -1,16 +1,25 @@
 # repo-harness
 
-Harness CLI de développement agentique repo-local et skill runtime pour les
-workflows Claude/Codex.
+`repo-harness` transforme les sessions de code Claude/Codex en workflow
+repo-local répétable. Il fournit un CLI et des hooks skill/runtime qui écrivent
+le contexte, les plans, les handoffs, les checks et les preuves de review dans le
+projet, afin que la session d'agent suivante reprenne depuis les fichiers plutôt
+que depuis l'historique de chat.
+
+Utilisez-le pour :
+
+- adopter un dépôt existant avec un contrat d'agent tasks-first
+- garder Claude et Codex alignés sur les mêmes plans, checks, handoffs et limites
+  de contexte
+- dépenser moins de tokens à redécouvrir la structure grâce à CodeGraph et au
+  chargement progressif du contexte
+
+Donnez à l'agent un PRD ou Sprint complet ; ensuite, votre boucle se limite à
+review and `next`, ou à lancer `/goal` puis passer AFK.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
 Adresse du dépôt : `https://github.com/Ancienttwo/repo-harness`
-
-`repo-harness` est un harness de workflow qui matérialise le processus de
-programmation par IA dans les fichiers du dépôt. C'est à la fois le dépôt source
-du CLI `repo-harness` et de son skill runtime, et un exemple auto-hébergé du
-workflow repo-local qu'il génère lui-même pour les projets en aval.
 
 ## Pourquoi utiliser repo-harness
 
@@ -205,16 +214,43 @@ initial.
 C'est le chemin le plus rapide pour évaluer si un dépôt réel se prête à l'adoption
 de ce workflow.
 
-### Installer ou rafraîchir le runtime local
+### Installer le CLI
+
+Le chemin par défaut ne demande pas Node.js : l'installateur utilise Bun comme
+runtime. Si Bun est absent, il installe Bun d'abord, puis installe le CLI
+`repo-harness`.
 
 ```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>Vous avez déjà Bun ou Node ? Utilisez les gestionnaires de packages</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness init
+
+# Node/npm, avec Bun déjà sur PATH car le CLI s'exécute sur Bun
 npx -y repo-harness init
 ```
 
-La release line du package npm et le generated workflow stamp utilisent
-désormais la même ligne `0.4.x`. `repo-harness init`
-sert au bootstrap global, `repo-harness update` au rafraîchissement
-user-level, et `repo-harness adopt` au rafraîchissement repo-local. `repo-harness init` configure le CLI, les hook adapters de niveau
+</details>
+
+### Bootstrap du runtime hôte
+
+```bash
+repo-harness init
+```
+
+`repo-harness init` sert au bootstrap global, `repo-harness update` au
+rafraîchissement user-level, et `repo-harness adopt` au rafraîchissement
+repo-local. `repo-harness init` configure le CLI, les hook adapters de niveau
 utilisateur, Waza, Mermaid, le brain root et CodeGraph MCP ; l'ancien chemin
 Claude plugin `scripts/setup-plugins.sh` est retiré.
 

@@ -53,7 +53,7 @@ export function buildProgram(): Command {
   const program = new Command();
   program
     .name('repo-harness')
-    .description('Repo-local agentic development harness CLI')
+    .description('Make Claude/Codex work resumable, reviewable, and repo-local')
     .version(CLI_VERSION)
     .exitOverride();
 

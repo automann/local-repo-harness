@@ -1,15 +1,22 @@
 # repo-harness
 
-Claude/Codex の workflow 向けに、repo-local な agentic development harness の CLI と
-skill runtime を提供します。
+`repo-harness` は、Claude/Codex のコーディング session を、繰り返し使える
+repo-local workflow に変えます。CLI と skill/runtime hooks によって、context、plan、
+handoff、check、review evidence をプロジェクト内のファイルへ書き戻し、次の agent session が
+chat memory ではなくファイルから続きに入れるようにします。
+
+主な用途:
+
+- 既存リポジトリへ tasks-first agent contract を導入する
+- Claude と Codex を同じ plan、check、handoff、context boundary に揃える
+- CodeGraph と段階的な context loading により、構造を再発見するための token 消費を減らす
+
+Agent に完全な PRD または Sprint を渡せば、あとは review and `next` だけで進めるか、
+`/goal` を開始して AFK できます。
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
 リポジトリ：`https://github.com/Ancienttwo/repo-harness`
-
-`repo-harness` は、AI 開発フローをリポジトリ内のファイルへ落とし込む workflow harness です。
-`repo-harness` CLI と skill runtime のソースリポジトリであると同時に、下流プロジェクト向けに
-自身が生成する repo-local workflow を、自分自身に適用したセルフホスト例でもあります。
 
 ## なぜ repo-harness を使うのか
 
@@ -172,13 +179,39 @@ PRD Sprint が durable source of truth となり、Codex Goal mode は元の cha
 
 実際のリポジトリがこの workflow を導入するのに適しているかを評価する、最速の経路です。
 
-### ローカル runtime をインストールまたはリフレッシュする
+### CLI をインストールする
+
+既定の経路では Node.js は不要です。installer は Bun を runtime として使います。
+Bun が見つからない場合は、先に Bun をインストールしてから `repo-harness` CLI をインストールします。
 
 ```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>Bun または Node がすでにある場合は package manager も使えます</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness init
+
+# Node/npm。CLI runtime は Bun なので、Bun が PATH 上に必要です。
 npx -y repo-harness init
 ```
 
-npm package と generated workflow stamp は現在同じ `0.4.x` release line を使います。
+</details>
+
+### host runtime を bootstrap する
+
+```bash
+repo-harness init
+```
+
 `repo-harness init` は global bootstrap、`repo-harness update` は
 user-level refresh、`repo-harness adopt` は repo-local refresh です。`repo-harness init` は CLI、user-level hook adapters、Waza、Mermaid、
 brain root、CodeGraph MCP を設定し、退役した `scripts/setup-plugins.sh` の Claude plugin path は使いません。

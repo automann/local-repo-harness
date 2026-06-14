@@ -4,18 +4,25 @@
   <img src="docs/images/image.png" alt="One next button joining Claude and Codex under repo-harness workflow rules" width="760">
 </p>
 
-Repo-local agentic development harness CLI and skill runtime for Claude/Codex
-workflows. The npm package and primary command are now `repo-harness`.
-The legacy `repo-harness-skill` and `project-initializer` install paths are
-retired and removed by installed-copy sync.
+`repo-harness` turns Claude/Codex coding sessions into a repeatable repo-local
+workflow. It ships a CLI plus skill/runtime hooks that write context, plans,
+handoffs, checks, and review evidence back into the project, so the next agent
+session can continue from files instead of chat memory.
+
+Use it to:
+
+- adopt an existing repo with a tasks-first agent contract
+- keep Claude and Codex aligned on the same plans, checks, handoffs, and context
+  boundaries
+- spend fewer tokens rediscovering structure by using CodeGraph and progressive
+  context loading
+
+Give the agent a complete PRD or Sprint; after that, your loop is just review
+and `next`, or start `/goal` and go AFK.
+
 Repository: `https://github.com/Ancienttwo/repo-harness`
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
-
-This repository now dogfoods its own tasks-first contract. It is both:
-
-- the source repo for the `repo-harness` CLI and `repo-harness` skill runtime
-- a self-hosted example of the repo-local workflow it generates for other projects
 
 ## Why repo-harness
 
@@ -214,10 +221,37 @@ safe to adopt in a real repo. It separates the machine-level runtime bootstrap
 from the repo-local contract install, so a dry run can show exactly what will
 change before anything is applied.
 
-### 1. Bootstrap the host runtime once
+### 1. Install the CLI
+
+No Node.js required for the default path: the installer uses Bun as the runtime.
+If Bun is missing, it installs Bun first, then installs the `repo-harness` CLI.
 
 ```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>Already have Bun or Node? Use package managers instead</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness init
+
+# Node/npm, with Bun already on PATH because the CLI runs on Bun
 npx -y repo-harness init
+```
+
+</details>
+
+### 2. Bootstrap the host runtime once
+
+```bash
+repo-harness init
 ```
 
 `init` is the first-run global bootstrap path. It installs the current npm
@@ -236,8 +270,8 @@ optional command, and verification surface for the Agent to execute deliberately
 ### Install and refresh examples
 
 ```bash
-# First machine bootstrap: global CLI, skills, host adapters, Waza, brain, CodeGraph.
-npx -y repo-harness init
+# First machine bootstrap after installing the CLI: skills, host adapters, Waza, brain, CodeGraph.
+repo-harness init
 
 # Refresh user-level CLI/runtime pieces after a package update.
 repo-harness update
@@ -249,7 +283,7 @@ repo-harness update --check
 repo-harness adopt --repo /path/to/repo
 ```
 
-### 2. Preview the repo-local contract
+### 3. Preview the repo-local contract
 
 ```bash
 npx -y repo-harness adopt --dry-run
@@ -261,7 +295,7 @@ created or refreshed. It should not create an application stack; existing repos
 use `repo-harness adopt`, while new projects or modules use
 `repo-harness-scaffold`.
 
-### 3. Apply, then prove the workflow
+### 4. Apply, then prove the workflow
 
 ```bash
 npx -y repo-harness adopt

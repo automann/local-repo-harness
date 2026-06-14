@@ -1,16 +1,25 @@
 # repo-harness
 
-Repo-local agentic development harness CLI y skill runtime para workflows de
-Claude/Codex.
+`repo-harness` convierte las sesiones de programación con Claude/Codex en un
+workflow repo-local repetible. Incluye un CLI y hooks de skill/runtime que
+escriben contexto, planes, handoffs, checks y evidencias de review dentro del
+proyecto, para que la siguiente sesión de agente continúe desde archivos y no
+desde el historial de chat.
+
+Úsalo para:
+
+- adoptar un repositorio existente con un contrato de agente tasks-first
+- mantener Claude y Codex alineados sobre los mismos planes, checks, handoffs y
+  límites de contexto
+- gastar menos tokens redescubriendo estructura gracias a CodeGraph y la carga
+  progresiva de contexto
+
+Entrega al agente un PRD o Sprint completo; después, tu bucle es solo review and
+`next`, o iniciar `/goal` y quedar AFK.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
 Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
-
-`repo-harness` es un harness de workflow que aterriza el proceso de programación
-con IA en archivos del repositorio. Es a la vez el repositorio fuente de la CLI
-`repo-harness` y de su skill runtime, y el ejemplo autoalojado del workflow
-repo-local que él mismo genera para los proyectos downstream.
 
 ## Por qué usar repo-harness
 
@@ -200,16 +209,41 @@ retoma contra un sprint concreto en vez de reinterpretar el chat original.
 Esta es la ruta más rápida para evaluar si un repositorio real es apto para
 adoptar este workflow.
 
-### Instalar o refrescar el runtime local
+### Instalar el CLI
+
+La ruta por defecto no requiere Node.js: el instalador usa Bun como runtime. Si
+Bun no existe, instala Bun primero y después instala el CLI `repo-harness`.
 
 ```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>¿Ya tienes Bun o Node? Usa gestores de paquetes</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness init
+
+# Node/npm, con Bun ya en PATH porque el CLI corre sobre Bun
 npx -y repo-harness init
 ```
 
-La npm package release line y el generated workflow stamp usan ahora la misma
-línea `0.4.x`. `repo-harness init` es el bootstrap
-global, `repo-harness update` es el refresco user-level y `repo-harness adopt`
-es el refresco repo-local. `repo-harness init`
+</details>
+
+### Bootstrap del runtime del host
+
+```bash
+repo-harness init
+```
+
+`repo-harness init` es el bootstrap global, `repo-harness update` es el refresco
+user-level y `repo-harness adopt` es el refresco repo-local. `repo-harness init`
 configura el CLI, los hook adapters de nivel usuario, Waza, Mermaid, el brain
 root y CodeGraph MCP; el viejo camino Claude plugin `scripts/setup-plugins.sh`
 queda retirado.
