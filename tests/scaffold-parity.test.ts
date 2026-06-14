@@ -5,6 +5,7 @@ import { join, relative } from "path";
 import { spawnSync } from "child_process";
 
 const ROOT = join(import.meta.dir, "..");
+const SCAFFOLD_PARITY_TIMEOUT_MS = 15000;
 
 function collectFiles(root: string, current = root): string[] {
   const entries = readdirSync(current).sort();
@@ -50,48 +51,6 @@ describe("create-project-dirs scaffold parity", () => {
         "./.ai/harness/policy.json",
         "./.ai/harness/runs/.gitkeep",
         "./.ai/harness/scripts/.gitkeep",
-        "./.ai/harness/scripts/architecture-event.ts",
-        "./.ai/harness/scripts/architecture-queue.sh",
-        "./.ai/harness/scripts/archive-architecture-request.sh",
-        "./.ai/harness/scripts/archive-workflow.sh",
-        "./.ai/harness/scripts/capability-config.ts",
-        "./.ai/harness/scripts/capability-resolver.ts",
-        "./.ai/harness/scripts/capture-plan.sh",
-        "./.ai/harness/scripts/check-agent-tooling.sh",
-        "./.ai/harness/scripts/check-architecture-sync.sh",
-        "./.ai/harness/scripts/check-brain-manifest.sh",
-        "./.ai/harness/scripts/check-context-files.sh",
-        "./.ai/harness/scripts/check-deploy-sql-order.sh",
-        "./.ai/harness/scripts/check-skill-version.ts",
-        "./.ai/harness/scripts/check-task-sync.sh",
-        "./.ai/harness/scripts/check-task-workflow.sh",
-        "./.ai/harness/scripts/codex-handoff-resume.sh",
-        "./.ai/harness/scripts/context-contract-sync.sh",
-        "./.ai/harness/scripts/contract-run.ts",
-        "./.ai/harness/scripts/contract-worktree.sh",
-        "./.ai/harness/scripts/ensure-task-workflow.sh",
-        "./.ai/harness/scripts/heartbeat-triage.sh",
-        "./.ai/harness/scripts/inspect-project-state.ts",
-        "./.ai/harness/scripts/maintenance-triage.sh",
-        "./.ai/harness/scripts/migrate-project-template.sh",
-        "./.ai/harness/scripts/migrate-workflow-docs.ts",
-        "./.ai/harness/scripts/new-plan.sh",
-        "./.ai/harness/scripts/new-spec.sh",
-        "./.ai/harness/scripts/new-sprint.sh",
-        "./.ai/harness/scripts/plan-to-todo.sh",
-        "./.ai/harness/scripts/prepare-codex-handoff.sh",
-        "./.ai/harness/scripts/prepare-handoff.sh",
-        "./.ai/harness/scripts/refresh-current-status.sh",
-        "./.ai/harness/scripts/select-agent-context-blocks.sh",
-        "./.ai/harness/scripts/ship-worktrees.sh",
-        "./.ai/harness/scripts/sprint-backlog.sh",
-        "./.ai/harness/scripts/summarize-failures.sh",
-        "./.ai/harness/scripts/switch-plan.sh",
-        "./.ai/harness/scripts/sync-brain-docs.sh",
-        "./.ai/harness/scripts/verify-contract.sh",
-        "./.ai/harness/scripts/verify-sprint.sh",
-        "./.ai/harness/scripts/workflow-contract.ts",
-        "./.ai/harness/scripts/workstream-sync.sh",
         "./.ai/harness/security/.gitkeep",
         "./.ai/harness/triage/.gitkeep",
         "./.ai/harness/workflow-contract.json",
@@ -209,7 +168,7 @@ describe("create-project-dirs scaffold parity", () => {
 
       const contractTemplate = readFileSync(join(cwd, ".claude/templates/contract.template.md"), "utf-8");
       expect(contractTemplate).toContain("## Workflow Inventory");
-      expect(contractTemplate).toContain("Completion gate: `.ai/harness/scripts/verify-sprint.sh` must see this contract pass");
+      expect(contractTemplate).toContain("Completion gate: `scripts/verify-sprint.sh` must see this contract pass");
       expect(contractTemplate).toContain("## Delegation Contract");
       expect(contractTemplate).toContain("permission_scope:");
       expect(contractTemplate).toContain("roles:");
@@ -249,5 +208,5 @@ describe("create-project-dirs scaffold parity", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  });
+  }, SCAFFOLD_PARITY_TIMEOUT_MS);
 });

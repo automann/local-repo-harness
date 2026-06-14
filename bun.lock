@@ -8,25 +8,25 @@
         "commander": "^14.0.3",
       },
       "devDependencies": {
-        "@colbymchenry/codegraph": "^0.9.9",
+        "@colbymchenry/codegraph": "^1.0.1",
         "@types/bun": "latest",
       },
     },
   },
   "packages": {
-    "@colbymchenry/codegraph": ["@colbymchenry/codegraph@0.9.9", "", { "optionalDependencies": { "@colbymchenry/codegraph-darwin-arm64": "0.9.9", "@colbymchenry/codegraph-darwin-x64": "0.9.9", "@colbymchenry/codegraph-linux-arm64": "0.9.9", "@colbymchenry/codegraph-linux-x64": "0.9.9", "@colbymchenry/codegraph-win32-arm64": "0.9.9", "@colbymchenry/codegraph-win32-x64": "0.9.9" }, "bin": { "codegraph": "npm-shim.js" } }, "sha512-23Dl9q0RHKVhJRp+Y823GfmQJjcPiRycoKN7TkaI8eJitluRvieoVlclPILqua8znvkAw9KevYziFfK3k74CBQ=="],
+    "@colbymchenry/codegraph": ["@colbymchenry/codegraph@1.0.1", "", { "optionalDependencies": { "@colbymchenry/codegraph-darwin-arm64": "1.0.1", "@colbymchenry/codegraph-darwin-x64": "1.0.1", "@colbymchenry/codegraph-linux-arm64": "1.0.1", "@colbymchenry/codegraph-linux-x64": "1.0.1", "@colbymchenry/codegraph-win32-arm64": "1.0.1", "@colbymchenry/codegraph-win32-x64": "1.0.1" }, "bin": { "codegraph": "npm-shim.js" } }, "sha512-Y4ZMk7wxSRI9g2wQTcW21TfLr+fw7td1Dadkll6Udl9Ll8wX3H6qtov7K/VGtHG2AFX2j1e5Lm48PTHi74mImg=="],
 
-    "@colbymchenry/codegraph-darwin-arm64": ["@colbymchenry/codegraph-darwin-arm64@0.9.9", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Mu6xhG4bF1OLeTqN2eSI5U8z2esymK/RjxP3T8cCigA4YprDIvd3XSGmTZREbDNRCuqrCi0R1LCJ7fsdFfpAPA=="],
+    "@colbymchenry/codegraph-darwin-arm64": ["@colbymchenry/codegraph-darwin-arm64@1.0.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-4z3aNzR3Ml31MBVzAvFQm+bk83erdHkjnaJ0PoeM6I9T7xuTIcdAGV36i3qYwgBE4tdrghRdR0mP5MNM+OrGFA=="],
 
-    "@colbymchenry/codegraph-darwin-x64": ["@colbymchenry/codegraph-darwin-x64@0.9.9", "", { "os": "darwin", "cpu": "x64" }, "sha512-xShaChiPJsajmBxvr1yP2XWsYstq0kJzHwQmiUG1huWrE14tP9NJnJ36hsbzHfHiqwBOJo2+5MZHuXmmzJa/vQ=="],
+    "@colbymchenry/codegraph-darwin-x64": ["@colbymchenry/codegraph-darwin-x64@1.0.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-KBSKl+tLCSIgV4iyi21SqYlpXL0P8DPqAnVHvvStdyYsCmkc2Heqf4oQIko+TYyFmuo65m4VpX989JkYZVGIVQ=="],
 
-    "@colbymchenry/codegraph-linux-arm64": ["@colbymchenry/codegraph-linux-arm64@0.9.9", "", { "os": "linux", "cpu": "arm64" }, "sha512-zccx1m3gGB2jAGfz41U+1GQNK12mtLGuX48XyZXiyQIGFsJQCFS8v/OvShAfPygSGhUr3zKMetbkMnztp7ULtg=="],
+    "@colbymchenry/codegraph-linux-arm64": ["@colbymchenry/codegraph-linux-arm64@1.0.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-2TOeL/Lx3kME+dmv2Q9hbIQFBvT6uKLdZONDRaYto+1Bcl3GrJuIu6bsu3jiJuifPhnYIL2xwUV6y+TZQ8MbTw=="],
 
-    "@colbymchenry/codegraph-linux-x64": ["@colbymchenry/codegraph-linux-x64@0.9.9", "", { "os": "linux", "cpu": "x64" }, "sha512-vQfe5VdSQb/cVo1pwO12FyzTNaDIXtN3dLuAS/LIPsg2tQVyT9fwr10QmL10qWUNBShjgnRsomHdMG7hCjW3Yg=="],
+    "@colbymchenry/codegraph-linux-x64": ["@colbymchenry/codegraph-linux-x64@1.0.1", "", { "os": "linux", "cpu": "x64" }, "sha512-UENXSURJJUhcvdKoYsB5Wj6Z6O9C2afhYfG0LnL13KFWJhGXugqYKjF4KwkaeE8Po8TFul9k3f+8eXjmJwwwaQ=="],
 
-    "@colbymchenry/codegraph-win32-arm64": ["@colbymchenry/codegraph-win32-arm64@0.9.9", "", { "os": "win32", "cpu": "arm64" }, "sha512-U2QlTT434ulbEw6sTJVS+VNhjJUbZqCnw8tXuXSKkcuzGPZq/Hxoofe9UpY77+J9hAJu9PwwiWjEEaiDX9yb1w=="],
+    "@colbymchenry/codegraph-win32-arm64": ["@colbymchenry/codegraph-win32-arm64@1.0.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-ZEG+HOakHiAe1AWMa2LgD52HyIEbWsY2FyNvDmon4Ss2889OghqUyA8BOLu5hNW+EI42JwwSXijVevn2Zn0hlg=="],
 
-    "@colbymchenry/codegraph-win32-x64": ["@colbymchenry/codegraph-win32-x64@0.9.9", "", { "os": "win32", "cpu": "x64" }, "sha512-N7Xgt80BeEy78nNeqHaUgcsngxmy1Hty570QSa4hOh4zl6z6v6n7i9ZSUfraktESVUkfmMbUwoqfEzVwUbB0/g=="],
+    "@colbymchenry/codegraph-win32-x64": ["@colbymchenry/codegraph-win32-x64@1.0.1", "", { "os": "win32", "cpu": "x64" }, "sha512-qU6jjyma635qKJ0aaL8XU8QtYUGkWly0Mu4Wm2cSWRcNDL1v6sVoHMElgfUY7E9tK0gnU+/LbZW3MfmtqLG1GA=="],
 
     "@types/bun": ["@types/bun@1.3.14", "https://registry.npmmirror.com/@types/bun/-/bun-1.3.14.tgz", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 

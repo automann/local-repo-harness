@@ -13,6 +13,7 @@ export interface GlobalRuntimeOptions {
   env?: NodeJS.ProcessEnv;
   target?: InstallTargetSpec;
   installCli?: boolean;
+  installSpec?: string;
   syncSkill?: boolean;
   hostAdapters?: boolean;
   externalSkills?: boolean;
@@ -66,7 +67,7 @@ function withStepName(step: GlobalRuntimeStep, name: string, detail?: string): G
 }
 
 function renderStep(step: GlobalRuntimeStep): string[] {
-  const lines = [`[init] ${step.status}: ${step.step}${step.detail ? ` - ${step.detail}` : ""}`];
+  const lines = [`[runtime] ${step.status}: ${step.step}${step.detail ? ` - ${step.detail}` : ""}`];
   if (step.status === "failed" && step.stderr?.trim()) lines.push(step.stderr.trim());
   return lines;
 }
@@ -116,11 +117,15 @@ function packageVersion(sourceRoot: string): string | null {
   }
 }
 
-function installCli(sourceRoot: string, cwd: string, env?: NodeJS.ProcessEnv): GlobalRuntimeStep {
-  const spec = existsSync(join(sourceRoot, "package.json")) ? sourceRoot : "repo-harness";
+function installCli(sourceRoot: string, cwd: string, env?: NodeJS.ProcessEnv, installSpec?: string): GlobalRuntimeStep {
+  const spec = installSpec ?? (existsSync(join(sourceRoot, "package.json")) ? sourceRoot : "repo-harness");
   const step = runProcess("npm", ["install", "-g", spec], cwd, env);
   const version = packageVersion(sourceRoot);
-  return withStepName(step, "install repo-harness CLI", version ? `version=${version}` : undefined);
+  return withStepName(
+    step,
+    "install repo-harness CLI",
+    installSpec ? `spec=${installSpec}` : version ? `version=${version}` : undefined,
+  );
 }
 
 function syncRuntimeSkill(sourceRoot: string, env?: NodeJS.ProcessEnv): GlobalRuntimeStep {
@@ -250,7 +255,7 @@ export function runGlobalRuntimeSetup(opts: GlobalRuntimeOptions = {}): GlobalRu
   const env = commandEnv(sourceRoot, opts.env);
   const steps: GlobalRuntimeStep[] = [];
 
-  if (opts.installCli !== false) steps.push(installCli(sourceRoot, cwd, env));
+  if (opts.installCli !== false) steps.push(installCli(sourceRoot, cwd, env, opts.installSpec));
   else steps.push({ step: "install repo-harness CLI", status: "skipped", detail: "disabled" });
 
   if (opts.syncSkill !== false) steps.push(syncRuntimeSkill(sourceRoot, env));

@@ -16,7 +16,7 @@ configuration, and CodeGraph CLI/MCP readiness.
 Existing repositories should use:
 
 ```bash
-npx -y repo-harness update
+npx -y repo-harness adopt
 ```
 
 The retired `scripts/setup-plugins.sh` path remains a compatibility shim that

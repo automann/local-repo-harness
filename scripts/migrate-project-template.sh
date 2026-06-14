@@ -886,6 +886,19 @@ require_repo() {
     echo "Repo path does not exist: $TARGET_REPO" >&2
     exit 1
   fi
+
+  local target_physical
+  target_physical="$(cd "$TARGET_REPO" && pwd -P)"
+  local home_physical=""
+  if [[ -n "${HOME:-}" && -d "$HOME" ]]; then
+    home_physical="$(cd "$HOME" && pwd -P)"
+  fi
+
+  if [[ -n "$home_physical" && "$target_physical" == "$home_physical" ]]; then
+    echo "Refusing to migrate HOME as a repo target: $target_physical" >&2
+    echo "Run repo-harness adopt --repo <git-repo> from an intended project." >&2
+    exit 2
+  fi
 }
 
 resolve_host_adapter_runtime_mode() {
@@ -1000,10 +1013,10 @@ migrate_workflow() {
 
 verify_migration_contract() {
   local repo="$1"
-  local check_script="$repo/.ai/harness/scripts/check-task-workflow.sh"
+  local check_script="$repo/scripts/check-task-workflow.sh"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] verify migrated workflow with bash \"$check_script\" --strict"
+    echo "[dry-run] verify migrated workflow with repo-harness run check-task-workflow --strict"
     return 0
   fi
 
@@ -1012,7 +1025,7 @@ verify_migration_contract() {
     return 1
   fi
 
-  (cd "$repo" && bash ".ai/harness/scripts/check-task-workflow.sh" --strict)
+  (cd "$repo" && REPO_HARNESS_SOURCE_ROOT="$SKILL_ROOT" bash "scripts/check-task-workflow.sh" --strict)
 }
 
 print_report() {
@@ -1049,7 +1062,7 @@ print_report() {
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"
   echo "- Workflow migration: docs/spec.md + plans/ + tasks/contracts + tasks/reviews + .ai/context/context-map.json + .ai/harness/*"
   echo "- Workflow contract manifest installed at: .ai/harness/workflow-contract.json"
-  echo "- Helper runtime: installed under .ai/harness/scripts with scripts/* compatibility wrappers"
+  echo "- Helper runtime: package-dispatched through repo-harness run with scripts/* compatibility wrappers"
   echo "- Upgrade/reconfigure/cleanup plan: generated from workflow contract migrations.upgrade"
   echo "- Existing external_tooling overrides are preserved; missing defaults are merged into .ai/harness/policy.json"
   echo "- Repo-harness skill scope: ${REPO_HARNESS_SKILL_SCOPE:-user}"

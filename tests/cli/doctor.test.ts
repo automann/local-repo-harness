@@ -170,7 +170,7 @@ describe('doctor command (Phase 1C)', () => {
       expect(hooks.status).toBe('warn');
       expect(hooks.detail).toContain('source=repo-pin');
       expect(hooks.detail).toContain('security-sentinel.sh');
-      expect(hooks.detail).toContain(`repo-harness update --repo ${repoRoot}`);
+      expect(hooks.detail).toContain(`repo-harness adopt --repo ${repoRoot}`);
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 

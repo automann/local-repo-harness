@@ -1,21 +1,28 @@
 # repo-harness
 
 <p align="center">
-  <img src="docs/images/repo-harness-hook-carrot.png" alt="repo-harness hooks leading Codex and Claude forward with repo-local workflow state" width="900">
+  <img src="docs/images/image.png" alt="One next button joining Claude and Codex under repo-harness workflow rules" width="760">
 </p>
 
-Repo-local agentic development harness CLI and skill runtime for Claude/Codex
-workflows. The npm package and primary command are now `repo-harness`.
-The legacy `repo-harness-skill` and `project-initializer` install paths are
-retired and removed by installed-copy sync.
+`repo-harness` turns Claude/Codex coding sessions into a repeatable repo-local
+workflow. It ships a CLI plus skill/runtime hooks that write context, plans,
+handoffs, checks, and review evidence back into the project, so the next agent
+session can continue from files instead of chat memory.
+
+Use it to:
+
+- adopt an existing repo with a tasks-first agent contract
+- keep Claude and Codex aligned on the same plans, checks, handoffs, and context
+  boundaries
+- spend fewer tokens rediscovering structure by using CodeGraph and progressive
+  context loading
+
+Give the agent a complete PRD or Sprint; after that, your loop is just review
+and `next`, or start `/goal` and go AFK.
+
 Repository: `https://github.com/Ancienttwo/repo-harness`
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
-
-This repository now dogfoods its own tasks-first contract. It is both:
-
-- the source repo for the `repo-harness` CLI and `repo-harness` skill runtime
-- a self-hosted example of the repo-local workflow it generates for other projects
 
 ## Why repo-harness
 
@@ -43,20 +50,21 @@ In an adopted repo, the surface area is intentionally small:
 | `tasks/contracts/`, `tasks/reviews/`, and `.ai/harness/checks/` | Scope, verification, and review evidence for proving the work is done. |
 | `.ai/harness/handoff/` and `tasks/current.md` | Session journal and resumable status, derived from workflow artifacts instead of chat memory. |
 
-## What's New in 0.4.3
+## What's New in 0.5.0
 
-- **Runtime docs lookup.** `repo-harness docs list|path|show` resolves bundled
-  runtime/reference docs from the installed package instead of requiring copied
-  repo prose.
-- **Init-hook bootstrap audit.** `repo-harness init-hook --json` reports concrete
-  Agent actions for missing working rules, adapter drift, stale CLI installs,
-  and tooling readiness.
-- **First-principles edit guard.** Managed hook routes now include
-  anti-overengineering guidance for implementation edits while keeping the guard
-  advisory.
-- **Slimmer generated reference docs.** Generated and migrated repos write
-  deterministic `docs/reference-configs/*.md` pointer stubs while `.ai/harness/*`
-  and `.ai/context/*` remain local runtime artifacts.
+- **Clean command boundary.** `repo-harness update` now refreshes only the
+  user-level CLI/runtime surface, while `repo-harness adopt` owns repo-local
+  workflow install, refresh, and migration.
+- **Package-dispatched helper runtime.** Generated `scripts/*` wrappers can
+  delegate through `repo-harness run <helper>`, so adopted repos do not need to
+  vendor every helper implementation when the installed package already owns it.
+- **Eight managed hook routes.** The README now documents the exact hook route
+  matrix that Claude and Codex adapters install: session context, edit guards,
+  delegated-agent routing, post-edit and post-bash observers, always-on trace,
+  prompt routing, and stop closeout.
+- **Release-ready install examples.** The first-run and refresh commands now
+  show the split between machine bootstrap, user-level updates, read-only setup
+  audit, and repo-local adoption.
 
 ## What repo-harness Does
 
@@ -81,7 +89,7 @@ The design has three layers:
 
 1. **Source package**: this repository owns the CLI, CLI-backed command facades,
    templates, hook assets, workflow contract, tests, and release gate.
-2. **Target repo contract**: `repo-harness update` or migration writes repo-local
+2. **Target repo contract**: `repo-harness adopt` or migration writes repo-local
    files such as `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts, and `.ai/hooks/`.
 3. **Host adapters**: by default, user-level `~/.claude/settings.json` and
@@ -218,10 +226,11 @@ runtime writes off until the dry-run output looks right.
 ### 1. Preview the repo-local contract only
 
 ```bash
-npx -y repo-harness update --dry-run \
+npx -y repo-harness adopt --dry-run \
   --host-adapter-scope none \
   --skill-scope none \
-  --external-tool-scope none
+  --external-tool-scope none \
+  --codegraph-mcp-scope none
 ```
 
 This is the lowest-impact inspection path. It should not write user hooks,
@@ -231,25 +240,27 @@ workflow contract that would be created or refreshed.
 ### 2. Apply the repo-local contract only
 
 ```bash
-npx -y repo-harness update \
+npx -y repo-harness adopt \
   --host-adapter-scope none \
   --skill-scope none \
-  --external-tool-scope none
+  --external-tool-scope none \
+  --codegraph-mcp-scope none
 ```
 
 This installs the file-backed workflow surface without registering Codex or
 Claude adapters and without installing external skills. Existing repos use
-`repo-harness update`; new projects or modules use `repo-harness-scaffold`.
+`repo-harness adopt`; new projects or modules use `repo-harness-scaffold`.
 
 ### 3. Enable project hooks and project skills
 
 ```bash
-npx -y repo-harness update \
+npx -y repo-harness adopt \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
   --skill-scope project \
   --external-tool-scope none \
-  --codegraph-mcp-scope none
+  --codegraph-mcp-scope none \
+  --brain-mode manifest-only
 ```
 
 Project Codex skills live under `.agents/skills`; project Claude skills live
@@ -264,7 +275,34 @@ Keep `--codegraph-mcp-scope none` unless you want project MCP config in
 `.codex/config.toml` and `.mcp.json`. gbrain remains manual or manifest-only in
 project-only mode.
 
-### 4. Optional user-level bootstrap
+### 4. Optional CLI install
+
+No Node.js required for the default path: the installer uses Bun as the runtime.
+If Bun is missing, it installs Bun first, then installs the `repo-harness` CLI.
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>Already have Bun or Node? Use package managers instead</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness adopt --dry-run
+
+# Node/npm, with Bun already on PATH because the CLI runs on Bun
+repo-harness adopt --dry-run
+```
+
+</details>
+
+### 5. Optional user-level bootstrap
 
 ```bash
 npx -y repo-harness init
@@ -277,13 +315,30 @@ skill roots, persists a brain root under `~/.repo-harness/config.json`, and
 configures user-level CodeGraph MCP. Use it when you intentionally want
 repo-harness available across repos on the machine.
 
-For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness
-init-hook --json` or add `--check-updates` for version advisories. `init-hook`
-is not a runtime hook: it does not write user-level files, install updates, or
+For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness setup
+check --json` or add `--check-updates` for version advisories. `setup check` is
+not a runtime hook: it does not write user-level files, install updates, or
 register adapters. It emits `agent_actions` with the reason, risk, target files,
 optional command, and verification surface for the Agent to execute deliberately.
+`repo-harness init-hook` remains a compatibility alias.
 
-### 5. Prove the workflow
+### Install and refresh examples
+
+```bash
+# First machine bootstrap after installing the CLI: skills, host adapters, Waza, brain, CodeGraph.
+repo-harness init
+
+# Refresh user-level CLI/runtime pieces after a package update.
+repo-harness update
+
+# Ask for read-only repair guidance without writing files.
+repo-harness update --check
+
+# Refresh repo-local workflow files in an adopted repository.
+repo-harness adopt --repo /path/to/repo
+```
+
+### 6. Prove the workflow
 
 ```bash
 bash scripts/check-task-workflow.sh --strict
@@ -323,22 +378,33 @@ Claude/Codex paths are symlink-backed runtime entrypoints. Only
 - `bun` for follow-up verification and template assembly
 - `jq` is optional for `--dry-run`, but recommended when applying settings merges
 
-### Default user-scope shortcut
+### Default project-safe shortcut
 
-After you understand the impact surface, you can omit the explicit scope flags
-from the preview and apply commands to use the default user-scoped adapters,
-user skills, and user MCP setup. For a new project or module, use the branch
-command `repo-harness-scaffold`; for an existing repo, use `repo-harness update`.
+For an existing repo, run from the repo root:
+
+```bash
+repo-harness adopt --dry-run
+```
+
+Apply only after the dry-run report looks correct:
+
+```bash
+repo-harness adopt
+```
+
+For a new project or module, use the branch command `repo-harness-scaffold`. For
+an existing repo, use `repo-harness adopt`; it installs or refreshes the harness
+without creating an application stack.
 
 ### Success looks like this
 
 The command should end with `=== Migration Report ===` and summarize:
 
 - `Project hooks synced from:` to show where generated hook behavior comes from
-- `Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json` to show the default adapter layer
-- `Host hook adapters default to user scope:` to remind the user to install user adapters or opt into project-scoped adapters and trust the matching Codex hooks file
+- `Host hook config target:` to show whether no adapter, a project adapter, or a user adapter is selected
+- `Host hook adapters default to user scope:` to remind the user to install user adapters deliberately or opt into project-scoped adapters and trust the matching Codex hooks file
 - `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
-- `Helper runtime:` to show `.ai/harness/scripts/*` implementations and `scripts/*` compatibility wrappers after apply
+- `Helper runtime:` to show package-dispatched through `repo-harness run` with `scripts/*` compatibility wrappers after apply
 - `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
 
 If the dry-run output looks wrong, stop there and inspect
@@ -348,19 +414,36 @@ before applying anything.
 ## Hook Authority Map
 
 - `.ai/hooks/` is the only shared hook implementation you should edit first.
-- `~/.claude/settings.json` and `~/.codex/hooks.json` are the default user-scoped adapters that dispatch into opted-in repos.
+- `~/.claude/settings.json` is the user-level Claude adapter that dispatches into opted-in repos.
+- `~/.codex/hooks.json` is the user-level Codex adapter that dispatches into the same runner.
 - Repo-local `.claude/settings.json` and `.codex/hooks.json` are supported project-scoped adapters for repos that should not register user-level hooks.
-- `repo-harness update` defaults to user-scoped adapters; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
+- `repo-harness adopt` owns repo-local workflow install/refresh/migration; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
+- `repo-harness init` and `repo-harness update` own user-level bootstrap/refresh paths and should be treated as broad-impact machine operations.
 - Codex must mark the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`) as trusted in Codex Settings before those hooks run.
 - Debug in this order: active adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
-- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness update --repo <root>`.
+- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness adopt --repo <root>`.
+
+The installed adapter owns eight managed hook routes. The route tuple
+`event + routeId + matcher` is the stable contract; script names are the current
+implementation under `assets/hooks/` or a repo-pinned `.ai/hooks/` copy.
+
+| Route | Matcher | Scripts | Function |
+| --- | --- | --- | --- |
+| `SessionStart.default` | all sessions | `session-start-context.sh`, `security-sentinel.sh` | Injects prior handoff, sprint status, and read-only config-security findings before work starts. |
+| `PreToolUse.edit` | `Edit|Write` | `worktree-guard.sh`, `pre-edit-guard.sh` | Enforces worktree policy and plan/contract readiness before implementation edits. |
+| `PreToolUse.subagent` | `Task|Agent|SendUserMessage` | `subagent-return-channel-guard.sh` | Keeps delegated work returning through the parent session instead of leaking completion claims. |
+| `PostToolUse.edit` | `Edit|Write` | `post-edit-guard.sh` | Records edit traces, refreshes handoff/task status, and queues architecture drift when controlled files change. |
+| `PostToolUse.bash` | `Bash` | `post-bash.sh` | Observes command results and captures verification evidence without replacing the command runner. |
+| `PostToolUse.always` | all tools | `post-tool-observer.sh` | Provides low-noise always-on trace and runtime observation; stale pinned copies soft-skip with a refresh hint. |
+| `UserPromptSubmit.default` | all prompts | `prompt-guard.sh` | Classifies prompt intent, routes planning/check/hunt hints, and renders host-safe workflow guidance. |
+| `Stop.default` | session stop | `stop-orchestrator.sh` | Finalizes handoff and guards against ending with unresolved draft-plan or completion evidence gaps. |
 
 `SessionStart` resolves hooks central-first, then runs two ordered scripts before
 work begins:
 
 ```mermaid
 flowchart LR
-  SessionStart["Claude/Codex SessionStart"] --> Adapter["user-level adapter"]
+  SessionStart["Claude/Codex SessionStart"] --> Adapter["active adapter<br/>user or project"]
   Adapter --> Entry["repo-harness-hook SessionStart --route default"]
   Entry --> Source{"hook source"}
   Source -->|central default| Central["packaged hooks<br/>or ~/.repo-harness/hooks"]
@@ -380,7 +463,7 @@ Prompt guard has one extra internal step:
 
 ```mermaid
 flowchart LR
-  Host["Claude/Codex UserPromptSubmit"] --> Adapter["user-level adapter"]
+  Host["Claude/Codex UserPromptSubmit"] --> Adapter["active adapter<br/>user or project"]
   Adapter --> CLI["repo-harness-hook UserPromptSubmit --route default"]
   CLI --> Route["route registry"]
   Route --> Shell[".ai/hooks/prompt-guard.sh"]
@@ -422,8 +505,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.4.3`
-- Generated workflow stamp: `repo-harness@0.4.3+template@0.4.3`
+- npm package: `repo-harness@0.5.0`
+- Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
@@ -514,7 +597,7 @@ skill discovery compatible while the CLI and hooks own execution:
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation command: `repo-harness-scaffold`
 
-`repo-harness update` is for an existing repo; `repo-harness-scaffold` creates a
+`repo-harness adopt` is for an existing repo; `repo-harness-scaffold` creates a
 new project or module scaffold as a side command. `hooks-init`, `docs-init`, and
 `create-project-dirs` are internal steps, not public commands.
 

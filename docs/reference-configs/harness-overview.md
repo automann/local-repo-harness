@@ -4,7 +4,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 
 ## Adoption Model
 
-Use this file as the first onboarding map after `repo-harness update` installs
+Use this file as the first onboarding map after `repo-harness adopt` installs
 or refreshes a repo. The harness gives agents three durable surfaces:
 
 - **Shared standards**: `docs/spec.md`, `docs/reference-configs/`, root

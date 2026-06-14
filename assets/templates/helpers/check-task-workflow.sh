@@ -424,6 +424,9 @@ check_required_file() {
 
   if [[ "$path" == .ai/harness/scripts/* ]]; then
     local helper_name="${path##*/}"
+    if [[ "${helper_source:-package}" == "package" && -f "scripts/$helper_name" ]]; then
+      return 0
+    fi
     if [[ -f "assets/templates/helpers/$helper_name" && -f "scripts/$helper_name" ]]; then
       return 0
     fi
@@ -464,6 +467,10 @@ check_required_dir() {
     return 0
   fi
 
+  if [[ "$path" == ".ai/harness/scripts" && "${helper_source:-package}" == "package" && -d "scripts" ]]; then
+    return 0
+  fi
+
   if [[ "$path" == ".ai/harness/scripts" && -d "assets/templates/helpers" && -d "scripts" ]]; then
     return 0
   fi
@@ -499,11 +506,13 @@ check_helper_runtime_files() {
   fi
 
   check_required_dir "$helper_compat_dir"
-  check_required_dir "$helper_runtime_dir"
+  if [[ "${helper_source:-package}" != "package" ]]; then
+    check_required_dir "$helper_runtime_dir"
+  fi
 
   for helper_name in "${helper_names[@]}"; do
     check_required_file "$helper_compat_dir/$helper_name"
-    if [[ "$helper_runtime_dir" != "$helper_compat_dir" ]]; then
+    if [[ "${helper_source:-package}" != "package" && "$helper_runtime_dir" != "$helper_compat_dir" ]]; then
       check_required_file "$helper_runtime_dir/$helper_name"
     fi
   done
@@ -536,6 +545,7 @@ workstreams_dir="$(policy_get '.tasks.workstreams_dir' 'tasks/workstreams')"
 runs_dir="$(policy_get '.harness.runs_dir' '.ai/harness/runs')"
 helper_runtime_dir="$(policy_get '.harness.helper_runtime_dir' '.ai/harness/scripts')"
 helper_compat_dir="$(policy_get '.harness.helper_compat_dir' 'scripts')"
+helper_source="$(policy_get '.harness.helper_source' 'package')"
 context_map_file="$(policy_get '.context.map_file' '.ai/context/context-map.json')"
 handoff_file="$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')"
 resume_file="$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')"
@@ -560,7 +570,9 @@ check_required_dir "$workstreams_dir"
 check_required_dir ".claude/templates"
 check_required_dir ".ai/context"
 check_required_dir ".ai/harness"
-check_required_dir "$helper_runtime_dir"
+if [[ "$helper_source" != "package" ]]; then
+  check_required_dir "$helper_runtime_dir"
+fi
 check_required_dir "$runs_dir"
 
 helper_file() {

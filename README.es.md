@@ -1,16 +1,25 @@
 # repo-harness
 
-Repo-local agentic development harness CLI y skill runtime para workflows de
-Claude/Codex.
+`repo-harness` convierte las sesiones de programación con Claude/Codex en un
+workflow repo-local repetible. Incluye un CLI y hooks de skill/runtime que
+escriben contexto, planes, handoffs, checks y evidencias de review dentro del
+proyecto, para que la siguiente sesión de agente continúe desde archivos y no
+desde el historial de chat.
+
+Úsalo para:
+
+- adoptar un repositorio existente con un contrato de agente tasks-first
+- mantener Claude y Codex alineados sobre los mismos planes, checks, handoffs y
+  límites de contexto
+- gastar menos tokens redescubriendo estructura gracias a CodeGraph y la carga
+  progresiva de contexto
+
+Entrega al agente un PRD o Sprint completo; después, tu bucle es solo review and
+`next`, o iniciar `/goal` y quedar AFK.
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
 Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
-
-`repo-harness` es un harness de workflow que aterriza el proceso de programación
-con IA en archivos del repositorio. Es a la vez el repositorio fuente de la CLI
-`repo-harness` y de su skill runtime, y el ejemplo autoalojado del workflow
-repo-local que él mismo genera para los proyectos downstream.
 
 ## Por qué usar repo-harness
 
@@ -42,7 +51,7 @@ repo-local que él mismo genera para los proyectos downstream.
   opcionales según el tipo de proyecto y cuatro hook profiles (`standard`,
   `minimal`, `biome`, `biome-strict`). Ejecuta
   `npx -y repo-harness init`; no necesitas clonar el repositorio fuente.
-- **Comando de refresco del repo (`repo-harness update`).** La instalación y el
+- **Comando de adopción del repo (`repo-harness adopt`).** La instalación y el
   refresco de repos existentes tienen su propia superficie de comando, manteniendo
   la ruta de migración repo-local anterior mientras `init` queda dedicado al
   runtime global.
@@ -100,7 +109,7 @@ En conjunto hay tres capas:
 1. **Capa del paquete fuente**: este repositorio mantiene la CLI, los command
    skill facades, los templates, los hook assets, el workflow contract, los tests
    y el release gate.
-2. **Capa del contract del repositorio objetivo**: `repo-harness update` o la
+2. **Capa del contract del repositorio objetivo**: `repo-harness adopt` o la
    migración escribe `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts y `.ai/hooks/`.
 3. **Capa del host adapter**: el `~/.claude/settings.json` y el
@@ -198,20 +207,92 @@ retoma contra un sprint concreto en vez de reinterpretar el chat original.
 ## Primeros 5 minutos
 
 Esta es la ruta más rápida para evaluar si un repositorio real es apto para
-adoptar este workflow.
+adoptar este workflow. Empieza con el contrato repo-local y mantén desactivadas
+las escrituras al runtime del host hasta que el dry-run se vea correcto.
 
-### Instalar o refrescar el runtime local
+### 1. Previsualizar solo el contrato repo-local
+
+```bash
+npx -y repo-harness adopt --dry-run \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none
+```
+
+Esta es la ruta de menor impacto: no escribe user hooks, user skills, user MCP
+config ni estado de brain root. Solo informa el workflow contract que se crearía
+o refrescaría.
+
+### 2. Aplicar solo el contrato repo-local
+
+```bash
+npx -y repo-harness adopt \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none
+```
+
+Esto instala la superficie file-backed del workflow sin registrar adapters de
+Codex/Claude y sin instalar external skills.
+
+### 3. Activar project hooks y project skills
+
+```bash
+npx -y repo-harness adopt \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode manifest-only
+```
+
+Las skills de Codex viven en `.agents/skills`; las de Claude en
+`.claude/skills`. Los adapters de proyecto viven en `.codex/hooks.json` y
+`.claude/settings.json`. Codex debe confiar el archivo de hooks del proyecto en
+Codex Settings antes de ejecutarlo.
+
+### 4. Instalar el CLI opcionalmente
+
+La ruta por defecto no requiere Node.js: el instalador usa Bun como runtime. Si
+Bun no existe, instala Bun primero y después instala el CLI `repo-harness`.
+
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+```
+
+<details>
+<summary>¿Ya tienes Bun o Node? Usa gestores de paquetes</summary>
+
+```bash
+# Bun
+bun add -g repo-harness
+repo-harness adopt --dry-run
+
+# Node/npm, con Bun ya en PATH porque el CLI corre sobre Bun
+repo-harness adopt --dry-run
+```
+
+</details>
+
+### 5. Bootstrap user-level opcional
 
 ```bash
 npx -y repo-harness init
 ```
 
-La npm package release line y el generated workflow stamp usan ahora la misma
-línea `0.4.x`. `repo-harness init` es el bootstrap
-global y `repo-harness update` es el refresco repo-local. `repo-harness init`
-configura el CLI, los hook adapters de nivel usuario, Waza, Mermaid, el brain
-root y CodeGraph MCP; el viejo camino Claude plugin `scripts/setup-plugins.sh`
-queda retirado.
+`repo-harness init` es una ruta de bootstrap de máquina con impacto amplio.
+Instala el CLI global, refresca aliases de skills, escribe hook adapters
+user-level para Codex/Claude, instala Waza/Mermaid en user skill roots,
+persiste el brain root en `~/.repo-harness/config.json` y configura CodeGraph
+MCP user-level. Úsalo solo cuando quieras repo-harness disponible para varios
+repositorios de la máquina.
 
 Si trabajas desde un checkout del código fuente:
 
@@ -245,17 +326,17 @@ elimina `scripts/sync-codex-installed-copies.sh`.
 En un repositorio existente, ejecuta desde el repo root:
 
 ```bash
-npx -y repo-harness update --dry-run
+npx -y repo-harness adopt --dry-run
 ```
 
 Aplica solo después de que el reporte del dry-run sea correcto:
 
 ```bash
-npx -y repo-harness update
+npx -y repo-harness adopt
 ```
 
 Para un proyecto o módulo nuevo, usa la branch command `repo-harness-scaffold`.
-Para un repositorio existente, usa `repo-harness update`; este instala o refresca
+Para un repositorio existente, usa `repo-harness adopt`; este instala o refresca
 el harness y no crea el stack tecnológico de la aplicación.
 
 ### Cómo se ve el éxito
@@ -345,8 +426,8 @@ Guards habituales:
 
 ## Release actual
 
-- npm package: `repo-harness@0.4.3`
-- Generated workflow stamp: `repo-harness@0.4.3+template@0.4.3`
+- npm package: `repo-harness@0.5.0`
+- Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
 - GitHub repository: `Ancienttwo/repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
@@ -360,7 +441,7 @@ Guards habituales:
   - `assets/workflow-contract.v1.json`
 - Los generated repos usan por defecto el repo-local harness flow:
   - `docs/spec.md -> plans/ -> tasks/contracts/ -> tasks/reviews/ -> .ai/context/context-map.json -> .ai/harness/*`
-- `repo-harness update` refresca las runtime pieces:
+- `repo-harness update` refresca las runtime pieces de usuario:
   - los `repo-harness` skill aliases
   - los global Codex/Claude hook adapters
   - las Waza skills: `think`, `hunt`, `check`, `health`
@@ -393,7 +474,7 @@ compatibilidad de discovery por skills, mientras el CLI y los hooks ejecutan:
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation: `repo-harness-scaffold`
 
-`repo-harness update` se usa para repositorios existentes; `repo-harness-scaffold`
+`repo-harness adopt` se usa para repositorios existentes; `repo-harness-scaffold`
 queda como branch command para crear proyectos o módulos nuevos. `hooks-init`, `docs-init` y
 `create-project-dirs` son pasos internos, no commands públicos.
 

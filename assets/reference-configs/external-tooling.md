@@ -23,11 +23,18 @@ Codex/Claude hook adapters, Waza (`think`, `hunt`, `check`, `health`), brain
 root persistence, Mermaid, and CodeGraph CLI/MCP configuration. It must not
 silently install unrelated toolchains or Claude marketplace plugins.
 
-`repo-harness update` keeps user-level behavior by default, but explicit scope
-flags can isolate the install to the current repo:
+`repo-harness update` refreshes only the CLI and repo-harness-owned user-level
+runtime by default. Third-party tooling and CodeGraph registration stay
+readiness findings from `repo-harness setup check` unless the update command is
+run with an explicit opt-in such as `--with-external-skills` or
+`--configure-codegraph`.
+
+`repo-harness adopt` owns repo-local project-scoped adoption. Explicit scope
+flags can isolate hook adapters, skills, external tooling, and MCP config to the
+current repo:
 
 ```bash
-repo-harness update \
+repo-harness adopt \
   --host-adapter-scope project \
   --skill-scope project \
   --external-tool-scope project \
@@ -41,8 +48,10 @@ completed, report that failure instead of falling back to global writes.
 The cross-review skills are **harness-owned and self-contained** — their source
 lives in `assets/skills/<skill>/` and they wrap the peer CLI (`codex exec` /
 `claude -p`) in a read-only sandbox with no gstack dependency, so installing them
-is a workflow-owned repo-local update concern, not an unrelated toolchain. They
-install host-aware during `repo-harness update`: `codex-review` only into `~/.claude/skills` (a Claude session asking
+is a workflow-owned runtime concern, not an unrelated toolchain. They install
+host-aware during `repo-harness init`, explicit external-skill refreshes, or
+project-scoped `repo-harness adopt`:
+`codex-review` only into `~/.claude/skills` (a Claude session asking
 Codex for an independent review) and `claude-review` only into `~/.codex/skills`
 (a Codex session asking Claude). When gstack is present, its `/codex` and
 `gstack-claude` skills are a more featureful superset; the harness skills are the
