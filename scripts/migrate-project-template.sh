@@ -1052,6 +1052,10 @@ print_report() {
   echo "- Helper runtime: installed under .ai/harness/scripts with scripts/* compatibility wrappers"
   echo "- Upgrade/reconfigure/cleanup plan: generated from workflow contract migrations.upgrade"
   echo "- Existing external_tooling overrides are preserved; missing defaults are merged into .ai/harness/policy.json"
+  echo "- Repo-harness skill scope: ${REPO_HARNESS_SKILL_SCOPE:-user}"
+  echo "- Third-party tool scope: ${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}"
+  echo "- CodeGraph MCP scope: ${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}"
+  echo "- Brain mode: ${REPO_HARNESS_BRAIN_MODE:-skip}"
   echo "- Runtime temporary ignore block synced to .gitignore"
   pi_print_external_tooling_report "$repo" "$MODE" "$SCRIPT_DIR/check-agent-tooling.sh"
 }

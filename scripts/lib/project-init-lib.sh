@@ -1820,6 +1820,17 @@ pi_write_harness_policy() {
     "project_hook_executable": ".ai/harness/bin/repo-harness-hook",
     "project_runtime_dir": ".ai/harness/runtime/repo-harness"
   },
+  "skills": {
+    "repo_harness_scope": "${REPO_HARNESS_SKILL_SCOPE:-user}",
+    "project_paths": {
+      "codex": ".agents/skills",
+      "claude": ".claude/skills"
+    },
+    "user_paths": {
+      "codex": "~/.codex/skills",
+      "claude": "~/.claude/skills"
+    }
+  },
   "active_plan": {
     "marker_file": ".ai/harness/active-plan",
     "legacy_marker_file": ".claude/.active-plan",
@@ -2044,6 +2055,7 @@ pi_write_harness_policy() {
     "state": "$(pi_state_profile)"
   },
   "external_tooling": {
+    "scope": "${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}",
     "routing": {
       "complex": "gstack",
       "simple": "waza",
@@ -2054,20 +2066,25 @@ pi_write_harness_policy() {
     "detection": "init-migrate",
     "readiness_gate": ".ai/harness/scripts/check-agent-tooling.sh --host codex --strict-readiness",
     "waza": {
+      "scope": "${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}",
       "source_repo": "tw93/Waza",
       "source_url": "https://github.com/tw93/Waza.git",
       "managed_skills": ["think", "hunt", "check", "health"],
       "primary_host": "codex",
       "codex_primary_path": "~/.codex/skills",
+      "codex_project_path": ".agents/skills",
+      "claude_project_path": ".claude/skills",
       "staging_cache_path": "~/.agents/skills",
       "sync_mode": "stage-upstream-then-copy-to-codex",
-      "host_drift_policy": "report-per-host-version-staging-and-upstream-drift"
+      "host_drift_policy": "report-per-host-version-staging-and-upstream-drift",
+      "project_install": "skills-cli-without-global-flag"
     },
     "codex_automation_profile": {
       "required_skills": ["health", "check", "mermaid"],
       "optional_skills": [],
       "mode": "codex-runtime-reference",
       "source": "~/.codex/skills",
+      "project_source": ".agents/skills",
       "routes": {
         "workflow_health": "waza:health",
         "review_gate": "waza:check",
@@ -2076,21 +2093,31 @@ pi_write_harness_policy() {
       "vendoring_policy": "do-not-vendor-skill-body"
     },
     "diagram_design": {
+      "scope": "${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}",
       "skill_name": "mermaid",
       "primary_host": "codex",
       "codex_primary_path": "~/.codex/skills/mermaid",
+      "codex_project_path": ".agents/skills/mermaid",
+      "claude_project_path": ".claude/skills/mermaid",
       "sync_mode": "external-installed-skill",
-      "vendoring_policy": "do-not-vendor"
+      "vendoring_policy": "do-not-vendor",
+      "project_install": "skills-cli-without-global-flag"
     },
     "gbrain": {
+      "mode": "${REPO_HARNESS_BRAIN_MODE:-skip}",
+      "project_only_mode": "manifest-only",
       "mcp": "$(pi_external_tooling_gbrain_mcp)"
     },
     "codegraph": {
       "package": "@colbymchenry/codegraph",
       "primary_host": "both",
       "install_mode": "target-aware-mcp",
+      "index_scope": "project",
+      "mcp_scope": "${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}",
       "codex_config_path": "~/.codex/config.toml",
       "claude_config_path": "~/.claude.json",
+      "project_codex_config_path": ".codex/config.toml",
+      "project_claude_config_path": ".mcp.json",
       "index_dir": ".codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",

@@ -153,8 +153,8 @@ class CodexTarget implements AgentTarget {
     };
   }
 
-  uninstall(loc: Location): WriteResult {
-    const filePath = resolveHooksPath(loc, process.cwd());
+  uninstall(loc: Location, opts: InstallOptions = {}): WriteResult {
+    const filePath = resolveHooksPath(loc, opts.cwd ?? process.cwd());
     if (!fs.existsSync(filePath)) {
       return { files: [{ path: filePath, action: 'not-found' }] };
     }

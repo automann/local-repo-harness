@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
-import { MANAGED_TAG, type HookEntry } from '../installer/managed-entries';
+import { LEGACY_MANAGED_TAG, MANAGED_TAG, type HookEntry } from '../installer/managed-entries';
 
 export type SecurityStatus = 'ok' | 'warn' | 'fail';
 export type SecuritySeverity = 'warn' | 'high' | 'fail';
@@ -16,6 +16,8 @@ export type ScannedFileKind = 'claude-hooks' | 'codex-hooks' | 'vscode-tasks';
 
 export interface SecurityFinding {
   filePath: string;
+  host: 'claude' | 'codex' | 'vscode';
+  scope: 'user' | 'project';
   ruleId: string;
   severity: SecuritySeverity;
   summary: string;
@@ -116,9 +118,17 @@ function readJson(filePath: string): unknown {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 }
 
-function pushJsonFailure(findings: SecurityFinding[], filePath: string, err: unknown): void {
+function pushJsonFailure(
+  findings: SecurityFinding[],
+  filePath: string,
+  err: unknown,
+  host: SecurityFinding['host'],
+  scope: SecurityFinding['scope'],
+): void {
   findings.push({
     filePath,
+    host,
+    scope,
     ruleId: 'invalid-json',
     severity: 'fail',
     summary: `Could not parse JSON: ${(err as Error).message}`,
@@ -156,7 +166,8 @@ function scanHookConfig(
   findings: SecurityFinding[],
   filePath: string,
   hostLabel: string,
-  legacyProjectAdapter: boolean,
+  host: 'claude' | 'codex',
+  scope: 'user' | 'project',
 ): void {
   if (!fs.existsSync(filePath)) return;
 
@@ -164,29 +175,35 @@ function scanHookConfig(
   try {
     parsed = readJson(filePath);
   } catch (err) {
-    pushJsonFailure(findings, filePath, err);
+    pushJsonFailure(findings, filePath, err, host, scope);
     return;
   }
 
   const config = parsed as HookConfig;
   const commands = hookBlocks(config);
-  if (legacyProjectAdapter && commands.length > 0) {
-    findings.push({
-      filePath,
-      ruleId: 'legacy-project-hook-adapter',
-      severity: 'warn',
-      summary: `${hostLabel} project-level hook config still contains ${commands.length} hook command(s)`,
-      recommendation: 'Prefer user-level repo-harness adapters and keep repo-local hooks under .ai/hooks.',
-    });
-  }
 
   for (const { event, hook } of commands) {
     const command = typeof hook.command === 'string' ? hook.command : '';
     if (!command) continue;
     const suspicious = suspiciousMatch(command);
-    if (command.includes(MANAGED_TAG) && suspicious === null) continue;
+    const managed = command.includes(MANAGED_TAG) || (scope === 'user' && command.includes(LEGACY_MANAGED_TAG));
+    if (managed && suspicious === null) continue;
+    if (scope === 'project' && command.includes('run-hook.sh') && suspicious === null) {
+      findings.push({
+        filePath,
+        host,
+        scope,
+        ruleId: 'legacy-project-hook-adapter',
+        severity: 'warn',
+        summary: `${hostLabel} ${event} hook uses the retired run-hook.sh project adapter`,
+        recommendation: 'Run repo-harness migrate --apply or reinstall project adapters with repo-harness install --target both --scope project.',
+      });
+      continue;
+    }
     findings.push({
       filePath,
+      host,
+      scope,
       ruleId: suspicious?.ruleId ?? 'unmanaged-hook-command',
       severity: suspicious ? 'high' : 'warn',
       summary: suspicious
@@ -225,7 +242,7 @@ function scanVscodeTasks(findings: SecurityFinding[], filePath: string): void {
   try {
     parsed = readJson(filePath);
   } catch (err) {
-    pushJsonFailure(findings, filePath, err);
+    pushJsonFailure(findings, filePath, err, 'vscode', 'project');
     return;
   }
 
@@ -236,6 +253,8 @@ function scanVscodeTasks(findings: SecurityFinding[], filePath: string): void {
     const suspicious = suspiciousMatch(command);
     findings.push({
       filePath,
+      host: 'vscode',
+      scope: 'project',
       ruleId: suspicious ? 'vscode-folder-open-suspicious' : 'vscode-folder-open-task',
       severity: suspicious ? 'high' : 'warn',
       summary: suspicious
@@ -267,11 +286,11 @@ export function runSecurityScan(opts: SecurityScanOptions = {}): SecurityScanRep
   ].map((entry) => ({ ...entry, exists: fs.existsSync(entry.filePath) }));
 
   const findings: SecurityFinding[] = [];
-  scanHookConfig(findings, scannedFiles[0].filePath, 'Claude user-level', false);
-  scanHookConfig(findings, scannedFiles[1].filePath, 'Codex user-level', false);
+  scanHookConfig(findings, scannedFiles[0].filePath, 'Claude user-level', 'claude', 'user');
+  scanHookConfig(findings, scannedFiles[1].filePath, 'Codex user-level', 'codex', 'user');
   scanVscodeTasks(findings, scannedFiles[2].filePath);
-  scanHookConfig(findings, scannedFiles[3].filePath, 'Claude', true);
-  scanHookConfig(findings, scannedFiles[4].filePath, 'Codex', true);
+  scanHookConfig(findings, scannedFiles[3].filePath, 'Claude project-level', 'claude', 'project');
+  scanHookConfig(findings, scannedFiles[4].filePath, 'Codex project-level', 'codex', 'project');
 
   return { status: reportStatus(findings), findings, scannedFiles };
 }
@@ -286,7 +305,7 @@ export function formatSecurityScan(report: SecurityScanReport, asJson = false): 
     return lines.join('\n');
   }
   for (const finding of report.findings) {
-    lines.push(`- [${finding.severity}] ${finding.ruleId}: ${finding.summary}`);
+    lines.push(`- [${finding.severity}] ${finding.ruleId} (${finding.host}/${finding.scope}): ${finding.summary}`);
     lines.push(`  ${finding.filePath}`);
     lines.push(`  ${finding.recommendation}`);
   }

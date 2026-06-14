@@ -115,8 +115,8 @@ class ClaudeTarget implements AgentTarget {
     };
   }
 
-  uninstall(loc: Location): WriteResult {
-    const filePath = resolvePath(loc, process.cwd());
+  uninstall(loc: Location, opts: InstallOptions = {}): WriteResult {
+    const filePath = resolvePath(loc, opts.cwd ?? process.cwd());
     if (!fs.existsSync(filePath)) {
       return { files: [{ path: filePath, action: 'not-found' }] };
     }

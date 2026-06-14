@@ -12,7 +12,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { ALL_TARGETS } from '../installer/targets/registry';
 import { checkCodegraph, type CodegraphCheckResult } from '../tools/codegraph';
-import { CLI_VERSION } from './status';
+import { CLI_VERSION, runStatus, type StatusReport } from './status';
 import { runSecurityScan, type SecurityScanReport } from './security';
 import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
@@ -166,6 +166,154 @@ function checkTargetInstall(target: (typeof ALL_TARGETS)[number]): DoctorCheckRe
     };
   }
   return { id, describe, status: 'ok', detail: `installed at ${det.configPath}` };
+}
+
+function checkHookScopeIntent(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'hook-scope-intent';
+  const describe = 'Configured hook adapter scope intent';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const intent = statusReport.scopes.intent;
+  return {
+    id,
+    describe,
+    status: intent.hooks === 'unknown' ? 'warn' : 'ok',
+    detail: `hooks=${intent.hooks}; runtime=${intent.runtime}; policy=${statusReport.repo.policyPath ?? 'missing'}`,
+  };
+}
+
+function checkProjectAdapter(statusReport: StatusReport, host: 'codex' | 'claude'): DoctorCheckResult {
+  const id = `project-${host}-adapter`;
+  const describe = `${host === 'codex' ? 'Codex' : 'Claude Code'} project adapter`;
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const entry = statusReport.targets.find((target) => target.id === host && target.scope === 'project');
+  if (entry?.alreadyConfigured) {
+    return {
+      id,
+      describe,
+      status: 'ok',
+      detail: `${entry.managedEntryCount}/${entry.expectedEntryCount} managed entries at ${entry.configPath}`,
+    };
+  }
+  if (statusReport.scopes.intent.hooks === 'project') {
+    return {
+      id,
+      describe,
+      status: 'fail',
+      detail: `project hook scope is intended but ${host} project adapter is missing${entry?.configPath ? ` at ${entry.configPath}` : ''}`,
+    };
+  }
+  return {
+    id,
+    describe,
+    status: 'na',
+    detail: `project adapter not intended (hook scope intent=${statusReport.scopes.intent.hooks})`,
+  };
+}
+
+function checkMixedScopeAdapters(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'mixed-scope-adapters';
+  const describe = 'User/project adapter overlap';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const projectConfigured = statusReport.targets.filter((target) => target.scope === 'project' && target.alreadyConfigured);
+  const userConfigured = statusReport.targets.filter((target) => target.scope === 'user' && target.alreadyConfigured);
+  if (statusReport.scopes.intent.hooks === 'project' && userConfigured.length > 0) {
+    return {
+      id,
+      describe,
+      status: 'warn',
+      detail: `project-only intent with user adapters still configured: ${userConfigured.map((target) => `${target.id}:${target.configPath}`).join(', ')}`,
+    };
+  }
+  if (projectConfigured.length > 0 && userConfigured.length > 0) {
+    return {
+      id,
+      describe,
+      status: 'warn',
+      detail: `both project and user adapters are configured: project=${projectConfigured.length}; user=${userConfigured.length}`,
+    };
+  }
+  return {
+    id,
+    describe,
+    status: 'ok',
+    detail: `project=${projectConfigured.length}; user=${userConfigured.length}`,
+  };
+}
+
+function checkProjectHookRuntime(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'project-hook-runtime';
+  const describe = 'Project hook runtime executable';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const runtime = statusReport.scopes.runtime;
+  if (runtime.status === 'not-required') {
+    return { id, describe, status: 'na', detail: `runtime mode=${runtime.mode}` };
+  }
+  if (runtime.status === 'present') {
+    return { id, describe, status: 'ok', detail: `${runtime.mode} at ${runtime.path}` };
+  }
+  return {
+    id,
+    describe,
+    status: 'fail',
+    detail: `${runtime.mode} runtime missing or not executable at ${runtime.path}; remediation=repo-harness install --target both --scope project`,
+  };
+}
+
+function checkProjectSkills(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'project-skills';
+  const describe = 'Project-scoped repo-harness skills';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  if (statusReport.scopes.intent.skills !== 'project') {
+    return {
+      id,
+      describe,
+      status: statusReport.scopes.intent.skills === 'none' ? 'ok' : 'na',
+      detail: `skill scope intent=${statusReport.scopes.intent.skills}`,
+    };
+  }
+  const projectSkills = statusReport.scopes.skills.filter((skill) => skill.scope === 'project');
+  const missing = projectSkills.filter((skill) => skill.status !== 'present');
+  if (missing.length === 0) {
+    return {
+      id,
+      describe,
+      status: 'ok',
+      detail: projectSkills.map((skill) => `${skill.host}:${skill.path}`).join(', '),
+    };
+  }
+  return {
+    id,
+    describe,
+    status: 'fail',
+    detail: `missing project skills: ${missing.map((skill) => `${skill.host}:${skill.path}`).join(', ')}`,
+  };
+}
+
+function checkThirdPartyTooling(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'third-party-tooling';
+  const describe = 'Third-party skill/tooling scope';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const tooling = statusReport.scopes.externalTools;
+  const detail = `scope=${tooling.scope}; waza=${tooling.waza}; mermaid=${tooling.mermaid}; gbrain=${statusReport.scopes.brain.mode}; codegraph-mcp-intent=${statusReport.scopes.intent.codegraphMcp}`;
+  if (tooling.scope === 'none') {
+    return { id, describe, status: 'ok', detail };
+  }
+  if (tooling.scope === 'project' && (tooling.waza === 'missing' || tooling.mermaid === 'missing')) {
+    return { id, describe, status: 'warn', detail };
+  }
+  return { id, describe, status: tooling.scope === 'unknown' ? 'warn' : 'ok', detail };
 }
 
 function checkCodexTrustState(): DoctorCheckResult {
@@ -411,6 +559,7 @@ function checkHookScriptDrift(cwd: string): DoctorCheckResult {
 
 export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   const checks: DoctorCheckResult[] = [];
+  const statusReport = runStatus(cwd);
   const codegraphProbe = probeCodegraph(cwd);
   const securityReport = runSecurityScan({ cwd });
   checks.push(checkPath());
@@ -421,6 +570,13 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
       checks.push(checkTargetInstall(target));
     }
   }
+  checks.push(checkHookScopeIntent(statusReport));
+  checks.push(checkProjectAdapter(statusReport, 'codex'));
+  checks.push(checkProjectAdapter(statusReport, 'claude'));
+  checks.push(checkMixedScopeAdapters(statusReport));
+  checks.push(checkProjectHookRuntime(statusReport));
+  checks.push(checkProjectSkills(statusReport));
+  checks.push(checkThirdPartyTooling(statusReport));
   checks.push(checkCodexTrustState());
   checks.push(checkCodegraphReadiness(codegraphProbe));
   checks.push(checkCodegraphMcpHost(codegraphProbe, 'codex'));

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execSync, spawnSync } from 'child_process';
-import { runInstall } from '../../src/cli/commands/install';
+import { runInstall, runUninstall } from '../../src/cli/commands/install';
 import {
   PROJECT_HOOK_BIN_REL,
   PROJECT_RUNTIME_VERSION_REL,
@@ -237,6 +237,41 @@ describe('install command (Phase 1B)', () => {
       const beforeUninstall = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       expect(beforeUninstall.theme).toBe('dark');
       expect(beforeUninstall.hooks.UserPromptSubmit.length).toBe(2);
+
+      const uninstalled = runUninstall({ target: 'claude', scope: 'user' });
+      expect(uninstalled.exitCode).toBe(0);
+      const afterUninstall = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      expect(afterUninstall.theme).toBe('dark');
+      expect(afterUninstall.hooks.UserPromptSubmit.length).toBe(1);
+      expect(afterUninstall.hooks.UserPromptSubmit[0].hooks[0].command).toBe('rtk hook claude');
+
+      runInstall({ target: 'claude', location: 'global' });
+      const afterReinstall = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      expect(afterReinstall.theme).toBe('dark');
+      expect(afterReinstall.hooks.UserPromptSubmit.length).toBe(2);
+    });
+  });
+
+  test('uninstall --scope project removes only project managed entries', () => {
+    withTempHome(() => {
+      const repo = fs.realpathSync(
+        fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-uninstall-project-')),
+      );
+      try {
+        runInstall({ target: 'codex', scope: 'project', cwd: repo });
+        const hooksPath = path.join(repo, '.codex/hooks.json');
+        const data = JSON.parse(fs.readFileSync(hooksPath, 'utf-8'));
+        data.hooks.SessionStart.unshift({ hooks: [{ type: 'command', command: 'rtk hook codex' }] });
+        fs.writeFileSync(hooksPath, `${JSON.stringify(data, null, 2)}\n`);
+
+        const result = runUninstall({ target: 'codex', scope: 'project', cwd: repo });
+        expect(result.exitCode).toBe(0);
+        const after = JSON.parse(fs.readFileSync(hooksPath, 'utf-8'));
+        expect(after.hooks.SessionStart.length).toBe(1);
+        expect(after.hooks.SessionStart[0].hooks[0].command).toBe('rtk hook codex');
+      } finally {
+        fs.rmSync(repo, { recursive: true, force: true });
+      }
     });
   });
 

@@ -23,7 +23,7 @@ Authoritative surfaces:
 - Public command facades: `assets/skill-commands/*/SKILL.md` plus `assets/skill-commands/manifest.json`.
 - Engine: `scripts/inspect-project-state.ts`, `scripts/migrate-project-template.sh`, `scripts/migrate-workflow-docs.ts`, `scripts/create-project-dirs.sh`, `scripts/lib/project-init-lib.sh`.
 - Contract assets: `assets/workflow-contract.v1.json`, `.ai/harness/workflow-contract.json`, `.ai/harness/policy.json`, `.ai/context/context-map.json`, `.ai/context/capabilities.json`.
-- Runtime harness: `assets/hooks/`, `.ai/hooks/`, user-level host adapters, and ignored `.ai/harness/*` runtime state.
+- Runtime harness: `assets/hooks/`, `.ai/hooks/`, scope-aware user or project host adapters, optional project-vendored hook runtime, and ignored `.ai/harness/*` runtime state.
 - Verification: `tests/`, `evals/`, `scripts/check-task-workflow.sh`, `scripts/check-task-sync.sh`, `scripts/check-agent-tooling.sh`, `scripts/ensure-codegraph.sh`, `scripts/check-brain-manifest.sh`, `scripts/sync-brain-docs.sh`.
 
 Out of scope:
@@ -55,7 +55,7 @@ Project
 
 - [Public Surface](domains/public-surface.md): root router, README, root agent docs, and action command facades.
 - [Workflow Engine](domains/workflow-engine.md): inspection, migration, template install, contract assets, and policy/context generation.
-- [Runtime Harness](domains/runtime-harness.md): generated hook implementation, user-level adapter settings, handoff, and runtime event state.
+- [Runtime Harness](domains/runtime-harness.md): generated hook implementation, user/project adapter settings, handoff, and runtime event state.
 - [Verification](domains/verification.md): unit tests, smoke checks, eval fixtures, CodeGraph readiness, and advisory tooling probes.
 
 ## Architecture Drift Flow

@@ -138,3 +138,44 @@ export function runInstall(opts: InstallCommandOptions): InstallCommandResult {
 
   return { exitCode, lines };
 }
+
+export function runUninstall(opts: Omit<InstallCommandOptions, 'runtime'>): InstallCommandResult {
+  const targets = resolveTargets(opts.target);
+  const location = resolveLocation(opts);
+  const lines: string[] = [];
+  let exitCode = 0;
+
+  if (location === null) {
+    for (const target of targets) {
+      lines.push(`[${target.id}] skipped: --scope none`);
+    }
+    return { exitCode: 0, lines };
+  }
+
+  const projectCwd = resolveProjectCwd(opts, location);
+  for (const target of targets) {
+    if (!target.supportsLocation(location)) {
+      if (opts.target === 'both') {
+        lines.push(`[${target.id}] skipped: --location ${location} not supported`);
+        continue;
+      }
+      lines.push(`[${target.id}] error: --location ${location} not supported`);
+      exitCode = 2;
+      continue;
+    }
+    try {
+      const result = target.uninstall(location, { cwd: projectCwd });
+      for (const file of result.files) {
+        lines.push(`[${target.id}] ${file.action}: ${file.path}`);
+      }
+      for (const note of result.notes ?? []) {
+        lines.push(`[${target.id}] note: ${note}`);
+      }
+    } catch (err) {
+      lines.push(`[${target.id}] error: ${(err as Error).message}`);
+      if (exitCode === 0) exitCode = 1;
+    }
+  }
+
+  return { exitCode, lines };
+}

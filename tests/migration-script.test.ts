@@ -36,13 +36,14 @@ describe("Migration script contract", () => {
     expect(script).toContain("--repo");
   });
 
-  test("should retire project hook adapters through user-level hosts", () => {
+  test("should describe scope-aware hook adapter targets", () => {
     const script = read("scripts/migrate-project-template.sh");
     const sharedLib = read("scripts/lib/project-init-lib.sh");
     expect(script).toContain(".claude/settings.json");
     expect(script).toContain(".codex/hooks.json");
     expect(sharedLib).toContain("settings.local.json");
     expect(script).toContain("Host hook config target: user-level");
+    expect(script).toContain("Host hook config target: project-level");
     expect(sharedLib).toContain("REPO_HARNESS_HOST_ADAPTER_SCOPE");
     expect(script).toContain("migrate_workflow");
   });
@@ -173,6 +174,10 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("upgrade_plan:");
       expect(res.stdout).toContain("Upgrade/reconfigure/cleanup plan");
       expect(res.stdout).toContain("Host hook adapters default to user scope:");
+      expect(res.stdout).toContain("Repo-harness skill scope: user");
+      expect(res.stdout).toContain("Third-party tool scope: user");
+      expect(res.stdout).toContain("CodeGraph MCP scope: none");
+      expect(res.stdout).toContain("Brain mode: skip");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -525,6 +530,8 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("External Tooling Report");
       expect(res.stdout).toContain("Host hook adapters default to user scope:");
       expect(res.stdout).toContain("Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH");
+      expect(res.stdout).toContain("Repo-harness skill scope: user");
+      expect(res.stdout).toContain("Third-party tool scope: user");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }
@@ -562,6 +569,8 @@ describe("Migration script contract", () => {
       expect(policy.host_adapters.scope).toBe("project");
       expect(policy.host_adapters.hook_runtime_mode).toBe("project-vendored-bun");
       expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/repo-harness-hook");
+      expect(policy.skills.repo_harness_scope).toBe("user");
+      expect(policy.external_tooling.scope).toBe("user");
       expect(res.stdout).toContain("Host hook config target: project-level .claude/settings.json and .codex/hooks.json");
       expect(res.stdout).toContain("Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook");
       expect(res.stdout).toContain("Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version");

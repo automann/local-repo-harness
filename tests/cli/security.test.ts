@@ -91,22 +91,39 @@ describe('security scan command', () => {
     });
   });
 
-  test('legacy project hook adapter is reported as a warning', () => {
+  test('managed project hook adapter is first-class and clean', () => {
+    withTempHomeAndRepo(({ home, repo }) => {
+      const previousHome = process.env.HOME;
+      process.env.HOME = home;
+      try {
+        runInstall({ target: 'both', scope: 'project', cwd: repo });
+        const report = runSecurityScan({ cwd: repo, home });
+        expect(report.status).toBe('ok');
+        expect(report.findings).toEqual([]);
+      } finally {
+        if (previousHome === undefined) delete process.env.HOME;
+        else process.env.HOME = previousHome;
+      }
+    });
+  });
+
+  test('legacy run-hook.sh project hook adapter is reported as a migration warning', () => {
     withTempHomeAndRepo(({ home, repo }) => {
       fs.mkdirSync(path.join(repo, '.codex'), { recursive: true });
       fs.writeFileSync(
         path.join(repo, '.codex', 'hooks.json'),
         JSON.stringify({
           hooks: {
-            SessionStart: [{ hooks: [{ type: 'command', command: 'repo-harness hook SessionStart --route default' }] }],
+            SessionStart: [{ hooks: [{ type: 'command', command: 'bash .ai/hooks/run-hook.sh session-start-context.sh' }] }],
           },
         }, null, 2),
       );
-
       const report = runSecurityScan({ cwd: repo, home });
       const finding = report.findings.find((entry) => entry.ruleId === 'legacy-project-hook-adapter');
       expect(finding).toBeDefined();
       expect(finding?.severity).toBe('warn');
+      expect(finding?.scope).toBe('project');
+      expect(finding?.host).toBe('codex');
     });
   });
 

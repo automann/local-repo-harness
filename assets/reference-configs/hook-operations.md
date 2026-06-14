@@ -14,7 +14,7 @@ Start with the shortest truth path:
 Central-first means one `install` (or one CLI upgrade) updates hook behavior for every trusted opt-in repo at once; vendored `.ai/hooks` copies are inert defaults unless the repo pins `"hook_source": "repo"`. Missing advisory scripts warn and skip, but required guard routes still fail closed. `repo-harness doctor` and `scripts/repo-harness.sh status` report which source is active for the current repo.
 Generated host adapter commands carry a 30 second timeout; long-running work belongs in explicit CLI commands, not hook foreground execution.
 
-`repo-harness update`, migration, and new-project scaffold paths do not copy the full hook runtime into ordinary downstream repos. Without a `"hook_source": "repo"` pin they prune stale top-level `.ai/hooks/*.sh` entry scripts and refresh only `.ai/hooks/lib/` helper libraries plus a README tombstone, because active execution should come from the user-level adapter and packaged hooks. Repos that intentionally develop or override hooks must set `"hook_source": "repo"` before syncing a full vendored hook runtime.
+`repo-harness update`, migration, and new-project scaffold paths do not copy the full hook implementation into ordinary downstream repos. Without a `"hook_source": "repo"` pin they prune stale top-level `.ai/hooks/*.sh` entry scripts and refresh only `.ai/hooks/lib/` helper libraries plus a README tombstone, because active execution should come from the packaged runtime or the project-vendored runtime under `.ai/harness/runtime/`. Repos that intentionally develop or override hooks must set `"hook_source": "repo"` before syncing a full vendored hook runtime.
 
 `UserPromptSubmit.default` dispatches to the active `prompt-guard.sh` resolved by the central-first hook source decision. For ordinary repos that means the packaged/user-level runtime; `.ai/hooks/prompt-guard.sh` is active only when the repo pins `"hook_source": "repo"`. The shell layer parses host prompt JSON, reads workflow files, performs capture side effects, and renders host-safe output; it pipes `{"prompt": ...}` into `repo-harness-hook prompt-guard-decide`, which owns every prompt-text intent classifier (Unicode-aware, in `src/cli/hook/prompt-intents.ts`) plus the intent x state decision table and returns one verdict JSON line (action, intent facts, derived strings). If the engine is unreachable or predates the protocol, the prompt layer degrades to a one-shot advisory instead of guessing; there is no shell fallback decision table.
 
@@ -86,7 +86,7 @@ This repo has two hook surfaces on purpose:
 
 - `assets/hooks/` defines what downstream repos and the central runtime receive (`install` copies it to `~/.repo-harness/hooks/`; the npm package ships it for `repo-harness-hook`).
 - `.ai/hooks/` defines this self-hosted repo's current runtime behavior; the self-host policy pins `"hook_source": "repo"` so hook development runs live working-tree code instead of the central copy.
-- User-level `~/.claude/settings.json` and `~/.codex/hooks.json` are host adapters only.
+- User-level `~/.claude/settings.json` / `~/.codex/hooks.json` and project-level `.claude/settings.json` / `.codex/hooks.json` are host adapters only.
 
 Every hook change should state whether it affects `self-host`, `generated`, or
 `both`. If behavior must stay aligned, update both surfaces in the same change.

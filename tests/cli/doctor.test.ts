@@ -10,6 +10,7 @@ import {
   runDoctor,
 } from '../../src/cli/commands/doctor';
 import { ROUTES } from '../../src/cli/hook/route-registry';
+import { runInstall } from '../../src/cli/commands/install';
 
 const DOCTOR_CHECK_TIMEOUT_MS = 15000;
 
@@ -191,6 +192,76 @@ describe('doctor command (Phase 1C)', () => {
       expect(hooks.status).toBe('ok');
       expect(hooks.detail).toContain('source=packaged');
       expect(hooks.detail).toContain(path.join('assets', 'hooks'));
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('project-only scope passes with project adapters, runtime, and skills', () => {
+    withTempHome(() => {
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'project' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+          }, null, 2),
+        );
+        runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
+        for (const hostDir of ['.agents', '.claude']) {
+          const skill = path.join(repoRoot, hostDir, 'skills', 'repo-harness', 'SKILL.md');
+          fs.mkdirSync(path.dirname(skill), { recursive: true });
+          fs.writeFileSync(skill, '# repo-harness\n');
+        }
+
+        const r = runDoctor(repoRoot);
+        expect(r.checks.find((c) => c.id === 'hook-scope-intent')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'project-codex-adapter')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'project-claude-adapter')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'project-hook-runtime')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'project-skills')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'third-party-tooling')?.status).toBe('ok');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('project intent plus stale user adapter produces mixed-scope warning', () => {
+    withTempHome(() => {
+      runInstall({ target: 'codex', scope: 'user' });
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'none' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+          }, null, 2),
+        );
+        runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
+
+        const r = runDoctor(repoRoot);
+        const mixed = r.checks.find((c) => c.id === 'mixed-scope-adapters')!;
+        expect(mixed.status).toBe('warn');
+        expect(mixed.detail).toContain('project-only intent');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('project intent reports missing project runtime and skills', () => {
+    withTempHome(() => {
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'project' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+          }, null, 2),
+        );
+
+        const r = runDoctor(repoRoot);
+        expect(r.checks.find((c) => c.id === 'project-hook-runtime')?.status).toBe('fail');
+        expect(r.checks.find((c) => c.id === 'project-skills')?.status).toBe('fail');
+      });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 

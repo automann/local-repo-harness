@@ -82,7 +82,7 @@ export interface AgentTarget {
   supportsLocation(loc: Location): boolean;
   detect(loc: Location, opts?: DetectionOptions): DetectionResult;
   install(loc: Location, opts: InstallOptions): WriteResult;
-  uninstall(loc: Location): WriteResult;
+  uninstall(loc: Location, opts?: DetectionOptions): WriteResult;
   /** Filesystem paths this target would write to at this location. */
   describePaths(loc: Location, opts?: DetectionOptions): string[];
 }

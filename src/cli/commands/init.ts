@@ -412,6 +412,10 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     REPO_HARNESS_HOOK_RUNTIME_MODE: hostAdapters && hostAdapterScope !== "none"
       ? resolveRuntimeMode(scopeToLocation(hostAdapterScope), runtimeSelection)
       : "none",
+    REPO_HARNESS_SKILL_SCOPE: syncSkill ? skillScope : "none",
+    REPO_HARNESS_EXTERNAL_TOOL_SCOPE: externalToolScope,
+    REPO_HARNESS_CODEGRAPH_MCP_SCOPE: codegraph ? codegraphMcpScope : "none",
+    REPO_HARNESS_BRAIN_MODE: brainMode,
   };
 
   if (syncSkill && apply && skillScope === "user") {

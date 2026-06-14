@@ -93,10 +93,27 @@ describe('status command (Phase 1C)', () => {
         execSync('git init', { cwd: repo, stdio: 'ignore' });
         fs.mkdirSync(path.join(repo, '.ai/harness'), { recursive: true });
         fs.writeFileSync(path.join(repo, '.ai/harness/workflow-contract.json'), '{}');
+        fs.writeFileSync(
+          path.join(repo, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'project' },
+            external_tooling: {
+              scope: 'none',
+              codegraph: { mcp_scope: 'project' },
+              gbrain: { mode: 'manifest-only' },
+            },
+          }, null, 2),
+        );
         const r = runStatus(repo);
         expect(r.repo.inGitRepo).toBe(true);
         expect(r.repo.optIn).toBe(true);
         expect(r.repo.repoRoot).toBe(repo);
+        expect(r.scopes.intent.hooks).toBe('project');
+        expect(r.scopes.intent.skills).toBe('project');
+        expect(r.scopes.intent.externalTools).toBe('none');
+        expect(r.scopes.intent.codegraphMcp).toBe('project');
+        expect(r.scopes.runtime.status).toBe('missing');
       } finally {
         fs.rmSync(repo, { recursive: true, force: true });
       }
@@ -123,6 +140,9 @@ describe('status command (Phase 1C)', () => {
       expect(text).toContain('Hosts:');
       expect(text).toContain('codex (user):');
       expect(text).toContain('codex (project):');
+      expect(text).toContain('Scopes:');
+      expect(text).toContain('external tools:');
+      expect(text).toContain('codegraph:');
       expect(text).toContain('Routes:');
       expect(text).toContain('Current repo:');
     });

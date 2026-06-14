@@ -7,7 +7,7 @@
  */
 
 import { Command } from 'commander';
-import { runInstall, type InstallTargetSpec } from './commands/install';
+import { runInstall, runUninstall, type InstallTargetSpec } from './commands/install';
 import { runInit, runInteractiveInit, type InitBrainMode } from './commands/init';
 import { runHook } from './commands/hook';
 import { CLI_VERSION, formatStatus, runStatus } from './commands/status';
@@ -30,6 +30,7 @@ export const SUBCOMMANDS = [
   'init',
   'init-hook',
   'install',
+  'uninstall',
   'hook',
   'status',
   'doctor',
@@ -259,6 +260,48 @@ export function buildProgram(): Command {
     });
 
   program
+    .command('uninstall')
+    .description('Remove repo-harness-managed hook adapters from Codex and/or Claude host config')
+    .requiredOption('--target <target>', `Target host: ${VALID_TARGETS.join('|')}`)
+    .option('--location <location>', `Install location: ${VALID_LOCATIONS.join('|')}`)
+    .option('--scope <scope>', `Install scope: ${VALID_SCOPES.join('|')}`)
+    .action((rawOpts: { target: string; location?: string; scope?: string }) => {
+      if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
+        console.error(
+          `repo-harness uninstall: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      if (rawOpts.location && rawOpts.scope) {
+        console.error('repo-harness uninstall: use either --location or --scope, not both');
+        process.exit(2);
+      }
+      if (!rawOpts.location && !rawOpts.scope) {
+        console.error('repo-harness uninstall: one of --location or --scope is required');
+        process.exit(2);
+      }
+      if (rawOpts.location && !VALID_LOCATIONS.includes(rawOpts.location as Location)) {
+        console.error(
+          `repo-harness uninstall: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      if (rawOpts.scope && !VALID_SCOPES.includes(rawOpts.scope as InstallScope)) {
+        console.error(
+          `repo-harness uninstall: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      const result = runUninstall({
+        target: rawOpts.target as InstallTargetSpec,
+        location: rawOpts.location as Location | undefined,
+        scope: rawOpts.scope as InstallScope | undefined,
+      });
+      for (const line of result.lines) console.log(line);
+      process.exit(result.exitCode);
+    });
+
+  program
     .command('hook')
     .description('Dispatch a hook event to opt-in repo .ai/hooks/<script>')
     .argument('<event>', 'Hook event name')
@@ -295,7 +338,7 @@ export function buildProgram(): Command {
 
   program
     .command('migrate')
-    .description('Migrate legacy project-level hook adapters to the global CLI (dry-run by default)')
+    .description('Remove retired project-level hook adapters while preserving managed project/user adapters')
     .option('--apply', 'Commit changes (default is dry-run)')
     .option('--json', 'Output JSON plan')
     .action((rawOpts: { apply?: boolean; json?: boolean }) => {

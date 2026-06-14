@@ -4,7 +4,11 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
-- (empty)
+### Added
+
+- Added project/user scope diagnostics for status, doctor, security scan,
+  migration cleanup, and README safe-adoption guidance so project-scoped
+  installs do not look like legacy hook state.
 
 ## [0.4.3] - 2026-06-13
 

@@ -212,21 +212,70 @@ concrete sprint instead of reinterpreting the original chat.
 ## First 5 Minutes
 
 This is the fastest path for an AI tooling owner evaluating whether the workflow is
-safe to adopt in a real repo. It separates the machine-level runtime bootstrap
-from the repo-local contract install, so a dry run can show exactly what will
-change before anything is applied.
+safe to adopt in a real repo. Start with the repo-local contract and keep host
+runtime writes off until the dry-run output looks right.
 
-### 1. Bootstrap the host runtime once
+### 1. Preview the repo-local contract only
+
+```bash
+npx -y repo-harness update --dry-run \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none
+```
+
+This is the lowest-impact inspection path. It should not write user hooks,
+user skills, user MCP config, or brain root state. It only reports the repo
+workflow contract that would be created or refreshed.
+
+### 2. Apply the repo-local contract only
+
+```bash
+npx -y repo-harness update \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none
+```
+
+This installs the file-backed workflow surface without registering Codex or
+Claude adapters and without installing external skills. Existing repos use
+`repo-harness update`; new projects or modules use `repo-harness-scaffold`.
+
+### 3. Enable project hooks and project skills
+
+```bash
+npx -y repo-harness update \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none
+```
+
+Project Codex skills live under `.agents/skills`; project Claude skills live
+under `.claude/skills`. Project adapters live under `.codex/hooks.json` and
+`.claude/settings.json`, and project runtime lives under `.ai/harness/bin/` plus
+`.ai/harness/runtime/`. Codex still requires trusting the project hooks file in
+Codex Settings before hooks run.
+
+Keep `--external-tool-scope none` until you deliberately want project copies of
+Waza/Mermaid. Project Waza/Mermaid installs use the skills CLI without `-g`.
+Keep `--codegraph-mcp-scope none` unless you want project MCP config in
+`.codex/config.toml` and `.mcp.json`. gbrain remains manual or manifest-only in
+project-only mode.
+
+### 4. Optional user-level bootstrap
 
 ```bash
 npx -y repo-harness init
 ```
 
-`init` is the first-run global bootstrap path. It installs the current npm
-package as the global CLI, refreshes repo-harness skill aliases, installs
-user-level hook adapters, configures Waza runtime skills, persists a brain root
-under `~/.repo-harness/config.json`, and configures CodeGraph MCP. It does not
-apply repo-local workflow files to the current directory.
+`init` is the broad-impact machine bootstrap path. It installs the current npm
+package as the global CLI, refreshes user skill aliases, writes user-level
+Codex/Claude hook adapters, installs Waza/Mermaid runtime skills into user
+skill roots, persists a brain root under `~/.repo-harness/config.json`, and
+configures user-level CodeGraph MCP. Use it when you intentionally want
+repo-harness available across repos on the machine.
 
 For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness
 init-hook --json` or add `--check-updates` for version advisories. `init-hook`
@@ -234,38 +283,9 @@ is not a runtime hook: it does not write user-level files, install updates, or
 register adapters. It emits `agent_actions` with the reason, risk, target files,
 optional command, and verification surface for the Agent to execute deliberately.
 
-### 2. Preview the repo-local contract
+### 5. Prove the workflow
 
 ```bash
-npx -y repo-harness update --dry-run
-```
-
-Run the dry run from the target repository root. It reports the specs, task
-state, helper runtime, hook adapter target, and verification files that would be
-created or refreshed. It should not create an application stack; existing repos
-use `repo-harness update`, while new projects or modules use
-`repo-harness-scaffold`.
-
-For a project-scoped install that avoids user-level hooks, skills, and
-CodeGraph MCP registration, make the scope explicit:
-
-```bash
-npx -y repo-harness update \
-  --host-adapter-scope project \
-  --skill-scope project \
-  --external-tool-scope project \
-  --codegraph-mcp-scope project
-```
-
-Project Codex skills live under `.agents/skills`; project Claude skills live
-under `.claude/skills`. Waza/Mermaid project installs use the skills CLI without
-`-g`; CodeGraph project MCP uses `.codex/config.toml` and `.mcp.json`. gbrain
-remains manual or manifest-only in project-only mode.
-
-### 3. Apply, then prove the workflow
-
-```bash
-npx -y repo-harness update
 bash scripts/check-task-workflow.sh --strict
 bun test
 ```
@@ -303,23 +323,12 @@ Claude/Codex paths are symlink-backed runtime entrypoints. Only
 - `bun` for follow-up verification and template assembly
 - `jq` is optional for `--dry-run`, but recommended when applying settings merges
 
-### Start here
+### Default user-scope shortcut
 
-For an existing repo, run from the repo root:
-
-```bash
-npx -y repo-harness update --dry-run
-```
-
-Apply only after the dry-run report looks correct:
-
-```bash
-npx -y repo-harness update
-```
-
-For a new project or module, use the branch command `repo-harness-scaffold`. For
-an existing repo, use `repo-harness update`; it installs or refreshes the harness
-without creating an application stack.
+After you understand the impact surface, you can omit the explicit scope flags
+from the preview and apply commands to use the default user-scoped adapters,
+user skills, and user MCP setup. For a new project or module, use the branch
+command `repo-harness-scaffold`; for an existing repo, use `repo-harness update`.
 
 ### Success looks like this
 

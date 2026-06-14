@@ -1,15 +1,16 @@
 /**
- * `repo-harness migrate` — convert legacy project-level hook adapters to the
- * global CLI pattern (dry-run default; --apply commits).
+ * `repo-harness migrate` — remove retired project-level hook adapters while
+ * preserving supported project/user repo-harness adapters and sibling hooks
+ * (dry-run default; --apply commits).
  *
  * Targets two legacy file shapes:
  *   - <repo>/.codex/hooks.json       (Phase 0 / pre-CLI Codex adapter)
  *   - <repo>/.claude/settings.json   (Phase 0 / pre-CLI Claude adapter, hooks segment)
  *
  * Identification: any hook command containing `run-hook.sh` substring is treated
- * as a legacy project-level entry. Phase 0 prototype + canary observations
- * confirmed this is the stable signature. User-authored sibling hooks (e.g.
- * `rtk hook claude`) do not match and survive migration.
+ * as a retired project-level entry. Current managed adapters use
+ * REPO_HARNESS_MANAGED=1 and must be preserved. User-authored sibling hooks
+ * (e.g. `rtk hook claude`) do not match and survive migration.
  *
  * Safety:
  *   - --dry-run is default; --apply explicitly mutates.

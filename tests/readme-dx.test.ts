@@ -50,11 +50,22 @@ describe("README DX contract", () => {
     const maintainer = section(readme, "Maintainer Reference");
 
     expect(readme.indexOf("## First 5 Minutes")).toBeLessThan(readme.indexOf("## Current Model"));
+    expect(firstFive.indexOf("npx -y repo-harness update --dry-run")).toBeLessThan(firstFive.indexOf("npx -y repo-harness init"));
+    expect(firstFive).toContain("--host-adapter-scope none");
+    expect(firstFive).toContain("--skill-scope none");
+    expect(firstFive).toContain("--external-tool-scope none");
+    expect(firstFive).toContain("--host-adapter-scope project");
+    expect(firstFive).toContain("--runtime project-vendored-bun");
+    expect(firstFive).toContain("--skill-scope project");
+    expect(firstFive).toContain("--codegraph-mcp-scope none");
+    expect(firstFive).toContain("user hooks");
+    expect(firstFive).toContain("user skills");
+    expect(firstFive).toContain("user MCP config");
+    expect(firstFive).toContain("brain root");
     expect(firstFive).toContain("npx -y repo-harness init");
-    expect(firstFive).toContain("npx -y repo-harness update --dry-run");
     expect(firstFive).toContain("npx -y repo-harness update");
-    expect(firstFive).toContain("first-run global bootstrap path");
-    expect(firstFive.match(/npx -y repo-harness update --dry-run/g)?.length).toBe(2);
+    expect(firstFive).toContain("broad-impact machine bootstrap path");
+    expect(firstFive.match(/npx -y repo-harness update --dry-run/g)?.length).toBe(1);
     expect(firstFive).not.toContain("npx -y repo-harness init --dry-run");
     expect(firstFive).not.toContain("bun scripts/assemble-template.ts");
     expect(firstFive).toContain("=== Migration Report ===");

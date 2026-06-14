@@ -179,19 +179,19 @@ flowchart TD
   end
 ```
 
-### User-Level Adapter Ownership
+### Scope-Aware Adapter Ownership
 
 ```mermaid
 flowchart TD
-  CLI["this repo CLI:<br/>repo-harness install --target both --location global"]
+  CLI["this repo CLI:<br/>repo-harness install --target both --scope user|project"]
   CLI --> CodexTarget["src/cli/installer/targets/codex.ts"]
   CLI --> ClaudeTarget["src/cli/installer/targets/claude.ts"]
 
   CodexTarget --> ManagedCodex["managed-entries.ts<br/>buildManagedHooks('codex')"]
   ClaudeTarget --> ManagedClaude["managed-entries.ts<br/>buildManagedHooks('claude')"]
 
-  ManagedCodex --> CodexHooks["~/.codex/hooks.json"]
-  ManagedClaude --> ClaudeSettings["~/.claude/settings.json"]
+  ManagedCodex --> CodexHooks["~/.codex/hooks.json<br/>or .codex/hooks.json"]
+  ManagedClaude --> ClaudeSettings["~/.claude/settings.json<br/>or .claude/settings.json"]
 
   CodexHooks --> CodexCmd["HOOK_HOST=codex repo-harness-hook ...<br/>fallback: repo-harness hook ..."]
   ClaudeSettings --> ClaudeCmd["HOOK_HOST=claude repo-harness-hook ...<br/>fallback: repo-harness hook ..."]
@@ -216,15 +216,17 @@ flowchart TD
 
 ## P3 Decision
 
-The shared `.ai/hooks` layer exists to avoid maintaining separate Claude and
-Codex hook implementations. The invariant is single implementation, adapter-only
-host config. The adapter now lives at user level so new repos only opt in by
-carrying repo-local workflow contract files and hook implementation.
+The shared hook layer exists to avoid maintaining separate Claude and Codex hook
+implementations. The invariant is single route implementation, adapter-only host
+config. The adapter can live at user scope for machine-wide reuse or project
+scope for repo-local isolation; non-opt-in repos still do nothing because the
+runtime checks `.ai/harness/workflow-contract.json` before dispatch.
 
 At 10x hook events, the first failure is cold-loading the full CLI on every
-hook event. The invariant is that host adapters point at the minimal
-hook-only entrypoint and then `.ai/hooks`, instead of creating separate
-per-host implementation trees or loading non-hook command modules.
+hook event. The invariant is that host adapters point at the minimal hook-only
+entrypoint and then the active packaged, project-vendored, or repo-pinned hook
+source, instead of creating separate per-host implementation trees or loading
+non-hook command modules.
 
 ## 2026-06-12 Architecture Queue Closeout
 

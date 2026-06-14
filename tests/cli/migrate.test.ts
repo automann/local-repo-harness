@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { formatMigratePlan, runMigrate } from '../../src/cli/commands/migrate';
+import { runInstall } from '../../src/cli/commands/install';
 
 function withTempRepo(fn: (repo: string) => void): void {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-migrate-')));
@@ -110,6 +111,20 @@ describe('migrate command (Phase 1C)', () => {
       const codexPlan = plan.files.find((f) => f.path === codexPath)!;
       expect(codexPlan.legacyEntriesFound).toBe(0);
       expect(codexPlan.action).toBe('no-op');
+    });
+  });
+
+  test('new managed project adapters are preserved', () => {
+    withTempRepo((repo) => {
+      runInstall({ target: 'both', scope: 'project', cwd: repo });
+      const codexPath = path.join(repo, '.codex/hooks.json');
+      const claudePath = path.join(repo, '.claude/settings.json');
+      const codexBefore = fs.readFileSync(codexPath, 'utf-8');
+      const claudeBefore = fs.readFileSync(claudePath, 'utf-8');
+      const plan = runMigrate({ cwd: repo, apply: true });
+      expect(plan.files.every((file) => file.action === 'no-op')).toBe(true);
+      expect(fs.readFileSync(codexPath, 'utf-8')).toBe(codexBefore);
+      expect(fs.readFileSync(claudePath, 'utf-8')).toBe(claudeBefore);
     });
   });
 
