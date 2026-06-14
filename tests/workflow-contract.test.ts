@@ -58,7 +58,8 @@ describe("workflow contract manifest", () => {
 
   test("helper inventory should come from the workflow contract", () => {
     const contract = loadWorkflowContract(join(ROOT, "assets/workflow-contract.v1.json"));
-    expect(contract.helpers.runtimeDirectory).toBe(".ai/harness/scripts");
+    expect(contract.helpers.runtimeDirectory).toBe("package:assets/templates/helpers");
+    expect(contract.helpers.runtimeSource).toBe("package");
     expect(contract.helpers.compatibilityDirectory).toBe("scripts");
     expect(contract.helpers.scripts).toContain("contract-worktree.sh");
     expect(contract.helpers.scripts).toContain("contract-run.ts");
@@ -82,6 +83,10 @@ describe("workflow contract manifest", () => {
     expect(contract.helpers.scripts).toContain("sync-brain-docs.sh");
     expect(contract.helpers.scripts).toContain("check-deploy-sql-order.sh");
     expect(contract.helpers.scripts).toContain("check-architecture-sync.sh");
+    expect(contract.compatibility.repoLocalFirst).toBe(true);
+    expect(contract.compatibility.repoWorkflowStateLocalFirst).toBe(true);
+    expect(contract.compatibility.defaultHelperSource).toBe("package");
+    expect(contract.compatibility.defaultHookSource).toBe("package-or-project-runtime");
     expect(contract.externalTooling?.repoHarnessSkills?.supportedScopes).toEqual(["project", "user", "none"]);
     expect(contract.externalTooling?.repoHarnessSkills?.projectPaths.codex).toBe(".agents/skills");
     expect(contract.externalTooling?.repoHarnessSkills?.projectPaths.claude).toBe(".claude/skills");
@@ -124,16 +129,16 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredFiles).toContain(".ai/harness/brain-manifest.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capabilities.json");
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/capability-resolver.ts");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/architecture-event.ts");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/capability-config.ts");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/contract-worktree.sh");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/contract-run.ts");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/ship-worktrees.sh");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/heartbeat-triage.sh");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/capture-plan.sh");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/refresh-current-status.sh");
-    expect(contract.artifacts.requiredFiles).toContain(".ai/harness/scripts/sync-brain-docs.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/capability-resolver.ts");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/architecture-event.ts");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/capability-config.ts");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/contract-worktree.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/contract-run.ts");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/ship-worktrees.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/heartbeat-triage.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/capture-plan.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/refresh-current-status.sh");
+    expect(contract.artifacts.requiredFiles).toContain("scripts/sync-brain-docs.sh");
     expect(contract.artifacts.requiredFiles).toContain("tasks/current.md");
     expect(contract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
     expect(contract.artifacts.requiredFiles).toContain(".claude/templates/implementation-notes.template.md");
@@ -147,7 +152,8 @@ describe("workflow contract manifest", () => {
     expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/worktrees");
     expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/triage");
     expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/planning");
-    expect(contract.artifacts.requiredDirectories).toContain(".ai/harness/scripts");
+    expect(contract.artifacts.requiredDirectories).not.toContain(".ai/harness/scripts");
+    expect(contract.artifacts.requiredDirectories).toContain("scripts");
     expect(contract.artifacts.requiredDirectories).toContain("deploy/scripts");
     expect(contract.artifacts.requiredDirectories).toContain("deploy/submissions");
     expect(contract.artifacts.requiredDirectories).toContain("deploy/sql");

@@ -13,6 +13,7 @@ import { spawnSync } from "child_process";
 import { assembleTemplate } from "../scripts/assemble-template";
 
 const ROOT = join(import.meta.dir, "..");
+const FACTOR_FACTORY_SMOKE_TIMEOUT_MS = 15000;
 
 function bootstrapRepo(prefix: string, env: Record<string, string> = {}) {
   const cwd = mkdtempSync(join(tmpdir(), `${prefix}-repo-`));
@@ -43,7 +44,7 @@ describe("Factor Factory", () => {
       rmSync(planGCwd, { recursive: true, force: true });
       rmSync(planCCwd, { recursive: true, force: true });
     }
-  });
+  }, FACTOR_FACTORY_SMOKE_TIMEOUT_MS);
 
   test("factor lifecycle commands create, promote, reject, and check registry state", () => {
     const cwd = bootstrapRepo("factor-flow", { REPO_HARNESS_PLAN_TYPE: "G" });
@@ -111,7 +112,7 @@ describe("Factor Factory", () => {
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
-  });
+  }, FACTOR_FACTORY_SMOKE_TIMEOUT_MS);
 
   test("factor templates and template assembly expose Plan G workflow", () => {
     const registryTemplate = JSON.parse(

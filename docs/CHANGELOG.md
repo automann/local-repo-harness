@@ -10,6 +10,47 @@ All notable changes to this skill are documented here.
   migration cleanup, and README safe-adoption guidance so project-scoped
   installs do not look like legacy hook state.
 
+### Changed
+
+- Reconciled the project-scoped install work with the upstream 0.5.0
+  `update`/`adopt` command split so repo-local adoption remains isolated from
+  user-level bootstrap and refresh paths.
+
+## [0.5.0] - 2026-06-14
+
+### Added
+
+- Added README release art from `docs/images/image.png` and documented the
+  install/refresh split for first-run bootstrap, user-level runtime updates,
+  read-only setup audit, and repo-local adoption.
+- Documented the eight managed hook routes installed by the Claude/Codex
+  adapters: `SessionStart.default`, `PreToolUse.edit`,
+  `PreToolUse.subagent`, `PostToolUse.edit`, `PostToolUse.bash`,
+  `PostToolUse.always`, `UserPromptSubmit.default`, and `Stop.default`.
+
+### Changed
+
+- Breaking: `repo-harness update` now owns CLI/user-level runtime refresh only;
+  use `repo-harness adopt` for repo-local workflow install, refresh, and
+  migration.
+- `repo-harness update --check` / `--no-runtime-refresh` now route to the
+  read-only setup checklist, and third-party skill/CodeGraph refreshes require
+  explicit opt-in.
+- Added `repo-harness setup check` as the productized read-only readiness
+  command while keeping `repo-harness init-hook` as a compatibility alias.
+
+### Fixed
+
+- Refused `$HOME` as a repo adoption target before any mutation and hardened
+  legacy context discovery so vendored/cache trees such as `go/pkg/mod`,
+  nested `node_modules`, and `vendor` are not mirrored into.
+
+### Release Notes
+
+- Prepared the `repo-harness@0.5.0` package line for publish; npm publish,
+  registry readback, and GitHub release creation remain explicit release
+  actions.
+
 ## [0.4.3] - 2026-06-13
 
 ### Added

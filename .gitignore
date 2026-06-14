@@ -24,11 +24,9 @@ bun.lockb
 .claude/.atomic_pending
 .claude/.session-id
 .claude/.trace.jsonl
-.claude/.tool-call-count
 .claude/.session-handoff.md
 .claude/.task-state.json
 .claude/.task-handoff.md
-.claude/.context-pressure/
 .claude/.codegraph-state/
 .claude/*.tmp
 .claude/*.bak
@@ -42,7 +40,6 @@ tasks/.current.md.tmp.*
 .ai/harness/failures/latest.jsonl
 .ai/harness/handoff/current.md
 .ai/harness/handoff/resume.md
-.ai/harness/context-budget/latest.json
 .ai/harness/capability-context/
 .ai/harness/security/*
 !.ai/harness/security/.gitkeep

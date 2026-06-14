@@ -88,8 +88,11 @@
     "failure_log_file": ".ai/harness/failures/latest.jsonl",
     "events_file": ".ai/harness/events.jsonl",
     "architecture_events_file": ".ai/harness/architecture/events.jsonl",
+    "runs_dir": ".ai/harness/runs",
     "helper_runtime_dir": ".ai/harness/scripts",
-    "runs_dir": ".ai/harness/runs"
+    "helper_compat_dir": "scripts",
+    "helper_source": "package",
+    "helper_package_dir": "assets/templates/helpers"
   },
   "architecture": {
     "index_file": "docs/architecture/index.md",
@@ -200,6 +203,9 @@
   },
   "documentation": {
     "profile": "minimal-agentic",
+    "reference_source": "user-level-runtime-docs",
+    "reference_stub_marker": "<!-- repo-harness: reference-config-stub v1 -->",
+    "reference_resolver": "repo-harness docs path <doc-id>",
     "required": [
       "docs/spec.md",
       "docs/architecture/index.md"

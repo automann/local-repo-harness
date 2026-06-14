@@ -23,7 +23,7 @@ Weak dependencies:
 - Compatibility name `repo-harness-skill`.
 - Retired `project-initializer` install paths, which are cleanup targets only.
 - `repo-harness init` owns first-run global bootstrap: install the CLI, install user-level hook adapters, configure Waza, persist the brain root, and configure CodeGraph MCP.
-- `repo-harness update` owns repo-local harness adoption and refresh.
+- `repo-harness adopt` owns repo-local harness adoption and refresh.
 - gstack/gbrain policy references remain advisory; this self-host repo vendors CodeGraph as a dev dependency while downstream generated repos keep global MCP setup explicit unless policy opts in.
 
 Out of scope:
@@ -43,7 +43,7 @@ host target.
 
 Concrete route: user asks for an existing repo install -> root `SKILL.md`
 selects `repo-harness-init` semantics -> that action routes to
-`repo-harness update` or `migrate-project-template.sh --repo <repo> --apply` ->
+`repo-harness adopt` or `migrate-project-template.sh --repo <repo> --apply` ->
 the command runs `inspect-project-state.ts --repo <repo> --format text` -> if no
 legacy state is found, `migrate-project-template.sh --repo <repo> --apply`
 installs or refreshes the workflow -> repo-local checks verify the target repo.

@@ -153,6 +153,16 @@ describe("Hook contracts", () => {
     expect(script).toContain("worth the tokens");
   });
 
+  test("session-start owns throttled tooling update advisories", () => {
+    const script = read("assets/hooks/session-start-context.sh");
+    expect(script).toContain("Tooling Update Advisory");
+    expect(script).toContain("setup check --target \"$target\" --check-updates --json");
+    expect(script).toContain("REPO_HARNESS_TOOLING_ADVISORY_TTL_SECONDS");
+    expect(script).toContain("tooling-update-advisory-${target}.json");
+    expect(script).toContain("cli.update");
+    expect(script).toContain("tooling\\.[^.]+\\.update");
+  });
+
   test("security sentinel should stay changed-only and advisory", () => {
     const script = read("assets/hooks/security-sentinel.sh");
     expect(script).toContain("security scan --json");

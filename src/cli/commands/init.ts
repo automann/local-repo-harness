@@ -1,7 +1,7 @@
 /**
  * Existing-repo harness bootstrap/update implementation.
  *
- * This backs the public `repo-harness update` command and the legacy
+ * This backs the public `repo-harness adopt` command and the legacy
  * `repo-harness-init` skill facade: default the target repo to cwd,
  * install/refresh the machine runtime pieces, apply the repo-local workflow
  * migration, then verify the installed harness.
@@ -186,6 +186,41 @@ function samePath(a: string, b: string): boolean {
   } catch {
     return resolve(a) === resolve(b);
   }
+}
+
+function isGitWorkTree(repoRoot: string, env?: NodeJS.ProcessEnv): boolean {
+  const result = spawnSync("git", ["-C", repoRoot, "rev-parse", "--is-inside-work-tree"], {
+    encoding: "utf-8",
+    env: { ...process.env, ...(env ?? {}) },
+  });
+  return result.status === 0 && result.stdout.trim() === "true";
+}
+
+function validateRepoAdoptionTarget(
+  repoRoot: string,
+  explicitRepo: boolean,
+  env?: NodeJS.ProcessEnv,
+): InitStep | null {
+  const home = homeDir(env);
+  if (home && samePath(repoRoot, home)) {
+    return {
+      step: "validate repo target",
+      status: "failed",
+      detail:
+        `refusing to apply repo harness to HOME (${repoRoot}); run repo-harness adopt --repo <git-repo> from an intended project`,
+    };
+  }
+
+  if (!explicitRepo && !isGitWorkTree(repoRoot, env)) {
+    return {
+      step: "validate repo target",
+      status: "failed",
+      detail:
+        `cwd is not inside a git work tree (${repoRoot}); pass --repo <project-path> explicitly for non-git scaffolds`,
+    };
+  }
+
+  return null;
 }
 
 function languageInstruction(preset: ReportingLanguagePreset, custom?: string): string {
@@ -390,11 +425,11 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   const apply = opts.apply !== false;
   const verify = opts.verify !== false;
   const syncSkill = opts.syncSkill !== false;
-  const skillScope = opts.skillScope ?? "user";
+  const skillScope = opts.skillScope ?? "none";
   const hostAdapters = opts.hostAdapters !== false;
-  const hostAdapterScope = opts.hostAdapterScope ?? "user";
+  const hostAdapterScope = opts.hostAdapterScope ?? "none";
   const runtimeSelection = opts.runtime ?? "auto";
-  const externalToolScope = opts.externalToolScope ?? (opts.externalSkills === false ? "none" : "user");
+  const externalToolScope = opts.externalToolScope ?? "none";
   const codegraph = opts.codegraph !== false;
   const configureCgMcp = opts.configureCodegraphMcp === true;
   const codegraphMcpScope = opts.codegraphMcpScope ?? (configureCgMcp ? "user" : "none");
@@ -420,6 +455,17 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     REPO_HARNESS_CODEGRAPH_MCP_SCOPE: codegraph ? codegraphMcpScope : "none",
     REPO_HARNESS_BRAIN_MODE: brainMode,
   };
+
+  const targetError = validateRepoAdoptionTarget(repoRoot, opts.repo !== undefined, commandEnv);
+  if (targetError) {
+    const steps = [targetError];
+    return {
+      exitCode: 2,
+      repoRoot,
+      steps,
+      lines: steps.flatMap(renderStep),
+    };
+  }
 
   if (syncSkill && apply && skillScope === "user") {
     const step = runProcess("bash", [join(sourceRoot, "scripts", "sync-codex-installed-copies.sh")], sourceRoot, commandEnv);
@@ -758,47 +804,12 @@ export async function runInteractiveInit(opts: InteractiveInitOptions = {}): Pro
         : undefined;
     const reportLanguageInstruction = languageInstruction(languagePreset, customInstruction);
 
-    let customBrainPath = opts.brainRoot;
-    let brainChoices = brainLocationChoices(opts.env, customBrainPath);
-    let brainChoice = await askChoice<BrainRootChoice | "custom">(
-      rl,
-      output,
-      "Brain location",
-      brainChoices,
-      defaultBrainChoiceIndex(brainChoices, opts.env, Boolean(customBrainPath)),
-    );
-    if (brainChoice === "custom") {
-      customBrainPath = await askText(rl, output, "Custom brain root", "~/Documents/brain");
-      brainChoices = brainLocationChoices(opts.env, customBrainPath);
-      brainChoice = brainChoices.find((choice) => choice.value !== "custom" && choice.value.kind === "custom")?.value
-        ?? {
-          kind: "custom",
-          label: "Custom",
-          root: resolve(expandHomePath(customBrainPath, opts.env)),
-          available: true,
-          detail: resolve(expandHomePath(customBrainPath, opts.env)),
-        };
-    }
-
-    const brainMode = await askChoice<InitBrainMode>(
-      rl,
-      output,
-      "Brain mode",
-      [
-        { label: "manifest only", value: "manifest-only", detail: "Use file-vault manifest/check/sync" },
-        { label: "install gbrain CLI", value: "install-gbrain-cli", detail: "Install CLI, but do not enable MCP" },
-        { label: "skip brain sync", value: "skip", detail: "Do not create or sync a brain root" },
-      ],
-      0,
-    );
-
     writeLine(output, renderInteractivePlan([
       `repo=${repoRoot}`,
       `target=${target}`,
       `reporting=${reportLanguageInstruction}`,
-      `brainRoot=${brainChoice.root}`,
-      `brainMode=${brainMode}`,
-      "CodeGraph=required ensure --init --sync plus global MCP configure",
+      `brainMode=${opts.brainMode ?? "skip"}`,
+      `CodeGraph=${opts.codegraph === false ? "disabled" : "repo index ensure only; MCP scope requires explicit flag"}`,
       `apply=${opts.apply === false ? "false" : "true"}`,
       `verify=${opts.verify === false ? "false" : "true"}`,
     ]));
@@ -820,12 +831,10 @@ export async function runInteractiveInit(opts: InteractiveInitOptions = {}): Pro
       repo: repoRoot,
       sourceRoot,
       target,
-      codegraph: true,
-      configureCodegraphMcp: true,
-      syncCodegraph: true,
-      globalContext: { reportLanguageInstruction },
-      brainRoot: brainChoice.root,
-      brainMode,
+      codegraph: opts.codegraph !== false,
+      configureCodegraphMcp: false,
+      syncCodegraph: opts.syncCodegraph === true,
+      brainMode: opts.brainMode ?? "skip",
     });
   } finally {
     rl.close();
