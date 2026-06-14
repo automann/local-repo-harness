@@ -21,7 +21,11 @@ function setupFakeEnvironment(prefix: string) {
   return { root, home, fakeBin };
 }
 
-function writeFakeCodeGraph(fakeBin: string, logFile: string) {
+function writeFakeCodeGraph(
+  fakeBin: string,
+  logFile: string,
+  opts: { codexLocalUnsupported?: boolean } = {},
+) {
   writeExecutable(
     join(fakeBin, "codegraph"),
     [
@@ -33,12 +37,18 @@ function writeFakeCodeGraph(fakeBin: string, logFile: string) {
       "  \"status\") echo 'CodeGraph Status'; echo 'Index is up to date' ;;",
       "  \"install\")",
       "    if [[ \" $* \" == *\" --target codex \"* && \" $* \" == *\" --location local \"* ]]; then",
-      "      mkdir -p .codex",
-      "      cat > .codex/config.toml <<'TOML'",
-      "[mcp_servers.codegraph]",
-      "command = \"codegraph\"",
-      "args = [\"serve\", \"--mcp\"]",
-      "TOML",
+      ...(opts.codexLocalUnsupported
+        ? [
+            "      echo '▲  Codex CLI: skipped — does not support --location=local.'",
+          ]
+        : [
+            "      mkdir -p .codex",
+            "      cat > .codex/config.toml <<'TOML'",
+            "[mcp_servers.codegraph]",
+            "command = \"codegraph\"",
+            "args = [\"serve\", \"--mcp\"]",
+            "TOML",
+          ]),
       "    elif [[ \" $* \" == *\" --target codex \"* ]]; then",
       "      mkdir -p \"$HOME/.codex\"",
       "      cat > \"$HOME/.codex/config.toml\" <<'TOML'",
@@ -117,6 +127,7 @@ type RunConfigureOptions = {
   seedClaudeSettings?: Record<string, unknown> | "missing" | null;
   seedClaudeRootConfig?: Record<string, unknown> | null;
   location?: "global" | "local";
+  codexLocalUnsupported?: boolean;
 };
 
 function runConfigure(target: string, options: RunConfigureOptions = {}) {
@@ -142,7 +153,9 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
       writeFileSync(claudeRootConfigPath, `${JSON.stringify(options.seedClaudeRootConfig, null, 2)}\n`);
     }
 
-    writeFakeCodeGraph(envRoot.fakeBin, logFile);
+    writeFakeCodeGraph(envRoot.fakeBin, logFile, {
+      codexLocalUnsupported: options.codexLocalUnsupported === true,
+    });
     writeFakeGbrain(envRoot.fakeBin);
     writeFakeNpx(envRoot.fakeBin);
 
@@ -342,5 +355,29 @@ describe("tools configure codegraph", () => {
     expect(claudeRootConfigAfter).toBeNull();
     expect(claudeSettingsAfter).toBeNull();
     expect(result.actions.some((entry: { action: string }) => entry.action === "claude-allowed-tools")).toBe(false);
+  }, 15000);
+
+  test("writes Codex project config when CodeGraph local installer skips Codex", () => {
+    const { res, log, codexConfigAfter, projectCodexConfigAfter } = runConfigure("codex", {
+      location: "local",
+      codexLocalUnsupported: true,
+    });
+
+    expect(res.status).toBe(0);
+    const result = JSON.parse(res.stdout);
+    const configure = (result.actions as Array<{ action: string; status: string; stderr?: string }>).find(
+      (entry) => entry.action === "configure-codex",
+    );
+    const projectPath = (result.actions as Array<{ action: string; status: string }>).find(
+      (entry) => entry.action === "codex-project-path",
+    );
+
+    expect(log).toContain("codegraph install --target codex --location local --yes");
+    expect(configure?.status).toBe("skipped");
+    expect(configure?.stderr ?? "").toContain("does not support --location=local");
+    expect(projectPath?.status).toBe("changed");
+    expect(projectCodexConfigAfter).toContain('command = "codegraph"');
+    expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
+    expect(codexConfigAfter).toBe("");
   }, 15000);
 });

@@ -71,3 +71,26 @@ Installed-copy boundary follow-up:
   explicit env var, and user-root resolution order.
 - Added workflow contract source resolver naming while retaining the older
   upstream resolver export as a compatibility alias.
+
+Second real external tooling acceptance:
+
+- Ran a local tarball install with isolated HOME under
+  `dev-tests/runs/20260614-172102-external-tools-round2-after-codegraph-fix/`;
+  result: PASS, 45 assertions, 0 failures.
+- Profile C verified project-scoped Waza and Mermaid through the real
+  `npx skills add ... --copy` path. Skills landed in project `.agents/skills`
+  and `.claude/skills`; command arrays omitted `-g`; status reported Waza and
+  Mermaid present in project scope.
+- Profile D verified project-local CodeGraph with a repo devDependency:
+  `repo-harness update` installed deps, initialized and synced `.codegraph/`,
+  wrote Claude project `.mcp.json`, and wrote Codex project
+  `.codex/config.toml` without touching fake HOME user MCP files.
+- Real CodeGraph v0.9.9 reports `Codex CLI: skipped -- does not support
+  --location=local`; repo-harness now records that installer action as skipped
+  and creates the supported Codex project MCP config itself, pointing at
+  `./node_modules/.bin/codegraph`.
+- Profile E verified `brain-mode manifest-only`: project brain manifest is
+  present, no fake HOME `.repo-harness` config or `Documents/brain` vault was
+  created, and `repo-harness brain status --json` selected zero sync items.
+- User no-write snapshot diff was empty for the configured no-write set; only
+  allowed package-manager cache files appeared under fake HOME.

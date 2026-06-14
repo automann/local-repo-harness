@@ -1,5 +1,5 @@
 import { spawnSync } from "child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -148,6 +148,29 @@ function appendAction(
   return result.ok;
 }
 
+function appendCodegraphInstallAction(
+  actions: CodegraphAction[],
+  action: string,
+  command: string[],
+  result: ReturnType<typeof run>
+): boolean {
+  const unsupportedLocal =
+    result.ok &&
+    /skipped.*does not support --location=local|does not support --location=local.*skipped/i.test(
+      `${result.stdout}\n${result.stderr}`
+    );
+  actions.push({
+    action,
+    status: result.ok ? (unsupportedLocal ? "skipped" : "changed") : "failed",
+    command,
+    stdout: trimOutput(result.stdout),
+    stderr: unsupportedLocal
+      ? "CodeGraph installer reported that this target does not support --location=local; repo-harness will write supported project config when available."
+      : trimOutput(result.stderr || result.error),
+  });
+  return result.ok;
+}
+
 function normalize(raw: Record<string, any>): CodegraphCheckResult {
   return {
     status: raw.status,
@@ -275,6 +298,16 @@ function configureCodexProjectPath(
   try {
     raw = readFileSync(path, "utf8");
   } catch (_error) {
+    if (location === "local") {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, renderCodexCodegraphConfig(repoRoot));
+      actions.push({
+        action: "codex-project-path",
+        status: "changed",
+        command,
+      });
+      return;
+    }
     actions.push({
       action: "codex-project-path",
       status: "skipped",
@@ -286,6 +319,16 @@ function configureCodexProjectPath(
 
   const sectionMatch = raw.match(/(^\[mcp_servers\.codegraph\]\n)([\s\S]*?)(?=^\[|(?![\s\S]))/m);
   if (!sectionMatch) {
+    if (location === "local") {
+      const next = `${raw.trimEnd()}${raw.trimEnd() ? "\n\n" : ""}${renderCodexCodegraphConfig(repoRoot)}`;
+      writeFileSync(path, next);
+      actions.push({
+        action: "codex-project-path",
+        status: "changed",
+        command,
+      });
+      return;
+    }
     actions.push({
       action: "codex-project-path",
       status: "skipped",
@@ -334,6 +377,20 @@ function configureCodexProjectPath(
     status: "changed",
     command,
   });
+}
+
+function localCodegraphCommand(repoRoot: string): string {
+  const localBin = join(repoRoot, "node_modules", ".bin", "codegraph");
+  return existsSync(localBin) ? "./node_modules/.bin/codegraph" : "codegraph";
+}
+
+function renderCodexCodegraphConfig(repoRoot: string): string {
+  return [
+    "[mcp_servers.codegraph]",
+    `command = ${JSON.stringify(localCodegraphCommand(repoRoot))}`,
+    `args = ${CODEGRAPH_SCOPED_MCP_TOML_ARGS}`,
+    "",
+  ].join("\n");
 }
 
 function configureClaudeProjectPath(
@@ -654,7 +711,7 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
     if (target === "claude" && opts.location === "global" && isMcpHostConfigured(initial.raw, target)) {
       appendSkippedAction(actions, actionName, command, "Claude CodeGraph MCP is already configured.");
     } else {
-      appendAction(actions, actionName, command, run(binPath, command.slice(1), opts.repoRoot, opts.env));
+      appendCodegraphInstallAction(actions, actionName, command, run(binPath, command.slice(1), opts.repoRoot, opts.env));
     }
 
     if (target === "codex") {
