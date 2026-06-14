@@ -2,7 +2,7 @@
 # scripts/hook-shim.sh — repo-harness global hook dispatcher (Phase 0.5 bash prototype).
 #
 # Installed by `scripts/repo-harness.sh install` to ~/.repo-harness/hook-shim.sh.
-# Phase 1 CLI replaces this file with `repo-harness hook <event>` subcommand.
+# Phase 1 CLI replaces this file with `local-repo-harness hook <event>` subcommand.
 #
 # Invoked from user-level hook configs:
 #   bash ~/.repo-harness/hook-shim.sh <hook-script-name>.sh [extra-args...]
@@ -44,7 +44,7 @@ repo=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -f "$repo/.ai/harness/workflow-contract.json" ] || exit 0
 
 # Safety: defer to project-level if it still exists (prevents double-fire on
-# non-migrated repos). After `repo-harness migrate <repo>` removes the project
+# non-migrated repos). After `local-repo-harness migrate <repo>` removes the project
 # .codex/hooks.json, this guard releases and the global shim takes over.
 [ -f "$repo/.codex/hooks.json" ] && exit 0
 

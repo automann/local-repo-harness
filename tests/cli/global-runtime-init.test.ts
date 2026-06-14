@@ -160,7 +160,7 @@ describe('init command global runtime bootstrap', () => {
       encoding: 'utf-8',
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('Usage: repo-harness init');
+    expect(res.stdout).toContain('Usage: local-repo-harness init');
     expect(res.stdout).toContain('--target <target>');
     expect(res.stdout).toContain('--no-cli');
     expect(res.stdout).toContain('--brain-root <path>');
@@ -246,7 +246,7 @@ describe('init command global runtime bootstrap', () => {
       encoding: 'utf-8',
     });
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain('Usage: repo-harness update');
+    expect(res.stdout).toContain('Usage: local-repo-harness update');
     expect(res.stdout).toContain('--version <version>');
     expect(res.stdout).toContain('--channel <channel>');
     expect(res.stdout).toContain('--check');
@@ -254,6 +254,6 @@ describe('init command global runtime bootstrap', () => {
     expect(res.stdout).toContain('--with-external-skills');
     expect(res.stdout).toContain('--configure-codegraph');
     expect(res.stdout).toContain('--no-cli');
-    expect(res.stdout).toContain('Deprecated: use repo-harness adopt --repo <path>');
+    expect(res.stdout).toContain('Deprecated: use local-repo-harness adopt --repo <path>');
   });
 });

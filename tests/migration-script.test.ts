@@ -26,8 +26,8 @@ function expectReferenceConfigStub(repo: string, docId: string): void {
   const content = readFileSync(join(repo, "docs/reference-configs", `${docId}.md`), "utf-8");
   expect(content).toContain(REFERENCE_STUB_MARKER);
   expect(content).toContain(`> **Doc ID**: ${docId}`);
-  expect(content).toContain(`repo-harness docs path ${docId}`);
-  expect(content).toContain(`repo-harness docs show ${docId}`);
+  expect(content).toContain(`local-repo-harness docs path ${docId}`);
+  expect(content).toContain(`local-repo-harness docs show ${docId}`);
 }
 
 describe("Migration script contract", () => {
@@ -359,7 +359,7 @@ describe("Migration script contract", () => {
       expect(existsSync(join(repo, "scripts/context-budget.ts"))).toBe(false);
       expect(existsSync(join(repo, "scripts/context-budget.ts"))).toBe(false);
       expect(readFileSync(join(repo, "scripts/sprint-backlog.sh"), "utf-8")).toContain(
-        "repo-harness run sprint-backlog"
+        "local-repo-harness run sprint-backlog"
       );
       expect(existsSync(join(repo, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(repo, "scripts/skill-factory-check.sh"))).toBe(false);
@@ -443,7 +443,7 @@ describe("Migration script contract", () => {
       });
       expect(policy.external_tooling.hosts).toEqual(["claude-code", "codex"]);
       expect(policy.external_tooling.mode).toBe("agent-readiness-required");
-      expect(policy.external_tooling.readiness_gate).toBe("repo-harness run check-agent-tooling --host codex --strict-readiness");
+      expect(policy.external_tooling.readiness_gate).toBe("local-repo-harness run check-agent-tooling --host codex --strict-readiness");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.sync_mode).toBe("stage-upstream-then-copy-to-codex");
       expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
@@ -488,7 +488,7 @@ describe("Migration script contract", () => {
       expect(policy.documentation.profile).toBe("minimal-agentic");
       expect(policy.documentation.reference_source).toBe("user-level-runtime-docs");
       expect(policy.documentation.reference_stub_marker).toBe(REFERENCE_STUB_MARKER);
-      expect(policy.documentation.reference_resolver).toBe("repo-harness docs path <doc-id>");
+      expect(policy.documentation.reference_resolver).toBe("local-repo-harness docs path <doc-id>");
       expect(policy.lsp_profiles.default).toBe("typescript-lsp");
       expect(policy.worktree_strategy.auto_for_contract_tasks).toBe(true);
       expect(policy.worktree_strategy.start_script).toBe("scripts/contract-worktree.sh start --plan <plan-file>");
@@ -517,7 +517,7 @@ describe("Migration script contract", () => {
       expect(workflowContract.helpers.compatibilityDirectory).toBe("scripts");
       expect(workflowContract.documentation.referenceConfigs.source).toBe("user-level-runtime-docs");
       expect(workflowContract.documentation.referenceConfigs.repoStubDirectory).toBe("docs/reference-configs");
-      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("repo-harness docs path <doc-id>");
+      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("local-repo-harness docs path <doc-id>");
       expect(workflowContract.documentation.referenceConfigs.stubMarker).toBe(REFERENCE_STUB_MARKER);
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
@@ -574,13 +574,13 @@ describe("Migration script contract", () => {
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
 
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
-      expect(pkg.scripts["check:brain-manifest"]).toBe("repo-harness run check-brain-manifest");
-      expect(pkg.scripts["check:context-files"]).toBe("repo-harness run check-context-files");
-      expect(pkg.scripts["check:deploy-sql"]).toBe("repo-harness run check-deploy-sql-order");
-      expect(pkg.scripts["check:architecture-sync"]).toBe("repo-harness run check-architecture-sync");
-      expect(pkg.scripts["check:task-sync"]).toBe("repo-harness run check-task-sync");
-      expect(pkg.scripts["check:task-workflow"]).toBe("repo-harness run check-task-workflow --strict");
-      expect(pkg.scripts["sync:brain-docs"]).toBe("repo-harness run sync-brain-docs --all");
+      expect(pkg.scripts["check:brain-manifest"]).toBe("local-repo-harness run check-brain-manifest");
+      expect(pkg.scripts["check:context-files"]).toBe("local-repo-harness run check-context-files");
+      expect(pkg.scripts["check:deploy-sql"]).toBe("local-repo-harness run check-deploy-sql-order");
+      expect(pkg.scripts["check:architecture-sync"]).toBe("local-repo-harness run check-architecture-sync");
+      expect(pkg.scripts["check:task-sync"]).toBe("local-repo-harness run check-task-sync");
+      expect(pkg.scripts["check:task-workflow"]).toBe("local-repo-harness run check-task-workflow --strict");
+      expect(pkg.scripts["sync:brain-docs"]).toBe("local-repo-harness run sync-brain-docs --all");
 
       const gitignore = readFileSync(join(repo, ".gitignore"), "utf-8");
       expect(gitignore).toContain("# BEGIN: claude-runtime-temp (managed by repo-harness)");
@@ -603,7 +603,7 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("--- External Tooling ---");
       expect(res.stdout).toContain("External Tooling Report");
       expect(res.stdout).toContain("Host hook adapters default to user scope:");
-      expect(res.stdout).toContain("Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH");
+      expect(res.stdout).toContain("Host hook runtime: global-path via local-repo-harness-hook/local-repo-harness on PATH");
       expect(res.stdout).toContain("Repo-harness skill scope: user");
       expect(res.stdout).toContain("Third-party tool scope: user");
     } finally {
@@ -642,12 +642,12 @@ describe("Migration script contract", () => {
       const policy = JSON.parse(readFileSync(join(repo, ".ai/harness/policy.json"), "utf-8"));
       expect(policy.host_adapters.scope).toBe("project");
       expect(policy.host_adapters.hook_runtime_mode).toBe("project-vendored-bun");
-      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/repo-harness-hook");
+      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/local-repo-harness-hook");
       expect(policy.skills.repo_harness_scope).toBe("user");
       expect(policy.external_tooling.scope).toBe("user");
       expect(res.stdout).toContain("Host hook config target: project-level .claude/settings.json and .codex/hooks.json");
-      expect(res.stdout).toContain("Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook");
-      expect(res.stdout).toContain("Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version");
+      expect(res.stdout).toContain("Host hook runtime: project-vendored-bun via .ai/harness/bin/local-repo-harness-hook");
+      expect(res.stdout).toContain("Project runtime files: .ai/harness/bin/local-repo-harness-hook and .ai/harness/runtime/local-repo-harness/.version");
       expect(res.stdout).toContain("Host hook adapters are project-scoped:");
     } finally {
       rmSync(repo, { recursive: true, force: true });
@@ -992,7 +992,7 @@ describe("Migration script contract", () => {
       expect(res.status).toBe(0);
       expect(existsSync(join(repo, "scripts/new-plan.sh"))).toBe(true);
       expect(readFileSync(join(repo, "scripts/new-plan.sh"), "utf-8")).toContain(
-        "repo-harness run new-plan"
+        "local-repo-harness run new-plan"
       );
       expect(existsSync(join(repo, "scripts/check-task-workflow.sh"))).toBe(true);
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain("app-owned workflow check");

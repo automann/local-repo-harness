@@ -44,9 +44,9 @@ describe('install command (Phase 1B)', () => {
         for (const entries of Object.values(data.hooks) as { hooks: { command: string }[] }[][]) {
           for (const entry of entries) {
             const command = entry.hooks[0].command;
-            expect(command).toContain('.ai/harness/bin/repo-harness-hook');
-            expect(command).not.toContain('command -v repo-harness-hook');
-            expect(command).not.toContain('exec repo-harness hook');
+            expect(command).toContain('.ai/harness/bin/local-repo-harness-hook');
+            expect(command).not.toContain('command -v local-repo-harness-hook');
+            expect(command).not.toContain('exec local-repo-harness hook');
           }
         }
       } finally {
@@ -97,11 +97,11 @@ describe('install command (Phase 1B)', () => {
         for (const entry of entries) {
           const hook = entry.hooks[0];
           const cmd = hook.command;
-          expect(cmd).toContain('command -v repo-harness-hook');
-          expect(cmd).toContain('exec repo-harness-hook ');
-          expect(cmd).toContain('command -v repo-harness');
+          expect(cmd).toContain('command -v local-repo-harness-hook');
+          expect(cmd).toContain('exec local-repo-harness-hook ');
+          expect(cmd).toContain('command -v local-repo-harness');
           expect(cmd).toContain('HOOK_HOST=codex');
-          expect(cmd).toContain('exec repo-harness hook ');
+          expect(cmd).toContain('exec local-repo-harness hook ');
           expect(hook.timeout).toBe(30);
         }
       }
@@ -215,8 +215,8 @@ describe('install command (Phase 1B)', () => {
       // 1 sibling + 2 managed
       expect(pre.length).toBe(3);
       expect(pre[0].hooks[0].command).toBe('rtk hook claude');
-      expect(pre[1].hooks[0].command).toContain('repo-harness hook PreToolUse');
-      expect(pre[2].hooks[0].command).toContain('repo-harness hook PreToolUse');
+      expect(pre[1].hooks[0].command).toContain('local-repo-harness hook PreToolUse');
+      expect(pre[2].hooks[0].command).toContain('local-repo-harness hook PreToolUse');
     });
   });
 
@@ -326,7 +326,7 @@ describe('install command (Phase 1B)', () => {
         const commands = Object.values(data.hooks as Record<string, { hooks: { command: string }[] }[]>)
           .flat()
           .map((entry) => entry.hooks[0].command);
-        expect(commands.every((command) => command.includes('command -v repo-harness-hook'))).toBe(true);
+        expect(commands.every((command) => command.includes('command -v local-repo-harness-hook'))).toBe(true);
       } finally {
         fs.rmSync(repo, { recursive: true, force: true });
       }

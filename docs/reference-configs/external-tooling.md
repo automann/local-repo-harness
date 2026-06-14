@@ -17,24 +17,24 @@ Codex. In project-scoped mode, the skills CLI writes Codex skills to
 `.agents/skills` and Claude Code skills to `.claude/skills`; do not use
 `.codex/skills` as the repo-local Codex target.
 
-`repo-harness init` is allowed to bootstrap the workflow-owned global runtime in
-one pass: the `repo-harness` CLI, repo-harness runtime aliases, user-level
+`local-repo-harness init` is allowed to bootstrap the workflow-owned global runtime in
+one pass: the `local-repo-harness` CLI, local-repo-harness runtime aliases, user-level
 Codex/Claude hook adapters, Waza (`think`, `hunt`, `check`, `health`), brain
 root persistence, Mermaid, and CodeGraph CLI/MCP configuration. It must not
 silently install unrelated toolchains or Claude marketplace plugins.
 
-`repo-harness update` refreshes only the CLI and repo-harness-owned user-level
+`local-repo-harness update` refreshes only the CLI and local-repo-harness-owned user-level
 runtime by default. Third-party tooling and CodeGraph registration stay
-readiness findings from `repo-harness setup check` unless the update command is
+readiness findings from `local-repo-harness setup check` unless the update command is
 run with an explicit opt-in such as `--with-external-skills` or
 `--configure-codegraph`.
 
-`repo-harness adopt` owns repo-local project-scoped adoption. Explicit scope
+`local-repo-harness adopt` owns repo-local project-scoped adoption. Explicit scope
 flags can isolate hook adapters, skills, external tooling, and MCP config to the
 current repo:
 
 ```bash
-repo-harness adopt \
+local-repo-harness adopt \
   --host-adapter-scope project \
   --skill-scope project \
   --external-tool-scope project \
@@ -49,8 +49,8 @@ The cross-review skills are **harness-owned and self-contained** — their sourc
 lives in `assets/skills/<skill>/` and they wrap the peer CLI (`codex exec` /
 `claude -p`) in a read-only sandbox with no gstack dependency, so installing them
 is a workflow-owned runtime concern, not an unrelated toolchain. They install
-host-aware during `repo-harness init`, explicit external-skill refreshes, or
-project-scoped `repo-harness adopt`:
+host-aware during `local-repo-harness init`, explicit external-skill refreshes, or
+project-scoped `local-repo-harness adopt`:
 `codex-review` only into `~/.claude/skills` (a Claude session asking
 Codex for an independent review) and `claude-review` only into `~/.codex/skills`
 (a Codex session asking Claude). When gstack is present, its `/codex` and
@@ -201,7 +201,7 @@ Project-local MCP registration should use CodeGraph's local installer and host
 project config:
 
 ```bash
-repo-harness tools configure codegraph --target both --location local
+local-repo-harness tools configure codegraph --target both --location local
 ```
 
 Expected project-level config files are `.codex/config.toml` for Codex and
@@ -213,12 +213,12 @@ is one terminal command, or explicit authorization for their agent to run the
 same command:
 
 ```bash
-npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" repo-harness tools configure codegraph --target codex --location global
+npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" local-repo-harness tools configure codegraph --target codex --location global
 ```
 
 This delegates host-specific MCP config to CodeGraph's target adapters for
 Codex and Claude, so do not run CodeGraph setup automatically from
-`repo-harness init`, `migrate`, or `upgrade`. Restart Codex after the installer
+`local-repo-harness init`, `migrate`, or `upgrade`. Restart Codex after the installer
 finishes so the MCP server is discovered; Claude Code should pick up its config
 according to its own settings reload behavior. If a launch environment still
 cannot find `codegraph`, an authorized agent should diagnose `PATH` and the

@@ -75,7 +75,7 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("Host hook config target:");
     expect(firstFive).toContain("Host hook adapters default to user scope:");
     expect(hookAuthority).toContain(".ai/hooks/");
-    expect(hookAuthority).toContain("repo-harness-hook");
+    expect(hookAuthority).toContain("local-repo-harness-hook");
     expect(hookAuthority).toContain("route registry");
     expect(maintainer).toContain("bun scripts/assemble-template.ts --plan C --name \"MyProject\"");
   });
@@ -145,7 +145,7 @@ describe("README DX contract", () => {
     expect(res.stdout).toContain("Project hooks synced from:");
     expect(res.stdout).toContain("Workflow migration:");
     expect(res.stdout).toContain("Helper runtime:");
-    expect(res.stdout).toContain("package-dispatched through repo-harness run with scripts/* compatibility wrappers");
+    expect(res.stdout).toContain("package-dispatched through local-repo-harness run with scripts/* compatibility wrappers");
     expect(res.stdout).toContain("Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json");
     expect(res.stdout).toContain("Host hook adapters default to user scope:");
   }, 15000);

@@ -1,5 +1,5 @@
 /**
- * `repo-harness security scan` -- read-only checks for high-value local
+ * `local-repo-harness security scan` -- read-only checks for high-value local
  * config injection surfaces. It reports findings only; it never mutates host
  * or repo config.
  */
@@ -196,7 +196,7 @@ function scanHookConfig(
         ruleId: 'legacy-project-hook-adapter',
         severity: 'warn',
         summary: `${hostLabel} ${event} hook uses the retired run-hook.sh project adapter`,
-        recommendation: 'Run repo-harness migrate --apply or reinstall project adapters with repo-harness install --target both --scope project.',
+        recommendation: 'Run local-repo-harness migrate --apply or reinstall project adapters with local-repo-harness install --target both --scope project.',
       });
       continue;
     }

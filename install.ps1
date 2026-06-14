@@ -16,7 +16,7 @@ function Test-Command($Name) {
 }
 
 if ($env:REPO_HARNESS_DRY_RUN -eq "1") {
-  Write-Host "DRY RUN: would ensure Bun, install $PackageName@$PackageVersion, and verify repo-harness --version."
+  Write-Host "DRY RUN: would ensure Bun, install $PackageName@$PackageVersion, and verify local-repo-harness --version."
   exit 0
 }
 
@@ -37,17 +37,17 @@ Write-Host "Installing $PackageSpec with Bun..."
 & bun add -g $PackageSpec
 
 Add-BunToPath
-if (-not (Test-Command "repo-harness")) {
-  throw "repo-harness is not on PATH after installation."
+if (-not (Test-Command "local-repo-harness")) {
+  throw "local-repo-harness is not on PATH after installation."
 }
 
-$Version = (& repo-harness --version)
+$Version = (& local-repo-harness --version)
 if (-not $Version) {
-  throw "repo-harness installed, but version readback failed."
+  throw "local-repo-harness installed, but version readback failed."
 }
 
-Write-Host "repo-harness $Version installed."
+Write-Host "local-repo-harness $Version installed."
 Write-Host ""
 Write-Host "Next:"
-Write-Host "  repo-harness adopt --dry-run"
-Write-Host "  repo-harness init   # optional machine bootstrap"
+Write-Host "  local-repo-harness adopt --dry-run"
+Write-Host "  local-repo-harness init   # optional machine bootstrap"

@@ -83,8 +83,8 @@ const WAZA_MANAGED_SKILLS = ["think", "hunt", "check", "health"];
 const WAZA_SHARED_RULES = ["anti-patterns.md", "chinese.md", "durable-context.md", "english.md"];
 const CODEX_AUTOMATION_SKILLS = ["health", "check", "mermaid"];
 const CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
-const CODEGRAPH_GLOBAL_INSTALL_COMMAND = `npm install -g ${CODEGRAPH_PACKAGE} && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" repo-harness tools configure codegraph --target codex --location global`;
-const CODEGRAPH_MCP_CONFIGURE_COMMAND = "repo-harness tools configure codegraph --target <codex|claude|both> --location global";
+const CODEGRAPH_GLOBAL_INSTALL_COMMAND = `npm install -g ${CODEGRAPH_PACKAGE} && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" local-repo-harness tools configure codegraph --target codex --location global`;
+const CODEGRAPH_MCP_CONFIGURE_COMMAND = "local-repo-harness tools configure codegraph --target <codex|claude|both> --location global";
 const CODEGRAPH_LOCAL_INSTALL_COMMAND = "bun install";
 const CODEGRAPH_ENSURE_COMMAND = [
   ".ai/harness/scripts/ensure-codegraph.sh",

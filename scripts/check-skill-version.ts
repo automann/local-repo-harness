@@ -155,7 +155,7 @@ if (import.meta.main) {
 
     if (result.consistent) {
       console.log(
-        `Workflow version check passed: repo-harness=${result.skillVersionJsonVersion}, template=${result.templateVersionJsonVersion}`
+        `Workflow version check passed: local-repo-harness=${result.skillVersionJsonVersion}, template=${result.templateVersionJsonVersion}`
       );
       console.log(`Workflow version source: ${result.skillVersionSource}`);
       for (const warning of result.warnings) {

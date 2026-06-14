@@ -1,7 +1,7 @@
 /**
  * Existing-repo harness bootstrap/update implementation.
  *
- * This backs the public `repo-harness adopt` command and the legacy
+ * This backs the public `local-repo-harness adopt` command and the legacy
  * `repo-harness-init` skill facade: default the target repo to cwd,
  * install/refresh the machine runtime pieces, apply the repo-local workflow
  * migration, then verify the installed harness.
@@ -207,7 +207,7 @@ function validateRepoAdoptionTarget(
       step: "validate repo target",
       status: "failed",
       detail:
-        `refusing to apply repo harness to HOME (${repoRoot}); run repo-harness adopt --repo <git-repo> from an intended project`,
+        `refusing to apply repo harness to HOME (${repoRoot}); run local-repo-harness adopt --repo <git-repo> from an intended project`,
     };
   }
 
@@ -567,7 +567,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
       status: cg.actions.length === 0 ? "skipped" : cgFailed ? "failed" : "ok",
       detail:
         cg.resolution.source === "missing"
-          ? "codegraph CLI not found; skipped (install via: repo-harness tools ensure codegraph)"
+          ? "codegraph CLI not found; skipped (install via: local-repo-harness tools ensure codegraph)"
           : cg.actions.length > 0
             ? cg.actions.map((entry) => `${entry.action}:${entry.status}`).join(", ")
             : `index ${cg.status}`,
@@ -597,7 +597,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
           step: "codegraph mcp",
           status: "skipped",
           detail:
-            "not registered; run: repo-harness tools configure codegraph --target both --location global",
+            "not registered; run: local-repo-harness tools configure codegraph --target both --location global",
         });
       }
     }

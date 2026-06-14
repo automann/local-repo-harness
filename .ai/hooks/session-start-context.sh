@@ -117,8 +117,8 @@ repo_harness_setup_check() {
     return $?
   fi
 
-  if command -v repo-harness >/dev/null 2>&1; then
-    repo-harness setup check --target "$target" --check-updates --json
+  if command -v local-repo-harness >/dev/null 2>&1; then
+    local-repo-harness setup check --target "$target" --check-updates --json
     return $?
   fi
 
@@ -156,7 +156,7 @@ const updateActions = actions.filter((action) => {
 if (updateActions.length === 0) process.exit(0);
 console.log("# Tooling Update Advisory");
 console.log("");
-console.log("repo-harness setup check found version updates. Agent should run the bounded update command(s), then verify.");
+console.log("local-repo-harness setup check found version updates. Agent should run the bounded update command(s), then verify.");
 for (const action of updateActions.slice(0, 5)) {
   const id = action.id ?? "unknown";
   const reason = action.reason ?? "update available";
@@ -165,7 +165,7 @@ for (const action of updateActions.slice(0, 5)) {
   if (action.verification) console.log(`  verify: \`${action.verification}\``);
 }
 if (updateActions.length > 5) {
-  console.log(`- ${updateActions.length - 5} more update action(s): run \`repo-harness setup check --check-updates --json\`.`);
+  console.log(`- ${updateActions.length - 5} more update action(s): run \`local-repo-harness setup check --check-updates --json\`.`);
 }
 '
 
@@ -264,7 +264,7 @@ capability_context_pending() {
 Pending capability context requests detected (${pending_count}). Run:
 
 \`\`\`bash
-repo-harness capability-context sync --pending --apply
+local-repo-harness capability-context sync --pending --apply
 \`\`\`
 
 Queued capabilities:

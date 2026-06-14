@@ -1,5 +1,5 @@
 /**
- * `repo-harness install --target codex|claude|both --location global|local`
+ * `local-repo-harness install --target codex|claude|both --location global|local`
  * or `--scope user|project|none`
  *
  * Resolves --target to AgentTarget list, calls target.install(loc, opts)
@@ -47,7 +47,7 @@ function resolveLocation(opts: InstallCommandOptions): Location | null {
   if (opts.scope === 'none') return null;
   if (opts.scope) return scopeToLocation(opts.scope);
   if (opts.location) return opts.location;
-  throw new Error('repo-harness install: either location or scope is required');
+  throw new Error('local-repo-harness install: either location or scope is required');
 }
 
 function resolveTargets(spec: InstallTargetSpec) {
@@ -55,7 +55,7 @@ function resolveTargets(spec: InstallTargetSpec) {
   const t = getTarget(spec);
   if (!t) {
     throw new Error(
-      `repo-harness install: unknown --target "${spec}" (known: ${listTargetIds().join(', ')}, both)`,
+      `local-repo-harness install: unknown --target "${spec}" (known: ${listTargetIds().join(', ')}, both)`,
     );
   }
   return [t];

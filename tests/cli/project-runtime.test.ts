@@ -32,7 +32,7 @@ function makeRestrictedPath(root: string, commands: Record<string, string>): str
 }
 
 describe('project-local hook runtime', () => {
-  test('project hook executable runs a route without repo-harness on PATH, including paths with spaces', () => {
+  test('project hook executable runs a route without local-repo-harness on PATH, including paths with spaces', () => {
     const tmp = tempDir('repo harness runtime ');
     const repo = path.join(tmp, 'repo with spaces');
     const hooks = path.join(tmp, 'custom hooks');

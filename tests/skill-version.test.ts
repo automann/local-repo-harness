@@ -104,7 +104,7 @@ describe("Assembled Output Contains Version Info", () => {
 
   test("output contains SKILL_VERSION value", () => {
     const sv = loadSkillVersion();
-    expect(output).toContain(`repo-harness@${sv.version}`);
+    expect(output).toContain(`local-repo-harness@${sv.version}`);
   });
 
   test("output contains TEMPLATE_VERSION value", () => {

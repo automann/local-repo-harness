@@ -527,7 +527,7 @@ describe("init command", () => {
     });
 
     expect(res.status).toBe(0);
-    expect(res.stdout).toContain("Usage: repo-harness adopt");
+    expect(res.stdout).toContain("Usage: local-repo-harness adopt");
     expect(res.stdout).toContain("--repo <path>");
     expect(res.stdout).toContain("--dry-run");
     expect(res.stdout).toContain("--host-adapter-scope <scope>");
@@ -545,8 +545,8 @@ describe("init command", () => {
     });
 
     expect(res.status).toBe(2);
-    expect(res.stderr).toContain("repo-harness update no longer refreshes repositories");
-    expect(res.stderr).toContain("repo-harness adopt --repo <path>");
+    expect(res.stderr).toContain("local-repo-harness update no longer refreshes repositories");
+    expect(res.stderr).toContain("local-repo-harness adopt --repo <path>");
   });
 
   test("CLI adopt validates runtime mode", () => {
@@ -589,9 +589,9 @@ describe("init command", () => {
       });
 
       expect(installCli.status).toBe(2);
-      expect(installCli.stderr).toContain("user-level brain configuration belongs to repo-harness update/init");
+      expect(installCli.stderr).toContain("user-level brain configuration belongs to local-repo-harness update/init");
       expect(root.status).toBe(2);
-      expect(root.stderr).toContain("user-level brain configuration belongs to repo-harness update/init");
+      expect(root.stderr).toContain("user-level brain configuration belongs to local-repo-harness update/init");
       expect(existsSync(join(tmp, ".repo-harness"))).toBe(false);
     } finally {
       rmSync(tmp, { recursive: true, force: true });

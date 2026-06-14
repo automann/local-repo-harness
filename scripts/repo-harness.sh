@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/repo-harness.sh — Bash prototype of the repo-harness CLI (Phase 0.5).
+# scripts/repo-harness.sh — Bash prototype of the local-repo-harness CLI (Phase 0.5).
 #
 # Phase 1 will replace this with a Bun/Node binary. This bash version exists
 # so we can migrate repo-harness itself off project-level hooks TODAY, before
@@ -21,7 +21,7 @@
 #     strips .hooks from .claude/settings.json (preserves other settings).
 #
 #   uninstall [--target codex|claude|both]
-#     Remove repo-harness hook entries from global configs (keeps shim file
+#     Remove local-repo-harness hook entries from global configs (keeps shim file
 #     at ~/.repo-harness/hook-shim.sh for fast re-install).
 #
 #   status
@@ -389,7 +389,7 @@ EOF
 cmd_status() {
   require_jq
 
-  echo "=== repo-harness CLI status ==="
+  echo "=== local-repo-harness CLI status ==="
   echo "Shim source: $SHIM_SRC"
   echo "Shim installed: $SHIM_PATH"
   if [ -f "$SHIM_PATH" ]; then

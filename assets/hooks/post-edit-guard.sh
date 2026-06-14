@@ -60,8 +60,8 @@ run_architecture_queue_sync() {
         status=$?
         echo "[SyncChain] WARN: capability-context request failed after $FILE_PATH (exit $status)"
       fi
-    elif command -v repo-harness >/dev/null 2>&1; then
-      if repo-harness capability-context request --from-latest-architecture-event; then
+    elif command -v local-repo-harness >/dev/null 2>&1; then
+      if local-repo-harness capability-context request --from-latest-architecture-event; then
         :
       else
         status=$?

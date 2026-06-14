@@ -905,8 +905,8 @@ ARCHITECTURE_INDEX_EOF
     "reference_configs": ["harness-overview.md", "agentic-development-flow.md", "external-tooling.md", "sprint-contracts.md", "handoff-protocol.md", "document-generation.md", "global-working-rules.md"],
     "reference_source": "user-level-runtime-docs",
     "reference_stub_marker": "<!-- repo-harness: reference-config-stub v1 -->",
-    "reference_resolver": "repo-harness docs path <doc-id>",
-    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package repo-harness install"
+    "reference_resolver": "local-repo-harness docs path <doc-id>",
+    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package local-repo-harness install"
   },
   "lsp_profiles": {
     "default": "typescript-lsp",
@@ -1019,7 +1019,7 @@ ARCHITECTURE_INDEX_EOF
       "index_dir": ".codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" repo-harness tools configure codegraph --target codex --location global",
+      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" local-repo-harness tools configure codegraph --target codex --location global",
       "project_init_command": "codegraph init -i .",
       "sync_command": "codegraph sync .",
       "vendoring_policy": "do-not-add-package-dependency"

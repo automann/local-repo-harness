@@ -51,10 +51,10 @@ describe("runtime reclaim", () => {
       expect(result.runtime_reclaim.archive).toBeDefined();
       expect(existsSync(join(repo, ".ai/harness/scripts/check-task-workflow.sh"))).toBe(false);
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
-        "repo-harness run check-task-workflow",
+        "local-repo-harness run check-task-workflow",
       );
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
-      expect(pkg.scripts["check:task-workflow"]).toBe("repo-harness run check-task-workflow --strict");
+      expect(pkg.scripts["check:task-workflow"]).toBe("local-repo-harness run check-task-workflow --strict");
       expect(pkg.scripts["app:test"]).toBe("node app-test.js");
       expect(existsSync(join(repo, ".ai/harness/runtime-manifest.json"))).toBe(true);
       const archive = result.runtime_reclaim.archive ?? "";
@@ -97,7 +97,7 @@ describe("runtime reclaim", () => {
 
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain("app-owned");
       expect(readFileSync(join(repo, "scripts/repo-harness/check-task-workflow.sh"), "utf-8")).toContain(
-        "repo-harness run check-task-workflow",
+        "local-repo-harness run check-task-workflow",
       );
     } finally {
       rmSync(repo, { recursive: true, force: true });
@@ -114,7 +114,7 @@ describe("runtime reclaim", () => {
             {
               matcher: "Bash",
               hooks: [
-                { type: "command", command: "repo-harness hook post-bash" },
+                { type: "command", command: "local-repo-harness hook post-bash" },
                 { type: "command", command: "bash scripts/custom-hook.sh" },
               ],
             },
@@ -129,7 +129,7 @@ describe("runtime reclaim", () => {
         "remove-managed-hooks-preserve-file",
       );
       const hooks = JSON.parse(readFileSync(join(repo, ".codex/hooks.json"), "utf-8"));
-      expect(JSON.stringify(hooks)).not.toContain("repo-harness hook");
+      expect(JSON.stringify(hooks)).not.toContain("local-repo-harness hook");
       expect(JSON.stringify(hooks)).toContain("custom-hook.sh");
       expect(hooks.keep).toBe(true);
     } finally {
@@ -149,7 +149,7 @@ describe("runtime reclaim", () => {
           PostToolUse: [
             {
               matcher: "Bash",
-              hooks: [{ type: "command", command: "repo-harness-hook PostToolUse --route bash" }],
+              hooks: [{ type: "command", command: "local-repo-harness-hook PostToolUse --route bash" }],
             },
           ],
         },
@@ -160,7 +160,7 @@ describe("runtime reclaim", () => {
       const entry = result.runtime_reclaim.files.find((file) => file.path === ".codex/hooks.json");
       expect(entry?.classification).toBe("managed-entry");
       expect(entry?.action).toBe("preserve");
-      expect(readFileSync(join(repo, ".codex/hooks.json"), "utf-8")).toContain("repo-harness-hook");
+      expect(readFileSync(join(repo, ".codex/hooks.json"), "utf-8")).toContain("local-repo-harness-hook");
       expect(result.runtime_reclaim.archive).toBeUndefined();
     } finally {
       rmSync(repo, { recursive: true, force: true });

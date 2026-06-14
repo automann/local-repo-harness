@@ -1,6 +1,6 @@
-# repo-harness
+# local-repo-harness
 
-`repo-harness` convierte las sesiones de programación con Claude/Codex en un
+`local-repo-harness` convierte las sesiones de programación con Claude/Codex en un
 workflow repo-local repetible. Incluye un CLI y hooks de skill/runtime que
 escriben contexto, planes, handoffs, checks y evidencias de review dentro del
 proyecto, para que la siguiente sesión de agente continúe desde archivos y no
@@ -19,9 +19,9 @@ Entrega al agente un PRD o Sprint completo; después, tu bucle es solo review an
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
-Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
+Dirección del repositorio: `https://github.com/automann/local-repo-harness`
 
-## Por qué usar repo-harness
+## Por qué usar local-repo-harness
 
 - **El estado de la sesión vive en archivos, no en el historial de chat.** Las
   distintas sesiones de agente —Claude, Codex, ahora o más tarde— se mantienen
@@ -45,13 +45,13 @@ Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
 
 ## Novedades en 0.2.1
 
-- **Comando de inicialización global (`repo-harness init`).** Un solo comando
+- **Comando de inicialización global (`local-repo-harness init`).** Un solo comando
   inicializa el entorno global de Claude: essential plugins, policy
   hooks configurables (worktree guard, atomic commit/pending), LSP plugins
   opcionales según el tipo de proyecto y cuatro hook profiles (`standard`,
   `minimal`, `biome`, `biome-strict`). Ejecuta
-  `npx -y repo-harness init`; no necesitas clonar el repositorio fuente.
-- **Comando de adopción del repo (`repo-harness adopt`).** La instalación y el
+  `npx -y local-repo-harness init`; no necesitas clonar el repositorio fuente.
+- **Comando de adopción del repo (`local-repo-harness adopt`).** La instalación y el
   refresco de repos existentes tienen su propia superficie de comando, manteniendo
   la ruta de migración repo-local anterior mientras `init` queda dedicado al
   runtime global.
@@ -60,7 +60,7 @@ Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
   índice con el binario CodeGraph local o visible en PATH antes de emitir la pista.
   Sigue siendo advisory: no instala dependencias, no ejecuta el readiness probe
   pesado y no bloquea el prompt si CodeGraph no está disponible.
-- **Centinela de seguridad (`repo-harness security scan` + `security-sentinel.sh`).**
+- **Centinela de seguridad (`local-repo-harness security scan` + `security-sentinel.sh`).**
   Una verificación de solo lectura sobre las superficies de inyección de
   configuración de alto valor (`~/.claude/settings.json`, `~/.codex/hooks.json`,
   el `.vscode/tasks.json` repo-local y los adapters legacy a nivel de proyecto
@@ -71,7 +71,7 @@ Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
   modifica ninguna configuración. El centinela de `SessionStart` toma una huella
   de este conjunto y solo reescanea cuando la huella cambia, para no generar
   ruido en el session-start. Auditoría bajo demanda:
-  `repo-harness security scan --json`.
+  `local-repo-harness security scan --json`.
 - **Ciclo de vida draft-plan de Claude/Codex.** El Plan mode tiene explícitamente
   dos etapas: Draft y Approved. Los hooks reconocen la intención de crear un plan
   y rastrean la pending orchestration; un stop gate (`stop-orchestrator.sh`) exige
@@ -83,7 +83,7 @@ Dirección del repositorio: `https://github.com/Ancienttwo/repo-harness`
 
 ## Qué hace el producto
 
-`repo-harness` convierte el desarrollo asistido por IA de una "coordinación verbal
+`local-repo-harness` convierte el desarrollo asistido por IA de una "coordinación verbal
 en el historial de chat" en un "estado de workflow auditable en el repositorio".
 Instala en el repositorio objetivo un conjunto de contracts de archivos pequeño y
 explícito, para que Claude, Codex y las personas tengan una misma fuente de verdad
@@ -109,22 +109,22 @@ En conjunto hay tres capas:
 1. **Capa del paquete fuente**: este repositorio mantiene la CLI, los command
    skill facades, los templates, los hook assets, el workflow contract, los tests
    y el release gate.
-2. **Capa del contract del repositorio objetivo**: `repo-harness adopt` o la
+2. **Capa del contract del repositorio objetivo**: `local-repo-harness adopt` o la
    migración escribe `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts y `.ai/hooks/`.
 3. **Capa del host adapter**: el `~/.claude/settings.json` y el
    `~/.codex/hooks.json` a nivel de usuario enrutan los events de Claude/Codex
-   hacia `repo-harness-hook`. El hook entrypoint primero comprueba si el repo
+   hacia `local-repo-harness-hook`. El hook entrypoint primero comprueba si el repo
    actual tiene un `.ai/harness/workflow-contract.json`; si no hay opt in, sale en
    silencio, y solo si hay opt in entra en los `.ai/hooks/*` del repo actual.
 
 Para `UserPromptSubmit`, el adapter contract público sigue siendo
-`repo-harness-hook UserPromptSubmit --route default`. El CLI route registry hace
+`local-repo-harness-hook UserPromptSubmit --route default`. El CLI route registry hace
 dispatch de esa route a `.ai/hooks/prompt-guard.sh`. El shell hook se sigue
 ocupando del parseo del host JSON, la lectura de los archivos de workflow, los
 side effects de plan capture, el render del quality gate y el stdout/stderr
 host-safe. La decisión sobre el prompt intent y el workflow state se delega al
-TypeScript decision engine detrás de `repo-harness-hook prompt-guard-decide`, que
+TypeScript decision engine detrás de `local-repo-harness-hook prompt-guard-decide`, que
 devuelve un action enum desde una decision table explícita. Así la configuración
 del host no cambia, pero la capa más propensa a errores —el classifier y la
 state-machine— deja de estar dispersa en ramas condicionales de shell.
@@ -196,7 +196,7 @@ ejecución:
    riesgos y el evidence contract.
 2. Convierte esos documentos en un PRD Sprint bajo `plans/prds/`, con un
    backlog ordenado y sub-plans detallados para cada execution slice.
-3. Crea un Codex Goal que apunte a ese archivo de sprint. repo-harness puede
+3. Crea un Codex Goal que apunte a ese archivo de sprint. local-repo-harness puede
    entonces proyectar cada sprint item por el flow normal plan -> contract ->
    worktree -> verification.
 
@@ -213,7 +213,7 @@ las escrituras al runtime del host hasta que el dry-run se vea correcto.
 ### 1. Previsualizar solo el contrato repo-local
 
 ```bash
-npx -y repo-harness adopt --dry-run \
+npx -y local-repo-harness adopt --dry-run \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
@@ -227,7 +227,7 @@ o refrescaría.
 ### 2. Aplicar solo el contrato repo-local
 
 ```bash
-npx -y repo-harness adopt \
+npx -y local-repo-harness adopt \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
@@ -240,7 +240,7 @@ Codex/Claude y sin instalar external skills.
 ### 3. Activar project hooks y project skills
 
 ```bash
-npx -y repo-harness adopt \
+npx -y local-repo-harness adopt \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
   --skill-scope project \
@@ -257,14 +257,14 @@ Codex Settings antes de ejecutarlo.
 ### 4. Instalar el CLI opcionalmente
 
 La ruta por defecto no requiere Node.js: el instalador usa Bun como runtime. Si
-Bun no existe, instala Bun primero y después instala el CLI `repo-harness`.
+Bun no existe, instala Bun primero y después instala el CLI `local-repo-harness`.
 
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh
 
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex
 ```
 
 <details>
@@ -272,11 +272,11 @@ irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 |
 
 ```bash
 # Bun
-bun add -g repo-harness
-repo-harness adopt --dry-run
+bun add -g local-repo-harness
+local-repo-harness adopt --dry-run
 
 # Node/npm, con Bun ya en PATH porque el CLI corre sobre Bun
-repo-harness adopt --dry-run
+local-repo-harness adopt --dry-run
 ```
 
 </details>
@@ -284,31 +284,31 @@ repo-harness adopt --dry-run
 ### 5. Bootstrap user-level opcional
 
 ```bash
-npx -y repo-harness init
+npx -y local-repo-harness init
 ```
 
-`repo-harness init` es una ruta de bootstrap de máquina con impacto amplio.
+`local-repo-harness init` es una ruta de bootstrap de máquina con impacto amplio.
 Instala el CLI global, refresca aliases de skills, escribe hook adapters
 user-level para Codex/Claude, instala Waza/Mermaid en user skill roots,
 persiste el brain root en `~/.repo-harness/config.json` y configura CodeGraph
-MCP user-level. Úsalo solo cuando quieras repo-harness disponible para varios
+MCP user-level. Úsalo solo cuando quieras local-repo-harness disponible para varios
 repositorios de la máquina.
 
 Si trabajas desde un checkout del código fuente:
 
 ```bash
-git clone https://github.com/Ancienttwo/repo-harness.git ~/Projects/repo-harness
-cd ~/Projects/repo-harness
+git clone https://github.com/automann/local-repo-harness.git ~/Projects/local-repo-harness
+cd ~/Projects/local-repo-harness
 bun src/cli/index.ts init
 ```
 
 Modelo de rutas locales:
 
-- Repositorio fuente: `~/Projects/repo-harness`
+- Repositorio fuente: `~/Projects/local-repo-harness`
 - Claude skill alias: `~/.claude/skills/repo-harness`
 - Codex discoverable skill alias: `~/.codex/skills/repo-harness`
 
-`~/Projects/repo-harness` es la única source of truth editable. Las rutas locales
+`~/Projects/local-repo-harness` es la única source of truth editable. Las rutas locales
 de Claude/Codex son runtime entrypoints respaldados por symlinks. Los directorios
 de los runtimes ya retirados `repo-harness-skill` y `project-initializer` los
 elimina `scripts/sync-codex-installed-copies.sh`.
@@ -326,17 +326,17 @@ elimina `scripts/sync-codex-installed-copies.sh`.
 En un repositorio existente, ejecuta desde el repo root:
 
 ```bash
-npx -y repo-harness adopt --dry-run
+npx -y local-repo-harness adopt --dry-run
 ```
 
 Aplica solo después de que el reporte del dry-run sea correcto:
 
 ```bash
-npx -y repo-harness adopt
+npx -y local-repo-harness adopt
 ```
 
 Para un proyecto o módulo nuevo, usa la branch command `repo-harness-scaffold`.
-Para un repositorio existente, usa `repo-harness adopt`; este instala o refresca
+Para un repositorio existente, usa `local-repo-harness adopt`; este instala o refresca
 el harness y no crea el stack tecnológico de la aplicación.
 
 ### Cómo se ve el éxito
@@ -367,7 +367,7 @@ Si la salida del dry-run no es correcta, detente aquí primero y lee
 - `~/.codex/hooks.json` es el Codex adapter a nivel de usuario, hace dispatch al mismo runner.
 - Los hook adapters repo-local `.claude/settings.json` y `.codex/hooks.json` son legacy project-level config y deben retirarse durante la migración.
 - Codex debe confiar en `~/.codex/hooks.json` en sus Settings para que los hooks se ejecuten.
-- Orden de depuración: user-level adapter config -> `repo-harness-hook` o el fallback `repo-harness hook` -> route registry -> `.ai/hooks/*`.
+- Orden de depuración: user-level adapter config -> `local-repo-harness-hook` o el fallback `local-repo-harness hook` -> route registry -> `.ai/hooks/*`.
 
 `SessionStart` ejecuta dos scripts ordenados antes de empezar el trabajo:
 
@@ -383,10 +383,10 @@ El prompt guard tiene un paso interno adicional:
 ```mermaid
 flowchart LR
   Host["Claude/Codex UserPromptSubmit"] --> Adapter["user-level adapter"]
-  Adapter --> CLI["repo-harness-hook UserPromptSubmit --route default"]
+  Adapter --> CLI["local-repo-harness-hook UserPromptSubmit --route default"]
   CLI --> Route["route registry"]
   Route --> Shell[".ai/hooks/prompt-guard.sh"]
-  Shell --> Decision["repo-harness-hook prompt-guard-decide<br/>TypeScript decision table"]
+  Shell --> Decision["local-repo-harness-hook prompt-guard-decide<br/>TypeScript decision table"]
   Decision --> Action["single action enum"]
   Action --> Shell
   Shell --> RouteHint["Waza route hint<br/>think/planning explícito coincide primero → /think"]
@@ -426,9 +426,9 @@ Guards habituales:
 
 ## Release actual
 
-- npm package: `repo-harness@0.5.0`
-- Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
-- GitHub repository: `Ancienttwo/repo-harness`
+- npm package: `local-repo-harness@0.5.0`
+- Generated workflow stamp: `local-repo-harness@0.5.0+template@0.5.0`
+- GitHub repository: `automann/local-repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
 ## Current Model
@@ -441,7 +441,7 @@ Guards habituales:
   - `assets/workflow-contract.v1.json`
 - Los generated repos usan por defecto el repo-local harness flow:
   - `docs/spec.md -> plans/ -> tasks/contracts/ -> tasks/reviews/ -> .ai/context/context-map.json -> .ai/harness/*`
-- `repo-harness update` refresca las runtime pieces de usuario:
+- `local-repo-harness update` refresca las runtime pieces de usuario:
   - los `repo-harness` skill aliases
   - los global Codex/Claude hook adapters
   - las Waza skills: `think`, `hunt`, `check`, `health`
@@ -453,13 +453,13 @@ Guards habituales:
 ## Agradecimientos
 
 Gracias a [Hylarucoder](https://x.com/hylarucoder) por su contribución
-metodológica. El método P1/P2/P3 due-diligence de `repo-harness`, y la práctica
+metodológica. El método P1/P2/P3 due-diligence de `local-repo-harness`, y la práctica
 Geju que disciplina el planning, el trace y el decision rationale, vienen de su
 contribución e influencia.
 
 Gracias a [TW93](https://x.com/HiTw93), autor de Waza. Los skills centrales
 `think`, `hunt`, `check` y `health` dan forma al ritmo diario de planning, bug
-hunt y verification de `repo-harness`.
+hunt y verification de `local-repo-harness`.
 
 Gracias a [Garry Tan](https://x.com/garrytan), autor de gstack y gbrain. Ambos
 influyeron en el workflow de product discovery, plan/design review, release
@@ -474,7 +474,7 @@ compatibilidad de discovery por skills, mientras el CLI y los hooks ejecutan:
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation: `repo-harness-scaffold`
 
-`repo-harness adopt` se usa para repositorios existentes; `repo-harness-scaffold`
+`local-repo-harness adopt` se usa para repositorios existentes; `repo-harness-scaffold`
 queda como branch command para crear proyectos o módulos nuevos. `hooks-init`, `docs-init` y
 `create-project-dirs` son pasos internos, no commands públicos.
 

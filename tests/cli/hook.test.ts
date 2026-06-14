@@ -16,7 +16,7 @@ function withTempRepo(
   fn: (repoRoot: string) => void,
 ): void {
   const tmp = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), 'repo-harness-hook-')),
+    fs.mkdtempSync(path.join(os.tmpdir(), 'local-repo-harness-hook-')),
   );
   try {
     execSync('git init', { cwd: tmp, stdio: 'ignore' });
@@ -274,7 +274,7 @@ describe('hook command (Phase 1B)', () => {
       expect(res.status).toBe(0);
       expect(res.stderr).toContain('skipping missing script');
       expect(res.stderr).toContain('post-tool-observer.sh');
-      expect(res.stderr).toContain(`repo-harness adopt --repo ${repoRoot}`);
+      expect(res.stderr).toContain(`local-repo-harness adopt --repo ${repoRoot}`);
       expect(res.stderr).not.toContain('script not found');
     });
   });

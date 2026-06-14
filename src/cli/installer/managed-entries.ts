@@ -10,9 +10,9 @@
  * for Claude in Phase 0: `~/.claude/settings.json` already had a non-
  * repo-harness `rtk hook claude` entry that must survive install).
  *
- * User-scope command shape keeps the `command -v repo-harness || exit 0` shim
+ * User-scope command shape keeps the `command -v local-repo-harness || exit 0` shim
  * (Codex consult constraint #5: CLI-missing fallback). Project-scope command
- * shape uses the repo-owned `.ai/harness/bin/repo-harness-hook` runtime.
+ * shape uses the repo-owned `.ai/harness/bin/local-repo-harness-hook` runtime.
  */
 
 import { ROUTES, type Route } from '../hook/route-registry';
@@ -23,7 +23,7 @@ import {
 } from './hook-command';
 
 export const MANAGED_TAG = MANAGED_ENV_TAG;
-export const LEGACY_MANAGED_TAG = 'repo-harness hook';
+export const LEGACY_MANAGED_TAG = 'local-repo-harness hook';
 
 export interface HookCommand {
   type: 'command';

@@ -4,7 +4,7 @@ This repo uses a shared long-running harness. The durable workflow lives in repo
 
 ## Adoption Model
 
-Use this file as the first onboarding map after `repo-harness adopt` installs
+Use this file as the first onboarding map after `local-repo-harness adopt` installs
 or refreshes a repo. The harness gives agents three durable surfaces:
 
 - **Shared standards**: `docs/spec.md`, `docs/reference-configs/`, root
@@ -89,7 +89,7 @@ with the project.
 - Resolve edited paths through `.ai/harness/scripts/capability-resolver.ts match --path <path>`; longest prefix wins and equal-length ambiguity fails.
 - Treat `.ai/context/agent-context-blocks.txt`, `REPO_HARNESS_CONTEXT_BLOCKS`, and existing nested `CLAUDE.md`/`AGENTS.md` files as migration inputs or compatibility fallbacks only.
 - Selected capabilities receive paired `CLAUDE.md` and `AGENTS.md` files so Claude Code and Codex share the same local contract.
-- Use `repo-harness capability-context status|request|sync` to keep paired local context files aligned with the registry. The command writes only the controlled `CAPABILITY CONTEXT` block and preserves hand-authored content plus the separate architecture contract block.
+- Use `local-repo-harness capability-context status|request|sync` to keep paired local context files aligned with the registry. The command writes only the controlled `CAPABILITY CONTEXT` block and preserves hand-authored content plus the separate architecture contract block.
 - `.ai/context/capability-source-map.json` is the optional human-edited source-map manifest for capability positioning and source pointers. Missing entries fall back to registry/architecture/workstream metadata; `--auto-fill-positioning` writes deterministic draft entries explicitly, not from hooks.
-- `.ai/harness/capability-context/` is ignored runtime queue state. Post-edit hooks may enqueue requests, and `SessionStart` only reminds the current agent to run `repo-harness capability-context sync --pending --apply`.
+- `.ai/harness/capability-context/` is ignored runtime queue state. Post-edit hooks may enqueue requests, and `SessionStart` only reminds the current agent to run `local-repo-harness capability-context sync --pending --apply`.
 - `SessionStart` also summarizes pending architecture request cards so a resumed agent can see drift debt before claiming finish.

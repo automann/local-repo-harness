@@ -170,7 +170,7 @@ describe('doctor command (Phase 1C)', () => {
       expect(hooks.status).toBe('warn');
       expect(hooks.detail).toContain('source=repo-pin');
       expect(hooks.detail).toContain('security-sentinel.sh');
-      expect(hooks.detail).toContain(`repo-harness adopt --repo ${repoRoot}`);
+      expect(hooks.detail).toContain(`local-repo-harness adopt --repo ${repoRoot}`);
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
@@ -279,7 +279,7 @@ describe('doctor command (Phase 1C)', () => {
         const r = runDoctor();
         const update = r.checks.find((c) => c.id === 'cli-update')!;
         expect(update.status).toBe('na');
-        expect(update.detail).toContain('Agent can run REPO_HARNESS_CHECK_UPDATES=1 repo-harness doctor --json');
+        expect(update.detail).toContain('Agent can run REPO_HARNESS_CHECK_UPDATES=1 local-repo-harness doctor --json');
       });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
@@ -292,7 +292,7 @@ describe('doctor command (Phase 1C)', () => {
         expect(update.status).toBe('warn');
         expect(update.detail).toContain('current=');
         expect(update.detail).toContain('latest=99.0.0');
-        expect(update.detail).toContain('agent_action=npm install -g local-repo-harness@latest && repo-harness init');
+        expect(update.detail).toContain('agent_action=npm install -g local-repo-harness@latest && local-repo-harness init');
       });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
@@ -411,7 +411,7 @@ describe('doctor command (Phase 1C)', () => {
       expect(codexMcp.status).toBe('ok');
       expect(claudeMcp.status).toBe('warn');
       expect(claudeMcp.detail).toContain('alwaysLoad is not true');
-      expect(claudeMcp.detail).toContain('repo-harness tools configure codegraph --target claude --location global');
+      expect(claudeMcp.detail).toContain('local-repo-harness tools configure codegraph --target claude --location global');
       expect(index.status).toBe('ok');
 
       const log = fs.readFileSync(logFile, 'utf-8');

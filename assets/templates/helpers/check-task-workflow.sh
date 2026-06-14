@@ -445,7 +445,7 @@ check_reference_config_stub() {
   if ! grep -Fq "> **Doc ID**: $doc_id" "$path"; then
     report_issue "Reference config stub has wrong or missing Doc ID: $path"
   fi
-  if ! grep -Fq "repo-harness docs path $doc_id" "$path"; then
+  if ! grep -Fq "local-repo-harness docs path $doc_id" "$path"; then
     report_issue "Reference config stub is missing resolver command: $path"
   fi
 }

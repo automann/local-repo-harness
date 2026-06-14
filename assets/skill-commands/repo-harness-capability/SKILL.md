@@ -1,6 +1,6 @@
 ---
 name: repo-harness-capability
-description: Adds or syncs explicit repo-local capability boundaries without running full repo-harness init, migrate, or upgrade.
+description: Adds or syncs explicit repo-local capability boundaries without running full local-repo-harness init, migrate, or upgrade.
 when_to_use: "repo-harness-capability, add capability, add capacity, configure capability, only add selected capabilities, add subfolder AGENTS.md, add subfolder CLAUDE.md"
 ---
 

@@ -1,20 +1,22 @@
 ---
 name: repo-harness
-description: routes repo-harness requests through the CLI and hook automation plugin for init, update, scaffold, migrate, audit, repair, and ship workflows
-when_to_use: "repo-harness, initialize repo-local agentic development harness, scaffold new project with repo-harness, migrate repo-local agentic development harness, audit repo-local agentic development harness, repair repo-local agentic development harness"
+description: routes local-repo-harness requests through the CLI and hook automation plugin for init, update, scaffold, migrate, audit, repair, and ship workflows
+when_to_use: "local-repo-harness, repo-harness skill router, initialize repo-local agentic development harness, scaffold new project with local-repo-harness, migrate repo-local agentic development harness, audit repo-local agentic development harness, repair repo-local agentic development harness"
 ---
 
-# repo-harness
+# local-repo-harness Skill Router
 
-`repo-harness` is the CLI and hook automation plugin for repo-local agentic
-development. The skill entrypoint is a compatibility router over the versioned
-workflow engine and CLI command facades.
+`local-repo-harness` is the CLI and hook automation package for repo-local
+agentic development. The `repo-harness` skill entrypoint is a router over the
+versioned workflow engine and command facades.
 
 Compatibility boundary:
 
 - internal engine: CLI plus hook-backed tasks-first harness
 - contract ID: tasks-first-harness-v1
-- canonical skill, CLI, and package name: `repo-harness`
+- canonical skill name: `repo-harness`
+- canonical CLI and package name: `local-repo-harness`
+- command facade skill slugs: `repo-harness-*`
 - retired legacy aliases: `repo-harness-skill`, `project-initializer`
 - new-project creation surface: `repo-harness-scaffold` (secondary generator)
 
@@ -293,8 +295,8 @@ Migration defaults:
 - distill repeated corrections into `tasks/lessons.md`
 - merge missing `external_tooling` defaults into `.ai/harness/policy.json` without overwriting explicit user values
 - keep gstack/gbrain/CodeGraph detection advisory-only; do not auto-install, auto-upgrade, auto-sync, or auto-enable MCP
-- let `repo-harness init` bootstrap the required global runtime in one pass:
-  CLI install, repo-harness runtime alias sync, user-level hook adapters, Waza
+- let `local-repo-harness init` bootstrap the required global runtime in one pass:
+  CLI install, local-repo-harness runtime alias sync, user-level hook adapters, Waza
   (`think`, `hunt`, `check`, `health`), Mermaid, brain root persistence, and
   CodeGraph CLI/MCP configuration
 - treat Waza as Codex-first: `~/.codex/skills` is the Codex runtime source, `~/.agents/skills` is only skills CLI staging/cache, and updates require stage -> copy to Codex -> `cmp` verification
@@ -323,10 +325,10 @@ automation, treat it as a runtime-harness slice, not a generic config edit.
 Map the route first:
 
 1. `assets/hooks/` is the installable source.
-2. The active runtime resolves central-first through `repo-harness-hook`; `.ai/hooks/`
+2. The active runtime resolves central-first through `local-repo-harness-hook`; `.ai/hooks/`
    is a full repo-local implementation only when `"hook_source": "repo"` is pinned.
 3. User-level `~/.claude/settings.json` and `~/.codex/hooks.json` are adapters
-   that dispatch to `repo-harness-hook` or the compatibility `repo-harness hook`
+   that dispatch to `local-repo-harness-hook` or the full-CLI `local-repo-harness hook`
    route.
 4. Codex also requires the user-level hook config to be trusted in Codex Settings before it
    executes.
@@ -336,17 +338,17 @@ Map the route first:
 
 Trace one real event before changing behavior, for example:
 
-`UserPromptSubmit -> adapter -> repo-harness-hook -> prompt-guard.sh -> plan
+`UserPromptSubmit -> adapter -> local-repo-harness-hook -> prompt-guard.sh -> plan
 or advisory output`
 
 or:
 
-`PostToolUse(Edit|Write) -> adapter -> repo-harness-hook ->
+`PostToolUse(Edit|Write) -> adapter -> local-repo-harness-hook ->
 post-edit-guard.sh -> architecture drift, brain sync, contract verification,
 task handoff`
 
 For Codex hook failures, debug in this order: user-level `~/.codex/hooks.json`,
-Codex Settings trust, `repo-harness-hook` resolution, the active target hook
+Codex Settings trust, `local-repo-harness-hook` resolution, the active target hook
 script, then `.ai/harness/events.jsonl` or `.claude/.trace.jsonl` evidence.
 
 Hooks are accelerators and guards. They do not replace `plans/`, `tasks/`,

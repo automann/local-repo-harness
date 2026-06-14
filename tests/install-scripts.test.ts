@@ -21,7 +21,7 @@ describe("install script contracts", () => {
     expect(script).toContain("REPO_HARNESS_VERSION");
     expect(script).toContain("https://bun.sh/install");
     expect(script).toContain("bun add -g \"$package_spec\"");
-    expect(script).toContain("repo-harness --version");
+    expect(script).toContain("local-repo-harness --version");
     expect(script).not.toMatch(/\bnpm\b/);
     expect(script).not.toMatch(/\bnpx\b/);
     expect(script).not.toMatch(/\bnode\b/);
@@ -33,7 +33,7 @@ describe("install script contracts", () => {
     expect(script).toContain("REPO_HARNESS_VERSION");
     expect(script).toContain("https://bun.sh/install.ps1");
     expect(script).toContain("& bun add -g $PackageSpec");
-    expect(script).toContain("repo-harness --version");
+    expect(script).toContain("local-repo-harness --version");
     expect(script).not.toMatch(/\bnpm\b/i);
     expect(script).not.toMatch(/\bnpx\b/i);
     expect(script).not.toMatch(/\bnode\b/i);

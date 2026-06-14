@@ -22,9 +22,9 @@
       "runtimeScope": "project",
       "hookRuntimeMode": "project-vendored-bun",
       "binDirectory": ".ai/harness/bin",
-      "executable": ".ai/harness/bin/repo-harness-hook",
-      "runtimeDirectory": ".ai/harness/runtime/repo-harness",
-      "versionFile": ".ai/harness/runtime/repo-harness/.version",
+      "executable": ".ai/harness/bin/local-repo-harness-hook",
+      "runtimeDirectory": ".ai/harness/runtime/local-repo-harness",
+      "versionFile": ".ai/harness/runtime/local-repo-harness/.version",
       "requiredRuntime": "bun",
       "networkDuringHookExecution": false
     }
@@ -131,7 +131,7 @@
       "userMcp": {
         "codexConfigPath": "~/.codex/config.toml",
         "claudeConfigPath": "~/.claude.json",
-        "installCommand": "repo-harness tools configure codegraph --target <codex|claude|both> --location global"
+        "installCommand": "local-repo-harness tools configure codegraph --target <codex|claude|both> --location global"
       },
       "vendoringPolicy": "self-host-dev-dependency; downstream-generated-default-remains-do-not-add-package-dependency"
     },
@@ -173,7 +173,7 @@
       "source": "user-level-runtime-docs",
       "repoStubDirectory": "docs/reference-configs",
       "packageDirectory": "assets/reference-configs",
-      "resolverCommand": "repo-harness docs path <doc-id>",
+      "resolverCommand": "local-repo-harness docs path <doc-id>",
       "stubMarker": "<!-- repo-harness: reference-config-stub v1 -->"
     }
   },
@@ -361,11 +361,11 @@
     ],
     "projectRuntimeFiles": [
       ".ai/harness/bin/",
-      ".ai/harness/bin/repo-harness-hook",
-      ".ai/harness/runtime/repo-harness/",
-      ".ai/harness/runtime/repo-harness/.version",
-      ".ai/harness/runtime/repo-harness/src/cli/hook-entry.ts",
-      ".ai/harness/runtime/repo-harness/assets/hooks/"
+      ".ai/harness/bin/local-repo-harness-hook",
+      ".ai/harness/runtime/local-repo-harness/",
+      ".ai/harness/runtime/local-repo-harness/.version",
+      ".ai/harness/runtime/local-repo-harness/src/cli/hook-entry.ts",
+      ".ai/harness/runtime/local-repo-harness/assets/hooks/"
     ]
   },
   "documents": {

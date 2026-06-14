@@ -537,16 +537,16 @@ pi_print_codex_hook_trust_notice() {
   case "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" in
     project)
       if [[ "${REPO_HARNESS_HOOK_RUNTIME_MODE:-project-vendored-bun}" == "global-path" ]]; then
-        echo "Host hook adapters are project-scoped with explicit global-path runtime: run repo-harness install --target both --scope project --runtime global-path, then trust <repo>/.codex/hooks.json in Codex Settings."
+        echo "Host hook adapters are project-scoped with explicit global-path runtime: run local-repo-harness install --target both --scope project --runtime global-path, then trust <repo>/.codex/hooks.json in Codex Settings."
       else
-        echo "Host hook adapters are project-scoped: run repo-harness install --target both --scope project --runtime project-vendored-bun, then trust <repo>/.codex/hooks.json in Codex Settings; no user-level repo-harness-hook is required."
+        echo "Host hook adapters are project-scoped: run local-repo-harness install --target both --scope project --runtime project-vendored-bun, then trust <repo>/.codex/hooks.json in Codex Settings; no user-level local-repo-harness-hook is required."
       fi
       ;;
     none)
-      echo "Host hook adapters are skipped: run repo-harness install --target both --scope user or --scope project when ready."
+      echo "Host hook adapters are skipped: run local-repo-harness install --target both --scope user or --scope project when ready."
       ;;
     *)
-      echo "Host hook adapters default to user scope: run repo-harness install --target both --scope user, or use --scope project for repo-local adapters; trust the matching Codex hooks.json in Codex Settings."
+      echo "Host hook adapters default to user scope: run local-repo-harness install --target both --scope user, or use --scope project for repo-local adapters; trust the matching Codex hooks.json in Codex Settings."
       ;;
   esac
 }
@@ -592,12 +592,12 @@ pi_write_hook_runtime_readme() {
 This repo does not pin `"hook_source": "repo"`, so active hook execution is
 central-first. User-scoped adapters call the installed global runtime:
 
-`~/.codex/hooks.json` / `~/.claude/settings.json` -> `repo-harness-hook` ->
+`~/.codex/hooks.json` / `~/.claude/settings.json` -> `local-repo-harness-hook` ->
 packaged hooks from the installed repo-harness runtime.
 
-Project-scoped adapters instead call `.ai/harness/bin/repo-harness-hook`,
+Project-scoped adapters instead call `.ai/harness/bin/local-repo-harness-hook`,
 which executes the project-vendored Bun runtime under
-`.ai/harness/runtime/repo-harness`.
+`.ai/harness/runtime/local-repo-harness`.
 
 The files under `.ai/hooks/lib/` are kept only for repo workflow helper scripts
 that source shared shell utilities. Full hook runtime scripts are not vendored
@@ -639,7 +639,7 @@ pi_install_hook_assets() {
 
   if [[ ! -d "$hooks_assets_dir" ]]; then
     echo "[project-init] Warning: hook assets not found at $hooks_assets_dir" >&2
-    echo "[project-init] User-level host adapters dispatch through repo-harness-hook packaged hooks." >&2
+    echo "[project-init] User-level host adapters dispatch through local-repo-harness-hook packaged hooks." >&2
     return 0
   fi
 
@@ -1069,7 +1069,7 @@ pi_install_helpers() {
     if [[ "$source_repo_target" -eq 1 || "$(pi_repo_pins_helper_source "$target_dir" && printf yes || true)" == "yes" ]]; then
       echo "[dry-run] install source helpers into $scripts_dir"
     else
-      echo "[dry-run] install helper compatibility wrappers in $scripts_dir; package runtime dispatches through repo-harness run"
+      echo "[dry-run] install helper compatibility wrappers in $scripts_dir; package runtime dispatches through local-repo-harness run"
     fi
     return 0
   fi
@@ -1165,7 +1165,7 @@ const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice
 });
 
 if (result.error) {
-  console.error(\`Missing repo-harness CLI for helper $(basename "$helper_name" .ts): \${result.error.message}\`);
+  console.error(\`Missing local-repo-harness CLI for helper $(basename "$helper_name" .ts): \${result.error.message}\`);
   process.exit(1);
 }
 
@@ -1186,11 +1186,11 @@ if [[ -n "\$SOURCE_ROOT" && -f "\$SOURCE_ROOT/src/cli/index.ts" ]]; then
   fi
 fi
 
-if command -v repo-harness >/dev/null 2>&1; then
-  exec repo-harness run $helper_id "\$@"
+if command -v local-repo-harness >/dev/null 2>&1; then
+  exec local-repo-harness run $helper_id "\$@"
 fi
 
-echo "Missing repo-harness CLI for helper $helper_id" >&2
+echo "Missing local-repo-harness CLI for helper $helper_id" >&2
 exit 1
 EOF_WRAPPER_SH
       ;;
@@ -1496,7 +1496,7 @@ $PI_REFERENCE_CONFIG_STUB_MARKER
 > **Runtime Docs**: user-level repo-harness reference
 > **Doc ID**: $doc_id
 > **Version**: $version
-> **Source Command**: \`repo-harness docs path $doc_id\`
+> **Source Command**: \`local-repo-harness docs path $doc_id\`
 
 This repo keeps workflow facts and runtime artifacts locally under \`.ai/\`.
 The full generic runtime guide is supplied by the installed repo-harness
@@ -1506,8 +1506,8 @@ copy of shared documentation.
 Use:
 
 \`\`\`bash
-repo-harness docs path $doc_id
-repo-harness docs show $doc_id
+local-repo-harness docs path $doc_id
+local-repo-harness docs show $doc_id
 \`\`\`
 EOF_REFERENCE_STUB
 }
@@ -1860,8 +1860,8 @@ pi_write_harness_policy() {
     "scope": "${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}",
     "runtime_selection": "auto",
     "hook_runtime_mode": "${REPO_HARNESS_HOOK_RUNTIME_MODE:-global-path}",
-    "project_hook_executable": ".ai/harness/bin/repo-harness-hook",
-    "project_runtime_dir": ".ai/harness/runtime/repo-harness"
+    "project_hook_executable": ".ai/harness/bin/local-repo-harness-hook",
+    "project_runtime_dir": ".ai/harness/runtime/local-repo-harness"
   },
   "skills": {
     "repo_harness_scope": "${REPO_HARNESS_SKILL_SCOPE:-user}",
@@ -2035,11 +2035,11 @@ pi_write_harness_policy() {
     "profile": "$(pi_documentation_profile)",
     "reference_source": "user-level-runtime-docs",
     "reference_stub_marker": "$PI_REFERENCE_CONFIG_STUB_MARKER",
-    "reference_resolver": "repo-harness docs path <doc-id>",
+    "reference_resolver": "local-repo-harness docs path <doc-id>",
     "required": ["docs/spec.md", "docs/architecture/index.md"],
     "on_demand": ["docs/brief.md", "docs/tech-stack.md", "docs/decisions.md", "docs/architecture.md", "docs/packages.md"],
     "reference_configs": [$(pi_policy_reference_config_names | pi_json_string_array_from_lines)],
-    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package repo-harness install"
+    "rule": "create optional docs only when the agent has concrete repo evidence or the user asks; docs/reference-configs contains repo-local pointer stubs while full generic runtime docs live in the user-level/package local-repo-harness install"
   },
   "lsp_profiles": {
     "default": "$(pi_lsp_profile)",
@@ -2108,7 +2108,7 @@ pi_write_harness_policy() {
     "hosts": $(pi_external_tooling_hosts_json),
     "mode": "agent-readiness-required",
     "detection": "init-migrate",
-    "readiness_gate": "repo-harness run check-agent-tooling --host codex --strict-readiness",
+    "readiness_gate": "local-repo-harness run check-agent-tooling --host codex --strict-readiness",
     "waza": {
       "scope": "${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}",
       "source_repo": "tw93/Waza",
@@ -2165,7 +2165,7 @@ pi_write_harness_policy() {
       "index_dir": ".codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" repo-harness tools configure codegraph --target codex --location global",
+      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" local-repo-harness tools configure codegraph --target codex --location global",
       "project_init_command": "codegraph init -i .",
       "sync_command": "codegraph sync .",
       "vendoring_policy": "do-not-add-package-dependency"
@@ -2233,8 +2233,8 @@ policy.host_adapters ||= {};
 policy.host_adapters.scope = process.env.REPO_HARNESS_HOST_ADAPTER_SCOPE;
 policy.host_adapters.runtime_selection = process.env.REPO_HARNESS_RUNTIME_SELECTION;
 policy.host_adapters.hook_runtime_mode = process.env.REPO_HARNESS_HOOK_RUNTIME_MODE;
-policy.host_adapters.project_hook_executable ||= ".ai/harness/bin/repo-harness-hook";
-policy.host_adapters.project_runtime_dir ||= ".ai/harness/runtime/repo-harness";
+policy.host_adapters.project_hook_executable ||= ".ai/harness/bin/local-repo-harness-hook";
+policy.host_adapters.project_runtime_dir ||= ".ai/harness/runtime/local-repo-harness";
 
 policy.skills ||= {};
 policy.skills.repo_harness_scope = process.env.REPO_HARNESS_SKILL_SCOPE;
@@ -2726,13 +2726,13 @@ pi_ensure_task_sync() {
   "name": "$project_name",
   "private": true,
   "scripts": {
-    "check:brain-manifest": "repo-harness run check-brain-manifest",
-    "check:context-files": "repo-harness run check-context-files",
-    "check:deploy-sql": "repo-harness run check-deploy-sql-order",
-    "check:architecture-sync": "repo-harness run check-architecture-sync",
-    "check:task-sync": "repo-harness run check-task-sync",
-    "check:task-workflow": "repo-harness run check-task-workflow --strict",
-    "sync:brain-docs": "repo-harness run sync-brain-docs --all"
+    "check:brain-manifest": "local-repo-harness run check-brain-manifest",
+    "check:context-files": "local-repo-harness run check-context-files",
+    "check:deploy-sql": "local-repo-harness run check-deploy-sql-order",
+    "check:architecture-sync": "local-repo-harness run check-architecture-sync",
+    "check:task-sync": "local-repo-harness run check-task-sync",
+    "check:task-workflow": "local-repo-harness run check-task-workflow --strict",
+    "sync:brain-docs": "local-repo-harness run sync-brain-docs --all"
   }
 }
 EOF_PACKAGE
@@ -2751,13 +2751,13 @@ const file = process.argv[1];
 const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
 pkg.private ??= true;
 pkg.scripts ??= {};
-pkg.scripts["check:brain-manifest"] = "repo-harness run check-brain-manifest";
-pkg.scripts["check:context-files"] = "repo-harness run check-context-files";
-pkg.scripts["check:deploy-sql"] = "repo-harness run check-deploy-sql-order";
-pkg.scripts["check:architecture-sync"] = "repo-harness run check-architecture-sync";
-pkg.scripts["check:task-sync"] = "repo-harness run check-task-sync";
-pkg.scripts["check:task-workflow"] = "repo-harness run check-task-workflow --strict";
-pkg.scripts["sync:brain-docs"] = "repo-harness run sync-brain-docs --all";
+pkg.scripts["check:brain-manifest"] = "local-repo-harness run check-brain-manifest";
+pkg.scripts["check:context-files"] = "local-repo-harness run check-context-files";
+pkg.scripts["check:deploy-sql"] = "local-repo-harness run check-deploy-sql-order";
+pkg.scripts["check:architecture-sync"] = "local-repo-harness run check-architecture-sync";
+pkg.scripts["check:task-sync"] = "local-repo-harness run check-task-sync";
+pkg.scripts["check:task-workflow"] = "local-repo-harness run check-task-workflow --strict";
+pkg.scripts["sync:brain-docs"] = "local-repo-harness run sync-brain-docs --all";
 fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
 ' "$package_file"
 }

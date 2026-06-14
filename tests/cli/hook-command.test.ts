@@ -21,10 +21,10 @@ describe('hook command resolver', () => {
     });
 
     expect(command).toContain('REPO_HARNESS_MANAGED=1');
-    expect(command).toContain('command -v repo-harness-hook');
-    expect(command).toContain('exec repo-harness-hook PreToolUse --route edit');
-    expect(command).toContain('command -v repo-harness');
-    expect(command).toContain('exec repo-harness hook PreToolUse --route edit');
+    expect(command).toContain('command -v local-repo-harness-hook');
+    expect(command).toContain('exec local-repo-harness-hook PreToolUse --route edit');
+    expect(command).toContain('command -v local-repo-harness');
+    expect(command).toContain('exec local-repo-harness hook PreToolUse --route edit');
   });
 
   test('project runtime resolves and executes the repo-owned hook wrapper', () => {
@@ -35,11 +35,11 @@ describe('hook command resolver', () => {
     });
 
     expect(command).toContain('repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0');
-    expect(command).toContain('hook="$repo_root/.ai/harness/bin/repo-harness-hook"');
+    expect(command).toContain('hook="$repo_root/.ai/harness/bin/local-repo-harness-hook"');
     expect(command).toContain('exec "$hook" PreToolUse --route edit');
     expect(command).toContain('HOOK_HOST=claude');
-    expect(command).not.toContain('command -v repo-harness-hook');
-    expect(command).not.toContain('exec repo-harness hook');
+    expect(command).not.toContain('command -v local-repo-harness-hook');
+    expect(command).not.toContain('exec local-repo-harness hook');
     expect(command).not.toContain('npx');
     expect(command).not.toContain('bunx');
   });

@@ -3,8 +3,8 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import type { WriteResult } from './types';
 
-export const PROJECT_HOOK_BIN_REL = '.ai/harness/bin/repo-harness-hook';
-export const PROJECT_RUNTIME_ROOT_REL = '.ai/harness/runtime/repo-harness';
+export const PROJECT_HOOK_BIN_REL = '.ai/harness/bin/local-repo-harness-hook';
+export const PROJECT_RUNTIME_ROOT_REL = '.ai/harness/runtime/local-repo-harness';
 export const PROJECT_RUNTIME_VERSION_REL = `${PROJECT_RUNTIME_ROOT_REL}/.version`;
 
 const PACKAGE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -117,7 +117,7 @@ done
 
 script_path="\${BASH_SOURCE[0]}"
 script_dir="$(cd "\${script_path%/*}" && pwd -P)"
-runtime_root="$(cd "$script_dir/../runtime/repo-harness" 2>/dev/null && pwd -P || true)"
+runtime_root="$(cd "$script_dir/../runtime/local-repo-harness" 2>/dev/null && pwd -P || true)"
 hook_entry="$runtime_root/src/cli/hook-entry.ts"
 
 find_bun() {
@@ -135,11 +135,11 @@ find_bun() {
 runtime_unavailable() {
   local reason="$1"
   if [[ "$event" == "SessionStart" ]]; then
-    printf '[repo-harness] project hook runtime unavailable: %s\\n' "$reason" >&2
+    printf '[local-repo-harness] project hook runtime unavailable: %s\\n' "$reason" >&2
     return 0
   fi
   if [[ "$event" == "PreToolUse" && "$route" == "edit" ]]; then
-    printf '[repo-harness] required project hook runtime unavailable: %s\\n' "$reason" >&2
+    printf '[local-repo-harness] required project hook runtime unavailable: %s\\n' "$reason" >&2
     return 2
   fi
   return 0

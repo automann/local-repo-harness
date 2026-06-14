@@ -767,7 +767,7 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
         action: actionName,
         status: "failed",
         command,
-        stderr: "CodeGraph CLI is missing; run repo-harness tools ensure codegraph first.",
+        stderr: "CodeGraph CLI is missing; run local-repo-harness tools ensure codegraph first.",
       });
       if (target === "claude") {
         configureClaudeAllowedTools(actions, opts.env);

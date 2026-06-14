@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Lightweight SessionStart sentinel. It checks a fixed set of high-value config
 # files only when their content fingerprint changes, then emits a short
-# SessionStart context reminder if repo-harness security scan finds anything.
+# SessionStart context reminder if local-repo-harness security scan finds anything.
 
 REPO_ROOT="${HOOK_REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 SECURITY_DIR="$REPO_ROOT/.ai/harness/security"
@@ -45,8 +45,8 @@ security_scan() {
     return $?
   fi
 
-  if command -v repo-harness >/dev/null 2>&1; then
-    repo-harness security scan --json
+  if command -v local-repo-harness >/dev/null 2>&1; then
+    local-repo-harness security scan --json
     return $?
   fi
 
@@ -69,7 +69,7 @@ const fail = report.findings.filter((finding) => finding.severity === "fail").le
 const warn = report.findings.filter((finding) => finding.severity === "warn").length;
 const first = report.findings[0];
 const bits = [`${report.findings.length} finding(s)`, `${high} high`, `${warn} warn`, `${fail} fail`];
-console.log(`[SecurityConfig] ${bits.join(", ")}. First: ${first.ruleId} at ${first.filePath}. Run repo-harness security scan --json.`);
+console.log(`[SecurityConfig] ${bits.join(", ")}. First: ${first.ruleId} at ${first.filePath}. Run local-repo-harness security scan --json.`);
 '
   if command -v node >/dev/null 2>&1; then
     node -e "$js" "$report_file"

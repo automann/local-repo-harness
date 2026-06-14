@@ -1,5 +1,5 @@
 /**
- * `repo-harness status` — read-only summary of CLI install state + route coverage.
+ * `local-repo-harness status` — read-only summary of CLI install state + route coverage.
  *
  * Reports per-host install detection (target.detect), managed-entry count vs
  * expected, route registry summary, and current repo opt-in marker presence.
@@ -20,7 +20,7 @@ export const CLI_VERSION = '0.5.0';
 
 const OPT_IN_MARKER = '.ai/harness/workflow-contract.json';
 const POLICY_FILE = '.ai/harness/policy.json';
-const PROJECT_RUNTIME_BIN = '.ai/harness/bin/repo-harness-hook';
+const PROJECT_RUNTIME_BIN = '.ai/harness/bin/local-repo-harness-hook';
 
 export interface StatusReport {
   cli: { version: string };

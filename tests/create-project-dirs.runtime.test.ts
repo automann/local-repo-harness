@@ -12,8 +12,8 @@ function expectReferenceConfigStub(cwd: string, docId: string): void {
   const content = readFileSync(join(cwd, "docs/reference-configs", `${docId}.md`), "utf-8");
   expect(content).toContain(REFERENCE_STUB_MARKER);
   expect(content).toContain(`> **Doc ID**: ${docId}`);
-  expect(content).toContain(`repo-harness docs path ${docId}`);
-  expect(content).toContain(`repo-harness docs show ${docId}`);
+  expect(content).toContain(`local-repo-harness docs path ${docId}`);
+  expect(content).toContain(`local-repo-harness docs show ${docId}`);
 }
 
 describe("create-project-dirs runtime smoke", () => {
@@ -140,7 +140,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(existsSync(join(cwd, "scripts/architecture-drift.sh"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/architecture-drift.sh"))).toBe(false);
       expect(readFileSync(join(cwd, "scripts/sprint-backlog.sh"), "utf-8")).toContain(
-        "repo-harness run sprint-backlog"
+        "local-repo-harness run sprint-backlog"
       );
       expect(existsSync(join(cwd, ".claude/templates/sprint.template.md"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/context-budget.ts"))).toBe(false);
@@ -187,7 +187,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.helpers.compatibilityDirectory).toBe("scripts");
       expect(workflowContract.documentation.referenceConfigs.source).toBe("user-level-runtime-docs");
       expect(workflowContract.documentation.referenceConfigs.repoStubDirectory).toBe("docs/reference-configs");
-      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("repo-harness docs path <doc-id>");
+      expect(workflowContract.documentation.referenceConfigs.resolverCommand).toBe("local-repo-harness docs path <doc-id>");
       expect(workflowContract.documentation.referenceConfigs.stubMarker).toBe(REFERENCE_STUB_MARKER);
       expect(workflowContract.helpers.scripts).toContain("check-agent-tooling.sh");
       expect(workflowContract.helpers.scripts).toContain("check-brain-manifest.sh");
@@ -220,8 +220,8 @@ describe("create-project-dirs runtime smoke", () => {
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/active-worktree");
       expect(workflowContract.artifacts.runtimeFiles).toContain(".ai/harness/triage/inbox.md");
       expect(workflowContract.artifacts.runtimeFiles).not.toContain(".ai/harness/workstreams/events.jsonl");
-      expect(workflowContract.artifacts.projectRuntimeFiles).toContain(".ai/harness/bin/repo-harness-hook");
-      expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/bin/repo-harness-hook");
+      expect(workflowContract.artifacts.projectRuntimeFiles).toContain(".ai/harness/bin/local-repo-harness-hook");
+      expect(workflowContract.artifacts.requiredFiles).not.toContain(".ai/harness/bin/local-repo-harness-hook");
       expect(workflowContract.artifacts.requiredFiles).toContain("docs/architecture/index.md");
       expect(workflowContract.artifacts.requiredFiles).toContain("tasks/current.md");
       expect(workflowContract.artifacts.requiredDirectories).toContain("plans/prds");
@@ -261,7 +261,7 @@ describe("create-project-dirs runtime smoke", () => {
       const policy = JSON.parse(readFileSync(join(cwd, ".ai/harness/policy.json"), "utf-8"));
       expect(policy.host_adapters.scope).toBe("user");
       expect(policy.host_adapters.hook_runtime_mode).toBe("global-path");
-      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/repo-harness-hook");
+      expect(policy.host_adapters.project_hook_executable).toBe(".ai/harness/bin/local-repo-harness-hook");
       expect(policy.harness.helper_source).toBe("package");
       expect(policy.harness.helper_runtime_dir).toBe(".ai/harness/scripts");
       expect(policy.harness.helper_compat_dir).toBe("scripts");
@@ -273,7 +273,7 @@ describe("create-project-dirs runtime smoke", () => {
       });
       expect(policy.external_tooling.hosts).toEqual(["claude-code", "codex"]);
       expect(policy.external_tooling.mode).toBe("agent-readiness-required");
-      expect(policy.external_tooling.readiness_gate).toBe("repo-harness run check-agent-tooling --host codex --strict-readiness");
+      expect(policy.external_tooling.readiness_gate).toBe("local-repo-harness run check-agent-tooling --host codex --strict-readiness");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.managed_skills).toEqual(["think", "hunt", "check", "health"]);
       expect(policy.external_tooling.waza.codex_primary_path).toBe("~/.codex/skills");
@@ -328,7 +328,7 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.documentation.profile).toBe("minimal-agentic");
       expect(policy.documentation.reference_source).toBe("user-level-runtime-docs");
       expect(policy.documentation.reference_stub_marker).toBe(REFERENCE_STUB_MARKER);
-      expect(policy.documentation.reference_resolver).toBe("repo-harness docs path <doc-id>");
+      expect(policy.documentation.reference_resolver).toBe("local-repo-harness docs path <doc-id>");
       expect(policy.documentation.required).toContain("docs/architecture/index.md");
       expect(policy.architecture.diagram_skill).toBe("mermaid");
       expect(policy.architecture.vendoring_policy).toBe("do-not-vendor-diagram-skill-assets");
@@ -364,12 +364,12 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.upgrade.cleanup.remove_only_ownership).toBe("known_generated");
 
       const pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8"));
-      expect(pkg.scripts["check:context-files"]).toBe("repo-harness run check-context-files");
-      expect(pkg.scripts["check:deploy-sql"]).toBe("repo-harness run check-deploy-sql-order");
-      expect(pkg.scripts["check:architecture-sync"]).toBe("repo-harness run check-architecture-sync");
-      expect(pkg.scripts["check:task-sync"]).toBe("repo-harness run check-task-sync");
-      expect(pkg.scripts["check:task-workflow"]).toBe("repo-harness run check-task-workflow --strict");
-      expect(pkg.scripts["sync:brain-docs"]).toBe("repo-harness run sync-brain-docs --all");
+      expect(pkg.scripts["check:context-files"]).toBe("local-repo-harness run check-context-files");
+      expect(pkg.scripts["check:deploy-sql"]).toBe("local-repo-harness run check-deploy-sql-order");
+      expect(pkg.scripts["check:architecture-sync"]).toBe("local-repo-harness run check-architecture-sync");
+      expect(pkg.scripts["check:task-sync"]).toBe("local-repo-harness run check-task-sync");
+      expect(pkg.scripts["check:task-workflow"]).toBe("local-repo-harness run check-task-workflow --strict");
+      expect(pkg.scripts["sync:brain-docs"]).toBe("local-repo-harness run sync-brain-docs --all");
       expect(existsSync(join(cwd, "scripts/contract-worktree.sh"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/ship-worktrees.sh"))).toBe(true);
     } finally {

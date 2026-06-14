@@ -1,30 +1,30 @@
-# 项目级安装和应用 repo-harness 教程
+# 项目级安装和应用 local-repo-harness 教程
 
-这份教程面向只想把 repo-harness 用在某一个项目里的用户。目标是：
+这份教程面向只想把 local-repo-harness 用在某一个项目里的用户。目标是：
 
-- repo-harness CLI 作为目标项目的开发依赖存在。
+- local-repo-harness CLI 作为目标项目的开发依赖存在。
 - hooks、skills、外部工具配置和 CodeGraph MCP 尽量写入目标项目。
 - 不注册 user-level Codex/Claude hooks。
 - 不把 Waza、Mermaid、gbrain、CodeGraph MCP 写进用户级目录。
 
-这里的“项目级”不是说包管理器完全不使用用户缓存。npm、Bun 或 Git 仍可能使用自己的 cache。这里限制的是 repo-harness 管理的 runtime、host adapter、skills、MCP config 和 brain state 不写入用户级位置。
+这里的“项目级”不是说包管理器完全不使用用户缓存。npm、Bun 或 Git 仍可能使用自己的 cache。这里限制的是 local-repo-harness 管理的 runtime、host adapter、skills、MCP config 和 brain state 不写入用户级位置。
 
 ## 先分清两个仓库
 
-同步开发或本地测试时，通常会同时看到两个 repo-harness：
+同步开发或本地测试时，通常会同时看到两个 local-repo-harness 相关副本：
 
-- **上游 / 源码 repo-harness**：你 fork 或 clone 的 repo-harness 源码仓库，用来开发、打包、验证 repo-harness 本身。
-- **下游 / 目标项目**：真正要接入 repo-harness 工作流的业务项目。项目级安装时，repo-harness 会作为这个项目的 `devDependencies`、项目 hooks runtime 和项目 skills 出现。
+- **源码 local-repo-harness**：你 fork 或 clone 的 local-repo-harness 源码仓库，用来开发、打包、验证 local-repo-harness 本身。
+- **下游 / 目标项目**：真正要接入 local-repo-harness 工作流的业务项目。项目级安装时，local-repo-harness 会作为这个项目的 `devDependencies`、项目 hooks runtime 和项目 skills 出现。
 
-除非你正在开发 repo-harness 本身，否则不要在目标项目里编辑 `.agents/skills/repo-harness`、`.claude/skills/repo-harness` 或 `.ai/harness/runtime/repo-harness`。这些是安装副本和运行时副本，不是产品源码。
+除非你正在开发 local-repo-harness 本身，否则不要在目标项目里编辑 `.agents/skills/repo-harness`、`.claude/skills/repo-harness` 或 `.ai/harness/runtime/local-repo-harness`。这些是安装副本和运行时副本，不是产品源码。
 
 ## 不要运行这些命令
 
 如果你只想项目级安装，不要运行：
 
 ```bash
-repo-harness init
-repo-harness update
+local-repo-harness init
+local-repo-harness update
 npx -y local-repo-harness init
 npm install -g local-repo-harness
 bun add -g local-repo-harness
@@ -33,11 +33,11 @@ npx -y skills add tw93/Waza -g
 
 原因：
 
-- `repo-harness init` 是机器级 bootstrap，会安装或刷新 user-level hooks、skills、brain root 和 CodeGraph MCP。
-- `repo-harness update` 刷新的是 user-level CLI/runtime，不负责刷新某个项目。
+- `local-repo-harness init` 是机器级 bootstrap，会安装或刷新 user-level hooks、skills、brain root 和 CodeGraph MCP。
+- `local-repo-harness update` 刷新的是 user-level CLI/runtime，不负责刷新某个项目。
 - `-g` 会把外部 skills 或工具装到用户级位置。
 
-项目级刷新使用 `repo-harness adopt --repo <target-project>`，并显式传入 project/none scope。
+项目级刷新使用 `local-repo-harness adopt --repo <target-project>`，并显式传入 project/none scope。
 
 ## 前置条件
 
@@ -45,7 +45,7 @@ npx -y skills add tw93/Waza -g
 
 - 已经是 Git 仓库。
 - 能运行 `bash`。
-- 已安装 Bun，因为 repo-harness CLI 的 shebang 是 `#!/usr/bin/env bun`。
+- 已安装 Bun，因为 local-repo-harness CLI 的 shebang 是 `#!/usr/bin/env bun`。
 - 如果要使用 npm 安装包，机器上需要 npm；如果项目用 Bun，也可以用 Bun 安装依赖。
 
 建议先从干净分支开始：
@@ -53,10 +53,10 @@ npx -y skills add tw93/Waza -g
 ```bash
 cd /path/to/target-project
 git status --short
-git checkout -b chore/adopt-repo-harness-project-scope
+git checkout -b chore/adopt-local-repo-harness-project-scope
 ```
 
-## 第一步：把 repo-harness 放进目标项目
+## 第一步：把 local-repo-harness 放进目标项目
 
 如果 `local-repo-harness` 已经发布到你要使用的 npm registry：
 
@@ -68,20 +68,20 @@ npm install --save-dev local-repo-harness
 如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到目标项目：
 
 ```bash
-cd /path/to/source-repo-harness
+cd /path/to/source-local-repo-harness
 bun install
-mkdir -p /tmp/repo-harness-pack
-npm pack --pack-destination /tmp/repo-harness-pack
+mkdir -p /tmp/local-repo-harness-pack
+npm pack --pack-destination /tmp/local-repo-harness-pack
 
 cd /path/to/target-project
-npm install --save-dev /tmp/repo-harness-pack/repo-harness-*.tgz
+npm install --save-dev /tmp/local-repo-harness-pack/local-repo-harness-*.tgz
 ```
 
 之后统一用目标项目里的本地 CLI：
 
 ```bash
 cd /path/to/target-project
-npm exec -- repo-harness --version
+npm exec -- local-repo-harness --version
 ```
 
 ## 第二步：做最小 dry-run
@@ -90,7 +90,7 @@ npm exec -- repo-harness --version
 
 ```bash
 cd /path/to/target-project
-npm exec -- repo-harness adopt --dry-run \
+npm exec -- local-repo-harness adopt --dry-run \
   --repo "$PWD" \
   --host-adapter-scope none \
   --skill-scope none \
@@ -121,7 +121,7 @@ npm exec -- repo-harness adopt --dry-run \
 适合先让项目拥有 repo-harness 的文件化协作结构，但暂时不启用 Codex/Claude hooks：
 
 ```bash
-npm exec -- repo-harness adopt \
+npm exec -- local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope none \
   --skill-scope none \
@@ -148,7 +148,7 @@ npm exec -- repo-harness adopt \
 适合只想让当前项目启用 Codex/Claude hooks 和 repo-harness skills，但暂时不安装 Waza、Mermaid、CodeGraph：
 
 ```bash
-npm exec -- repo-harness adopt \
+npm exec -- local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -163,8 +163,8 @@ npm exec -- repo-harness adopt \
 
 - `.codex/hooks.json`
 - `.claude/settings.json`
-- `.ai/harness/bin/repo-harness-hook`
-- `.ai/harness/runtime/repo-harness/`
+- `.ai/harness/bin/local-repo-harness-hook`
+- `.ai/harness/runtime/local-repo-harness/`
 - `.agents/skills/repo-harness`
 - `.claude/skills/repo-harness`
 - `.ai/harness/brain-manifest.json`
@@ -185,7 +185,7 @@ npm install --save-dev @colbymchenry/codegraph
 然后执行：
 
 ```bash
-npm exec -- repo-harness adopt \
+npm exec -- local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -199,7 +199,7 @@ npm exec -- repo-harness adopt \
 在这个模式下：
 
 - Waza 和 Mermaid 通过 skills CLI 安装到项目 skill roots，不使用 `-g`。
-- repo-harness 的 cross-review skills 写入项目 skill roots。
+- local-repo-harness 的 cross-review skills 写入项目 skill roots。
 - CodeGraph MCP 写入 `.codex/config.toml` 和 `.mcp.json`。
 - CodeGraph env 包含 `CODEGRAPH_TELEMETRY=0`、`DO_NOT_TRACK=1` 和 `CODEGRAPH_INSTALL_DIR=.ai/harness/codegraph-runtime`。
 - CodeGraph index 是项目 runtime state，通常位于 `.codegraph/`。
@@ -212,11 +212,11 @@ npm exec -- repo-harness adopt \
 
 | 路径 | 作用 |
 | --- | --- |
-| `.ai/harness/workflow-contract.json` | repo-harness 工作流合约入口 |
+| `.ai/harness/workflow-contract.json` | local-repo-harness 工作流合约入口 |
 | `.ai/harness/policy.json` | 当前项目的 harness policy 和 scope 决策 |
 | `.ai/harness/scripts/` | 项目内 helper script compatibility layer |
-| `.ai/harness/bin/repo-harness-hook` | project-vendored hook entrypoint |
-| `.ai/harness/runtime/repo-harness/` | project-vendored repo-harness hook runtime |
+| `.ai/harness/bin/local-repo-harness-hook` | project-vendored hook entrypoint |
+| `.ai/harness/runtime/local-repo-harness/` | project-vendored local-repo-harness hook runtime |
 | `.ai/harness/codegraph-runtime/` | project-scoped CodeGraph runtime/install state |
 | `.codex/hooks.json` | Codex 项目级 hooks adapter |
 | `.claude/settings.json` | Claude 项目级 hooks adapter |
@@ -271,7 +271,7 @@ snapshot_repo_harness_user_paths() {
 }
 
 snapshot_repo_harness_user_paths > /tmp/repo-harness-user-before.txt
-# 在这里运行 npm exec -- repo-harness adopt ...
+# 在这里运行 npm exec -- local-repo-harness adopt ...
 snapshot_repo_harness_user_paths > /tmp/repo-harness-user-after.txt
 diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
 ```
@@ -283,9 +283,9 @@ diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
 在目标项目运行：
 
 ```bash
-npm exec -- repo-harness status --json
-npm exec -- repo-harness doctor --json
-npm exec -- repo-harness security scan --json
+npm exec -- local-repo-harness status --json
+npm exec -- local-repo-harness doctor --json
+npm exec -- local-repo-harness security scan --json
 bash .ai/harness/scripts/check-task-workflow.sh --strict
 ```
 
@@ -293,7 +293,7 @@ bash .ai/harness/scripts/check-task-workflow.sh --strict
 
 ```bash
 bash .ai/harness/scripts/check-agent-tooling.sh --json --host both
-npm exec -- repo-harness tools ensure codegraph --check --json --repo "$PWD"
+npm exec -- local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
 ```
 
 期望结果：
@@ -306,13 +306,13 @@ npm exec -- repo-harness tools ensure codegraph --check --json --repo "$PWD"
 
 ## 后续刷新
 
-升级 repo-harness 版本后，先更新目标项目依赖，再用相同 scope 重新执行 `adopt`：
+升级 local-repo-harness 版本后，先更新目标项目依赖，再用相同 scope 重新执行 `adopt`：
 
 ```bash
 cd /path/to/target-project
 npm install --save-dev local-repo-harness@latest
 
-npm exec -- repo-harness adopt \
+npm exec -- local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -323,7 +323,7 @@ npm exec -- repo-harness adopt \
   --no-codegraph
 ```
 
-不要用 `repo-harness update --repo <path>` 刷新目标项目。`update` 是 user-level runtime 命令；项目级安装和刷新统一由 `adopt` 负责。
+不要用 `local-repo-harness update --repo <path>` 刷新目标项目。`update` 是 user-level runtime 命令；项目级安装和刷新统一由 `adopt` 负责。
 
 ## 常见问题
 
@@ -349,7 +349,7 @@ npm exec -- repo-harness adopt \
 --external-tool-scope project
 ```
 
-并且 skills CLI 命令不应该带 `-g`。如果第三方工具不能项目级安装，repo-harness 应该报告失败，而不是回退到 global install。
+并且 skills CLI 命令不应该带 `-g`。如果第三方工具不能项目级安装，local-repo-harness 应该报告失败，而不是回退到 global install。
 
 ### CodeGraph 仍然依赖用户级命令
 
@@ -362,7 +362,7 @@ npm install --save-dev @colbymchenry/codegraph
 再运行：
 
 ```bash
-npm exec -- repo-harness adopt \
+npm exec -- local-repo-harness adopt \
   --repo "$PWD" \
   --codegraph-mcp-scope project \
   --sync-codegraph
@@ -378,4 +378,4 @@ npm exec -- repo-harness adopt \
 - Codex Settings 中信任的是目标项目的 `.codex/hooks.json`。
 - 新开一个 Codex session 后再验证。
 
-不要因为项目 hooks 暂时没执行，就直接运行 `repo-harness init` 注册 user-level hooks；那会改变本教程的隔离目标。
+不要因为项目 hooks 暂时没执行，就直接运行 `local-repo-harness init` 注册 user-level hooks；那会改变本教程的隔离目标。

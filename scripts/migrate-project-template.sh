@@ -896,7 +896,7 @@ require_repo() {
 
   if [[ -n "$home_physical" && "$target_physical" == "$home_physical" ]]; then
     echo "Refusing to migrate HOME as a repo target: $target_physical" >&2
-    echo "Run repo-harness adopt --repo <git-repo> from an intended project." >&2
+    echo "Run local-repo-harness adopt --repo <git-repo> from an intended project." >&2
     exit 2
   fi
 }
@@ -1016,7 +1016,7 @@ verify_migration_contract() {
   local check_script="$repo/scripts/check-task-workflow.sh"
 
   if [[ "$MODE" != "apply" ]]; then
-    echo "[dry-run] verify migrated workflow with repo-harness run check-task-workflow --strict"
+    echo "[dry-run] verify migrated workflow with local-repo-harness run check-task-workflow --strict"
     return 0
   fi
 
@@ -1043,10 +1043,10 @@ print_report() {
     project)
       echo "- Host hook config target: project-level .claude/settings.json and .codex/hooks.json"
       if [[ "${REPO_HARNESS_HOOK_RUNTIME_MODE:-project-vendored-bun}" == "global-path" ]]; then
-        echo "- Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH (explicit isolation opt-out)"
+        echo "- Host hook runtime: global-path via local-repo-harness-hook/local-repo-harness on PATH (explicit isolation opt-out)"
       else
-        echo "- Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook; no user-level repo-harness-hook dependency"
-        echo "- Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version"
+        echo "- Host hook runtime: project-vendored-bun via .ai/harness/bin/local-repo-harness-hook; no user-level local-repo-harness-hook dependency"
+        echo "- Project runtime files: .ai/harness/bin/local-repo-harness-hook and .ai/harness/runtime/local-repo-harness/.version"
       fi
       ;;
     none)
@@ -1055,14 +1055,14 @@ print_report() {
       ;;
     *)
       echo "- Host hook config target: user-level ~/.claude/settings.json and ~/.codex/hooks.json"
-      echo "- Host hook runtime: global-path via repo-harness-hook/repo-harness on PATH"
+      echo "- Host hook runtime: global-path via local-repo-harness-hook/local-repo-harness on PATH"
       ;;
   esac
   echo "- $(pi_print_codex_hook_trust_notice)"
   echo "- Legacy docs/TODO.md / docs/plan.md / docs/PROGRESS.md: migrated by scripts/migrate-workflow-docs.ts"
   echo "- Workflow migration: docs/spec.md + plans/ + tasks/contracts + tasks/reviews + .ai/context/context-map.json + .ai/harness/*"
   echo "- Workflow contract manifest installed at: .ai/harness/workflow-contract.json"
-  echo "- Helper runtime: package-dispatched through repo-harness run with scripts/* compatibility wrappers"
+  echo "- Helper runtime: package-dispatched through local-repo-harness run with scripts/* compatibility wrappers"
   echo "- Upgrade/reconfigure/cleanup plan: generated from workflow contract migrations.upgrade"
   echo "- Existing external_tooling overrides are preserved; missing defaults are merged into .ai/harness/policy.json"
   echo "- Repo-harness skill scope: ${REPO_HARNESS_SKILL_SCOPE:-user}"

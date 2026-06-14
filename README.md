@@ -1,17 +1,17 @@
-# repo-harness
+# local-repo-harness
 
 > **Project statement:** `local-repo-harness` is an independent npm package
-> based on the original [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness). It preserves the upstream workflow
-> model and the `repo-harness` CLI entrypoint, and adds project-scoped install
-> support so a downstream project can install the harness, hooks, skills, and
-> external tooling inside that project instead of relying on user-level hook
-> registration.
+> based on the original [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness).
+> It preserves the upstream workflow model, uses `local-repo-harness` as the
+> public CLI command, and adds project-scoped install support so a downstream
+> project can install the harness, hooks, skills, and external tooling inside
+> that project instead of relying on user-level hook registration.
 
 <p align="center">
-  <img src="docs/images/image.png" alt="One next button joining Claude and Codex under repo-harness workflow rules" width="760">
+  <img src="docs/images/image.png" alt="One next button joining Claude and Codex under local-repo-harness workflow rules" width="760">
 </p>
 
-`repo-harness` turns Claude/Codex coding sessions into a repeatable repo-local
+`local-repo-harness` turns Claude/Codex coding sessions into a repeatable repo-local
 workflow. It ships a CLI plus skill/runtime hooks that write context, plans,
 handoffs, checks, and review evidence back into the project, so the next agent
 session can continue from files instead of chat memory.
@@ -31,7 +31,7 @@ Repository: `https://github.com/automann/local-repo-harness`
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
-## Why repo-harness
+## Why local-repo-harness
 
 - **File-backed sessions, not chat memory.** Separate agent sessions — Claude and
   Codex, now and later — stay coordinated through the repo, not a thread.
@@ -59,11 +59,11 @@ In an adopted repo, the surface area is intentionally small:
 
 ## What's New in 0.5.0
 
-- **Clean command boundary.** `repo-harness update` now refreshes only the
-  user-level CLI/runtime surface, while `repo-harness adopt` owns repo-local
+- **Clean command boundary.** `local-repo-harness update` now refreshes only the
+  user-level CLI/runtime surface, while `local-repo-harness adopt` owns repo-local
   workflow install, refresh, and migration.
 - **Package-dispatched helper runtime.** Generated `scripts/*` wrappers can
-  delegate through `repo-harness run <helper>`, so adopted repos do not need to
+  delegate through `local-repo-harness run <helper>`, so adopted repos do not need to
   vendor every helper implementation when the installed package already owns it.
 - **Eight managed hook routes.** The README now documents the exact hook route
   matrix that Claude and Codex adapters install: session context, edit guards,
@@ -73,9 +73,9 @@ In an adopted repo, the surface area is intentionally small:
   show the split between machine bootstrap, user-level updates, read-only setup
   audit, and repo-local adoption.
 
-## What repo-harness Does
+## What local-repo-harness Does
 
-`repo-harness` turns AI-assisted development from chat-memory coordination into
+`local-repo-harness` turns AI-assisted development from chat-memory coordination into
 repo-local workflow state. It installs a small, file-backed contract into a
 target repository so Claude, Codex, and humans can agree on:
 
@@ -96,25 +96,25 @@ The design has three layers:
 
 1. **Source package**: this repository owns the CLI, CLI-backed command facades,
    templates, hook assets, workflow contract, tests, and release gate.
-2. **Target repo contract**: `repo-harness adopt` or migration writes repo-local
+2. **Target repo contract**: `local-repo-harness adopt` or migration writes repo-local
    files such as `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
    `.ai/harness/`, helper scripts, and `.ai/hooks/`.
 3. **Host adapters**: by default, user-level `~/.claude/settings.json` and
-   `~/.codex/hooks.json` route Claude/Codex events into `repo-harness-hook`.
+   `~/.codex/hooks.json` route Claude/Codex events into `local-repo-harness-hook`.
    Projects that need repo-local isolation can instead install project-scoped
    `.claude/settings.json` and `.codex/hooks.json` with
-   `repo-harness install --target both --scope project` or
-   `repo-harness update --host-adapter-scope project`. The hook entrypoint
+   `local-repo-harness install --target both --scope project` or
+   `local-repo-harness update --host-adapter-scope project`. The hook entrypoint
    exits silently for non-opt-in repos. For opted-in repos, it resolves hooks
    central-first through the packaged install or `~/.repo-harness/hooks/`, with
    repo policy able to pin self-host development back to `.ai/hooks/*`.
 
 For `UserPromptSubmit`, the public adapter contract stays
-`repo-harness-hook UserPromptSubmit --route default`. The CLI route registry
+`local-repo-harness-hook UserPromptSubmit --route default`. The CLI route registry
 dispatches that route to `.ai/hooks/prompt-guard.sh`. The shell hook remains the
 repo-local adapter for host JSON parsing, workflow file reads, capture side
 effects, and host-safe stdout/stderr. It pipes the prompt text into
-`repo-harness-hook prompt-guard-decide`, where every prompt-text intent
+`local-repo-harness-hook prompt-guard-decide`, where every prompt-text intent
 classifier (Unicode-aware, `src/cli/hook/prompt-intents.ts`) and the
 `intent x plan state` decision table live; the engine returns one verdict JSON
 line with the action, the classified intent facts, and derived strings. The
@@ -256,7 +256,7 @@ npx -y local-repo-harness adopt \
 
 This installs the file-backed workflow surface without registering Codex or
 Claude adapters and without installing external skills. Existing repos use
-`repo-harness adopt`; new projects or modules use `repo-harness-scaffold`.
+`local-repo-harness adopt`; new projects or modules use `repo-harness-scaffold`.
 
 ### 3. Enable project hooks and project skills
 
@@ -285,7 +285,7 @@ project-only mode.
 ### 4. Optional CLI install
 
 No Node.js required for the default path: the installer uses Bun as the runtime.
-If Bun is missing, it installs Bun first, then installs the `repo-harness` CLI.
+If Bun is missing, it installs Bun first, then installs the `local-repo-harness` CLI.
 
 ```bash
 # macOS / Linux
@@ -301,10 +301,10 @@ irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.p
 ```bash
 # Bun
 bun add -g local-repo-harness
-repo-harness adopt --dry-run
+local-repo-harness adopt --dry-run
 
 # Node/npm, with Bun already on PATH because the CLI runs on Bun
-repo-harness adopt --dry-run
+local-repo-harness adopt --dry-run
 ```
 
 </details>
@@ -320,29 +320,29 @@ package as the global CLI, refreshes user skill aliases, writes user-level
 Codex/Claude hook adapters, installs Waza/Mermaid runtime skills into user
 skill roots, persists a brain root under `~/.repo-harness/config.json`, and
 configures user-level CodeGraph MCP. Use it when you intentionally want
-repo-harness available across repos on the machine.
+local-repo-harness available across repos on the machine.
 
 For an Agent-owned, read-only bootstrap audit, run `npx -y local-repo-harness setup
 check --json` or add `--check-updates` for version advisories. `setup check` is
 not a runtime hook: it does not write user-level files, install updates, or
 register adapters. It emits `agent_actions` with the reason, risk, target files,
 optional command, and verification surface for the Agent to execute deliberately.
-`repo-harness init-hook` remains a compatibility alias.
+`local-repo-harness init-hook` remains a legacy shortcut for `setup check`.
 
 ### Install and refresh examples
 
 ```bash
 # First machine bootstrap after installing the CLI: skills, host adapters, Waza, brain, CodeGraph.
-repo-harness init
+local-repo-harness init
 
 # Refresh user-level CLI/runtime pieces after a package update.
-repo-harness update
+local-repo-harness update
 
 # Ask for read-only repair guidance without writing files.
-repo-harness update --check
+local-repo-harness update --check
 
 # Refresh repo-local workflow files in an adopted repository.
-repo-harness adopt --repo /path/to/repo
+local-repo-harness adopt --repo /path/to/repo
 ```
 
 ### 6. Prove the workflow
@@ -390,17 +390,17 @@ Claude/Codex paths are symlink-backed runtime entrypoints. Only
 For an existing repo, run from the repo root:
 
 ```bash
-repo-harness adopt --dry-run
+local-repo-harness adopt --dry-run
 ```
 
 Apply only after the dry-run report looks correct:
 
 ```bash
-repo-harness adopt
+local-repo-harness adopt
 ```
 
 For a new project or module, use the branch command `repo-harness-scaffold`. For
-an existing repo, use `repo-harness adopt`; it installs or refreshes the harness
+an existing repo, use `local-repo-harness adopt`; it installs or refreshes the harness
 without creating an application stack.
 
 ### Success looks like this
@@ -411,7 +411,7 @@ The command should end with `=== Migration Report ===` and summarize:
 - `Host hook config target:` to show whether no adapter, a project adapter, or a user adapter is selected
 - `Host hook adapters default to user scope:` to remind the user to install user adapters deliberately or opt into project-scoped adapters and trust the matching Codex hooks file
 - `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
-- `Helper runtime:` to show package-dispatched through `repo-harness run` with `scripts/*` compatibility wrappers after apply
+- `Helper runtime:` to show package-dispatched through `local-repo-harness run` with `scripts/*` compatibility wrappers after apply
 - `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
 
 If the dry-run output looks wrong, stop there and inspect
@@ -424,11 +424,11 @@ before applying anything.
 - `~/.claude/settings.json` is the user-level Claude adapter that dispatches into opted-in repos.
 - `~/.codex/hooks.json` is the user-level Codex adapter that dispatches into the same runner.
 - Repo-local `.claude/settings.json` and `.codex/hooks.json` are supported project-scoped adapters for repos that should not register user-level hooks.
-- `repo-harness adopt` owns repo-local workflow install/refresh/migration; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
-- `repo-harness init` and `repo-harness update` own user-level bootstrap/refresh paths and should be treated as broad-impact machine operations.
+- `local-repo-harness adopt` owns repo-local workflow install/refresh/migration; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
+- `local-repo-harness init` and `local-repo-harness update` own user-level bootstrap/refresh paths and should be treated as broad-impact machine operations.
 - Codex must mark the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`) as trusted in Codex Settings before those hooks run.
-- Debug in this order: active adapter config -> `repo-harness-hook` (or fallback `repo-harness hook`) -> route registry -> `.ai/hooks/*`.
-- If `repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `repo-harness adopt --repo <root>`.
+- Debug in this order: active adapter config -> `local-repo-harness-hook` (or fallback `local-repo-harness hook`) -> route registry -> `.ai/hooks/*`.
+- If `local-repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `local-repo-harness adopt --repo <root>`.
 
 The installed adapter owns eight managed hook routes. The route tuple
 `event + routeId + matcher` is the stable contract; script names are the current
@@ -451,7 +451,7 @@ work begins:
 ```mermaid
 flowchart LR
   SessionStart["Claude/Codex SessionStart"] --> Adapter["active adapter<br/>user or project"]
-  Adapter --> Entry["repo-harness-hook SessionStart --route default"]
+  Adapter --> Entry["local-repo-harness-hook SessionStart --route default"]
   Entry --> Source{"hook source"}
   Source -->|central default| Central["packaged hooks<br/>or ~/.repo-harness/hooks"]
   Source -->|repo policy pin| Repo["repo .ai/hooks<br/>self-host development"]
@@ -471,10 +471,10 @@ Prompt guard has one extra internal step:
 ```mermaid
 flowchart LR
   Host["Claude/Codex UserPromptSubmit"] --> Adapter["active adapter<br/>user or project"]
-  Adapter --> CLI["repo-harness-hook UserPromptSubmit --route default"]
+  Adapter --> CLI["local-repo-harness-hook UserPromptSubmit --route default"]
   CLI --> Route["route registry"]
   Route --> Shell[".ai/hooks/prompt-guard.sh"]
-  Shell -->|"stdin {prompt}"| Decision["repo-harness-hook prompt-guard-decide<br/>TypeScript classifiers + decision table"]
+  Shell -->|"stdin {prompt}"| Decision["local-repo-harness-hook prompt-guard-decide<br/>TypeScript classifiers + decision table"]
   Decision -->|"verdict JSON<br/>action + intent facts + derived"| Shell
   Shell --> RouteHint["Waza route hint<br/>explicit think/planning matched first → /think"]
   Shell --> HostOutput["host-safe advice, done gate, or capture output"]
@@ -513,7 +513,7 @@ Most common guards:
 ## Current Release
 
 - npm package: `local-repo-harness@0.5.0`
-- Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
+- Generated workflow stamp: `local-repo-harness@0.5.0+template@0.5.0`
 - GitHub repository: `automann/local-repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
@@ -544,7 +544,7 @@ Most common guards:
   - `simple -> Waza` with Codex-first user runtime copies in `~/.codex/skills`,
     or project copies in `.agents/skills` when project scope is selected
   - `knowledge -> gbrain`
-- `repo-harness init` bootstraps the Codex/Claude runtime pieces needed for the
+- `local-repo-harness init` bootstraps the Codex/Claude runtime pieces needed for the
   default workflow:
   - refreshes `repo-harness` skill aliases
   - installs global Codex/Claude hook adapters
@@ -565,7 +565,7 @@ Most common guards:
 
 ## Acknowledgements and Workflow Influences
 
-`repo-harness` is built around a small set of external skills, repos, and agent
+`local-repo-harness` is built around a small set of external skills, repos, and agent
 runtimes that
 proved useful while this project was being designed, debugged, and released.
 They are acknowledged here because they shaped the workflow contract, but they
@@ -590,7 +590,7 @@ Co-authored-by: codex <codex@openai.com>
 ```
 
 Keep this opt-in and visible per commit. Do not bake it into downstream
-repo-harness commit scripts or hooks unless that repo explicitly adopts the same
+local-repo-harness commit scripts or hooks unless that repo explicitly adopts the same
 policy.
 
 ## Action Command Skills
@@ -604,7 +604,7 @@ skill discovery compatible while the CLI and hooks own execution:
 - Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
 - Branch project creation command: `repo-harness-scaffold`
 
-`repo-harness adopt` is for an existing repo; `repo-harness-scaffold` creates a
+`local-repo-harness adopt` is for an existing repo; `repo-harness-scaffold` creates a
 new project or module scaffold as a side command. `hooks-init`, `docs-init`, and
 `create-project-dirs` are internal steps, not public commands.
 
@@ -662,13 +662,13 @@ bash scripts/migrate-project-template.sh --repo . --dry-run
 
 ### Runtime reference docs
 
-Generic repo-harness runtime/reference docs live in the installed package under
+Generic local-repo-harness runtime/reference docs live in the installed package under
 `assets/reference-configs/` and are resolved through the CLI:
 
 ```bash
-repo-harness docs list
-repo-harness docs path harness-overview
-repo-harness docs show harness-overview
+local-repo-harness docs list
+local-repo-harness docs path harness-overview
+local-repo-harness docs show harness-overview
 ```
 
 Generated and migrated repos still keep `docs/reference-configs/*.md`, but
@@ -705,7 +705,7 @@ bun run benchmark:skills --eval repair-agents-task-sync
 - Plan mapping: `assets/plan-map.json`
 - Question-pack: `assets/initializer-question-pack.v4.json`
 - Shared hooks: `assets/hooks/`
-- Runtime reference docs: `assets/reference-configs/` via `repo-harness docs`
+- Runtime reference docs: `assets/reference-configs/` via `local-repo-harness docs`
 - Workflow contract: `assets/workflow-contract.v1.json`
 - Source repo reference docs: `docs/reference-configs/*.md`
 - Template assembler: `scripts/assemble-template.ts`

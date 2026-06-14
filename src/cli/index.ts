@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * repo-harness CLI entry.
+ * local-repo-harness CLI entry.
  *
  * Wires commander.js to the global runtime bootstrap, repo-local update,
  * hook adapter, status, doctor, migrate, security, and tool command bodies.
@@ -57,21 +57,21 @@ const VALID_RUNTIMES: readonly RuntimeSelection[] = ['auto', 'global-path', 'pro
 export function buildProgram(): Command {
   const program = new Command();
   program
-    .name('repo-harness')
+    .name('local-repo-harness')
     .description('Make Claude/Codex work resumable, reviewable, and repo-local')
     .version(CLI_VERSION)
     .exitOverride();
 
   program
     .command('init')
-    .description('Install the repo-harness CLI, global hook adapters, and required runtime dependencies')
+    .description('Install the local-repo-harness CLI, global hook adapters, and required runtime dependencies')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--no-cli', 'Skip installing the repo-harness CLI globally')
+    .option('--no-cli', 'Skip installing the local-repo-harness CLI globally')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
     .option('--no-hooks', 'Skip global hook adapter installation')
     .option('--no-external-skills', 'Skip Waza, Mermaid, and cross-review (codex-review/claude-review) skill bootstrap')
     .option('--no-codegraph', 'Skip CodeGraph CLI/MCP configuration')
-    .option('--brain-root <path>', 'Brain vault root to persist for repo-harness brain commands')
+    .option('--brain-root <path>', 'Brain vault root to persist for local-repo-harness brain commands')
     .option('--refresh', 'Refresh the idempotent user-level runtime after a CLI package update')
     .option('--json', 'Output JSON instead of human-readable text')
     .action((rawOpts: {
@@ -87,7 +87,7 @@ export function buildProgram(): Command {
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
-          `repo-harness init: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+          `local-repo-harness init: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
@@ -110,14 +110,14 @@ export function buildProgram(): Command {
 
   program
     .command('update')
-    .description('Update the global repo-harness CLI and user-level managed runtime')
+    .description('Update the global local-repo-harness CLI and user-level managed runtime')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--version <version>', 'Install a specific repo-harness package version')
+    .option('--version <version>', 'Install a specific local-repo-harness package version')
     .option('--channel <channel>', 'Install package channel: latest|next')
     .option('--check', 'Run the read-only setup check without refreshing runtime')
     .option('--check-updates', 'Include network-backed version update advisories in setup check output')
     .option('--no-runtime-refresh', 'Skip runtime refresh and run the read-only setup check only')
-    .option('--no-cli', 'Skip installing the repo-harness CLI globally')
+    .option('--no-cli', 'Skip installing the local-repo-harness CLI globally')
     .option('--no-sync-skill', 'Skip refreshing repo-harness skill aliases under host skill roots')
     .option('--no-hooks', 'Skip global hook adapter installation')
     .option('--with-external-skills', 'Also bootstrap third-party Waza, Mermaid, and cross-review skills')
@@ -125,9 +125,9 @@ export function buildProgram(): Command {
     .option('--configure-codegraph', 'Also configure CodeGraph CLI/MCP during runtime refresh')
     .option('--no-codegraph', 'Compatibility no-op; update no longer configures CodeGraph by default')
     .option('--brain-root <path>', 'Brain vault root for manifest sync')
-    .option('--repo <path>', 'Deprecated: use repo-harness adopt --repo <path>')
-    .option('--dry-run', 'Deprecated: use repo-harness adopt --dry-run for repo-level planning')
-    .option('--interactive', 'Deprecated: use repo-harness adopt --interactive for repo-level planning')
+    .option('--repo <path>', 'Deprecated: use local-repo-harness adopt --repo <path>')
+    .option('--dry-run', 'Deprecated: use local-repo-harness adopt --dry-run for repo-level planning')
+    .option('--interactive', 'Deprecated: use local-repo-harness adopt --interactive for repo-level planning')
     .option('--json', 'Output JSON instead of human-readable text')
     .action((rawOpts: {
       repo?: string;
@@ -151,17 +151,17 @@ export function buildProgram(): Command {
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
-          `repo-harness update: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+          `local-repo-harness update: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
       if (rawOpts.channel !== undefined && !['latest', 'next'].includes(rawOpts.channel)) {
-        console.error('repo-harness update: invalid --channel (expected: latest, next)');
+        console.error('local-repo-harness update: invalid --channel (expected: latest, next)');
         process.exit(2);
       }
       if (rawOpts.repo || rawOpts.dryRun || rawOpts.interactive) {
         console.error(
-          'repo-harness update no longer refreshes repositories. For repo-level refresh, run: repo-harness adopt --repo <path>',
+          'local-repo-harness update no longer refreshes repositories. For repo-level refresh, run: local-repo-harness adopt --repo <path>',
         );
         process.exit(2);
       }
@@ -216,10 +216,10 @@ export function buildProgram(): Command {
     .option('--reclaim-runtime', 'Reclaim generated repo-local hook/helper runtime copies after replacement paths verify')
     .option('--compact', 'Compact repo surface; includes --reclaim-runtime plus package script rewrite')
     .option('--mode <mode>', 'Adoption mode: minimal|standard|self-host', 'standard')
-    .option('--configure-codegraph', 'Deprecated: user-level MCP config belongs to repo-harness update/setup')
+    .option('--configure-codegraph', 'Deprecated: user-level MCP config belongs to local-repo-harness update/setup')
     .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')} (default: none)`, 'none')
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
-    .option('--brain-root <path>', 'Deprecated: user-level brain config belongs to repo-harness update/setup')
+    .option('--brain-root <path>', 'Deprecated: user-level brain config belongs to local-repo-harness update/setup')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'skip')
     .option('--interactive', 'Run the numbered interactive install planner')
     .option('--json', 'Output JSON instead of human-readable text')
@@ -250,11 +250,11 @@ export function buildProgram(): Command {
     }) => {
       if (action) {
         if (action !== 'rollback') {
-          console.error(`repo-harness adopt: unknown action "${action}"`);
+          console.error(`local-repo-harness adopt: unknown action "${action}"`);
           process.exit(2);
         }
         if (!rawOpts.archive) {
-          console.error('repo-harness adopt rollback: --archive is required');
+          console.error('local-repo-harness adopt rollback: --archive is required');
           process.exit(2);
         }
         const rollback = runRuntimeRollback({ repo: rawOpts.repo, archive: rawOpts.archive });
@@ -269,29 +269,29 @@ export function buildProgram(): Command {
       }
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
-          `repo-harness adopt: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+          `local-repo-harness adopt: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
       if (!['skip', 'manifest-only', 'install-gbrain-cli'].includes(rawOpts.brainMode ?? 'skip')) {
-        console.error('repo-harness adopt: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
+        console.error('local-repo-harness adopt: invalid --brain-mode (expected: skip, manifest-only, install-gbrain-cli)');
         process.exit(2);
       }
       if (!['minimal', 'standard', 'self-host'].includes(rawOpts.mode ?? 'standard')) {
-        console.error('repo-harness adopt: invalid --mode (expected: minimal, standard, self-host)');
+        console.error('local-repo-harness adopt: invalid --mode (expected: minimal, standard, self-host)');
         process.exit(2);
       }
       if (rawOpts.configureCodegraph === true) {
-        console.error('repo-harness adopt: --configure-codegraph writes user-level MCP config; run repo-harness update instead');
+        console.error('local-repo-harness adopt: --configure-codegraph writes user-level MCP config; run local-repo-harness update instead');
         process.exit(2);
       }
       if (rawOpts.brainRoot || rawOpts.brainMode === 'install-gbrain-cli') {
-        console.error('repo-harness adopt: user-level brain configuration belongs to repo-harness update/init');
+        console.error('local-repo-harness adopt: user-level brain configuration belongs to local-repo-harness update/init');
         process.exit(2);
       }
       if (!VALID_SCOPES.includes(rawOpts.hostAdapterScope as InstallScope)) {
         console.error(
-          `repo-harness adopt: invalid --host-adapter-scope "${rawOpts.hostAdapterScope}" (expected: ${VALID_SCOPES.join(', ')})`,
+          `local-repo-harness adopt: invalid --host-adapter-scope "${rawOpts.hostAdapterScope}" (expected: ${VALID_SCOPES.join(', ')})`,
         );
         process.exit(2);
       }
@@ -301,13 +301,13 @@ export function buildProgram(): Command {
         ['--codegraph-mcp-scope', rawOpts.codegraphMcpScope],
       ] as const) {
         if (value && !VALID_SCOPES.includes(value as InstallScope)) {
-          console.error(`repo-harness adopt: invalid ${flag} "${value}" (expected: ${VALID_SCOPES.join(', ')})`);
+          console.error(`local-repo-harness adopt: invalid ${flag} "${value}" (expected: ${VALID_SCOPES.join(', ')})`);
           process.exit(2);
         }
       }
       if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
         console.error(
-          `repo-harness adopt: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+          `local-repo-harness adopt: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
         );
         process.exit(2);
       }
@@ -369,33 +369,33 @@ export function buildProgram(): Command {
     .action((rawOpts: { target: string; location?: string; scope?: string; runtime?: string }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
-          `repo-harness install: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+          `local-repo-harness install: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
       if (rawOpts.location && rawOpts.scope) {
-        console.error('repo-harness install: use either --location or --scope, not both');
+        console.error('local-repo-harness install: use either --location or --scope, not both');
         process.exit(2);
       }
       if (!rawOpts.location && !rawOpts.scope) {
-        console.error('repo-harness install: one of --location or --scope is required');
+        console.error('local-repo-harness install: one of --location or --scope is required');
         process.exit(2);
       }
       if (rawOpts.location && !VALID_LOCATIONS.includes(rawOpts.location as Location)) {
         console.error(
-          `repo-harness install: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
+          `local-repo-harness install: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
         );
         process.exit(2);
       }
       if (rawOpts.scope && !VALID_SCOPES.includes(rawOpts.scope as InstallScope)) {
         console.error(
-          `repo-harness install: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
+          `local-repo-harness install: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
         );
         process.exit(2);
       }
       if (!isRuntimeSelection(rawOpts.runtime ?? 'auto')) {
         console.error(
-          `repo-harness install: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+          `local-repo-harness install: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
         );
         process.exit(2);
       }
@@ -418,27 +418,27 @@ export function buildProgram(): Command {
     .action((rawOpts: { target: string; location?: string; scope?: string }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
         console.error(
-          `repo-harness uninstall: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+          `local-repo-harness uninstall: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
         process.exit(2);
       }
       if (rawOpts.location && rawOpts.scope) {
-        console.error('repo-harness uninstall: use either --location or --scope, not both');
+        console.error('local-repo-harness uninstall: use either --location or --scope, not both');
         process.exit(2);
       }
       if (!rawOpts.location && !rawOpts.scope) {
-        console.error('repo-harness uninstall: one of --location or --scope is required');
+        console.error('local-repo-harness uninstall: one of --location or --scope is required');
         process.exit(2);
       }
       if (rawOpts.location && !VALID_LOCATIONS.includes(rawOpts.location as Location)) {
         console.error(
-          `repo-harness uninstall: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
+          `local-repo-harness uninstall: invalid --location "${rawOpts.location}" (expected: ${VALID_LOCATIONS.join(', ')})`,
         );
         process.exit(2);
       }
       if (rawOpts.scope && !VALID_SCOPES.includes(rawOpts.scope as InstallScope)) {
         console.error(
-          `repo-harness uninstall: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
+          `local-repo-harness uninstall: invalid --scope "${rawOpts.scope}" (expected: ${VALID_SCOPES.join(', ')})`,
         );
         process.exit(2);
       }

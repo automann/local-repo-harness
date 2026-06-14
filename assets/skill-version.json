@@ -130,8 +130,8 @@
     }
   ],
   "generatedProjectStamp": {
-    "format": "repo-harness@{version}+template@{templateVersion}",
-    "displayName": "repo-harness",
+    "format": "local-repo-harness@{version}+template@{templateVersion}",
+    "displayName": "local-repo-harness",
     "location": ".claude/.skill-version"
   }
 }

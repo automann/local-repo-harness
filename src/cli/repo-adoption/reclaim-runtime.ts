@@ -169,7 +169,7 @@ function classifyHelperRuntime(repo: string, fileName: string, helperSourceRepo:
       category: 'helper-runtime',
       classification: 'known-generated',
       action: 'remove-after-wrapper-and-verify',
-      replacement: `repo-harness run ${helperId(fileName)}`,
+      replacement: `local-repo-harness run ${helperId(fileName)}`,
     };
   }
 
@@ -179,7 +179,7 @@ function classifyHelperRuntime(repo: string, fileName: string, helperSourceRepo:
       category: 'helper-runtime',
       classification: 'managed-modified',
       action: 'requires-user-review',
-      replacement: `repo-harness run ${helperId(fileName)}`,
+      replacement: `local-repo-harness run ${helperId(fileName)}`,
       reason: 'managed-looking helper differs from packaged source',
     };
   }
@@ -240,8 +240,8 @@ function managedCommand(command: unknown): boolean {
   return (
     typeof command === 'string' &&
     (
-      command.includes('repo-harness hook') ||
-      command.includes('repo-harness-hook') ||
+      command.includes('local-repo-harness hook') ||
+      command.includes('local-repo-harness-hook') ||
       command.includes('project-initializer') ||
       command.includes('.ai/hooks/run-hook.sh') ||
       command.includes('/.repo-harness/')
@@ -337,7 +337,7 @@ function packageScriptRewritePlan(repo: string): RuntimeReclaimFile | null {
           category: 'package-script',
           classification: 'managed-entry',
           action: 'rewrite-known-helper-command',
-          replacement: 'repo-harness run <helper>',
+          replacement: 'local-repo-harness run <helper>',
           reason: 'package.json contains known helper script commands',
         };
       }
@@ -406,11 +406,11 @@ if [[ -n "\${REPO_HARNESS_SOURCE_ROOT:-}" && -f "\${REPO_HARNESS_SOURCE_ROOT}/sr
   fi
 fi
 
-if command -v repo-harness >/dev/null 2>&1; then
-  exec repo-harness run ${id} "$@"
+if command -v local-repo-harness >/dev/null 2>&1; then
+  exec local-repo-harness run ${id} "$@"
 fi
 
-echo "Missing repo-harness CLI for helper ${id}" >&2
+echo "Missing local-repo-harness CLI for helper ${id}" >&2
 exit 1
 `;
 }
@@ -432,7 +432,7 @@ const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice
   stdio: "inherit",
 });
 if (result.error) {
-  console.error(\`Missing repo-harness CLI for helper ${id}: \${result.error.message}\`);
+  console.error(\`Missing local-repo-harness CLI for helper ${id}: \${result.error.message}\`);
   process.exit(1);
 }
 process.exit(result.status ?? 1);
@@ -484,7 +484,7 @@ function rewritePackageScripts(repo: string, archive?: string): RuntimeReclaimFi
     if (!match) continue;
     const helperFile = match[1];
     if (!helperFiles.has(helperFile)) continue;
-    pkg.scripts[scriptName] = `repo-harness run ${helperIds.get(helperFile)}${match[2] ?? ''}`;
+    pkg.scripts[scriptName] = `local-repo-harness run ${helperIds.get(helperFile)}${match[2] ?? ''}`;
     rewritten += 1;
   }
   if (rewritten === 0) return [];
@@ -499,7 +499,7 @@ function rewritePackageScripts(repo: string, archive?: string): RuntimeReclaimFi
     category: 'package-script',
     classification: 'managed-entry',
     action: 'rewrite-known-helper-command',
-    replacement: 'repo-harness run <helper>',
+    replacement: 'local-repo-harness run <helper>',
     reason: `rewrote ${rewritten} known helper script${rewritten === 1 ? '' : 's'}`,
   }];
 }
@@ -580,7 +580,7 @@ function writeArchiveManifest(repo: string, archive: string, actions: RuntimeRec
         replacement: entry.replacement,
       })),
       rollback: {
-        command: `repo-harness adopt rollback --archive ${rel(repo, archive)}`,
+        command: `local-repo-harness adopt rollback --archive ${rel(repo, archive)}`,
       },
     }),
   );
@@ -612,7 +612,7 @@ export function runRuntimeReclaim(opts: RuntimeReclaimOptions = {}): RuntimeRecl
     if (verification.exitCode !== 0) {
       result.status = 'blocked';
       result.runtime_reclaim.blocked.push(
-        `replacement verify failed: repo-harness run check-task-workflow --strict exited ${verification.exitCode}`,
+        `replacement verify failed: local-repo-harness run check-task-workflow --strict exited ${verification.exitCode}`,
       );
       if (archive && archivedActions.length > 0) {
         writeArchiveManifest(repo, archive, archivedActions);

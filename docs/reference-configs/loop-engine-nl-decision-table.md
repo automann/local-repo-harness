@@ -17,7 +17,7 @@ explicitly switches the hook path.
   A completion claim must be backed by an active plan, a derived contract path,
   an existing contract, complete Evidence Contract fields, verification
   evidence, and a review/check surface.
-- The state snapshot source is `repo-harness-hook state-snapshot --json`.
+- The state snapshot source is `local-repo-harness-hook state-snapshot --json`.
   Runtime hooks must not call the full `repo-harness` commander CLI for this
   hot-path snapshot.
   Prompt text supplies intent; file-backed workflow state supplies the guard

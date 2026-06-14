@@ -1326,7 +1326,7 @@ describe("Hook runtime behavior", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("SessionStart");
       expect(res.stdout).toContain("Capability Context Queue");
-      expect(res.stdout).toContain("repo-harness capability-context sync --pending --apply");
+      expect(res.stdout).toContain("local-repo-harness capability-context sync --pending --apply");
       expect(res.stdout).toContain("apps-web");
       expect(res.stdout).not.toContain("[CrossReview]");
 
@@ -1459,7 +1459,7 @@ describe("Hook runtime behavior", () => {
       const logFile = join(cwd, "tooling-check.log");
       mkdirSync(fakeBin, { recursive: true });
       writeFileSync(
-        join(fakeBin, "repo-harness"),
+        join(fakeBin, "local-repo-harness"),
         [
           "#!/bin/bash",
           `printf '%s\\n' "$*" >> '${logFile}'`,
@@ -1476,7 +1476,7 @@ describe("Hook runtime behavior", () => {
                   status: "needs_agent",
                   reason: "codegraph reports update-available.",
                   command: "bun update @colbymchenry/codegraph && bash scripts/ensure-codegraph.sh --sync",
-                  verification: "repo-harness setup check --target codex --check-updates --json",
+                  verification: "local-repo-harness setup check --target codex --check-updates --json",
                 },
               ],
             },
@@ -1499,7 +1499,7 @@ describe("Hook runtime behavior", () => {
       expect(first.stdout).toContain("Tooling Update Advisory");
       expect(first.stdout).toContain("tooling.codegraph.update");
       expect(first.stdout).toContain("bun update @colbymchenry/codegraph");
-      expect(first.stdout).toContain("repo-harness setup check --target codex --check-updates --json");
+      expect(first.stdout).toContain("local-repo-harness setup check --target codex --check-updates --json");
       expect(readFileSync(logFile, "utf-8").trim().split("\n")).toEqual([
         "setup check --target codex --check-updates --json",
       ]);

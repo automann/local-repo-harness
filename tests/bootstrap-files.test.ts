@@ -61,8 +61,8 @@ describe("Bootstrap Script Contracts", () => {
     expect(pkg.version).toBe("0.5.0");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["local-repo-harness"]).toBe("src/cli/index.ts");
-    expect(pkg.bin["repo-harness"]).toBe("src/cli/index.ts");
-    expect(pkg.bin["repo-harness-hook"]).toBe("src/cli/hook-entry.ts");
+    expect(pkg.bin).not.toHaveProperty("repo-harness");
+    expect(pkg.bin["local-repo-harness-hook"]).toBe("src/cli/hook-entry.ts");
     expect(pkg.files).toContain("assets/");
     expect(pkg.files).not.toContain("docs/reference-configs/");
     expect(cliEntry).toContain("CLI_VERSION");
@@ -135,7 +135,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.documentation.referenceConfigs.source).toBe("user-level-runtime-docs");
     expect(contract.documentation.referenceConfigs.repoStubDirectory).toBe("docs/reference-configs");
     expect(contract.documentation.referenceConfigs.packageDirectory).toBe("assets/reference-configs");
-    expect(contract.documentation.referenceConfigs.resolverCommand).toBe("repo-harness docs path <doc-id>");
+    expect(contract.documentation.referenceConfigs.resolverCommand).toBe("local-repo-harness docs path <doc-id>");
     expect(contract.documentation.referenceConfigs.stubMarker).toBe("<!-- repo-harness: reference-config-stub v1 -->");
     expect(contract.helpers.scripts).toContain("prepare-codex-handoff.sh");
     expect(contract.helpers.scripts).toContain("codex-handoff-resume.sh");
@@ -413,7 +413,7 @@ describe("Bootstrap Script Contracts", () => {
 
   test("setup script should delegate to the typed global init path", () => {
     const setup = read("scripts/setup-plugins.sh");
-    expect(setup).toContain("repo-harness init");
+    expect(setup).toContain("local-repo-harness init");
     expect(setup).toContain('bun "$ROOT_DIR/src/cli/index.ts" init');
     expect(setup).not.toContain("ESSENTIAL_PLUGINS");
     expect(setup).not.toContain("feature-dev");

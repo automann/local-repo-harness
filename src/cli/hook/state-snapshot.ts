@@ -377,7 +377,7 @@ export function runStateSnapshotCli(
     return {
       exitCode: 2,
       stdout: '',
-      stderr: 'repo-harness-hook state-snapshot: usage: repo-harness-hook state-snapshot --json\n',
+      stderr: 'local-repo-harness-hook state-snapshot: usage: local-repo-harness-hook state-snapshot --json\n',
     };
   }
   return {

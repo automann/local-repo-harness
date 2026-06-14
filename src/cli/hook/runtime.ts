@@ -88,7 +88,7 @@ export function isOptIn(repoRoot: string): boolean {
 
 /**
  * Central-first hook script resolution. The packaged copy ships inside the
- * globally installed repo-harness package, so upgrading the CLI upgrades hook
+ * globally installed local-repo-harness package, so upgrading the CLI upgrades hook
  * behavior for every repo at once — no per-repo .ai/hooks refresh. Repos that
  * develop the hooks themselves (e.g. the repo-harness self-host checkout) pin
  * `"hook_source": "repo"` in .ai/harness/policy.json to keep running their
@@ -153,7 +153,7 @@ function isSoftMissingRoute(event: HookEvent, routeId: RouteId): boolean {
 
 export function runHook(opts: RunHookOptions): RunHookResult {
   const cwd = opts.cwd ?? process.cwd();
-  const commandName = opts.commandName ?? 'repo-harness hook';
+  const commandName = opts.commandName ?? 'local-repo-harness hook';
   const scriptsRun: string[] = [];
   const skippedScripts: string[] = [];
 
@@ -179,10 +179,10 @@ export function runHook(opts: RunHookOptions): RunHookResult {
   const hooksDir = resolved.dir;
   const syncHint =
     resolved.source === 'packaged'
-      ? 'upgrade the repo-harness CLI (npm install -g local-repo-harness@latest) to refresh packaged hooks'
+      ? 'upgrade the local-repo-harness CLI (npm install -g local-repo-harness@latest) to refresh packaged hooks'
       : resolved.source === 'repo-fallback'
-        ? 'upgrade the repo-harness CLI to restore packaged hooks, or set "hook_source": "repo" before syncing a full vendored hook runtime'
-        : `run 'repo-harness adopt --repo ${repoRoot}' to sync pinned .ai/hooks`;
+        ? 'upgrade the local-repo-harness CLI to restore packaged hooks, or set "hook_source": "repo" before syncing a full vendored hook runtime'
+        : `run 'local-repo-harness adopt --repo ${repoRoot}' to sync pinned .ai/hooks`;
   const sessionStartCollectStdout = opts.event === 'SessionStart' && opts.stdio === undefined;
   const sessionStartContexts: string[] = [];
   const codexStopDecisionStdout =

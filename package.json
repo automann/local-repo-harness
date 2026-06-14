@@ -1,7 +1,7 @@
 {
   "name": "local-repo-harness",
   "version": "0.5.0",
-  "description": "Independent repo-harness@0.5.0-based package with project-scoped install support for repo-local hooks, skills, and agent tooling",
+  "description": "Independent local-repo-harness package based on repo-harness@0.5.0, with project-scoped install support for repo-local hooks, skills, and agent tooling",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -23,8 +23,7 @@
   ],
   "bin": {
     "local-repo-harness": "src/cli/index.ts",
-    "repo-harness": "src/cli/index.ts",
-    "repo-harness-hook": "src/cli/hook-entry.ts"
+    "local-repo-harness-hook": "src/cli/hook-entry.ts"
   },
   "engines": {
     "bun": ">=1.0.0"

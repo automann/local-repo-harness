@@ -9,7 +9,7 @@ log() {
 }
 
 die() {
-  printf 'repo-harness install: %s\n' "$*" >&2
+  printf 'local-repo-harness install: %s\n' "$*" >&2
   exit 1
 }
 
@@ -50,14 +50,14 @@ install_repo_harness() {
 
 verify_repo_harness() {
   export PATH="$BUN_INSTALL_DIR/bin:$PATH"
-  has_command repo-harness || die "repo-harness is not on PATH after installation"
-  version="$(repo-harness --version 2>/dev/null || true)"
-  [ -n "$version" ] || die "repo-harness installed, but version readback failed"
-  log "repo-harness ${version} installed."
+  has_command local-repo-harness || die "local-repo-harness is not on PATH after installation"
+  version="$(local-repo-harness --version 2>/dev/null || true)"
+  [ -n "$version" ] || die "local-repo-harness installed, but version readback failed"
+  log "local-repo-harness ${version} installed."
 }
 
 if [ "${REPO_HARNESS_DRY_RUN:-0}" = "1" ]; then
-  log "DRY RUN: would ensure Bun, install ${PACKAGE_NAME}@${PACKAGE_VERSION}, and verify repo-harness --version."
+  log "DRY RUN: would ensure Bun, install ${PACKAGE_NAME}@${PACKAGE_VERSION}, and verify local-repo-harness --version."
   exit 0
 fi
 
@@ -67,5 +67,5 @@ verify_repo_harness
 
 log ""
 log "Next:"
-log "  repo-harness adopt --dry-run"
-log "  repo-harness init   # optional machine bootstrap"
+log "  local-repo-harness adopt --dry-run"
+log "  local-repo-harness init   # optional machine bootstrap"

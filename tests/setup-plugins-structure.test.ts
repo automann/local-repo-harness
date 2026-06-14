@@ -21,9 +21,9 @@ describe("setup-plugins compatibility shim", () => {
     expect(res.stderr).toBe("");
   });
 
-  test("delegates to the modern repo-harness init path", () => {
+  test("delegates to the modern local-repo-harness init path", () => {
     const setup = readSetup();
-    expect(setup).toContain("repo-harness init");
+    expect(setup).toContain("local-repo-harness init");
     expect(setup).toContain('bun "$ROOT_DIR/src/cli/index.ts" init');
   });
 

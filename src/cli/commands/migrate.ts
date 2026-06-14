@@ -1,5 +1,5 @@
 /**
- * `repo-harness migrate` — remove retired project-level hook adapters while
+ * `local-repo-harness migrate` — remove retired project-level hook adapters while
  * preserving supported project/user repo-harness adapters and sibling hooks
  * (dry-run default; --apply commits).
  *

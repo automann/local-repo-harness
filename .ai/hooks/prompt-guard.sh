@@ -213,13 +213,13 @@ prompt_guard_decision_command() {
     return $?
   fi
 
-  if command -v repo-harness-hook >/dev/null 2>&1; then
-    repo-harness-hook prompt-guard-decide
+  if command -v local-repo-harness-hook >/dev/null 2>&1; then
+    local-repo-harness-hook prompt-guard-decide
     return $?
   fi
 
-  if command -v repo-harness >/dev/null 2>&1; then
-    repo-harness prompt-guard-decide
+  if command -v local-repo-harness >/dev/null 2>&1; then
+    local-repo-harness prompt-guard-decide
     return $?
   fi
 
@@ -870,11 +870,11 @@ prompt_guard_engine_call
 
 if [[ "$PG_ENGINE_STATE" != "ok" ]]; then
   if [[ "$PG_ENGINE_STATE" == "legacy" ]]; then
-    echo "[PromptGuard] Advisory: the installed repo-harness CLI predates the prompt-verdict protocol; prompt intent gates are degraded to advisory for this prompt."
-    echo "[PromptGuard] Refresh the CLI with: repo-harness init (or npx -y repo-harness init)."
+    echo "[PromptGuard] Advisory: the installed local-repo-harness CLI predates the prompt-verdict protocol; prompt intent gates are degraded to advisory for this prompt."
+    echo "[PromptGuard] Refresh the CLI with: local-repo-harness init (or npx -y local-repo-harness init)."
   else
-    echo "[PromptGuard] Advisory: prompt-guard decision engine is unavailable (repo-harness CLI or bun not found); prompt intent gates are degraded to advisory for this prompt."
-    echo "[PromptGuard] Edit-layer guards still enforce plan and contract scope. Install the repo-harness CLI to restore prompt decisions."
+    echo "[PromptGuard] Advisory: prompt-guard decision engine is unavailable (local-repo-harness CLI or bun not found); prompt intent gates are degraded to advisory for this prompt."
+    echo "[PromptGuard] Edit-layer guards still enforce plan and contract scope. Install the local-repo-harness CLI to restore prompt decisions."
   fi
   emit_workflow_file_guards
   exit 0

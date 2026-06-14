@@ -28,8 +28,8 @@ export function isRuntimeSelection(value: string): value is RuntimeSelection {
 export function buildHookCommand(opts: BuildHookCommandOptions): string {
   const { route, host } = opts;
   if (opts.runtimeMode === 'global-path') {
-    return `${MANAGED_ENV_TAG}; if command -v repo-harness-hook >/dev/null 2>&1; then HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=global-path exec repo-harness-hook ${route.event} --route ${route.routeId}; fi; command -v repo-harness >/dev/null 2>&1 || exit 0; HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=global-path exec repo-harness hook ${route.event} --route ${route.routeId}`;
+    return `${MANAGED_ENV_TAG}; if command -v local-repo-harness-hook >/dev/null 2>&1; then HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=global-path exec local-repo-harness-hook ${route.event} --route ${route.routeId}; fi; command -v local-repo-harness >/dev/null 2>&1 || exit 0; HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=global-path exec local-repo-harness hook ${route.event} --route ${route.routeId}`;
   }
 
-  return `${MANAGED_ENV_TAG}; repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; hook="$repo_root/.ai/harness/bin/repo-harness-hook"; [ -x "$hook" ] || exit 0; export HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=project-vendored-bun; exec "$hook" ${route.event} --route ${route.routeId}`;
+  return `${MANAGED_ENV_TAG}; repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0; hook="$repo_root/.ai/harness/bin/local-repo-harness-hook"; [ -x "$hook" ] || exit 0; export HOOK_HOST=${host} REPO_HARNESS_HOOK_RUNTIME=project-vendored-bun; exec "$hook" ${route.event} --route ${route.routeId}`;
 }

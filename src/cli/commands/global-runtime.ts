@@ -123,7 +123,7 @@ function installCli(sourceRoot: string, cwd: string, env?: NodeJS.ProcessEnv, in
   const version = packageVersion(sourceRoot);
   return withStepName(
     step,
-    "install repo-harness CLI",
+    "install local-repo-harness CLI",
     installSpec ? `spec=${installSpec}` : version ? `version=${version}` : undefined,
   );
 }
@@ -256,7 +256,7 @@ export function runGlobalRuntimeSetup(opts: GlobalRuntimeOptions = {}): GlobalRu
   const steps: GlobalRuntimeStep[] = [];
 
   if (opts.installCli !== false) steps.push(installCli(sourceRoot, cwd, env, opts.installSpec));
-  else steps.push({ step: "install repo-harness CLI", status: "skipped", detail: "disabled" });
+  else steps.push({ step: "install local-repo-harness CLI", status: "skipped", detail: "disabled" });
 
   if (opts.syncSkill !== false) steps.push(syncRuntimeSkill(sourceRoot, env));
   else steps.push({ step: "sync repo-harness skill runtime", status: "skipped", detail: "disabled" });
