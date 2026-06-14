@@ -94,3 +94,49 @@ Second real external tooling acceptance:
   created, and `repo-harness brain status --json` selected zero sync items.
 - User no-write snapshot diff was empty for the configured no-write set; only
   allowed package-manager cache files appeared under fake HOME.
+
+Third real target project long-run acceptance:
+
+- Ran a local tarball install into a realistic TypeScript workspace with
+  isolated HOME under
+  `dev-tests/runs/20260614-173334-target-long-run-round3/`; result: PASS, 51
+  assertions, 0 failures.
+- Covered three consecutive project-scoped `repo-harness update` runs around a
+  real source/test change, plus `status`, `doctor`, `security scan`, `migrate`,
+  strict workflow checks, and target package tests before install, after
+  install, after repeat install, after hook execution, and after the final
+  repeat update.
+- Triggered generated Codex post-edit and post-bash hooks from a nested working
+  directory, then invoked the project-vendored runtime directly; all hook paths
+  exited 0 and follow-up diagnostics stayed green.
+- Stable generated project config snapshots and scope status snapshots were
+  unchanged first-to-second and second-to-third; no duplicate managed hook
+  commands were introduced.
+- Fake user HOME no-write snapshots stayed empty for `.codex`, `.claude`,
+  `.repo-harness`, and `Documents/brain`; final status reported project hooks,
+  project skills, project external tools, project CodeGraph MCP config, and
+  manifest-only brain state.
+
+Fourth legacy/mixed-state migration acceptance:
+
+- Ran a local tarball install with isolated HOME under
+  `dev-tests/runs/20260614-174657-legacy-mixed-round4/`; result: PASS, 70
+  assertions, 0 failures.
+- Constructed a target repo with pre-existing user-level Codex/Claude managed
+  hooks plus sibling user hooks, project-level sibling hooks, retired
+  `run-hook.sh` project adapters, legacy `.claude/settings.local.json`, stale
+  `.ai/hooks` and `.claude/hooks` files, project Waza/Mermaid traces,
+  project/user CodeGraph MCP traces, and gbrain/brain reference traces.
+- Verified project-scoped `repo-harness update` did not mutate fake HOME, kept
+  install intent at project hooks/project runtime/project skills/project
+  CodeGraph MCP/manifest-only brain, reported mixed user/project adapters as a
+  diagnostic warning, and reported retired project adapters through
+  `security scan` before migration.
+- Verified `repo-harness migrate --apply` removed only retired `run-hook.sh`
+  adapter entries from project Codex/Claude configs, created per-file backups,
+  preserved sibling project hooks and non-hook Claude settings, and made the
+  follow-up migrate dry-run a no-op without touching fake HOME.
+- Verified project-scope uninstall removed only project managed hook commands,
+  preserved existing user-level managed hooks and sibling user hooks, preserved
+  project sibling hooks, and left project CodeGraph, Waza, gbrain/reference,
+  brain manifest, and local settings traces intact.
