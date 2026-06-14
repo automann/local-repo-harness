@@ -17,7 +17,7 @@ function setupFakeSource(root: string): void {
   mkdirSync(join(root, 'scripts'), { recursive: true });
   mkdirSync(join(root, 'assets', 'skills', 'codex-review'), { recursive: true });
   mkdirSync(join(root, 'assets', 'skills', 'claude-review'), { recursive: true });
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'repo-harness', version: '9.9.9' }, null, 2));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'local-repo-harness', version: '9.9.9' }, null, 2));
   writeFileSync(join(root, 'assets', 'skills', 'codex-review', 'SKILL.md'), 'codex-review\n');
   writeFileSync(join(root, 'assets', 'skills', 'claude-review', 'SKILL.md'), 'claude-review\n');
   writeExecutable(
@@ -202,7 +202,7 @@ describe('init command global runtime bootstrap', () => {
 
       expect(res.status).toBe(0);
       const result = JSON.parse(res.stdout);
-      expect(readFileSync(npmLog, 'utf-8')).toContain('install -g repo-harness@latest');
+      expect(readFileSync(npmLog, 'utf-8')).toContain('install -g local-repo-harness@latest');
       expect(result.steps.find((step: { step: string }) => step.step === 'configure brain root')?.status).toBe('ok');
       expect(existsSync(join(home, '.repo-harness', 'config.json'))).toBe(true);
       expect(existsSync(join(repo, '.ai'))).toBe(false);

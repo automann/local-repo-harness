@@ -20,7 +20,7 @@ Use it to:
 Give the agent a complete PRD or Sprint; after that, your loop is just review
 and `next`, or start `/goal` and go AFK.
 
-Repository: `https://github.com/Ancienttwo/repo-harness`
+Repository: `https://github.com/automann/local-repo-harness`
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
 
@@ -226,7 +226,7 @@ runtime writes off until the dry-run output looks right.
 ### 1. Preview the repo-local contract only
 
 ```bash
-npx -y repo-harness adopt --dry-run \
+npx -y local-repo-harness adopt --dry-run \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
@@ -240,7 +240,7 @@ workflow contract that would be created or refreshed.
 ### 2. Apply the repo-local contract only
 
 ```bash
-npx -y repo-harness adopt \
+npx -y local-repo-harness adopt \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
@@ -254,7 +254,7 @@ Claude adapters and without installing external skills. Existing repos use
 ### 3. Enable project hooks and project skills
 
 ```bash
-npx -y repo-harness adopt \
+npx -y local-repo-harness adopt \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
   --skill-scope project \
@@ -282,10 +282,10 @@ If Bun is missing, it installs Bun first, then installs the `repo-harness` CLI.
 
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh
 
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex
 ```
 
 <details>
@@ -293,7 +293,7 @@ irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 |
 
 ```bash
 # Bun
-bun add -g repo-harness
+bun add -g local-repo-harness
 repo-harness adopt --dry-run
 
 # Node/npm, with Bun already on PATH because the CLI runs on Bun
@@ -305,7 +305,7 @@ repo-harness adopt --dry-run
 ### 5. Optional user-level bootstrap
 
 ```bash
-npx -y repo-harness init
+npx -y local-repo-harness init
 ```
 
 `init` is the broad-impact machine bootstrap path. It installs the current npm
@@ -315,7 +315,7 @@ skill roots, persists a brain root under `~/.repo-harness/config.json`, and
 configures user-level CodeGraph MCP. Use it when you intentionally want
 repo-harness available across repos on the machine.
 
-For an Agent-owned, read-only bootstrap audit, run `npx -y repo-harness setup
+For an Agent-owned, read-only bootstrap audit, run `npx -y local-repo-harness setup
 check --json` or add `--check-updates` for version advisories. `setup check` is
 not a runtime hook: it does not write user-level files, install updates, or
 register adapters. It emits `agent_actions` with the reason, risk, target files,
@@ -353,18 +353,18 @@ tool-specific chat setup. Agents should be able to find the stable intent in
 Only maintainers editing the package need a source checkout:
 
 ```bash
-git clone https://github.com/Ancienttwo/repo-harness.git ~/Projects/repo-harness
-cd ~/Projects/repo-harness
+git clone https://github.com/automann/local-repo-harness.git ~/Projects/local-repo-harness
+cd ~/Projects/local-repo-harness
 bun src/cli/index.ts update
 ```
 
 Local path model:
 
-- Source repo: `~/Projects/repo-harness`
+- Source repo: `~/Projects/local-repo-harness`
 - Claude skill alias: `~/.claude/skills/repo-harness`
 - Codex discoverable skill alias: `~/.codex/skills/repo-harness`
 
-The `~/Projects/repo-harness` repo is the only editable source of truth. Local
+The `~/Projects/local-repo-harness` repo is the only editable source of truth. Local
 Claude/Codex paths are symlink-backed runtime entrypoints. Only
 `~/.codex/skills/repo-harness` should expose `SKILL.md` and
 `assets/skill-commands/`. The retired `repo-harness-skill` and
@@ -505,9 +505,9 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `repo-harness@0.5.0`
+- npm package: `local-repo-harness@0.5.0`
 - Generated workflow stamp: `repo-harness@0.5.0+template@0.5.0`
-- GitHub repository: `Ancienttwo/repo-harness`
+- GitHub repository: `automann/local-repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
 ## Current Model

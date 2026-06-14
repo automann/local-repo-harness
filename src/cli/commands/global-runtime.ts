@@ -118,7 +118,7 @@ function packageVersion(sourceRoot: string): string | null {
 }
 
 function installCli(sourceRoot: string, cwd: string, env?: NodeJS.ProcessEnv, installSpec?: string): GlobalRuntimeStep {
-  const spec = installSpec ?? (existsSync(join(sourceRoot, "package.json")) ? sourceRoot : "repo-harness");
+  const spec = installSpec ?? (existsSync(join(sourceRoot, "package.json")) ? sourceRoot : "local-repo-harness");
   const step = runProcess("npm", ["install", "-g", spec], cwd, env);
   const version = packageVersion(sourceRoot);
   return withStepName(

@@ -182,14 +182,14 @@ describe('init-hook command', () => {
             id: 'cli-update',
             describe: 'repo-harness latest version advisory',
             status: 'warn',
-            detail: 'current=0.4.2; latest=99.0.0; agent_action=npm install -g repo-harness@latest && repo-harness init',
+            detail: 'current=0.4.2; latest=99.0.0; agent_action=npm install -g local-repo-harness@latest && repo-harness init',
           },
         ]),
         toolingReport: baseToolingReport(),
       });
 
       const action = report.agent_actions.find((entry) => entry.id === 'cli.update');
-      expect(action?.command).toBe('npm install -g repo-harness@latest && repo-harness init');
+      expect(action?.command).toBe('npm install -g local-repo-harness@latest && repo-harness init');
       expect(action?.verification).toBe('repo-harness setup check --target codex --check-updates --json');
     });
   });

@@ -174,10 +174,10 @@ export function buildProgram(): Command {
         process.exit(report.status === 'blocked' ? 1 : 0);
       }
       const installSpec = rawOpts.version
-        ? `repo-harness@${rawOpts.version}`
+        ? `local-repo-harness@${rawOpts.version}`
         : rawOpts.channel
-          ? `repo-harness@${rawOpts.channel}`
-          : 'repo-harness@latest';
+          ? `local-repo-harness@${rawOpts.channel}`
+          : 'local-repo-harness@latest';
       const result = runGlobalRuntimeSetup({
         target: rawOpts.target as InstallTargetSpec,
         installCli: rawOpts.cli !== false,

@@ -292,7 +292,7 @@ describe('doctor command (Phase 1C)', () => {
         expect(update.status).toBe('warn');
         expect(update.detail).toContain('current=');
         expect(update.detail).toContain('latest=99.0.0');
-        expect(update.detail).toContain('agent_action=npm install -g repo-harness@latest && repo-harness init');
+        expect(update.detail).toContain('agent_action=npm install -g local-repo-harness@latest && repo-harness init');
       });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);

@@ -1,11 +1,11 @@
 {
-  "name": "repo-harness",
+  "name": "local-repo-harness",
   "version": "0.5.0",
   "description": "Installs, migrates, audits, and repairs repo-local agentic development harnesses",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ancienttwo/repo-harness.git"
+    "url": "git+https://github.com/automann/local-repo-harness.git"
   },
   "type": "module",
   "files": [
@@ -22,6 +22,7 @@
     "README.md"
   ],
   "bin": {
+    "local-repo-harness": "src/cli/index.ts",
     "repo-harness": "src/cli/index.ts",
     "repo-harness-hook": "src/cli/hook-entry.ts"
   },

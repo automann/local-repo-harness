@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$PackageName = "repo-harness"
+$PackageName = "local-repo-harness"
 $PackageVersion = if ($env:REPO_HARNESS_VERSION) { $env:REPO_HARNESS_VERSION } else { "latest" }
 $BunInstall = if ($env:BUN_INSTALL) { $env:BUN_INSTALL } else { Join-Path $HOME ".bun" }
 $BunBin = Join-Path $BunInstall "bin"

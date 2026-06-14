@@ -25,9 +25,9 @@
 ```bash
 repo-harness init
 repo-harness update
-npx -y repo-harness init
-npm install -g repo-harness
-bun add -g repo-harness
+npx -y local-repo-harness init
+npm install -g local-repo-harness
+bun add -g local-repo-harness
 npx -y skills add tw93/Waza -g
 ```
 
@@ -58,11 +58,11 @@ git checkout -b chore/adopt-repo-harness-project-scope
 
 ## 第一步：把 repo-harness 放进目标项目
 
-如果 `repo-harness` 已经发布到你要使用的 npm registry：
+如果 `local-repo-harness` 已经发布到你要使用的 npm registry：
 
 ```bash
 cd /path/to/target-project
-npm install --save-dev repo-harness
+npm install --save-dev local-repo-harness
 ```
 
 如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到目标项目：
@@ -310,7 +310,7 @@ npm exec -- repo-harness tools ensure codegraph --check --json --repo "$PWD"
 
 ```bash
 cd /path/to/target-project
-npm install --save-dev repo-harness@latest
+npm install --save-dev local-repo-harness@latest
 
 npm exec -- repo-harness adopt \
   --repo "$PWD" \

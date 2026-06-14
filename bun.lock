@@ -3,12 +3,12 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "repo-harness",
+      "name": "local-repo-harness",
       "dependencies": {
         "commander": "^14.0.3",
       },
       "devDependencies": {
-        "@colbymchenry/codegraph": "^1.0.1",
+        "@colbymchenry/codegraph": "1.0.1",
         "@types/bun": "latest",
       },
     },

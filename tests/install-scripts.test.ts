@@ -44,12 +44,12 @@ describe("install script contracts", () => {
     const zhReadme = read("README.zh-CN.md");
     const pkg = JSON.parse(read("package.json"));
 
-    expect(readme).toContain("curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh");
-    expect(readme).toContain("irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex");
+    expect(readme).toContain("curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh");
+    expect(readme).toContain("irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex");
     expect(readme).toContain("<summary>Already have Bun or Node? Use package managers instead</summary>");
-    expect(readme).toContain("npx -y repo-harness init");
-    expect(zhReadme).toContain("curl -fsSL https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.sh | sh");
-    expect(zhReadme).toContain("irm https://raw.githubusercontent.com/Ancienttwo/repo-harness/main/install.ps1 | iex");
+    expect(readme).toContain("npx -y local-repo-harness init");
+    expect(zhReadme).toContain("curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh");
+    expect(zhReadme).toContain("irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex");
     expect(pkg.files).toContain("install.sh");
     expect(pkg.files).toContain("install.ps1");
   });

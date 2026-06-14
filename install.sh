@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-PACKAGE_NAME="repo-harness"
+PACKAGE_NAME="local-repo-harness"
 PACKAGE_VERSION="${REPO_HARNESS_VERSION:-latest}"
 
 log() {

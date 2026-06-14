@@ -18,7 +18,7 @@ import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
 
 const TRUST_STATE_LINE = /^\[hooks\.state\."[^"]+\/\.codex\/hooks\.json:/;
-const PACKAGE_NAME = 'repo-harness';
+const PACKAGE_NAME = 'local-repo-harness';
 const UPDATE_CHECK_ENV = 'REPO_HARNESS_CHECK_UPDATES';
 const LATEST_VERSION_ENV = 'REPO_HARNESS_LATEST_VERSION';
 
@@ -547,7 +547,7 @@ function checkHookScriptDrift(cwd: string): DoctorCheckResult {
 
   const remediation =
     resolved.source === 'packaged'
-      ? 'npm install -g repo-harness@latest'
+      ? 'npm install -g local-repo-harness@latest'
       : `repo-harness adopt --repo ${repoRoot}`;
   return {
     id,

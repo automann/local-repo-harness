@@ -73,7 +73,7 @@ export function checkConsistency(repoRoot: string = REPO_ROOT): ConsistencyResul
 
   if (
     usingLocalSkillManifest &&
-    pkg.name === "repo-harness" &&
+    (pkg.name === "repo-harness" || pkg.name === "local-repo-harness") &&
     packageJsonVersion !== null &&
     packageJsonVersion !== skillVersionJsonVersion
   ) {
