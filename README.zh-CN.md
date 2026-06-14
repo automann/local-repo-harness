@@ -1,5 +1,10 @@
 # repo-harness
 
+> **项目声明：** `local-repo-harness` 是基于原 [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness)
+> 独立发布的 npm 包。它保留上游 workflow 模型和 `repo-harness` CLI
+> 入口，并新增项目级安装能力，让下游项目可以把 harness、hooks、skills
+> 和外部工具安装在项目内部，而不是必须依赖用户级 hooks 注册。
+
 `repo-harness` 把 Claude/Codex 的 AI 编程会话变成可复用、可恢复、可检查的
 repo-local workflow。它提供 CLI 和 skill/runtime hooks，把上下文、计划、
 handoff、检查结果和 review evidence 写回项目文件，让下一个 agent 会话可以从文件继续，

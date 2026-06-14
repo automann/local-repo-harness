@@ -1,7 +1,7 @@
 {
   "name": "local-repo-harness",
   "version": "0.5.0",
-  "description": "Installs, migrates, audits, and repairs repo-local agentic development harnesses",
+  "description": "Independent repo-harness@0.5.0-based package with project-scoped install support for repo-local hooks, skills, and agent tooling",
   "license": "MIT",
   "repository": {
     "type": "git",

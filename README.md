@@ -1,5 +1,12 @@
 # repo-harness
 
+> **Project statement:** `local-repo-harness` is an independent npm package
+> based on the original [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness). It preserves the upstream workflow
+> model and the `repo-harness` CLI entrypoint, and adds project-scoped install
+> support so a downstream project can install the harness, hooks, skills, and
+> external tooling inside that project instead of relying on user-level hook
+> registration.
+
 <p align="center">
   <img src="docs/images/image.png" alt="One next button joining Claude and Codex under repo-harness workflow rules" width="760">
 </p>
