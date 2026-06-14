@@ -148,7 +148,7 @@ export function resolveAgenticDevSkillRoot(repoRoot = REPO_ROOT): string {
   return resolveAgenticDevRoot(repoRoot);
 }
 
-export function resolveUpstreamWorkflowContract(repoRoot = REPO_ROOT): string {
+export function resolveSourceWorkflowContract(repoRoot = REPO_ROOT): string {
   if (existsSync(LOCAL_ASSET_PATH)) return LOCAL_ASSET_PATH;
   const installedPath = resolveInstalledWorkflowContract(repoRoot);
   if (existsSync(installedPath)) return installedPath;
@@ -156,8 +156,12 @@ export function resolveUpstreamWorkflowContract(repoRoot = REPO_ROOT): string {
   return join(resolveAgenticDevRoot(repoRoot), "assets", "workflow-contract.v1.json");
 }
 
+export function resolveUpstreamWorkflowContract(repoRoot = REPO_ROOT): string {
+  return resolveSourceWorkflowContract(repoRoot);
+}
+
 export function loadWorkflowContract(
-  contractPath = resolveUpstreamWorkflowContract()
+  contractPath = resolveSourceWorkflowContract()
 ): WorkflowContract {
   return JSON.parse(readFileSync(contractPath, "utf-8")) as WorkflowContract;
 }
@@ -168,7 +172,7 @@ export function resolveInstalledWorkflowContract(repoRoot: string): string {
 
 export function resolveWorkflowContractForRepo(repoRoot: string): string {
   const installedPath = resolveInstalledWorkflowContract(repoRoot);
-  return existsSync(installedPath) ? installedPath : resolveUpstreamWorkflowContract(repoRoot);
+  return existsSync(installedPath) ? installedPath : resolveSourceWorkflowContract(repoRoot);
 }
 
 export function getHelperScripts(contract: WorkflowContract): string[] {
@@ -188,6 +192,6 @@ export function getRequiredFiles(contract: WorkflowContract): string[] {
 }
 
 if (import.meta.main) {
-  const contract = loadWorkflowContract(process.argv[2] || resolveUpstreamWorkflowContract());
+  const contract = loadWorkflowContract(process.argv[2] || resolveSourceWorkflowContract());
   console.log(JSON.stringify(contract, null, 2));
 }

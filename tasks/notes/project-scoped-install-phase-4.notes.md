@@ -59,3 +59,15 @@ Real install acceptance follow-up:
   project runtime execution from root and nested directories, status/doctor/
   security/migrate diagnostics, migration dry-run, idempotent repeat install,
   and project-scope uninstall preserving sibling hooks.
+
+Installed-copy boundary follow-up:
+
+- Added `.repo-harness-installed-copy` plus an installed-copy `AGENTS.md` to
+  repo-harness skill sync output so project/user skill copies identify
+  themselves as generated install state, not canonical repo-harness product
+  source.
+- Renamed generated migration wrapper internals from upstream-oriented wording
+  to template source wording while preserving the existing project-local,
+  explicit env var, and user-root resolution order.
+- Added workflow contract source resolver naming while retaining the older
+  upstream resolver export as a compatibility alias.

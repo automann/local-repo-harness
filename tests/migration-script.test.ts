@@ -60,6 +60,10 @@ describe("Migration script contract", () => {
 
   test("generated migration wrapper should support repo-harness roots without retired alias paths", () => {
     const wrapper = read("assets/templates/helpers/migrate-project-template.sh");
+    expect(wrapper).toContain("repo-harness template source");
+    expect(wrapper).toContain("resolve_repo_harness_source_root");
+    expect(wrapper).toContain("SOURCE_ROOT");
+    expect(wrapper).toContain("SOURCE_SCRIPT");
     expect(wrapper).toContain("AGENTIC_DEV_ROOT");
     expect(wrapper).toContain("AGENTIC_DEV_SKILL_ROOT");
     expect(wrapper).toContain(".agents/skills/repo-harness");
@@ -73,6 +77,9 @@ describe("Migration script contract", () => {
     expect(wrapper).not.toContain("PROJECT_INITIALIZER_ROOT");
     expect(wrapper).not.toContain(".codex/skills/project-initializer");
     expect(wrapper).not.toContain(".claude/skills/project-initializer");
+    expect(wrapper).not.toContain("canonical upstream repo-harness");
+    expect(wrapper).not.toContain("UPSTREAM_ROOT");
+    expect(wrapper).not.toContain("UPSTREAM_SCRIPT");
   });
 
   test("generated migration wrapper prefers project-scoped repo-harness skills before user roots", () => {
@@ -109,6 +116,7 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("project-skill-migration");
       expect(res.stdout).toContain("--dry-run");
       expect(res.stderr).not.toContain("Upstream repo-harness migration script not found");
+      expect(res.stderr).not.toContain("repo-harness template source migration script not found");
     } finally {
       rmSync(repo, { recursive: true, force: true });
       rmSync(fakeHome, { recursive: true, force: true });

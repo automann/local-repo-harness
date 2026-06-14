@@ -1,5 +1,5 @@
 #!/bin/bash
-# Delegate workflow migrations to the canonical upstream repo-harness.
+# Delegate workflow migrations to the best available repo-harness template source.
 #
 # Generated projects keep installed workflow runtime state under .ai/. The
 # template source lives in AGENTIC_DEV_ROOT, AGENTIC_DEV_SKILL_ROOT, or
@@ -19,7 +19,7 @@ else
   REPO_ROOT="$(cd "$PARENT_DIR" && pwd -P)"
 fi
 
-resolve_agentic_dev_root() {
+resolve_repo_harness_source_root() {
   if [[ -n "${AGENTIC_DEV_ROOT:-}" ]]; then
     printf '%s\n' "$AGENTIC_DEV_ROOT"
     return 0
@@ -65,13 +65,13 @@ resolve_agentic_dev_root() {
   printf '%s\n' "/Users/ancienttwo/.agents/skills/repo-harness"
 }
 
-UPSTREAM_ROOT="$(resolve_agentic_dev_root)"
-UPSTREAM_SCRIPT="$UPSTREAM_ROOT/scripts"/migrate-project-template.sh
+SOURCE_ROOT="$(resolve_repo_harness_source_root)"
+SOURCE_SCRIPT="$SOURCE_ROOT/scripts"/migrate-project-template.sh
 
-if [[ ! -f "$UPSTREAM_SCRIPT" ]]; then
-  echo "[migrate] Upstream repo-harness migration script not found: $UPSTREAM_SCRIPT" >&2
+if [[ ! -f "$SOURCE_SCRIPT" ]]; then
+  echo "[migrate] repo-harness template source migration script not found: $SOURCE_SCRIPT" >&2
   echo "[migrate] Set AGENTIC_DEV_ROOT or AGENTIC_DEV_SKILL_ROOT to the skill root." >&2
   exit 1
 fi
 
-exec bash "$UPSTREAM_SCRIPT" "$@"
+exec bash "$SOURCE_SCRIPT" "$@"

@@ -10,6 +10,7 @@ import {
   readlinkSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from "fs";
 import { dirname, join, relative, resolve } from "path";
 import type { InstallTargetSpec } from "../commands/install";
@@ -77,6 +78,8 @@ const RELATIVE_PREFIX_EXCLUDES = [
   ".ai/harness/runs/",
   ".ai/harness/worktrees/",
 ];
+
+const INSTALLED_COPY_MARKER = ".repo-harness-installed-copy";
 
 function homeDir(env?: NodeJS.ProcessEnv): string | null {
   return env?.HOME ?? process.env.HOME ?? null;
@@ -160,6 +163,39 @@ export function syncSkillDirectory(source: string, dest: string): SkillInstallSt
   return { step: "", status: "ok", detail: `synced ${dest}` };
 }
 
+function installedCopyDescription(scope: ToolingScope): string {
+  return scope === "project" ? "project-scoped" : "user-scoped";
+}
+
+export function writeRepoHarnessInstalledCopyBoundary(dest: string, scope: ToolingScope, host: SkillHost): void {
+  const scopeDescription = installedCopyDescription(scope);
+  writeFileSync(
+    join(dest, INSTALLED_COPY_MARKER),
+    [
+      "kind=repo-harness-installed-copy",
+      `scope=${scope}`,
+      `host=${host}`,
+      "generated_by=repo-harness",
+      "edit_policy=generated-install-state-do-not-edit-for-product-development",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    join(dest, "AGENTS.md"),
+    [
+      "# Installed repo-harness Skill Copy",
+      "",
+      `This directory is an installed ${scopeDescription} copy of repo-harness.`,
+      "It is not the canonical repo-harness product source.",
+      "",
+      "- Do not edit this directory to develop repo-harness itself.",
+      "- For product changes, edit the source checkout or package that produced this install, then reinstall.",
+      "- For using the skill, read `SKILL.md`; treat this tree as generated install state.",
+      "",
+    ].join("\n"),
+  );
+}
+
 export function installRepoHarnessProjectSkills(opts: RepoHarnessSkillInstallOptions): SkillInstallStep[] {
   if (opts.scope === "none") {
     return [{ step: "sync repo-harness skills", status: "skipped", detail: "scope=none" }];
@@ -185,6 +221,7 @@ export function installRepoHarnessProjectSkills(opts: RepoHarnessSkillInstallOpt
     const dest = join(root, "repo-harness");
     try {
       syncDirectory(resolve(opts.sourceRoot), dest, resolve(opts.sourceRoot));
+      writeRepoHarnessInstalledCopyBoundary(dest, opts.scope, host);
       steps.push({ step: stepName, status: "ok", detail: `scope=${opts.scope}; ${dest}` });
     } catch (error) {
       steps.push({

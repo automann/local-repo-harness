@@ -283,9 +283,18 @@ describe("init command", () => {
       });
 
       expect(result.exitCode).toBe(0);
-      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "assets", "skill-commands", "repo-harness-plan", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(repo, ".claude", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      const codexRepoHarness = join(repo, ".agents", "skills", "repo-harness");
+      const claudeRepoHarness = join(repo, ".claude", "skills", "repo-harness");
+      expect(existsSync(join(codexRepoHarness, "SKILL.md"))).toBe(true);
+      expect(existsSync(join(codexRepoHarness, "assets", "skill-commands", "repo-harness-plan", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(claudeRepoHarness, "SKILL.md"))).toBe(true);
+      expect(readFileSync(join(codexRepoHarness, ".repo-harness-installed-copy"), "utf-8")).toContain("scope=project");
+      expect(readFileSync(join(codexRepoHarness, ".repo-harness-installed-copy"), "utf-8")).toContain("host=codex");
+      expect(readFileSync(join(claudeRepoHarness, ".repo-harness-installed-copy"), "utf-8")).toContain("host=claude");
+      const installedAgents = readFileSync(join(codexRepoHarness, "AGENTS.md"), "utf-8");
+      expect(installedAgents).toContain("installed project-scoped copy");
+      expect(installedAgents).toContain("not the canonical repo-harness product source");
+      expect(installedAgents).toContain("generated install state");
       expect(existsSync(join(repo, ".agents", "skills", "claude-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(repo, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(home, ".codex", "skills"))).toBe(false);
@@ -327,6 +336,8 @@ describe("init command", () => {
       expect(result.exitCode).toBe(0);
       expect(existsSync(join(repo, ".agents", "skills", "repo-harness", "SKILL.md"))).toBe(true);
       expect(existsSync(join(repo, ".claude", "skills", "repo-harness", "SKILL.md"))).toBe(true);
+      expect(readFileSync(join(repo, ".agents", "skills", "repo-harness", ".repo-harness-installed-copy"), "utf-8")).toContain("scope=project");
+      expect(readFileSync(join(repo, ".claude", "skills", "repo-harness", "AGENTS.md"), "utf-8")).toContain("generated install state");
       expect(existsSync(join(repo, ".agents", "skills", "repo-harness", ".agents"))).toBe(false);
       expect(existsSync(join(repo, ".claude", "skills", "repo-harness", ".claude", "skills"))).toBe(false);
     } finally {

@@ -187,7 +187,7 @@ describe("workflow contract manifest", () => {
     expect(legacyRootHelpers?.paths).toContain("scripts/check-task-workflow.sh");
   });
 
-  test("upstream skill root resolver prefers the canonical env var without retired alias surfaces", () => {
+  test("source skill root resolver prefers the canonical env var without retired alias surfaces", () => {
     const code = [
       'import { resolveAgenticDevRoot, resolveAgenticDevSkillRoot } from "./scripts/workflow-contract.ts";',
       'console.log(resolveAgenticDevRoot());',
@@ -237,11 +237,15 @@ describe("workflow contract manifest", () => {
     expect(retiredLegacy.stdout).not.toContain("/tmp/project-initializer-root");
 
     const resolverSource = readFileSync(join(ROOT, "scripts/workflow-contract.ts"), "utf-8");
+    expect(resolverSource).toContain("resolveSourceWorkflowContract");
+    expect(resolverSource).toContain("export function resolveUpstreamWorkflowContract");
+    expect(resolverSource).toContain("return resolveSourceWorkflowContract(repoRoot);");
+    expect(resolverSource).not.toContain("contractPath = resolveUpstreamWorkflowContract()");
     expect(resolverSource).not.toContain("repo-harness-skill");
     expect(resolverSource).not.toContain("resolveProjectInitializerRoot");
   });
 
-  test("installed workflow-contract helper resolves the repo-local contract without an upstream checkout", () => {
+  test("installed workflow-contract helper resolves the repo-local contract without an external source checkout", () => {
     const repo = mkdtempSync(join(tmpdir(), "workflow-contract-installed-"));
     const fakeHome = mkdtempSync(join(tmpdir(), "workflow-contract-home-"));
     try {
