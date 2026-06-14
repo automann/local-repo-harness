@@ -409,6 +409,9 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   commandEnv = {
     ...(commandEnv ?? {}),
     REPO_HARNESS_HOST_ADAPTER_SCOPE: hostAdapters ? hostAdapterScope : "none",
+    REPO_HARNESS_RUNTIME_SELECTION: hostAdapters && hostAdapterScope !== "none"
+      ? runtimeSelection
+      : "none",
     REPO_HARNESS_HOOK_RUNTIME_MODE: hostAdapters && hostAdapterScope !== "none"
       ? resolveRuntimeMode(scopeToLocation(hostAdapterScope), runtimeSelection)
       : "none",

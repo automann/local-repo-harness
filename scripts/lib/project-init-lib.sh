@@ -2159,8 +2159,59 @@ EOF_POLICY
     :
   fi
 
+  pi_update_harness_policy_intent "$merged_file"
   mv "$merged_file" "$output_file"
   rm -f "$default_file"
+}
+
+pi_update_harness_policy_intent() {
+  local policy_file="$1"
+  local js_runtime
+
+  js_runtime="$(pi_resolve_js_runtime || true)"
+  if [[ -z "$js_runtime" ]]; then
+    return 0
+  fi
+
+  REPO_HARNESS_HOST_ADAPTER_SCOPE="${REPO_HARNESS_HOST_ADAPTER_SCOPE:-user}" \
+  REPO_HARNESS_RUNTIME_SELECTION="${REPO_HARNESS_RUNTIME_SELECTION:-auto}" \
+  REPO_HARNESS_HOOK_RUNTIME_MODE="${REPO_HARNESS_HOOK_RUNTIME_MODE:-global-path}" \
+  REPO_HARNESS_SKILL_SCOPE="${REPO_HARNESS_SKILL_SCOPE:-user}" \
+  REPO_HARNESS_EXTERNAL_TOOL_SCOPE="${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}" \
+  REPO_HARNESS_CODEGRAPH_MCP_SCOPE="${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}" \
+  REPO_HARNESS_BRAIN_MODE="${REPO_HARNESS_BRAIN_MODE:-skip}" \
+  "$js_runtime" -e '
+const fs = require("fs");
+const [policyPath] = process.argv.slice(1);
+const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
+
+policy.host_adapters ||= {};
+policy.host_adapters.scope = process.env.REPO_HARNESS_HOST_ADAPTER_SCOPE;
+policy.host_adapters.runtime_selection = process.env.REPO_HARNESS_RUNTIME_SELECTION;
+policy.host_adapters.hook_runtime_mode = process.env.REPO_HARNESS_HOOK_RUNTIME_MODE;
+policy.host_adapters.project_hook_executable ||= ".ai/harness/bin/repo-harness-hook";
+policy.host_adapters.project_runtime_dir ||= ".ai/harness/runtime/repo-harness";
+
+policy.skills ||= {};
+policy.skills.repo_harness_scope = process.env.REPO_HARNESS_SKILL_SCOPE;
+policy.skills.project_paths ||= { codex: ".agents/skills", claude: ".claude/skills" };
+policy.skills.user_paths ||= { codex: "~/.codex/skills", claude: "~/.claude/skills" };
+
+policy.external_tooling ||= {};
+policy.external_tooling.scope = process.env.REPO_HARNESS_EXTERNAL_TOOL_SCOPE;
+policy.external_tooling.waza ||= {};
+policy.external_tooling.waza.scope = process.env.REPO_HARNESS_EXTERNAL_TOOL_SCOPE;
+policy.external_tooling.diagram_design ||= {};
+policy.external_tooling.diagram_design.scope = process.env.REPO_HARNESS_EXTERNAL_TOOL_SCOPE;
+policy.external_tooling.gbrain ||= {};
+policy.external_tooling.gbrain.mode = process.env.REPO_HARNESS_BRAIN_MODE;
+policy.external_tooling.gbrain.project_only_mode ||= "manifest-only";
+policy.external_tooling.codegraph ||= {};
+policy.external_tooling.codegraph.index_scope ||= "project";
+policy.external_tooling.codegraph.mcp_scope = process.env.REPO_HARNESS_CODEGRAPH_MCP_SCOPE;
+
+fs.writeFileSync(policyPath, JSON.stringify(policy, null, 2) + "\n");
+' "$policy_file" || true
 }
 
 pi_write_brain_manifest() {

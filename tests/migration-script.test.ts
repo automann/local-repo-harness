@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import {
   existsSync,
+  cpSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -61,6 +62,8 @@ describe("Migration script contract", () => {
     const wrapper = read("assets/templates/helpers/migrate-project-template.sh");
     expect(wrapper).toContain("AGENTIC_DEV_ROOT");
     expect(wrapper).toContain("AGENTIC_DEV_SKILL_ROOT");
+    expect(wrapper).toContain(".agents/skills/repo-harness");
+    expect(wrapper).toContain(".claude/skills/repo-harness");
     expect(wrapper).toContain("Projects/repo-harness");
     expect(wrapper).toContain(".codex/skills/repo-harness");
     expect(wrapper).toContain(".claude/skills/repo-harness");
@@ -70,6 +73,46 @@ describe("Migration script contract", () => {
     expect(wrapper).not.toContain("PROJECT_INITIALIZER_ROOT");
     expect(wrapper).not.toContain(".codex/skills/project-initializer");
     expect(wrapper).not.toContain(".claude/skills/project-initializer");
+  });
+
+  test("generated migration wrapper prefers project-scoped repo-harness skills before user roots", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-wrapper-project-skill-"));
+    const fakeHome = mkdtempSync(join(tmpdir(), "migration-wrapper-home-"));
+    try {
+      mkdirSync(join(repo, ".ai/harness/scripts"), { recursive: true });
+      mkdirSync(join(repo, ".agents/skills/repo-harness/scripts"), { recursive: true });
+      writeFileSync(
+        join(repo, ".agents/skills/repo-harness/scripts/migrate-project-template.sh"),
+        "#!/bin/bash\necho project-skill-migration \"$@\"\n",
+      );
+      cpSync(
+        join(ROOT, "assets/templates/helpers/migrate-project-template.sh"),
+        join(repo, ".ai/harness/scripts/migrate-project-template.sh"),
+      );
+
+      const res = spawnSync(
+        "bash",
+        [join(repo, ".ai/harness/scripts/migrate-project-template.sh"), "--repo", repo, "--dry-run"],
+        {
+          cwd: repo,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            HOME: fakeHome,
+            AGENTIC_DEV_ROOT: "",
+            AGENTIC_DEV_SKILL_ROOT: "",
+          },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("project-skill-migration");
+      expect(res.stdout).toContain("--dry-run");
+      expect(res.stderr).not.toContain("Upstream repo-harness migration script not found");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(fakeHome, { recursive: true, force: true });
+    }
   });
 
   test("should migrate workflow files and runtime ignore block", () => {
@@ -575,6 +618,68 @@ describe("Migration script contract", () => {
       expect(res.stdout).toContain("Host hook runtime: project-vendored-bun via .ai/harness/bin/repo-harness-hook");
       expect(res.stdout).toContain("Project runtime files: .ai/harness/bin/repo-harness-hook and .ai/harness/runtime/repo-harness/.version");
       expect(res.stdout).toContain("Host hook adapters are project-scoped:");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test("policy install intent updates when a repo moves from disabled to project scope", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-policy-intent-"));
+    try {
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+
+      const contractOnly = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        {
+          cwd: ROOT,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            REPO_HARNESS_HOST_ADAPTER_SCOPE: "none",
+            REPO_HARNESS_RUNTIME_SELECTION: "none",
+            REPO_HARNESS_HOOK_RUNTIME_MODE: "none",
+            REPO_HARNESS_SKILL_SCOPE: "none",
+            REPO_HARNESS_EXTERNAL_TOOL_SCOPE: "none",
+            REPO_HARNESS_CODEGRAPH_MCP_SCOPE: "none",
+            REPO_HARNESS_BRAIN_MODE: "skip",
+          },
+        },
+      );
+      expect(contractOnly.status).toBe(0);
+      let policy = JSON.parse(readFileSync(join(repo, ".ai/harness/policy.json"), "utf-8"));
+      expect(policy.host_adapters.scope).toBe("none");
+      expect(policy.skills.repo_harness_scope).toBe("none");
+
+      const projectInstall = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        {
+          cwd: ROOT,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            REPO_HARNESS_HOST_ADAPTER_SCOPE: "project",
+            REPO_HARNESS_RUNTIME_SELECTION: "project-vendored-bun",
+            REPO_HARNESS_HOOK_RUNTIME_MODE: "project-vendored-bun",
+            REPO_HARNESS_SKILL_SCOPE: "project",
+            REPO_HARNESS_EXTERNAL_TOOL_SCOPE: "none",
+            REPO_HARNESS_CODEGRAPH_MCP_SCOPE: "none",
+            REPO_HARNESS_BRAIN_MODE: "skip",
+          },
+        },
+      );
+      expect(projectInstall.status).toBe(0);
+      policy = JSON.parse(readFileSync(join(repo, ".ai/harness/policy.json"), "utf-8"));
+      expect(policy.host_adapters.scope).toBe("project");
+      expect(policy.host_adapters.runtime_selection).toBe("project-vendored-bun");
+      expect(policy.host_adapters.hook_runtime_mode).toBe("project-vendored-bun");
+      expect(policy.skills.repo_harness_scope).toBe("project");
+      expect(policy.external_tooling.scope).toBe("none");
+      expect(policy.external_tooling.waza.scope).toBe("none");
+      expect(policy.external_tooling.diagram_design.scope).toBe("none");
+      expect(policy.external_tooling.codegraph.mcp_scope).toBe("none");
+      expect(policy.external_tooling.gbrain.mode).toBe("skip");
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

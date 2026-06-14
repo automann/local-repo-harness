@@ -65,6 +65,7 @@ tasks/.current.md.tmp.*
 artifacts/
 autoresearch/
 dev-plans/
+dev-tests/
 repo-harness-project-scoped-install-prd.md
 *.tar.gz
 *.tgz

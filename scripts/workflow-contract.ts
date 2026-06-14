@@ -131,6 +131,7 @@ const REPO_ROOT = SCRIPT_DIR.endsWith("/.ai/harness/scripts")
   ? join(SCRIPT_DIR, "../../..")
   : join(SCRIPT_DIR, "..");
 const LOCAL_ASSET_PATH = join(REPO_ROOT, "assets", "workflow-contract.v1.json");
+const INSTALLED_CONTRACT_PATH = join(REPO_ROOT, ".ai", "harness", "workflow-contract.json");
 
 export function resolveAgenticDevRoot(_repoRoot = REPO_ROOT): string {
   const configuredRoot =
@@ -165,6 +166,9 @@ export function resolveAgenticDevSkillRoot(repoRoot = REPO_ROOT): string {
 
 export function resolveUpstreamWorkflowContract(repoRoot = REPO_ROOT): string {
   if (existsSync(LOCAL_ASSET_PATH)) return LOCAL_ASSET_PATH;
+  const installedPath = resolveInstalledWorkflowContract(repoRoot);
+  if (existsSync(installedPath)) return installedPath;
+  if (existsSync(INSTALLED_CONTRACT_PATH)) return INSTALLED_CONTRACT_PATH;
   return join(resolveAgenticDevRoot(repoRoot), "assets", "workflow-contract.v1.json");
 }
 

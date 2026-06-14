@@ -38,3 +38,24 @@ Verification in progress:
   blocking findings.
 - `bash scripts/check-task-workflow.sh --strict` exited 0 with only unavailable
   brain vault warnings.
+
+Real install acceptance follow-up:
+
+- Ran the first local-tarball project-only acceptance profile with a temporary
+  HOME and fresh target repo under `dev-tests/runs/20260614-162232/`; the run
+  failed because Profile A `none` intent was preserved in policy after Profile
+  B requested project scope, and installed helper scripts still expected an
+  upstream repo-harness checkout under fake HOME.
+- Fixed policy intent refresh so later `repo-harness update` runs update
+  `host_adapters`, `skills`, external tooling, CodeGraph MCP, and brain intent
+  fields while preserving unrelated policy defaults/overrides.
+- Fixed installed helper resolution so generated `workflow-contract.ts` can use
+  the repo-local `.ai/harness/workflow-contract.json`, and generated
+  `migrate-project-template.sh` prefers project-scoped repo-harness skill roots
+  before user-level roots.
+- Re-ran the first acceptance profile under `dev-tests/runs/20260614-163535/`;
+  result: PASS, 49 checks, 0 failures. Covered contract-only Profile A, project
+  hooks/runtime/skills Profile B, no-write snapshots for fake user config,
+  project runtime execution from root and nested directories, status/doctor/
+  security/migrate diagnostics, migration dry-run, idempotent repeat install,
+  and project-scope uninstall preserving sibling hooks.

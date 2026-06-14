@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
+  cpSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -238,6 +239,57 @@ describe("workflow contract manifest", () => {
     const resolverSource = readFileSync(join(ROOT, "scripts/workflow-contract.ts"), "utf-8");
     expect(resolverSource).not.toContain("repo-harness-skill");
     expect(resolverSource).not.toContain("resolveProjectInitializerRoot");
+  });
+
+  test("installed workflow-contract helper resolves the repo-local contract without an upstream checkout", () => {
+    const repo = mkdtempSync(join(tmpdir(), "workflow-contract-installed-"));
+    const fakeHome = mkdtempSync(join(tmpdir(), "workflow-contract-home-"));
+    try {
+      mkdirSync(join(repo, ".ai/harness/scripts"), { recursive: true });
+      cpSync(
+        join(ROOT, "assets/templates/helpers/workflow-contract.ts"),
+        join(repo, ".ai/harness/scripts/workflow-contract.ts"),
+      );
+      writeFileSync(
+        join(repo, ".ai/harness/workflow-contract.json"),
+        JSON.stringify({
+          version: "installed-test",
+          contractId: "installed-contract",
+          compatibility: { agents: [], repoLocalFirst: true },
+          helpers: { scripts: [] },
+          artifacts: {
+            runtimeManifest: ".ai/harness/workflow-contract.json",
+            requiredDirectories: [],
+            requiredFiles: [],
+          },
+          documents: {
+            spec: "docs/spec.md",
+            planDirectory: "plans",
+            researchReportsDirectory: "docs/researches",
+            lessonsLog: "tasks/lessons.md",
+          },
+          migrations: { legacyVersions: [], legacyPaths: [] },
+        }, null, 2) + "\n",
+      );
+
+      const res = spawnSync("bun", [".ai/harness/scripts/workflow-contract.ts"], {
+        cwd: repo,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: fakeHome,
+          AGENTIC_DEV_ROOT: "",
+          AGENTIC_DEV_SKILL_ROOT: "",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      expect(JSON.parse(res.stdout).contractId).toBe("installed-contract");
+      expect(res.stderr).not.toContain("Projects/repo-harness");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(fakeHome, { recursive: true, force: true });
+    }
   });
 
   test("runtime harness artifacts should be ignored local state, not tracked deliverables", () => {

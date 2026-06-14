@@ -8,6 +8,17 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT=""
+if REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+  :
+elif [[ "$SCRIPT_DIR" == */.ai/harness/scripts ]]; then
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd -P)"
+else
+  PARENT_DIR="$SCRIPT_DIR/.."
+  REPO_ROOT="$(cd "$PARENT_DIR" && pwd -P)"
+fi
+
 resolve_agentic_dev_root() {
   if [[ -n "${AGENTIC_DEV_ROOT:-}" ]]; then
     printf '%s\n' "$AGENTIC_DEV_ROOT"
@@ -18,6 +29,18 @@ resolve_agentic_dev_root() {
     printf '%s\n' "$AGENTIC_DEV_SKILL_ROOT"
     return 0
   fi
+
+  local project_roots=(
+    "$REPO_ROOT/.agents/skills/repo-harness"
+    "$REPO_ROOT/.claude/skills/repo-harness"
+  )
+  local project_root
+  for project_root in "${project_roots[@]}"; do
+    if [[ -f "$project_root/scripts"/migrate-project-template.sh ]]; then
+      printf '%s\n' "$project_root"
+      return 0
+    fi
+  done
 
   if [[ -n "${HOME:-}" ]]; then
     local roots=(
@@ -43,7 +66,7 @@ resolve_agentic_dev_root() {
 }
 
 UPSTREAM_ROOT="$(resolve_agentic_dev_root)"
-UPSTREAM_SCRIPT="$UPSTREAM_ROOT/scripts/migrate-project-template.sh"
+UPSTREAM_SCRIPT="$UPSTREAM_ROOT/scripts"/migrate-project-template.sh
 
 if [[ ! -f "$UPSTREAM_SCRIPT" ]]; then
   echo "[migrate] Upstream repo-harness migration script not found: $UPSTREAM_SCRIPT" >&2
