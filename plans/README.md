@@ -14,9 +14,9 @@ row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001 | Make project-scoped CodeGraph independent of target root package.json | P1 | L | - | DONE |
-| 002 | Remove stale `repo-harness` fallbacks from generated wrappers | P1 | S | - | DONE (verified 2026-06-16; commit pending) |
-| 003 | Standardize shell JavaScript runtime invocation | P1 | L | 002 | DONE (verified 2026-06-16; commit pending) |
-| 004 | Add a runtime compatibility gate | P1 | M | 002, 003 | DONE (verified 2026-06-16; commit pending) |
+| 002 | Remove stale `repo-harness` fallbacks from generated wrappers | P1 | S | - | DONE (verified 2026-06-16; 26aee5c) |
+| 003 | Standardize shell JavaScript runtime invocation | P1 | L | 002 | DONE (verified 2026-06-16; 26aee5c) |
+| 004 | Add a runtime compatibility gate | P1 | M | 002, 003 | DONE (verified 2026-06-16; 26aee5c) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
