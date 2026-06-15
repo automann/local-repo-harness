@@ -289,9 +289,11 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.external_tooling.gbrain.mcp).toBe("candidate-disabled");
       expect(policy.external_tooling.codegraph.primary_host).toBe("both");
       expect(policy.external_tooling.codegraph.index_dir).toBe(".codegraph");
+      expect(policy.external_tooling.codegraph.tool_root).toBe(".ai/harness/tools/codegraph");
+      expect(policy.external_tooling.codegraph.managed_bin).toBe(".ai/harness/bin/codegraph");
       expect(policy.external_tooling.codegraph.readiness).toBe("required-for-agent-code-navigation");
       expect(policy.external_tooling.codegraph.hook_policy).toBe("do-not-block-hooks");
-      expect(policy.external_tooling.codegraph.vendoring_policy).toBe("do-not-add-package-dependency");
+      expect(policy.external_tooling.codegraph.vendoring_policy).toBe("managed-harness-tool-root-no-target-root-package-dependency");
       expect(policy.tasks.notes_dir).toBe("tasks/notes");
       expect(policy.tasks.workstreams_dir).toBe("tasks/workstreams");
       expect(policy.reference_material.dir).toBe("_ref");

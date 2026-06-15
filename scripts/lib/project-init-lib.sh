@@ -2163,12 +2163,14 @@ pi_write_harness_policy() {
       "project_codex_config_path": ".codex/config.toml",
       "project_claude_config_path": ".mcp.json",
       "index_dir": ".codegraph",
+      "tool_root": ".ai/harness/tools/codegraph",
+      "managed_bin": ".ai/harness/bin/codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "local-repo-harness tools configure codegraph --target both --location local",
-      "project_init_command": "codegraph init -i .",
-      "sync_command": "codegraph sync .",
-      "vendoring_policy": "do-not-add-package-dependency"
+      "install_command": "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local",
+      "project_init_command": "local-repo-harness tools ensure codegraph --init --repo .",
+      "sync_command": "local-repo-harness tools ensure codegraph --sync --repo .",
+      "vendoring_policy": "managed-harness-tool-root-no-target-root-package-dependency"
     }
   },
   "agentic_development": {
@@ -2254,7 +2256,7 @@ policy.external_tooling.codegraph ||= {};
 const codegraph = policy.external_tooling.codegraph;
 const codegraphScope = process.env.REPO_HARNESS_CODEGRAPH_MCP_SCOPE;
 const codegraphProjectInstallCommand =
-  "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local";
+  "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local";
 const codegraphProjectConfigureCommand =
   "local-repo-harness tools configure codegraph --target both --location local";
 const codegraphUserInstallCommand =
@@ -2263,6 +2265,11 @@ const codegraphUserConfigureCommand =
   "local-repo-harness tools configure codegraph --target both --location global";
 
 codegraph.index_scope = "project";
+codegraph.tool_root = ".ai/harness/tools/codegraph";
+codegraph.managed_bin = ".ai/harness/bin/codegraph";
+codegraph.vendoring_policy = "managed-harness-tool-root-no-target-root-package-dependency";
+codegraph.project_init_command = "local-repo-harness tools ensure codegraph --init --repo .";
+codegraph.sync_command = "local-repo-harness tools ensure codegraph --sync --repo .";
 codegraph.mcp_scope = codegraphScope;
 if (codegraphScope === "project") {
   codegraph.install_command = codegraphProjectInstallCommand;

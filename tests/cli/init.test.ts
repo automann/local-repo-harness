@@ -820,10 +820,10 @@ describe("init command", () => {
       expect(configureStep?.detail).toContain("codex-project-path:changed");
       expect(configureStep?.detail).toContain("claude-project-path:changed");
       const codexConfig = readFileSync(join(repo, ".codex", "config.toml"), "utf-8");
-      expect(codexConfig).toContain('command = "./node_modules/.bin/codegraph"');
+      expect(codexConfig).toContain('command = "./.ai/harness/bin/codegraph"');
       expect(codexConfig).toContain('CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime"');
       const claudeMcp = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph;
-      expect(claudeMcp.command).toBe("./node_modules/.bin/codegraph");
+      expect(claudeMcp.command).toBe("./.ai/harness/bin/codegraph");
       expect(claudeMcp.args).toEqual(["serve", "--mcp", "--path", "."]);
       expect(claudeMcp.env).toEqual({
         CODEGRAPH_TELEMETRY: "0",

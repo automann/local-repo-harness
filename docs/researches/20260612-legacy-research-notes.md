@@ -283,7 +283,7 @@
 - `agentic-dev` now declares `@colbymchenry/codegraph` as a self-host `devDependency`; `bun install` materializes `node_modules/.bin/codegraph`.
 - `scripts/check-agent-tooling.sh` resolves CodeGraph local-first, then global fallback, and reports `source`, local/global bin paths, version drift, and fallback use.
 - `scripts/ensure-codegraph.sh --check --json` is a read-only wrapper around the existing tooling detector. Mutating `--init` and `--sync` paths remain explicit and do not write MCP config.
-- Generated downstream policy remains global-MCP-first with `vendoring_policy: do-not-add-package-dependency`; the self-host exception lives in `.ai/harness/policy.json` and docs.
+- Historical note: generated downstream policy was global-MCP-first in this slice; newer project-scoped installs use a managed harness tool root instead of target-root CodeGraph package dependencies.
 
 ### Why
 - The implementation preserves the split between host adapter installation and tool readiness. `install --target` stays host-only; CodeGraph readiness is a tool lifecycle concern.

@@ -126,14 +126,16 @@
       "projectMcp": {
         "codexConfigPath": ".codex/config.toml",
         "claudeConfigPath": ".mcp.json",
-        "installCommand": "codegraph install --target <codex|claude|both> --location local --yes"
+        "toolRoot": ".ai/harness/tools/codegraph",
+        "managedBin": ".ai/harness/bin/codegraph",
+        "installCommand": "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target <codex|claude|both> --location local"
       },
       "userMcp": {
         "codexConfigPath": "~/.codex/config.toml",
         "claudeConfigPath": "~/.claude.json",
         "installCommand": "local-repo-harness tools configure codegraph --target <codex|claude|both> --location global"
       },
-      "vendoringPolicy": "self-host-dev-dependency; downstream-generated-default-remains-do-not-add-package-dependency"
+      "vendoringPolicy": "self-host-dev-dependency; downstream-project-intent-uses-managed-harness-tool-root"
     },
     "gbrain": {
       "mode": "manual-or-manifest-only",

@@ -13,7 +13,7 @@ row when done.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | Make project-scoped CodeGraph independent of target root package.json | P1 | L | - | TODO |
+| 001 | Make project-scoped CodeGraph independent of target root package.json | P1 | L | - | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

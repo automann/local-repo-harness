@@ -487,13 +487,43 @@ describe("check-agent-tooling", () => {
       expect(report.tools.codegraph.status).toBe("missing");
       expect(report.tools.codegraph.mcp_intent).toBe("project");
       expect(report.tools.codegraph.install_command).toBe(
-        "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
+        "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local",
       );
+      expect(report.tools.codegraph.install_command).not.toContain("npm install --save-dev");
       expect(report.tools.codegraph.mcp_install_command).toBe(
         "local-repo-harness tools configure codegraph --target <codex|claude|both> --location local",
       );
       expect(report.tools.codegraph.install_command).not.toContain("npm install -g");
       expect(report.tools.codegraph.install_command).not.toContain("--location global");
+    } finally {
+      rmSync(envRoot.root, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("detects the managed project CodeGraph shim as local", () => {
+    const envRoot = setupFakeEnvironment("check-agent-tooling-codegraph-managed-shim");
+    try {
+      mkdirSync(join(envRoot.root, ".ai", "harness", "bin"), { recursive: true });
+      writeFakeNpx(envRoot.fakeBin);
+      writeFakeGbrain(envRoot.fakeBin);
+      writeFakeCodeGraph(join(envRoot.root, ".ai", "harness", "bin"));
+
+      const res = spawnSync("bash", [SCRIPT, "--json", "--host", "codex"], {
+        cwd: envRoot.root,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: envRoot.home,
+          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: "0",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      const report = JSON.parse(res.stdout);
+      expect(report.tools.codegraph.source).toBe("local");
+      expect(report.tools.codegraph.local_bin_path).toContain(".ai/harness/bin/codegraph");
+      expect(report.tools.codegraph.global_fallback_used).toBe(false);
     } finally {
       rmSync(envRoot.root, { recursive: true, force: true });
     }

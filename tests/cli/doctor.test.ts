@@ -399,8 +399,9 @@ describe('doctor command (Phase 1C)', () => {
 
           expect(readiness.status).toBe('fail');
           expect(readiness.detail).toContain(
-            'npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local',
+            'local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local',
           );
+          expect(readiness.detail).not.toContain('npm install --save-dev @colbymchenry/codegraph');
           expect(readiness.detail).not.toContain('npm install -g @colbymchenry/codegraph');
           expect(readiness.detail).not.toContain('--location global');
           expect(codexMcp.detail).toContain('local-repo-harness tools configure codegraph --target codex --location local');

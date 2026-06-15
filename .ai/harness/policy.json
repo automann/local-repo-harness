@@ -351,12 +351,14 @@
       "codex_config_path": "~/.codex/config.toml",
       "claude_config_path": "~/.claude.json",
       "index_dir": ".codegraph",
+      "tool_root": ".ai/harness/tools/codegraph",
+      "managed_bin": ".ai/harness/bin/codegraph",
       "readiness": "required-for-codex-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
       "install_command": "bun install",
       "project_init_command": "codegraph init -i .",
       "sync_command": "codegraph sync .",
-      "vendoring_policy": "self-host-dev-dependency; downstream-generated-default-remains-do-not-add-package-dependency",
+      "vendoring_policy": "self-host-dev-dependency; downstream-project-intent-uses-managed-harness-tool-root",
       "mcp_install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" codegraph install --target codex --location global --yes"
     }
   },

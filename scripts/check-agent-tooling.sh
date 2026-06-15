@@ -85,7 +85,7 @@ const CODEX_AUTOMATION_SKILLS = ["health", "check", "mermaid"];
 const CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
 const CODEGRAPH_GLOBAL_INSTALL_COMMAND = `npm install -g ${CODEGRAPH_PACKAGE} && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" local-repo-harness tools configure codegraph --target codex --location global`;
 const CODEGRAPH_MCP_CONFIGURE_COMMAND = "local-repo-harness tools configure codegraph --target <codex|claude|both> --location global";
-const CODEGRAPH_PROJECT_INSTALL_COMMAND = `npm install --save-dev ${CODEGRAPH_PACKAGE} && local-repo-harness tools configure codegraph --target both --location local`;
+const CODEGRAPH_PROJECT_INSTALL_COMMAND = "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local";
 const CODEGRAPH_PROJECT_MCP_CONFIGURE_COMMAND = "local-repo-harness tools configure codegraph --target <codex|claude|both> --location local";
 const CODEGRAPH_LOCAL_INSTALL_COMMAND = "bun install";
 const CODEGRAPH_ENSURE_COMMAND = [
@@ -1193,7 +1193,11 @@ function resolveCodeGraphBinary() {
   const globalOverride = process.env.AGENTIC_DEV_CODEGRAPH_GLOBAL_BIN;
 
   if (localOverride) localCandidates.push(localOverride);
-  if (allowRepoLocal) localCandidates.push(path.join(REPO_ROOT, "node_modules", ".bin", "codegraph"));
+  if (allowRepoLocal) {
+    localCandidates.push(path.join(REPO_ROOT, ".ai", "harness", "bin", "codegraph"));
+    localCandidates.push(path.join(REPO_ROOT, ".ai", "harness", "tools", "codegraph", "node_modules", ".bin", "codegraph"));
+    localCandidates.push(path.join(REPO_ROOT, "node_modules", ".bin", "codegraph"));
+  }
 
   let localBinPath = null;
   for (const candidate of localCandidates) {
@@ -1265,10 +1269,10 @@ function detectCodeGraph() {
   const packageDeclared = codeGraphPackageDeclared();
   const mcpIntent = codeGraphMcpIntent();
   const projectMcpIntent = mcpIntent === "project";
-  const installCommand = packageDeclared
-    ? CODEGRAPH_LOCAL_INSTALL_COMMAND
-    : projectMcpIntent
-      ? CODEGRAPH_PROJECT_INSTALL_COMMAND
+  const installCommand = projectMcpIntent
+    ? CODEGRAPH_PROJECT_INSTALL_COMMAND
+    : packageDeclared
+      ? CODEGRAPH_LOCAL_INSTALL_COMMAND
       : CODEGRAPH_GLOBAL_INSTALL_COMMAND;
   const mcpInstallCommand = projectMcpIntent
     ? CODEGRAPH_PROJECT_MCP_CONFIGURE_COMMAND
@@ -1366,17 +1370,21 @@ function detectCodeGraph() {
       command: "codegraph status .",
     },
     install_command: installCommand,
-    ensure_command: packageDeclared ? CODEGRAPH_ENSURE_BASH_COMMAND : null,
+    ensure_command: projectMcpIntent ? "local-repo-harness tools ensure codegraph --repo ." : packageDeclared ? CODEGRAPH_ENSURE_BASH_COMMAND : null,
     mcp_install_command: mcpInstallCommand,
-    init_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --init` : "codegraph init -i .",
-    sync_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --sync` : "codegraph sync .",
-    upgrade_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND
+    init_command: projectMcpIntent
+      ? "local-repo-harness tools ensure codegraph --init --repo ."
+      : packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --init` : "codegraph init -i .",
+    sync_command: projectMcpIntent
+      ? "local-repo-harness tools ensure codegraph --sync --repo ."
+      : packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --sync` : "codegraph sync .",
+    upgrade_command: projectMcpIntent
+      ? "local-repo-harness tools ensure codegraph --sync --repo ."
+      : packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND
       ? `bun update @colbymchenry/codegraph && ${CODEGRAPH_ENSURE_BASH_COMMAND} --sync`
-      : projectMcpIntent
-        ? `npm install --save-dev ${CODEGRAPH_PACKAGE}@latest && local-repo-harness tools ensure codegraph --sync --repo .`
-        : `npm install -g ${CODEGRAPH_PACKAGE}@latest && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" codegraph sync .`,
+      : `npm install -g ${CODEGRAPH_PACKAGE}@latest && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" codegraph sync .`,
     uninstall_command: projectMcpIntent
-      ? "remove .codex/config.toml/.mcp.json codegraph entries and npm remove @colbymchenry/codegraph"
+      ? "remove .codex/config.toml/.mcp.json codegraph entries, .ai/harness/bin/codegraph, .ai/harness/tools/codegraph/, and .codegraph/ if removing the index"
       : "codegraph uninstall --target codex --location global --yes",
     readiness: {
       required_for: "codex-agent-code-navigation",

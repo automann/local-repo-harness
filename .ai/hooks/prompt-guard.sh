@@ -558,6 +558,16 @@ emit_agentic_packaging_hint() {
 }
 
 resolve_codegraph_bin() {
+  if [[ -x ".ai/harness/bin/codegraph" ]]; then
+    printf '%s\n' ".ai/harness/bin/codegraph"
+    return 0
+  fi
+
+  if [[ -x ".ai/harness/tools/codegraph/node_modules/.bin/codegraph" ]]; then
+    printf '%s\n' ".ai/harness/tools/codegraph/node_modules/.bin/codegraph"
+    return 0
+  fi
+
   if [[ -x "node_modules/.bin/codegraph" ]]; then
     printf '%s\n' "node_modules/.bin/codegraph"
     return 0

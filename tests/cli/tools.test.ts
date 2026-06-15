@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { spawnSync } from "child_process";
@@ -118,6 +118,33 @@ function writeFakeNpx(fakeBin: string) {
       "exit 1",
       "",
     ].join("\n")
+  );
+}
+
+function writeFakeBunInstaller(fakeBin: string, logFile: string) {
+  writeExecutable(
+    join(fakeBin, "bun"),
+    [
+      "#!/bin/bash",
+      "set -euo pipefail",
+      `echo "bun $* cwd=$PWD" >> "${logFile}"`,
+      "if [[ \"$*\" == \"install\" ]]; then",
+      "  mkdir -p node_modules/.bin",
+      "  cat > node_modules/.bin/codegraph <<'SH'",
+      "#!/bin/bash",
+      "set -euo pipefail",
+      "case \"${1:-}\" in",
+      "  \"--version\") echo '0.9.6' ;;",
+      "  \"status\") echo 'CodeGraph Status'; echo 'Index is up to date' ;;",
+      "  *) exit 1 ;;",
+      "esac",
+      "SH",
+      "  chmod +x node_modules/.bin/codegraph",
+      "  exit 0",
+      "fi",
+      "exit 1",
+      "",
+    ].join("\n"),
   );
 }
 
@@ -379,9 +406,10 @@ describe("tools configure codegraph", () => {
     expect(log).toContain("codegraph install --target codex --location local --yes");
     expect(log).toContain("codegraph install --target claude --location local --yes");
     expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
+    expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
     expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
-    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./node_modules/.bin/codegraph");
+    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./.ai/harness/bin/codegraph");
     expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
     expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
       CODEGRAPH_TELEMETRY: "0",
@@ -413,7 +441,7 @@ describe("tools configure codegraph", () => {
     expect(configure?.status).toBe("skipped");
     expect(configure?.stderr ?? "").toContain("does not support --location=local");
     expect(projectPath?.status).toBe("changed");
-    expect(projectCodexConfigAfter).toContain('command = "./node_modules/.bin/codegraph"');
+    expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
     expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
     expect(codexConfigAfter).toBe("");
@@ -445,10 +473,10 @@ describe("tools configure codegraph", () => {
       "claude-always-load:skipped",
     ]);
     expect(log).toBe("");
-    expect(projectCodexConfigAfter).toContain('command = "./node_modules/.bin/codegraph"');
+    expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
     expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
-    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./node_modules/.bin/codegraph");
+    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./.ai/harness/bin/codegraph");
     expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
     expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
       CODEGRAPH_TELEMETRY: "0",
@@ -458,5 +486,54 @@ describe("tools configure codegraph", () => {
     expect(codexConfigAfter).toBe("");
     expect(claudeRootConfigAfter).toBeNull();
     expect(claudeSettingsAfter).toBeNull();
+  }, 15000);
+});
+
+describe("tools ensure codegraph", () => {
+  test("installs project CodeGraph into the harness tool root without creating a root package.json", () => {
+    const envRoot = setupFakeEnvironment("repo-harness-tools-ensure-codegraph");
+    const repo = join(envRoot.root, "repo");
+    const logFile = join(envRoot.root, "tool.log");
+    try {
+      mkdirSync(join(repo, ".ai", "harness"), { recursive: true });
+      writeFileSync(
+        join(repo, ".ai", "harness", "policy.json"),
+        JSON.stringify({
+          external_tooling: {
+            codegraph: {
+              mcp_scope: "project",
+            },
+          },
+        }, null, 2),
+      );
+      writeFakeBunInstaller(envRoot.fakeBin, logFile);
+      writeFakeGbrain(envRoot.fakeBin);
+      writeFakeNpx(envRoot.fakeBin);
+
+      const res = spawnSync(process.execPath, [CLI, "tools", "ensure", "codegraph", "--json", "--repo", repo], {
+        cwd: ROOT,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: envRoot.home,
+          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: "0",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      const result = JSON.parse(res.stdout);
+      expect(result.codegraph.source).toBe("local");
+      expect(result.codegraph.local_bin_path).toContain(".ai/harness/bin/codegraph");
+      expect(result.actions.some((entry: { action: string }) => entry.action === "install-managed-deps")).toBe(true);
+      const log = readFileSync(logFile, "utf-8");
+      expect(log).toContain("bun install cwd=");
+      expect(log).toContain(".ai/harness/tools/codegraph");
+      expect(existsSync(join(repo, ".ai", "harness", "tools", "codegraph", "package.json"))).toBe(true);
+      expect(existsSync(join(repo, ".ai", "harness", "bin", "codegraph"))).toBe(true);
+      expect(existsSync(join(repo, "package.json"))).toBe(false);
+    } finally {
+      rmSync(envRoot.root, { recursive: true, force: true });
+    }
   }, 15000);
 });

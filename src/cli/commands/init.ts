@@ -601,7 +601,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
           status: "skipped",
           detail:
             codegraphMcpScope === "project"
-              ? "not registered; install project dependency with: npm install --save-dev @colbymchenry/codegraph"
+              ? "not registered; run: local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local"
               : "not registered; run: local-repo-harness tools configure codegraph --target both --location global",
         });
       }

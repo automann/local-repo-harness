@@ -181,8 +181,10 @@ architecture drift events, or shell-script review.
 This self-host repo vendors CodeGraph as a dev dependency so `bun install`
 materializes `node_modules/.bin/codegraph`; its source-only
 `scripts/ensure-codegraph.sh` can manage the local index. Generated downstream
-repos keep the global MCP installer default and should use the `codegraph`
-command directly unless local policy explicitly opts into vendoring.
+repos with project CodeGraph intent use a harness-managed tool root at
+`.ai/harness/tools/codegraph/` and a stable MCP shim at
+`.ai/harness/bin/codegraph`, so the target repo root does not need to declare
+`@colbymchenry/codegraph`.
 
 Read-only check:
 
@@ -197,16 +199,18 @@ codegraph init -i .
 codegraph sync .
 ```
 
-Project-local MCP registration should use CodeGraph's local installer and host
-project config:
+Project-local CodeGraph setup should first ensure the managed tool root, then
+write host project config:
 
 ```bash
+local-repo-harness tools ensure codegraph --repo .
 local-repo-harness tools configure codegraph --target both --location local
 ```
 
 Expected project-level config files are `.codex/config.toml` for Codex and
-`.mcp.json` for Claude Code. This mode must not edit `~/.codex/config.toml`,
-`~/.claude.json`, or `~/.claude/settings.json`.
+`.mcp.json` for Claude Code. Their MCP command should be
+`./.ai/harness/bin/codegraph`. This mode must not edit
+`~/.codex/config.toml`, `~/.claude.json`, or `~/.claude/settings.json`.
 
 Do not ask users to copy MCP TOML or Claude JSON by hand. The user-facing path
 is one terminal command, or explicit authorization for their agent to run the
@@ -216,14 +220,11 @@ same command:
 npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" local-repo-harness tools configure codegraph --target codex --location global
 ```
 
-This delegates host-specific MCP config to CodeGraph's target adapters for
-Codex and Claude, so do not run CodeGraph setup automatically from
-`local-repo-harness init`, `migrate`, or `upgrade`. Restart Codex after the installer
+Use the global npm command only for user-level MCP setup. For project-level
+setup, prefer the managed root command above. Restart Codex after the installer
 finishes so the MCP server is discovered; Claude Code should pick up its config
-according to its own settings reload behavior. If a launch environment still
-cannot find `codegraph`, an authorized agent should diagnose `PATH` and the
-`~/.local/bin/codegraph` shim. Do not make the user hand-edit MCP config as the
-fallback.
+according to its own settings reload behavior. Do not make the user hand-edit
+MCP config as the fallback.
 
 For troubleshooting only, inspect host config snippets without writing:
 

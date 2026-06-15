@@ -1,13 +1,18 @@
 import { spawnSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const CLAUDE_CODEGRAPH_ALLOWED_TOOLS_PATTERN = "mcp__codegraph__*";
 const CLAUDE_CODEGRAPH_SERVER_NAME = "codegraph";
+const CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
+const CODEGRAPH_PACKAGE_VERSION = "1.0.1";
 const CODEGRAPH_SCOPED_MCP_ARGS = ["serve", "--mcp", "--path", "."] as const;
 const CODEGRAPH_SCOPED_MCP_TOML_ARGS = `[${CODEGRAPH_SCOPED_MCP_ARGS.map((arg) => JSON.stringify(arg)).join(", ")}]`;
 const CODEGRAPH_RUNTIME_DIR_REL = ".ai/harness/codegraph-runtime";
+const CODEGRAPH_TOOL_DIR_REL = ".ai/harness/tools/codegraph";
+const CODEGRAPH_TOOL_BIN_REL = `${CODEGRAPH_TOOL_DIR_REL}/node_modules/.bin/codegraph`;
+const CODEGRAPH_SHIM_REL = ".ai/harness/bin/codegraph";
 const CODEGRAPH_TELEMETRY_ENV = {
   CODEGRAPH_TELEMETRY: "0",
   DO_NOT_TRACK: "1",
@@ -154,10 +159,86 @@ function readToolingReport(repoRoot: string, env?: NodeJS.ProcessEnv, host: Code
 function hasCodegraphDependency(repoRoot: string) {
   const pkg = readJson(join(repoRoot, "package.json"));
   return Boolean(
-    pkg?.devDependencies?.["@colbymchenry/codegraph"] ||
-      pkg?.dependencies?.["@colbymchenry/codegraph"] ||
-      pkg?.optionalDependencies?.["@colbymchenry/codegraph"]
+    pkg?.devDependencies?.[CODEGRAPH_PACKAGE] ||
+      pkg?.dependencies?.[CODEGRAPH_PACKAGE] ||
+      pkg?.optionalDependencies?.[CODEGRAPH_PACKAGE]
   );
+}
+
+function managedCodegraphPackageDir(repoRoot: string): string {
+  return join(repoRoot, CODEGRAPH_TOOL_DIR_REL);
+}
+
+function managedCodegraphShimPath(repoRoot: string): string {
+  return join(repoRoot, CODEGRAPH_SHIM_REL);
+}
+
+function writeManagedCodegraphShim(repoRoot: string): void {
+  const shimPath = managedCodegraphShimPath(repoRoot);
+  mkdirSync(dirname(shimPath), { recursive: true });
+  writeFileSync(
+    shimPath,
+    [
+      "#!/usr/bin/env bash",
+      "set -euo pipefail",
+      'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"',
+      'REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"',
+      `BIN="$REPO_ROOT/${CODEGRAPH_TOOL_BIN_REL}"`,
+      'if [[ ! -x "$BIN" ]]; then',
+      '  echo "CodeGraph project binary is missing; run: local-repo-harness tools ensure codegraph --repo \\"$REPO_ROOT\\"" >&2',
+      "  exit 127",
+      "fi",
+      'export CODEGRAPH_TELEMETRY="${CODEGRAPH_TELEMETRY:-0}"',
+      'export DO_NOT_TRACK="${DO_NOT_TRACK:-1}"',
+      `export CODEGRAPH_INSTALL_DIR="\${CODEGRAPH_INSTALL_DIR:-$REPO_ROOT/${CODEGRAPH_RUNTIME_DIR_REL}}"`,
+      'exec "$BIN" "$@"',
+      "",
+    ].join("\n"),
+  );
+  chmodSync(shimPath, 0o755);
+}
+
+function ensureManagedCodegraphPackage(repoRoot: string, env?: NodeJS.ProcessEnv): CodegraphAction {
+  const toolDir = managedCodegraphPackageDir(repoRoot);
+  const packagePath = join(toolDir, "package.json");
+  const command = ["bun", "install"];
+
+  mkdirSync(toolDir, { recursive: true });
+  writeManagedCodegraphShim(repoRoot);
+
+  if (existsSync(packagePath) && !readJson(packagePath)) {
+    return {
+      action: "install-managed-deps",
+      status: "failed",
+      command,
+      stderr: `${packagePath} is not valid JSON; refusing to overwrite the managed CodeGraph package boundary.`,
+    };
+  }
+
+  if (!existsSync(packagePath)) {
+    writeFileSync(
+      packagePath,
+      `${JSON.stringify(
+        {
+          private: true,
+          dependencies: {
+            [CODEGRAPH_PACKAGE]: CODEGRAPH_PACKAGE_VERSION,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+  }
+
+  const result = run("bun", ["install"], toolDir, env);
+  return {
+    action: "install-managed-deps",
+    status: result.ok ? "changed" : "failed",
+    command,
+    stdout: trimOutput(result.stdout),
+    stderr: trimOutput(result.stderr || result.error),
+  };
 }
 
 function appendAction(
@@ -237,7 +318,11 @@ export function ensureCodegraph(opts: CodegraphEnsureOptions): CodegraphEnsureRe
   }
 
   let codegraph = readToolingReport(opts.repoRoot, opts.env, opts.host);
-  if (opts.installDeps !== false && hasCodegraphDependency(opts.repoRoot) && !codegraph.local_bin_path) {
+  const projectMcpIntent = codegraph.mcp_intent === "project";
+  if (opts.installDeps !== false && !codegraph.local_bin_path && projectMcpIntent) {
+    actions.push(ensureManagedCodegraphPackage(opts.repoRoot, opts.env));
+    codegraph = readToolingReport(opts.repoRoot, opts.env, opts.host);
+  } else if (opts.installDeps !== false && hasCodegraphDependency(opts.repoRoot) && !codegraph.local_bin_path) {
     appendAction(actions, "install-deps", ["bun", "install"], run("bun", ["install"], opts.repoRoot, opts.env));
     codegraph = readToolingReport(opts.repoRoot, opts.env, opts.host);
   }
@@ -430,7 +515,7 @@ function configureCodexProjectPath(
 }
 
 function localCodegraphCommand(_repoRoot: string): string {
-  return "./node_modules/.bin/codegraph";
+  return `./${CODEGRAPH_SHIM_REL}`;
 }
 
 function renderCodexCodegraphConfig(repoRoot: string, location: CodegraphConfigureLocation): string {
@@ -817,7 +902,7 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
         status: opts.location === "local" ? "skipped" : "failed",
         command,
         stderr: opts.location === "local"
-          ? "CodeGraph CLI is missing; writing project MCP config only. Install the project dependency with: npm install --save-dev @colbymchenry/codegraph"
+          ? "CodeGraph CLI is missing; writing project MCP config only. Install the managed project tool with: local-repo-harness tools ensure codegraph --repo ."
           : "CodeGraph CLI is missing; run local-repo-harness tools ensure codegraph first.",
       });
       if (opts.location === "local" && target === "codex") {

@@ -455,7 +455,9 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.codegraph.index_dir).toBe(".codegraph");
       expect(policy.external_tooling.codegraph.readiness).toBe("required-for-agent-code-navigation");
       expect(policy.external_tooling.codegraph.hook_policy).toBe("do-not-block-hooks");
-      expect(policy.external_tooling.codegraph.vendoring_policy).toBe("do-not-add-package-dependency");
+      expect(policy.external_tooling.codegraph.tool_root).toBe(".ai/harness/tools/codegraph");
+      expect(policy.external_tooling.codegraph.managed_bin).toBe(".ai/harness/bin/codegraph");
+      expect(policy.external_tooling.codegraph.vendoring_policy).toBe("managed-harness-tool-root-no-target-root-package-dependency");
       expect(policy.agentic_development.routing).toEqual({
         product_discovery: "gstack:office-hours",
         complex_engineering_plan: "gstack:plan-eng-review",
@@ -747,13 +749,17 @@ describe("Migration script contract", () => {
       expect(codegraph.mcp_scope).toBe("project");
       expect(codegraph.codex_config_path).toBe(".codex/config.toml");
       expect(codegraph.claude_config_path).toBe(".mcp.json");
+      expect(codegraph.tool_root).toBe(".ai/harness/tools/codegraph");
+      expect(codegraph.managed_bin).toBe(".ai/harness/bin/codegraph");
+      expect(codegraph.vendoring_policy).toBe("managed-harness-tool-root-no-target-root-package-dependency");
       expect(codegraph.install_command).toBe(
-        "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
+        "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local",
       );
       expect(codegraph.mcp_configure_command).toBe(
         "local-repo-harness tools configure codegraph --target both --location local",
       );
       expect(codegraphText).not.toContain("npm install -g");
+      expect(codegraphText).not.toContain("npm install --save-dev");
       expect(codegraphText).not.toContain("--location global");
       expect(codegraphText).not.toContain("/Users/");
       expect(codegraphText).not.toContain("/opt/homebrew");
@@ -817,13 +823,17 @@ describe("Migration script contract", () => {
       expect(codegraph.mcp_scope).toBe("project");
       expect(codegraph.codex_config_path).toBe(".codex/config.toml");
       expect(codegraph.claude_config_path).toBe(".mcp.json");
+      expect(codegraph.tool_root).toBe(".ai/harness/tools/codegraph");
+      expect(codegraph.managed_bin).toBe(".ai/harness/bin/codegraph");
+      expect(codegraph.vendoring_policy).toBe("managed-harness-tool-root-no-target-root-package-dependency");
       expect(codegraph.install_command).toBe(
-        "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
+        "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local",
       );
       expect(codegraph.mcp_configure_command).toBe(
         "local-repo-harness tools configure codegraph --target both --location local",
       );
       expect(codegraphText).not.toContain("npm install -g");
+      expect(codegraphText).not.toContain("npm install --save-dev");
       expect(codegraphText).not.toContain("--location global");
       expect(codegraphText).not.toContain("PATH=");
       expect(codegraphText).not.toContain("/Users/");

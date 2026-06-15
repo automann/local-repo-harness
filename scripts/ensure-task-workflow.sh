@@ -1017,12 +1017,14 @@ ARCHITECTURE_INDEX_EOF
       "codex_config_path": "~/.codex/config.toml",
       "claude_config_path": "~/.claude.json",
       "index_dir": ".codegraph",
+      "tool_root": ".ai/harness/tools/codegraph",
+      "managed_bin": ".ai/harness/bin/codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
-      "project_init_command": "codegraph init -i .",
-      "sync_command": "codegraph sync .",
-      "vendoring_policy": "do-not-add-package-dependency"
+      "install_command": "local-repo-harness tools ensure codegraph --repo . && local-repo-harness tools configure codegraph --target both --location local",
+      "project_init_command": "local-repo-harness tools ensure codegraph --init --repo .",
+      "sync_command": "local-repo-harness tools ensure codegraph --sync --repo .",
+      "vendoring_policy": "managed-harness-tool-root-no-target-root-package-dependency"
     }
   },
   "agentic_development": {

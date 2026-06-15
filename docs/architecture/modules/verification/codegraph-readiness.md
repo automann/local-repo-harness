@@ -24,8 +24,9 @@ changing host adapter installation semantics.
 ## Runtime Flow
 
 ```text
-bun install
-  -> node_modules/.bin/codegraph
+local-repo-harness tools ensure codegraph --repo .
+  -> .ai/harness/tools/codegraph/node_modules/.bin/codegraph
+  -> .ai/harness/bin/codegraph
   -> scripts/check-agent-tooling.sh --json reports source=local
 
 scripts/ensure-codegraph.sh --check --json
@@ -33,8 +34,8 @@ scripts/ensure-codegraph.sh --check --json
   -> read-only report
 
 scripts/ensure-codegraph.sh --init|--sync
-  -> local CodeGraph binary first
-  -> global fallback only when local is absent
+  -> managed/local CodeGraph binary first
+  -> global fallback only when local is absent and project intent is not active
   -> no MCP config writes
 ```
 
@@ -42,9 +43,10 @@ scripts/ensure-codegraph.sh --init|--sync
 
 - Read-only checks must not run `bun install`, `codegraph init`,
   `codegraph sync`, or `codegraph install`.
-- Repo-local `node_modules/.bin/codegraph` wins over global `codegraph`.
-- Generated downstream repos keep the global MCP default unless local policy
-  explicitly opts into a vendored dependency.
+- Project-scoped repos prefer `.ai/harness/bin/codegraph`, then the managed
+  package binary, then legacy repo-local `node_modules/.bin/codegraph`.
+- Generated downstream repos with project CodeGraph intent must not require a
+  target-root `package.json` for CodeGraph itself.
 - `_ref/` CodeGraph checkouts are reference material only and are not part of
   the committed readiness surface.
 
