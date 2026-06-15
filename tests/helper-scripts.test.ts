@@ -667,6 +667,53 @@ describe("Workflow helper scripts", () => {
     }
   });
 
+  test("brain helpers run with Bun as the only JavaScript runtime", () => {
+    const cwd = tmpWorkspace("helper-brain-bun-only");
+    try {
+      copyHelpers(cwd);
+      const fakeBin = join(cwd, "fake-bin");
+      const brainRoot = join(cwd, "brain");
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      mkdirSync(brainRoot, { recursive: true });
+      symlinkSync(process.execPath, join(fakeBin, "bun"));
+      writeFileSync(
+        join(cwd, ".ai/harness/brain-manifest.json"),
+        JSON.stringify(
+          {
+            version: 1,
+            project: "demo",
+            mode: "repo-contract-external-knowledge",
+            default_brain_path: "brain/demo/*",
+            entries: [],
+          },
+          null,
+          2
+        ) + "\n"
+      );
+
+      const env = {
+        PATH: `${fakeBin}:/bin:/usr/bin`,
+        REPO_HARNESS_BRAIN_ROOT: brainRoot,
+      };
+      const runtimeProbe = run("bash", ["-lc", "command -v node || true; command -v bun"], cwd, env);
+      expect(runtimeProbe.stdout).not.toContain("node");
+      expect(runtimeProbe.stdout).toContain(join(fakeBin, "bun"));
+
+      const manifestRes = run("bash", ["scripts/check-brain-manifest.sh"], cwd, env);
+      expect(manifestRes.status).toBe(0);
+      expect(manifestRes.stdout).toContain("[brain] OK");
+      expect(manifestRes.stderr).not.toContain("Module not found");
+
+      const syncRes = run("bash", ["scripts/sync-brain-docs.sh", "--check"], cwd, env);
+      expect(syncRes.status).toBe(0);
+      expect(syncRes.stdout).toContain("[BrainSync] no repo-to-brain entries");
+      expect(syncRes.stderr).not.toContain("Module not found");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("sync-brain-docs should reject repo and brain symlink escapes", () => {
     const cwd = tmpWorkspace("helper-sync-brain-docs-symlink");
     const outside = realpathSync(mkdtempSync(join(tmpdir(), "helper-sync-brain-docs-outside-")));

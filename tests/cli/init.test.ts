@@ -5,6 +5,7 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
   chmodSync,
 } from "fs";
@@ -519,6 +520,60 @@ describe("init command", () => {
       rmSync(tmp, { recursive: true, force: true });
     }
   }, 30000);
+
+  test("CLI adopt manifest-only brain mode works under Bun-only runtime", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-bun-only-brain-${Date.now()}`);
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    const fakeBin = join(tmp, "bin");
+    try {
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      symlinkSync(process.execPath, join(fakeBin, "bun"));
+      makeExecutable(
+        join(fakeBin, "local-repo-harness"),
+        `#!/bin/bash\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(CLI)} "$@"\n`,
+      );
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
+
+      const res = spawnSync(
+        process.execPath,
+        [
+          "--bun",
+          CLI,
+          "adopt",
+          "--repo",
+          repo,
+          "--no-sync-skill",
+          "--no-host-adapters",
+          "--no-external-skills",
+          "--no-codegraph",
+          "--brain-mode",
+          "manifest-only",
+          "--json",
+        ],
+        {
+          cwd: ROOT,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            HOME: home,
+            PATH: `${fakeBin}:/bin:/usr/bin`,
+          },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stderr).not.toContain("Module not found");
+      const result = JSON.parse(res.stdout);
+      expect(result.steps.find((step: { step: string }) => step.step === "apply repo harness")?.status).toBe("ok");
+      expect(result.steps.find((step: { step: string }) => step.step === "sync brain docs")?.status).toBe("ok");
+      expect(existsSync(join(repo, ".ai/harness/brain-manifest.json"))).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 60000);
 
   test("CLI exposes adopt help for repo-local refresh", () => {
     const res = spawnSync("bun", [CLI, "adopt", "--help"], {

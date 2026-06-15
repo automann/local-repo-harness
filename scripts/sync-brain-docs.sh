@@ -91,7 +91,9 @@ process.stdout.write(JSON.stringify(values));
   )"
 fi
 
-"$runtime" - "$manifest_path" "$mode_all" "$mode_check" "$dry_run" "$require_vault" "$changed_json" <<'JS_EOF'
+js_runner="$(mktemp "${TMPDIR:-/tmp}/repo-harness-sync-brain.XXXXXX.js")"
+trap 'rm -f "$js_runner"' EXIT
+cat > "$js_runner" <<'JS_EOF'
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -379,3 +381,5 @@ if (selected.length === 0 && (modeAll || modeCheck)) {
   console.log("[BrainSync] OK");
 }
 JS_EOF
+
+"$runtime" "$js_runner" "$manifest_path" "$mode_all" "$mode_check" "$dry_run" "$require_vault" "$changed_json"

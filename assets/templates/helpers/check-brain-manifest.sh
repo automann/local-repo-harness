@@ -55,7 +55,9 @@ if [[ -z "$runtime" ]]; then
   exit 1
 fi
 
-"$runtime" - "$manifest_path" "$require_vault" <<'JS_EOF'
+js_runner="$(mktemp "${TMPDIR:-/tmp}/repo-harness-check-brain.XXXXXX.js")"
+trap 'rm -f "$js_runner"' EXIT
+cat > "$js_runner" <<'JS_EOF'
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -253,3 +255,5 @@ if (issues === 0) {
 
 process.exit(1);
 JS_EOF
+
+"$runtime" "$js_runner" "$manifest_path" "$require_vault"
