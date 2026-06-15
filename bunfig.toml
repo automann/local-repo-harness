@@ -1,3 +1,7 @@
+[install]
+minimumReleaseAge = 259200
+minimumReleaseAgeExcludes = ["local-repo-harness", "@types/bun"]
+
 [test]
 root = "tests"
 timeout = 60000
