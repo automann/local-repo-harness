@@ -453,6 +453,52 @@ describe("check-agent-tooling", () => {
     }
   }, 15000);
 
+  test("project CodeGraph intent uses project-local remediation when CLI is missing", () => {
+    const envRoot = setupFakeEnvironment("check-agent-tooling-codegraph-project-remediation");
+    try {
+      mkdirSync(join(envRoot.root, ".ai", "harness"), { recursive: true });
+      writeFileSync(
+        join(envRoot.root, ".ai", "harness", "policy.json"),
+        JSON.stringify({
+          external_tooling: {
+            codegraph: {
+              mcp_scope: "project",
+            },
+          },
+        }, null, 2),
+      );
+      writeFakeNpx(envRoot.fakeBin);
+      writeFakeGbrain(envRoot.fakeBin);
+
+      const res = spawnSync("bash", [SCRIPT, "--json", "--host", "both"], {
+        cwd: envRoot.root,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: envRoot.home,
+          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+          AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: "0",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      const report = JSON.parse(res.stdout);
+      expect(report.tools.codegraph.status).toBe("missing");
+      expect(report.tools.codegraph.mcp_intent).toBe("project");
+      expect(report.tools.codegraph.install_command).toBe(
+        "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
+      );
+      expect(report.tools.codegraph.mcp_install_command).toBe(
+        "local-repo-harness tools configure codegraph --target <codex|claude|both> --location local",
+      );
+      expect(report.tools.codegraph.install_command).not.toContain("npm install -g");
+      expect(report.tools.codegraph.install_command).not.toContain("--location global");
+    } finally {
+      rmSync(envRoot.root, { recursive: true, force: true });
+    }
+  }, 15000);
+
   test("uses only read-only probes during update checks", () => {
     const envRoot = setupFakeEnvironment("check-agent-tooling-updates");
     const logFile = join(envRoot.root, "tool.log");

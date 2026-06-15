@@ -200,6 +200,27 @@ function gitCommitCount(cwd: string): number {
 }
 
 describe("Hook runtime behavior", () => {
+  test("security-sentinel: empty scanner output is silent on SessionStart", () => {
+    const cwd = tmpWorkspace("security-sentinel-empty");
+    try {
+      installHooks(cwd);
+
+      const res = runHook("security-sentinel.sh", cwd, {
+        env: {
+          REPO_HARNESS_CLI: join(cwd, "missing-local-repo-harness-cli.ts"),
+          PATH: `${dirname(process.execPath)}:/usr/bin:/bin`,
+        },
+      });
+
+      expect(res.status).toBe(0);
+      expect(res.stdout).toBe("");
+      expect(res.stderr).not.toContain("SyntaxError");
+      expect(res.stderr).not.toContain("Unexpected end of JSON input");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("prompt-guard: emits advisory Waza route hints without blocking", () => {
     const cwd = tmpWorkspace("waza-route-hint");
     try {

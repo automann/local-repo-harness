@@ -395,6 +395,15 @@ function codegraphRemediation(result: CodegraphCheckResult): string | null {
   return String(raw.ensure_command ?? raw.sync_command ?? 'bash scripts/ensure-codegraph.sh --check');
 }
 
+function codegraphMcpRemediation(result: CodegraphCheckResult, host: 'codex' | 'claude'): string {
+  const raw = result.raw as Record<string, any>;
+  const command = String(
+    raw.mcp_install_command ??
+      'local-repo-harness tools configure codegraph --target <codex|claude|both> --location global',
+  );
+  return command.replace('<codex|claude|both>', host);
+}
+
 interface CodegraphProbe {
   result?: CodegraphCheckResult;
   error?: Error;
@@ -448,7 +457,7 @@ function checkCodegraphMcpHost(probe: CodegraphProbe, host: 'codex' | 'claude'):
     id,
     describe,
     status: 'warn',
-    detail: `${entry?.reason ?? 'missing'}; remediation=local-repo-harness tools configure codegraph --target ${host} --location global`,
+    detail: `${entry?.reason ?? 'missing'}; remediation=${codegraphMcpRemediation(probe.result, host)}`,
   };
 }
 

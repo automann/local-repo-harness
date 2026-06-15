@@ -16,6 +16,14 @@ All notable changes to this skill are documented here.
   `update`/`adopt` command split so repo-local adoption remains isolated from
   user-level bootstrap and refresh paths.
 
+### Fixed
+
+- Made project-scoped CodeGraph MCP adoption generate project-local Codex and
+  Claude config even when the CodeGraph CLI is not installed yet, and changed
+  readiness remediation to project-local install/config commands.
+- Made the SessionStart security sentinel ignore empty or invalid scanner
+  output instead of printing JSON parse noise.
+
 ## [0.5.0] - 2026-06-14
 
 ### Added

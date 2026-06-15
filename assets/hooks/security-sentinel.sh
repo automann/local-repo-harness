@@ -62,7 +62,14 @@ render_context() {
   local report_file="$1"
   local js='
 const fs = require("fs");
-const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+let report;
+try {
+  const raw = fs.readFileSync(process.argv[1], "utf8").trim();
+  if (!raw) process.exit(0);
+  report = JSON.parse(raw);
+} catch {
+  process.exit(0);
+}
 if (!report || report.status === "ok" || !Array.isArray(report.findings) || report.findings.length === 0) process.exit(0);
 const high = report.findings.filter((finding) => finding.severity === "high").length;
 const fail = report.findings.filter((finding) => finding.severity === "fail").length;
@@ -90,6 +97,10 @@ fi
 
 tmp_report="$(mktemp "${TMPDIR:-/tmp}/repo-harness-security.XXXXXX")"
 if security_scan >"$tmp_report" 2>/dev/null; then
+  if [[ ! -s "$tmp_report" ]]; then
+    rm -f "$tmp_report"
+    exit 0
+  fi
   cp "$tmp_report" "$LATEST_FILE"
   printf '%s\n' "$current_fingerprint" >"$STATE_FILE"
 else

@@ -367,6 +367,53 @@ describe('doctor command (Phase 1C)', () => {
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
+  test('project CodeGraph intent reports project-local remediation when CLI is missing', () => {
+    const envRoot = setupFakeEnvironment('repo-harness-doctor-project-codegraph');
+    try {
+      writeFakeGbrain(envRoot.fakeBin);
+      writeFakeNpx(envRoot.fakeBin);
+      withEnv({
+        HOME: envRoot.home,
+        PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ''}`,
+        AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: '0',
+        AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: '0',
+      }, () => {
+        withTempRepo({ optIn: true }, (repoRoot) => {
+          fs.writeFileSync(
+            path.join(repoRoot, '.ai/harness/policy.json'),
+            JSON.stringify({
+              host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+              skills: { repo_harness_scope: 'project' },
+              external_tooling: {
+                scope: 'project',
+                codegraph: { mcp_scope: 'project' },
+                gbrain: { mode: 'manifest-only' },
+              },
+            }, null, 2),
+          );
+
+          const report = runDoctor(repoRoot);
+          const readiness = report.checks.find((entry) => entry.id === 'codegraph-readiness')!;
+          const codexMcp = report.checks.find((entry) => entry.id === 'codex-codegraph-mcp')!;
+          const claudeMcp = report.checks.find((entry) => entry.id === 'claude-codegraph-mcp')!;
+
+          expect(readiness.status).toBe('fail');
+          expect(readiness.detail).toContain(
+            'npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local',
+          );
+          expect(readiness.detail).not.toContain('npm install -g @colbymchenry/codegraph');
+          expect(readiness.detail).not.toContain('--location global');
+          expect(codexMcp.detail).toContain('local-repo-harness tools configure codegraph --target codex --location local');
+          expect(claudeMcp.detail).toContain('local-repo-harness tools configure codegraph --target claude --location local');
+          expect(codexMcp.detail).not.toContain('--location global');
+          expect(claudeMcp.detail).not.toContain('--location global');
+        });
+      });
+    } finally {
+      fs.rmSync(envRoot.root, { recursive: true, force: true });
+    }
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
   test('CLI doctor includes CodeGraph readiness without mutating CodeGraph state', () => {
     const envRoot = setupFakeEnvironment('repo-harness-doctor-codegraph');
     const logFile = path.join(envRoot.root, 'tool.log');

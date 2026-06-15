@@ -129,6 +129,7 @@ type RunConfigureOptions = {
   seedClaudeRootConfig?: Record<string, unknown> | null;
   location?: "global" | "local";
   codexLocalUnsupported?: boolean;
+  skipCodegraphCli?: boolean;
 };
 
 function runConfigure(target: string, options: RunConfigureOptions = {}) {
@@ -154,9 +155,11 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
       writeFileSync(claudeRootConfigPath, `${JSON.stringify(options.seedClaudeRootConfig, null, 2)}\n`);
     }
 
-    writeFakeCodeGraph(envRoot.fakeBin, logFile, {
-      codexLocalUnsupported: options.codexLocalUnsupported === true,
-    });
+    if (options.skipCodegraphCli !== true) {
+      writeFakeCodeGraph(envRoot.fakeBin, logFile, {
+        codexLocalUnsupported: options.codexLocalUnsupported === true,
+      });
+    }
     if (location === "local") {
       mkdirSync(join(repo, "node_modules", ".bin"), { recursive: true });
       writeExecutable(
@@ -175,10 +178,16 @@ function runConfigure(target: string, options: RunConfigureOptions = {}) {
         HOME: envRoot.home,
         PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
         AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+        ...(options.skipCodegraphCli === true ? { AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: "0" } : {}),
       },
     });
 
-    const log = readFileSync(logFile, "utf-8");
+    let log = "";
+    try {
+      log = readFileSync(logFile, "utf-8");
+    } catch (_error) {
+      log = "";
+    }
     let claudeSettingsAfter: any = null;
     let claudeRootConfigAfter: any = null;
     let codexConfigAfter = "";
@@ -408,5 +417,46 @@ describe("tools configure codegraph", () => {
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
     expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
     expect(codexConfigAfter).toBe("");
+  }, 15000);
+
+  test("writes local project MCP stubs when CodeGraph CLI is missing", () => {
+    const {
+      res,
+      log,
+      claudeSettingsAfter,
+      claudeRootConfigAfter,
+      codexConfigAfter,
+      projectCodexConfigAfter,
+      projectMcpAfter,
+    } = runConfigure("both", {
+      location: "local",
+      seedClaudeSettings: "missing",
+      skipCodegraphCli: true,
+    });
+
+    expect(res.status).toBe(0);
+    const result = JSON.parse(res.stdout);
+    expect(result.codegraph.status).toBe("missing");
+    expect(result.actions.map((entry: { action: string; status: string }) => `${entry.action}:${entry.status}`)).toEqual([
+      "configure-codex:skipped",
+      "codex-project-path:changed",
+      "configure-claude:skipped",
+      "claude-project-path:changed",
+      "claude-always-load:skipped",
+    ]);
+    expect(log).toBe("");
+    expect(projectCodexConfigAfter).toContain('command = "./node_modules/.bin/codegraph"');
+    expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+    expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./node_modules/.bin/codegraph");
+    expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
+    expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
+      CODEGRAPH_TELEMETRY: "0",
+      DO_NOT_TRACK: "1",
+      CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+    });
+    expect(codexConfigAfter).toBe("");
+    expect(claudeRootConfigAfter).toBeNull();
+    expect(claudeSettingsAfter).toBeNull();
   }, 15000);
 });

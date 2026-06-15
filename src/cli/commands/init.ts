@@ -579,8 +579,11 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
       cg.resolution.source !== "missing" &&
       ["codex", "claude"].every((host) => mcpHosts[host]?.status === "configured");
 
-    if (cg.resolution.source !== "missing" && !mcpConfigured) {
-      if (codegraphMcpScope !== "none") {
+    if (!mcpConfigured) {
+      if (
+        codegraphMcpScope !== "none" &&
+        (cg.resolution.source !== "missing" || codegraphMcpScope === "project")
+      ) {
         const conf = configureCodegraph({
           repoRoot,
           target,
@@ -597,7 +600,9 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
           step: "codegraph mcp",
           status: "skipped",
           detail:
-            "not registered; run: local-repo-harness tools configure codegraph --target both --location global",
+            codegraphMcpScope === "project"
+              ? "not registered; install project dependency with: npm install --save-dev @colbymchenry/codegraph"
+              : "not registered; run: local-repo-harness tools configure codegraph --target both --location global",
         });
       }
     }

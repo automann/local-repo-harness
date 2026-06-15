@@ -70,6 +70,12 @@ if (!["claude", "codex", "both"].includes(hostMode)) {
 const HOME = os.homedir();
 const REPO_ROOT = process.cwd();
 const SELECTED_HOSTS = hostMode === "both" ? ["claude", "codex"] : [hostMode];
+const CODEGRAPH_RUNTIME_DIR = path.join(REPO_ROOT, ".ai", "harness", "codegraph-runtime");
+const CODEGRAPH_RUNTIME_ENV = {
+  CODEGRAPH_TELEMETRY: "0",
+  DO_NOT_TRACK: "1",
+  CODEGRAPH_INSTALL_DIR: process.env.REPO_HARNESS_CODEGRAPH_INSTALL_DIR || CODEGRAPH_RUNTIME_DIR,
+};
 const WAZA_SOURCE_REPO = "tw93/Waza";
 const WAZA_SOURCE_URL = "https://github.com/tw93/Waza.git";
 const WAZA_RAW_BASE_URL = "https://raw.githubusercontent.com/tw93/Waza/main";
@@ -79,6 +85,8 @@ const CODEX_AUTOMATION_SKILLS = ["health", "check", "mermaid"];
 const CODEGRAPH_PACKAGE = "@colbymchenry/codegraph";
 const CODEGRAPH_GLOBAL_INSTALL_COMMAND = `npm install -g ${CODEGRAPH_PACKAGE} && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" local-repo-harness tools configure codegraph --target codex --location global`;
 const CODEGRAPH_MCP_CONFIGURE_COMMAND = "local-repo-harness tools configure codegraph --target <codex|claude|both> --location global";
+const CODEGRAPH_PROJECT_INSTALL_COMMAND = `npm install --save-dev ${CODEGRAPH_PACKAGE} && local-repo-harness tools configure codegraph --target both --location local`;
+const CODEGRAPH_PROJECT_MCP_CONFIGURE_COMMAND = "local-repo-harness tools configure codegraph --target <codex|claude|both> --location local";
 const CODEGRAPH_LOCAL_INSTALL_COMMAND = "bun install";
 const CODEGRAPH_ENSURE_COMMAND = [
   ".ai/harness/scripts/ensure-codegraph.sh",
@@ -1168,6 +1176,15 @@ function codeGraphPackageDeclared() {
   );
 }
 
+function codeGraphMcpIntent() {
+  const policy = readJson(path.join(REPO_ROOT, ".ai", "harness", "policy.json"));
+  const value =
+    policy?.external_tooling?.codegraph?.mcp_scope ??
+    policy?.codegraph?.mcp_scope ??
+    "none";
+  return value === "project" || value === "user" || value === "none" ? value : "none";
+}
+
 function resolveCodeGraphBinary() {
   const allowRepoLocal = process.env.AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL !== "0";
   const allowGlobal = process.env.AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL !== "0";
@@ -1226,10 +1243,10 @@ function resolveCodeGraphBinary() {
 
 function codeGraphVersion(binPath) {
   if (!binPath) return null;
-  const result = run(binPath, ["--version"], { timeoutMs: 1000 });
+  const result = run(binPath, ["--version"], { timeoutMs: 1000, env: CODEGRAPH_RUNTIME_ENV });
   if (result.ok) return result.stdout.trim() || null;
   if (result.timed_out) {
-    const retry = run(binPath, ["--version"], { timeoutMs: 1000 });
+    const retry = run(binPath, ["--version"], { timeoutMs: 1000, env: CODEGRAPH_RUNTIME_ENV });
     if (retry.ok) return retry.stdout.trim() || null;
   }
   return null;
@@ -1246,6 +1263,16 @@ function detectCodeGraph() {
       : null;
   const localVersion = resolution.source === "local" ? version : null;
   const packageDeclared = codeGraphPackageDeclared();
+  const mcpIntent = codeGraphMcpIntent();
+  const projectMcpIntent = mcpIntent === "project";
+  const installCommand = packageDeclared
+    ? CODEGRAPH_LOCAL_INSTALL_COMMAND
+    : projectMcpIntent
+      ? CODEGRAPH_PROJECT_INSTALL_COMMAND
+      : CODEGRAPH_GLOBAL_INSTALL_COMMAND;
+  const mcpInstallCommand = projectMcpIntent
+    ? CODEGRAPH_PROJECT_MCP_CONFIGURE_COMMAND
+    : CODEGRAPH_MCP_CONFIGURE_COMMAND;
   const mcpHosts = {};
 
   for (const host of SELECTED_HOSTS) {
@@ -1264,7 +1291,7 @@ function detectCodeGraph() {
     : configuredMcpScopes.length === 1
       ? configuredMcpScopes[0]
       : "mixed";
-  const statusResult = cliPresent ? run(resolution.bin_path, ["status", "."], { timeoutMs: 1500 }) : null;
+  const statusResult = cliPresent ? run(resolution.bin_path, ["status", "."], { timeoutMs: 1500, env: CODEGRAPH_RUNTIME_ENV }) : null;
   const statusOutput = `${statusResult?.stdout || ""}\n${statusResult?.stderr || ""}`;
   const projectIndexStatus = cliPresent ? parseCodeGraphProjectStatus(statusOutput) : "unavailable";
   const indexInitialized = fs.existsSync(path.join(REPO_ROOT, ".codegraph"))
@@ -1331,19 +1358,26 @@ function detectCodeGraph() {
           : "CodeGraph update status is unknown.",
     mcp_hosts: mcpHosts,
     mcp_scope: mcpScope,
+    mcp_intent: mcpIntent,
     project_index: {
       status: projectIndexStatus,
       initialized: indexInitialized,
       path: path.join(REPO_ROOT, ".codegraph"),
       command: "codegraph status .",
     },
-    install_command: packageDeclared ? CODEGRAPH_LOCAL_INSTALL_COMMAND : CODEGRAPH_GLOBAL_INSTALL_COMMAND,
+    install_command: installCommand,
     ensure_command: packageDeclared ? CODEGRAPH_ENSURE_BASH_COMMAND : null,
-    mcp_install_command: CODEGRAPH_MCP_CONFIGURE_COMMAND,
+    mcp_install_command: mcpInstallCommand,
     init_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --init` : "codegraph init -i .",
     sync_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `${CODEGRAPH_ENSURE_BASH_COMMAND} --sync` : "codegraph sync .",
-    upgrade_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND ? `bun update @colbymchenry/codegraph && ${CODEGRAPH_ENSURE_BASH_COMMAND} --sync` : `npm install -g ${CODEGRAPH_PACKAGE}@latest && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" codegraph sync .`,
-    uninstall_command: "codegraph uninstall --target codex --location global --yes",
+    upgrade_command: packageDeclared && CODEGRAPH_ENSURE_BASH_COMMAND
+      ? `bun update @colbymchenry/codegraph && ${CODEGRAPH_ENSURE_BASH_COMMAND} --sync`
+      : projectMcpIntent
+        ? `npm install --save-dev ${CODEGRAPH_PACKAGE}@latest && local-repo-harness tools ensure codegraph --sync --repo .`
+        : `npm install -g ${CODEGRAPH_PACKAGE}@latest && mkdir -p ~/.local/bin && ln -sfn "$(npm config get prefix)/bin/codegraph" ~/.local/bin/codegraph && PATH="$HOME/.local/bin:$PATH" codegraph sync .`,
+    uninstall_command: projectMcpIntent
+      ? "remove .codex/config.toml/.mcp.json codegraph entries and npm remove @colbymchenry/codegraph"
+      : "codegraph uninstall --target codex --location global --yes",
     readiness: {
       required_for: "codex-agent-code-navigation",
       hook_policy: "do-not-block-hooks",

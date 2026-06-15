@@ -2165,7 +2165,7 @@ pi_write_harness_policy() {
       "index_dir": ".codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" local-repo-harness tools configure codegraph --target codex --location global",
+      "install_command": "local-repo-harness tools configure codegraph --target both --location local",
       "project_init_command": "codegraph init -i .",
       "sync_command": "codegraph sync .",
       "vendoring_policy": "do-not-add-package-dependency"
@@ -2253,6 +2253,26 @@ policy.external_tooling.gbrain.project_only_mode ||= "manifest-only";
 policy.external_tooling.codegraph ||= {};
 policy.external_tooling.codegraph.index_scope ||= "project";
 policy.external_tooling.codegraph.mcp_scope = process.env.REPO_HARNESS_CODEGRAPH_MCP_SCOPE;
+if (process.env.REPO_HARNESS_CODEGRAPH_MCP_SCOPE === "project") {
+  policy.external_tooling.codegraph.install_command =
+    "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local";
+  policy.external_tooling.codegraph.mcp_configure_command =
+    "local-repo-harness tools configure codegraph --target both --location local";
+  policy.external_tooling.codegraph.codex_config_path = ".codex/config.toml";
+  policy.external_tooling.codegraph.claude_config_path = ".mcp.json";
+} else if (process.env.REPO_HARNESS_CODEGRAPH_MCP_SCOPE === "user") {
+  policy.external_tooling.codegraph.install_command =
+    "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" local-repo-harness tools configure codegraph --target codex --location global";
+  policy.external_tooling.codegraph.mcp_configure_command =
+    "local-repo-harness tools configure codegraph --target both --location global";
+  policy.external_tooling.codegraph.codex_config_path = "~/.codex/config.toml";
+  policy.external_tooling.codegraph.claude_config_path = "~/.claude.json";
+} else {
+  policy.external_tooling.codegraph.install_command =
+    "local-repo-harness adopt --repo . --codegraph-mcp-scope none --no-codegraph";
+  policy.external_tooling.codegraph.mcp_configure_command =
+    "local-repo-harness tools configure codegraph --target both --location local";
+}
 
 fs.writeFileSync(policyPath, JSON.stringify(policy, null, 2) + "\n");
 ' "$policy_file" || true

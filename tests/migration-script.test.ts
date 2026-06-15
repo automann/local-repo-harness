@@ -716,6 +716,52 @@ describe("Migration script contract", () => {
     }
   }, 30000);
 
+  test("project CodeGraph MCP policy emits project-local commands without user PATH expansion", () => {
+    const repo = mkdtempSync(join(tmpdir(), "migration-policy-codegraph-project-"));
+    try {
+      writeFileSync(join(repo, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2));
+
+      const res = spawnSync(
+        "bash",
+        ["scripts/migrate-project-template.sh", "--repo", repo, "--apply"],
+        {
+          cwd: ROOT,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            REPO_HARNESS_HOST_ADAPTER_SCOPE: "project",
+            REPO_HARNESS_RUNTIME_SELECTION: "project-vendored-bun",
+            REPO_HARNESS_HOOK_RUNTIME_MODE: "project-vendored-bun",
+            REPO_HARNESS_SKILL_SCOPE: "project",
+            REPO_HARNESS_EXTERNAL_TOOL_SCOPE: "project",
+            REPO_HARNESS_CODEGRAPH_MCP_SCOPE: "project",
+            REPO_HARNESS_BRAIN_MODE: "manifest-only",
+          },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      const policy = JSON.parse(readFileSync(join(repo, ".ai/harness/policy.json"), "utf-8"));
+      const codegraph = policy.external_tooling.codegraph;
+      const codegraphText = JSON.stringify(codegraph);
+      expect(codegraph.mcp_scope).toBe("project");
+      expect(codegraph.codex_config_path).toBe(".codex/config.toml");
+      expect(codegraph.claude_config_path).toBe(".mcp.json");
+      expect(codegraph.install_command).toBe(
+        "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
+      );
+      expect(codegraph.mcp_configure_command).toBe(
+        "local-repo-harness tools configure codegraph --target both --location local",
+      );
+      expect(codegraphText).not.toContain("npm install -g");
+      expect(codegraphText).not.toContain("--location global");
+      expect(codegraphText).not.toContain("/Users/");
+      expect(codegraphText).not.toContain("/opt/homebrew");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  }, 30000);
+
   test("should replace managed reference docs with stubs while preserving custom docs", () => {
     const repo = mkdtempSync(join(tmpdir(), "migration-reference-stubs-"));
     try {

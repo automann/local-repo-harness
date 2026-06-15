@@ -429,9 +429,8 @@ function configureCodexProjectPath(
   });
 }
 
-function localCodegraphCommand(repoRoot: string): string {
-  const localBin = join(repoRoot, "node_modules", ".bin", "codegraph");
-  return existsSync(localBin) ? "./node_modules/.bin/codegraph" : "codegraph";
+function localCodegraphCommand(_repoRoot: string): string {
+  return "./node_modules/.bin/codegraph";
 }
 
 function renderCodexCodegraphConfig(repoRoot: string, location: CodegraphConfigureLocation): string {
@@ -442,6 +441,46 @@ function renderCodexCodegraphConfig(repoRoot: string, location: CodegraphConfigu
     `env = ${renderTomlInlineEnv(codegraphMcpEnv(location))}`,
     "",
   ].join("\n");
+}
+
+function renderClaudeCodegraphConfig(repoRoot: string, location: CodegraphConfigureLocation): Record<string, unknown> {
+  return {
+    mcpServers: {
+      [CLAUDE_CODEGRAPH_SERVER_NAME]: {
+        type: "stdio",
+        command: location === "local" ? localCodegraphCommand(repoRoot) : "codegraph",
+        args: [...CODEGRAPH_SCOPED_MCP_ARGS],
+        env: codegraphMcpEnv(location),
+      },
+    },
+  };
+}
+
+function writeClaudeMcpJson(
+  actions: CodegraphAction[],
+  path: string,
+  command: string[],
+  parsed: Record<string, any>,
+  raw = "",
+): void {
+  const trailingNewline = raw.endsWith("\n") ? "\n" : "";
+  try {
+    writeFileSync(path, `${JSON.stringify(parsed, null, 2)}${trailingNewline || "\n"}`);
+  } catch (error) {
+    actions.push({
+      action: "claude-project-path",
+      status: "failed",
+      command,
+      stderr: `Failed to write ${path}: ${String((error as Error).message ?? error)}`,
+    });
+    return;
+  }
+
+  actions.push({
+    action: "claude-project-path",
+    status: "changed",
+    command,
+  });
 }
 
 function configureClaudeProjectPath(
@@ -471,6 +510,11 @@ function configureClaudeProjectPath(
   try {
     raw = readFileSync(path, "utf8");
   } catch (_error) {
+    if (location === "local") {
+      mkdirSync(dirname(path), { recursive: true });
+      writeClaudeMcpJson(actions, path, command, renderClaudeCodegraphConfig(repoRoot, location));
+      return;
+    }
     actions.push({
       action: "claude-project-path",
       status: "skipped",
@@ -493,12 +537,35 @@ function configureClaudeProjectPath(
     return;
   }
 
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    actions.push({
+      action: "claude-project-path",
+      status: "failed",
+      command,
+      stderr: `${path} is not a JSON object; refusing to mutate.`,
+    });
+    return;
+  }
+
   const mcpServers =
     location === "global"
       ? parsed?.mcpServers
       : parsed?.mcpServers;
-  const server = mcpServers?.[CLAUDE_CODEGRAPH_SERVER_NAME];
+  if (
+    location === "local" &&
+    (!parsed.mcpServers || typeof parsed.mcpServers !== "object" || Array.isArray(parsed.mcpServers))
+  ) {
+    parsed.mcpServers = {};
+  }
+  const server = parsed.mcpServers?.[CLAUDE_CODEGRAPH_SERVER_NAME] ?? mcpServers?.[CLAUDE_CODEGRAPH_SERVER_NAME];
   if (!server || typeof server !== "object" || Array.isArray(server)) {
+    if (location === "local") {
+      parsed.mcpServers[CLAUDE_CODEGRAPH_SERVER_NAME] = (
+        renderClaudeCodegraphConfig(repoRoot, location) as { mcpServers: Record<string, unknown> }
+      ).mcpServers[CLAUDE_CODEGRAPH_SERVER_NAME];
+      writeClaudeMcpJson(actions, path, command, parsed, raw);
+      return;
+    }
     actions.push({
       action: "claude-project-path",
       status: "skipped",
@@ -534,25 +601,7 @@ function configureClaudeProjectPath(
   if (location === "local") {
     server.command = localCodegraphCommand(repoRoot);
   }
-  const trailingNewline = raw.endsWith("\n") ? "\n" : "";
-  const serialized = `${JSON.stringify(parsed, null, 2)}${trailingNewline}`;
-  try {
-    writeFileSync(path, serialized);
-  } catch (error) {
-    actions.push({
-      action: "claude-project-path",
-      status: "failed",
-      command,
-      stderr: `Failed to write ${path}: ${String((error as Error).message ?? error)}`,
-    });
-    return;
-  }
-
-  actions.push({
-    action: "claude-project-path",
-    status: "changed",
-    command,
-  });
+  writeClaudeMcpJson(actions, path, command, parsed, raw);
 }
 
 function configureClaudeAlwaysLoad(
@@ -765,11 +814,19 @@ export function configureCodegraph(opts: CodegraphConfigureOptions): CodegraphCo
     if (!binPath) {
       actions.push({
         action: actionName,
-        status: "failed",
+        status: opts.location === "local" ? "skipped" : "failed",
         command,
-        stderr: "CodeGraph CLI is missing; run local-repo-harness tools ensure codegraph first.",
+        stderr: opts.location === "local"
+          ? "CodeGraph CLI is missing; writing project MCP config only. Install the project dependency with: npm install --save-dev @colbymchenry/codegraph"
+          : "CodeGraph CLI is missing; run local-repo-harness tools ensure codegraph first.",
       });
-      if (target === "claude") {
+      if (opts.location === "local" && target === "codex") {
+        configureCodexProjectPath(actions, opts.repoRoot, opts.location, opts.env);
+      }
+      if (opts.location === "local" && target === "claude") {
+        configureClaudeProjectPath(actions, opts.repoRoot, opts.location, opts.env);
+        configureClaudeAlwaysLoad(actions, opts.repoRoot, opts.location, opts.env);
+      } else if (target === "claude") {
         configureClaudeAllowedTools(actions, opts.env);
       }
       continue;

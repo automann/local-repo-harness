@@ -1019,7 +1019,7 @@ ARCHITECTURE_INDEX_EOF
       "index_dir": ".codegraph",
       "readiness": "required-for-agent-code-navigation",
       "hook_policy": "do-not-block-hooks",
-      "install_command": "npm install -g @colbymchenry/codegraph && mkdir -p ~/.local/bin && ln -sfn \"$(npm config get prefix)/bin/codegraph\" ~/.local/bin/codegraph && PATH=\"$HOME/.local/bin:$PATH\" local-repo-harness tools configure codegraph --target codex --location global",
+      "install_command": "npm install --save-dev @colbymchenry/codegraph && local-repo-harness tools configure codegraph --target both --location local",
       "project_init_command": "codegraph init -i .",
       "sync_command": "codegraph sync .",
       "vendoring_policy": "do-not-add-package-dependency"

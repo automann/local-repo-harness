@@ -783,6 +783,61 @@ describe("init command", () => {
     }
   }, 15000);
 
+  test("codegraphMcpScope=project writes local MCP stubs when CodeGraph CLI is missing", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-codegraph-project-missing-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      setupFakeSource(source);
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapters: false,
+        externalSkills: false,
+        verify: false,
+        codegraphMcpScope: "project",
+        env: {
+          ...process.env,
+          HOME: home,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+          AGENTIC_DEV_CODEGRAPH_ALLOW_GLOBAL: "0",
+        },
+      });
+
+      expect(result.exitCode).toBe(0);
+      const ensureStep = result.steps.find((step) => step.step === "ensure codegraph index");
+      expect(ensureStep?.status).toBe("skipped");
+      expect(ensureStep?.detail).toContain("codegraph CLI not found");
+      const configureStep = result.steps.find((step) => step.step === "configure codegraph mcp");
+      expect(configureStep?.status).toBe("ok");
+      expect(configureStep?.detail).toContain("scope=project");
+      expect(configureStep?.detail).toContain("codex-project-path:changed");
+      expect(configureStep?.detail).toContain("claude-project-path:changed");
+      const codexConfig = readFileSync(join(repo, ".codex", "config.toml"), "utf-8");
+      expect(codexConfig).toContain('command = "./node_modules/.bin/codegraph"');
+      expect(codexConfig).toContain('CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime"');
+      const claudeMcp = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph;
+      expect(claudeMcp.command).toBe("./node_modules/.bin/codegraph");
+      expect(claudeMcp.args).toEqual(["serve", "--mcp", "--path", "."]);
+      expect(claudeMcp.env).toEqual({
+        CODEGRAPH_TELEMETRY: "0",
+        DO_NOT_TRACK: "1",
+        CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+      });
+      expect(existsSync(join(home, ".codex", "config.toml"))).toBe(false);
+      expect(existsSync(join(home, ".claude.json"))).toBe(false);
+      expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 15000);
+
   test("writes global working rules as an idempotent managed block", () => {
     const tmp = join(tmpdir(), `repo-harness-init-global-rules-${Date.now()}`);
     const source = join(tmp, "source");
