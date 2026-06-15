@@ -49,6 +49,8 @@ function copyHelpers(cwd: string) {
   const harnessScriptsDir = join(cwd, ".ai", "harness", "scripts");
   mkdirSync(scriptsDir, { recursive: true });
   mkdirSync(harnessScriptsDir, { recursive: true });
+  mkdirSync(join(scriptsDir, "lib"), { recursive: true });
+  mkdirSync(join(harnessScriptsDir, "lib"), { recursive: true });
   mkdirSync(join(cwd, ".ai", "harness"), { recursive: true });
   mkdirSync(join(cwd, ".ai", "harness", "triage"), { recursive: true });
   mkdirSync(join(cwd, "docs", "architecture"), { recursive: true });
@@ -57,6 +59,8 @@ function copyHelpers(cwd: string) {
     copyFileSync(join(HELPER_DIR, file), join(scriptsDir, file));
     copyFileSync(join(HELPER_DIR, file), join(harnessScriptsDir, file));
   }
+  copyFileSync(join(ROOT, "scripts/lib/js-runtime.sh"), join(scriptsDir, "lib", "js-runtime.sh"));
+  copyFileSync(join(ROOT, "scripts/lib/js-runtime.sh"), join(harnessScriptsDir, "lib", "js-runtime.sh"));
   copyFileSync(join(ROOT, "assets/workflow-contract.v1.json"), join(cwd, ".ai/harness/workflow-contract.json"));
   writeFileSync(join(cwd, ".ai", "harness", "triage", ".gitkeep"), "");
   if (!existsSync(join(cwd, "docs/architecture/index.md"))) {
@@ -711,6 +715,111 @@ describe("Workflow helper scripts", () => {
       expect(syncRes.stderr).not.toContain("Module not found");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("context selector falls back to registry JSON with Bun as the only JavaScript runtime", () => {
+    const cwd = tmpWorkspace("helper-selector-bun-only");
+    try {
+      copyHelpers(cwd);
+      const fakeBin = join(cwd, "fake-bin");
+      mkdirSync(fakeBin, { recursive: true });
+      symlinkSync(process.execPath, join(fakeBin, "bun"));
+      rmSync(join(cwd, "scripts/capability-resolver.ts"), { force: true });
+      mkdirSync(join(cwd, "src/foo"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/context"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/context/capabilities.json"),
+        JSON.stringify(
+          {
+            capabilities: [
+              {
+                id: "foo",
+                prefixes: ["src/foo"],
+              },
+            ],
+          },
+          null,
+          2,
+        ) + "\n",
+      );
+
+      const env = { PATH: `${fakeBin}:/bin:/usr/bin` };
+      const runtimeProbe = run("bash", ["-lc", "command -v node || true; command -v bun"], cwd, env);
+      expect(runtimeProbe.stdout).not.toContain("node");
+      expect(runtimeProbe.stdout).toContain(join(fakeBin, "bun"));
+
+      const res = run("bash", ["scripts/select-agent-context-blocks.sh", "."], cwd, env);
+      expect(res.status).toBe(0);
+      expect(res.stdout.trim()).toBe("src/foo");
+      expect(res.stderr).not.toContain("Module not found");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("prepare-codex-handoff writes the global handoff with Bun as the only JavaScript runtime", () => {
+    const cwd = tmpWorkspace("helper-codex-handoff-bun-only");
+    const fakeHome = tmpWorkspace("helper-codex-handoff-home");
+    try {
+      copyHelpers(cwd);
+      const fakeBin = join(cwd, "fake-bin");
+      mkdirSync(fakeBin, { recursive: true });
+      symlinkSync(process.execPath, join(fakeBin, "bun"));
+      rmSync(join(cwd, "scripts/prepare-handoff.sh"), { force: true });
+      rmSync(join(cwd, "scripts/codex-handoff-resume.sh"), { force: true });
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Current\n\nKeep going.\n");
+      writeFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "# Resume\n\nPick up here.\n");
+
+      const env = {
+        PATH: `${fakeBin}:/bin:/usr/bin`,
+        CODEX_HOME: join(fakeHome, ".codex"),
+        HOME: fakeHome,
+      };
+      const runtimeProbe = run("bash", ["-lc", "command -v node || true; command -v bun"], cwd, env);
+      expect(runtimeProbe.stdout).not.toContain("node");
+      expect(runtimeProbe.stdout).toContain(join(fakeBin, "bun"));
+
+      const res = run("bash", ["scripts/prepare-codex-handoff.sh", "--reason", "bun-only"], cwd, env);
+      expect(res.status).toBe(0);
+      expect(res.stderr).not.toContain("Module not found");
+      const handoffFile = res.stdout.trim().split("\n").at(-1) ?? "";
+      expect(handoffFile).toContain(join(fakeHome, ".codex", "handoffs"));
+      const handoff = readFileSync(handoffFile, "utf-8");
+      expect(handoff).toContain("Keep going.");
+      expect(handoff).toContain("Pick up here.");
+      expect(handoff).toContain("bun-only");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(fakeHome, { recursive: true, force: true });
+    }
+  });
+
+  test("migration dry-run runs with Bun as the only JavaScript runtime", () => {
+    const cwd = tmpWorkspace("helper-migration-bun-only");
+    const fakeHome = tmpWorkspace("helper-migration-home");
+    try {
+      const fakeBin = join(cwd, "fake-bin");
+      mkdirSync(fakeBin, { recursive: true });
+      symlinkSync(process.execPath, join(fakeBin, "bun"));
+      writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "demo", scripts: {} }, null, 2) + "\n");
+
+      const env = {
+        PATH: `${fakeBin}:/bin:/usr/bin`,
+        HOME: fakeHome,
+      };
+      const runtimeProbe = run("bash", ["-lc", "command -v node || true; command -v bun"], cwd, env);
+      expect(runtimeProbe.stdout).not.toContain("node");
+      expect(runtimeProbe.stdout).toContain(join(fakeBin, "bun"));
+
+      const res = run("bash", [join(ROOT, "scripts/migrate-project-template.sh"), "--repo", cwd, "--dry-run"], ROOT, env);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("[dry-run]");
+      expect(res.stderr).not.toContain("Module not found");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(fakeHome, { recursive: true, force: true });
     }
   });
 

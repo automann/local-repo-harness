@@ -179,6 +179,8 @@ function initGitRepo(cwd: string) {
 
 function installArchitectureHelpers(cwd: string) {
   mkdirSync(join(cwd, "scripts"), { recursive: true });
+  mkdirSync(join(cwd, "scripts", "lib"), { recursive: true });
+  copyFileSync(join(ROOT, "scripts", "lib", "js-runtime.sh"), join(cwd, "scripts", "lib", "js-runtime.sh"));
   for (const fileName of ["architecture-queue.sh", "archive-architecture-request.sh", "context-contract-sync.sh", "workstream-sync.sh", "select-agent-context-blocks.sh", "capability-resolver.ts", "architecture-event.ts"]) {
     copyFileSync(join(ROOT, "assets/templates/helpers", fileName), join(cwd, "scripts", fileName));
   }
@@ -3816,10 +3818,12 @@ describe("Hook runtime behavior", () => {
       initGitRepo(cwd);
       installHooks(cwd);
       mkdirSync(join(cwd, "scripts"), { recursive: true });
+      mkdirSync(join(cwd, "scripts", "lib"), { recursive: true });
       mkdirSync(join(cwd, "docs"), { recursive: true });
       mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
       const brainRoot = join(cwd, "brain");
       mkdirSync(brainRoot, { recursive: true });
+      copyFileSync(join(ROOT, "scripts", "lib", "js-runtime.sh"), join(cwd, "scripts", "lib", "js-runtime.sh"));
       copyFileSync(join(ROOT, "assets/templates/helpers/sync-brain-docs.sh"), join(cwd, "scripts/sync-brain-docs.sh"));
       expect(run("chmod", ["+x", "scripts/sync-brain-docs.sh"], cwd).status).toBe(0);
 

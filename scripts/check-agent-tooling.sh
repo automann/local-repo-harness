@@ -1,18 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-if command -v node >/dev/null 2>&1; then
-  RUNTIME_BIN="$(command -v node)"
-elif command -v bun >/dev/null 2>&1; then
-  RUNTIME_BIN="$(command -v bun)"
-elif [[ -x "${HOME}/.bun/bin/bun" ]]; then
-  RUNTIME_BIN="${HOME}/.bun/bin/bun"
-else
-  echo "check-agent-tooling.sh requires node or bun" >&2
-  exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
 
-exec "$RUNTIME_BIN" - "$@" <<'NODE_EOF'
+rh_run_js_source "$@" <<'NODE_EOF'
 const fs = require("fs");
 const crypto = require("crypto");
 const os = require("os");

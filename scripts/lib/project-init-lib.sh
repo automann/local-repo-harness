@@ -1,6 +1,12 @@
 #!/bin/bash
 # Shared install helpers for repo-harness scaffolding scripts.
 
+PI_LIB_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$PI_LIB_SCRIPT_DIR/js-runtime.sh" ]]; then
+  # shellcheck source=/dev/null
+  . "$PI_LIB_SCRIPT_DIR/js-runtime.sh"
+fi
+
 PI_RUNTIME_BLOCK_BEGIN="# BEGIN: claude-runtime-temp (managed by repo-harness)"
 PI_RUNTIME_BLOCK_BEGIN_LEGACY="# BEGIN: claude-runtime-temp (managed by project-initializer)"
 PI_RUNTIME_BLOCK_END="# END: claude-runtime-temp"
@@ -494,12 +500,12 @@ pi_retire_project_hook_adapter() {
     return 0
   fi
 
-  if ! command -v node >/dev/null 2>&1; then
-    echo "[project-init] Skipping project hook adapter retirement for $file_path because node is unavailable" >&2
+  if ! declare -F rh_run_js_source >/dev/null 2>&1; then
+    echo "[project-init] Skipping project hook adapter retirement for $file_path because js-runtime.sh is unavailable" >&2
     return 0
   fi
 
-  node - "$file_path" <<'NODE_EOF'
+  rh_run_js_source "$file_path" <<'NODE_EOF'
 const fs = require("fs");
 const path = process.argv[2];
 
@@ -796,13 +802,11 @@ pi_ensure_gitignore_block() {
 }
 
 pi_resolve_json_runtime() {
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
+  local js_runtime
 
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
+  js_runtime="$(rh_resolve_js_runtime || true)"
+  if [[ -n "$js_runtime" ]]; then
+    printf '%s' "$js_runtime"
     return 0
   fi
 
@@ -847,9 +851,9 @@ elif value is not None:
 PY_EOF
       ;;
     *)
-      "$runtime" -e '
+      rh_run_js_source "$contract_file" "$selector" <<'JS_EOF'
 const fs = require("fs");
-const [, filePath, selector] = process.argv;
+const [, , filePath, selector] = process.argv;
 const parts = selector.split(".");
 let value = JSON.parse(fs.readFileSync(filePath, "utf8"));
 for (const part of parts) {
@@ -862,7 +866,7 @@ if (Array.isArray(value)) {
 } else if (value !== undefined && value !== null) {
   console.log(value);
 }
-' "$contract_file" "$selector"
+JS_EOF
       ;;
   esac
 }
@@ -901,9 +905,9 @@ for action in contract.get("migrations", {}).get("upgrade", {}).get("actions", [
 PY_EOF
       ;;
     *)
-      "$runtime" -e '
+      rh_run_js_source "$contract_file" "$action_filter" "$ownership_filter" <<'JS_EOF'
 const fs = require("fs");
-const [, filePath, actionFilter, ownershipFilter] = process.argv;
+const [, , filePath, actionFilter, ownershipFilter] = process.argv;
 const contract = JSON.parse(fs.readFileSync(filePath, "utf8"));
 const actions = contract.migrations?.upgrade?.actions ?? [];
 for (const action of actions) {
@@ -913,7 +917,7 @@ for (const action of actions) {
     console.log(relPath);
   }
 }
-' "$contract_file" "$action_filter" "$ownership_filter"
+JS_EOF
       ;;
   esac
 }
@@ -953,9 +957,9 @@ for action in contract.get("migrations", {}).get("upgrade", {}).get("actions", [
 PY_EOF
       ;;
     *)
-      "$runtime" -e '
+      rh_run_js_source "$contract_file" "$action_filter" "$ownership_filter" <<'JS_EOF'
 const fs = require("fs");
-const [, filePath, actionFilter, ownershipFilter] = process.argv;
+const [, , filePath, actionFilter, ownershipFilter] = process.argv;
 const contract = JSON.parse(fs.readFileSync(filePath, "utf8"));
 const actions = contract.migrations?.upgrade?.actions ?? [];
 for (const action of actions) {
@@ -966,7 +970,7 @@ for (const action of actions) {
     console.log(`${cleanupMode}\t${relPath}`);
   }
 }
-' "$contract_file" "$action_filter" "$ownership_filter"
+JS_EOF
       ;;
   esac
 }
@@ -1096,6 +1100,10 @@ pi_install_helpers() {
         if [[ "$source_repo_target" -eq 1 ]]; then
           cp "$helpers_dir/$helper_name" "$scripts_dir/$helper_name"
         elif pi_repo_pins_helper_source "$target_dir"; then
+          if [[ -f "$PI_LIB_SCRIPT_DIR/js-runtime.sh" ]]; then
+            mkdir -p "$runtime_dir/lib"
+            cp "$PI_LIB_SCRIPT_DIR/js-runtime.sh" "$runtime_dir/lib/js-runtime.sh"
+          fi
           cp "$helpers_dir/$helper_name" "$runtime_dir/$helper_name"
           pi_normalize_installed_helper "$runtime_dir/$helper_name"
           if ! pi_preserve_existing_app_script "$scripts_dir/$helper_name" "$helpers_dir/$helper_name"; then
@@ -1156,7 +1164,7 @@ const sourceRoot =
   process.env.AGENTIC_DEV_SKILL_ROOT;
 const command = sourceRoot && existsSync(join(sourceRoot, "src", "cli", "index.ts"))
   ? ["bun", join(sourceRoot, "src", "cli", "index.ts"), "run", "$(basename "$helper_name" .ts)"]
-  : ["repo-harness", "run", "$(basename "$helper_name" .ts)"];
+  : ["local-repo-harness", "run", "$(basename "$helper_name" .ts)"];
 
 const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice(2)], {
   cwd: process.cwd(),
@@ -1598,8 +1606,8 @@ pi_context_block_candidates() {
       return 0
     fi
 
-    if command -v node >/dev/null 2>&1; then
-      node - "$registry_file" <<'JS_EOF'
+    if declare -F rh_run_js_source >/dev/null 2>&1; then
+      rh_run_js_source "$registry_file" <<'JS_EOF'
 const fs = require("fs");
 const registry = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 for (const capability of registry.capabilities || []) {
@@ -1743,8 +1751,8 @@ pi_context_map_discoverable_entries() {
   local capability_entries
 
   registry_file="$(pi_capability_registry_file "$target_dir")"
-  if [[ -f "$registry_file" ]] && command -v node >/dev/null 2>&1; then
-    capability_entries="$(node - "$registry_file" <<'JS_EOF'
+  if [[ -f "$registry_file" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    capability_entries="$(rh_run_js_source "$registry_file" <<'JS_EOF'
 const fs = require("fs");
 const registry = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 const entries = [];
@@ -2226,9 +2234,9 @@ pi_update_harness_policy_intent() {
   REPO_HARNESS_EXTERNAL_TOOL_SCOPE="${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}" \
   REPO_HARNESS_CODEGRAPH_MCP_SCOPE="${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}" \
   REPO_HARNESS_BRAIN_MODE="${REPO_HARNESS_BRAIN_MODE:-skip}" \
-  "$js_runtime" -e '
+  rh_run_js_source "$policy_file" <<'JS_EOF'
 const fs = require("fs");
-const [policyPath] = process.argv.slice(1);
+const [, , policyPath] = process.argv;
 const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
 
 policy.host_adapters ||= {};
@@ -2288,7 +2296,7 @@ if (codegraphScope === "project") {
 }
 
 fs.writeFileSync(policyPath, JSON.stringify(policy, null, 2) + "\n");
-' "$policy_file" || true
+JS_EOF
 }
 
 pi_write_brain_manifest() {
@@ -2607,22 +2615,7 @@ ARCHITECTURE_INDEX_EOF
 }
 
 pi_resolve_js_runtime() {
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
-
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
-    return 0
-  fi
-
-  if [[ -x "${HOME}/.bun/bin/bun" ]]; then
-    printf '%s' "${HOME}/.bun/bin/bun"
-    return 0
-  fi
-
-  return 1
+  rh_resolve_js_runtime
 }
 
 pi_merge_json_defaults() {
@@ -2633,9 +2626,9 @@ pi_merge_json_defaults() {
 
   js_runtime="$(pi_resolve_js_runtime || true)"
   if [[ -n "$js_runtime" ]]; then
-    "$js_runtime" -e '
+    rh_run_js_source "$defaults_file" "$current_file" "$output_file" <<'JS_EOF'
 const fs = require("fs");
-const [defaultsPath, currentPath, outputPath] = process.argv.slice(1);
+const [, , defaultsPath, currentPath, outputPath] = process.argv;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -2681,7 +2674,7 @@ try {
 
 const merged = mergeDefaults(defaultsJson, currentJson);
 fs.writeFileSync(outputPath, JSON.stringify(merged, null, 2) + "\n");
-' "$defaults_file" "$current_file" "$output_file"
+JS_EOF
     return $?
   fi
 
@@ -2778,9 +2771,9 @@ EOF_PACKAGE
     return 0
   fi
 
-  "$js_runtime" -e '
+  rh_run_js_source "$package_file" <<'JS_EOF'
 const fs = require("fs");
-const file = process.argv[1];
+const [, , file] = process.argv;
 const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
 pkg.private ??= true;
 pkg.scripts ??= {};
@@ -2792,7 +2785,7 @@ pkg.scripts["check:task-sync"] = "local-repo-harness run check-task-sync";
 pkg.scripts["check:task-workflow"] = "local-repo-harness run check-task-workflow --strict";
 pkg.scripts["sync:brain-docs"] = "local-repo-harness run sync-brain-docs --all";
 fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-' "$package_file"
+JS_EOF
 }
 
 pi_factor_factory_gitignore_entries() {
@@ -2829,6 +2822,13 @@ pi_install_factor_factory() {
   fi
 
   mkdir -p "$factors_dir/promoted" "$cache_dir" "$scripts_dir"
+  if [[ -f "$scripts_source_dir/lib/js-runtime.sh" ]]; then
+    mkdir -p "$scripts_dir/lib"
+    cp "$scripts_source_dir/lib/js-runtime.sh" "$scripts_dir/lib/js-runtime.sh"
+  elif [[ -f "$PI_LIB_SCRIPT_DIR/js-runtime.sh" ]]; then
+    mkdir -p "$scripts_dir/lib"
+    cp "$PI_LIB_SCRIPT_DIR/js-runtime.sh" "$scripts_dir/lib/js-runtime.sh"
+  fi
 
   if [[ -f "$registry_template" ]]; then
     cp "$registry_template" "$factors_dir/registry.json"

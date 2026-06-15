@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/check-architecture-sync.sh [--mode off|advisory|strict] [--target <branch>] [--changed-files <file>] [--format text|json]
@@ -70,8 +79,8 @@ policy_value() {
 
   if [[ -f ".ai/harness/policy.json" ]] && command -v jq >/dev/null 2>&1; then
     value="$(jq -r "$jq_path // empty" .ai/harness/policy.json 2>/dev/null || true)"
-  elif [[ -f ".ai/harness/policy.json" ]] && command -v node >/dev/null 2>&1; then
-    value="$(POLICY_PATH="$jq_path" node -e '
+  elif [[ -f ".ai/harness/policy.json" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    value="$(POLICY_PATH="$jq_path" rh_run_js_source <<'JS_EOF' 2>/dev/null || true
 const fs = require("fs");
 const path = process.env.POLICY_PATH || "";
 try {
@@ -84,7 +93,8 @@ try {
 } catch {
   process.exit(1);
 }
-' 2>/dev/null || true)"
+JS_EOF
+)"
   fi
 
   printf '%s' "${value:-$default_value}"
@@ -242,12 +252,12 @@ fi
 
 matches_json="$(printf '%s\n' "$changed_files" | bun scripts/capability-resolver.ts match --paths-from - --format json)"
 capabilities="$(
-  MATCHES_JSON="$matches_json" node -e '
+  MATCHES_JSON="$matches_json" rh_run_js_source <<'JS_EOF'
 const matches = JSON.parse(process.env.MATCHES_JSON || "[]");
 const ids = new Set();
 for (const item of matches) ids.add(item.capability_id || "root");
 for (const id of [...ids].sort()) console.log(id);
-'
+JS_EOF
 )"
 changed_count="$(printf '%s\n' "$capabilities" | sed '/^$/d' | wc -l | tr -d ' ')"
 blocking_lines="$(pending_requests_for_capabilities "$threshold" "$capabilities")"

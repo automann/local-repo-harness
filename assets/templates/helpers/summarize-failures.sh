@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 if [[ -f ".ai/hooks/lib/workflow-state.sh" ]]; then
   # shellcheck source=/dev/null
   . ".ai/hooks/lib/workflow-state.sh"
@@ -12,32 +21,12 @@ Usage: scripts/summarize-failures.sh [--file <path>] [--run-id <id>]
 USAGE_EOF
 }
 
-resolve_js_runtime() {
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
-    return 0
-  fi
-
-  if [[ -x "${HOME}/.bun/bin/bun" ]]; then
-    printf '%s' "${HOME}/.bun/bin/bun"
-    return 0
-  fi
-
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
-
-  return 1
-}
-
 if declare -F workflow_failure_log_file >/dev/null 2>&1; then
   log_file="$(workflow_failure_log_file)"
 else
   log_file=".ai/harness/failures/latest.jsonl"
 fi
 filter_run_id=""
-js_runtime=""
 js_code=""
 
 while [[ $# -gt 0 ]]; do
@@ -69,8 +58,7 @@ if [[ ! -f "$log_file" ]]; then
   exit 0
 fi
 
-js_runtime="$(resolve_js_runtime || true)"
-if [[ -z "$js_runtime" ]]; then
+if ! declare -F rh_run_js_source >/dev/null 2>&1 || [[ -z "$(rh_resolve_js_runtime || true)" ]]; then
   echo "[FailureSummary] Missing JavaScript runtime (expected bun or node)" >&2
   exit 1
 fi
@@ -122,4 +110,4 @@ for (const [name, count] of sortEntries(guardCounts)) {
 NODE_EOF
 )"
 
-JSONL_FILE="$log_file" FILTER_RUN_ID="$filter_run_id" "$js_runtime" -e "$js_code"
+JSONL_FILE="$log_file" FILTER_RUN_ID="$filter_run_id" rh_run_js_source <<<"$js_code"

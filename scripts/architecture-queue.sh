@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage:
@@ -133,8 +142,8 @@ json_get() {
     parsed="$(printf '%s' "$json_input" | jq -r ".$key // empty" 2>/dev/null || true)"
   fi
 
-  if [[ -z "$parsed" ]] && command -v node >/dev/null 2>&1; then
-    parsed="$(JSON_INPUT="$json_input" JSON_KEY="$key" node -e '
+  if [[ -z "$parsed" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    parsed="$(JSON_INPUT="$json_input" JSON_KEY="$key" rh_run_js_source <<'JS_EOF' 2>/dev/null || true
 const raw = process.env.JSON_INPUT || "";
 const key = process.env.JSON_KEY || "";
 try {
@@ -144,7 +153,8 @@ try {
 } catch {
   process.exit(1);
 }
-' 2>/dev/null || true)"
+JS_EOF
+)"
   fi
 
   [[ -n "$parsed" ]] || return 1
@@ -299,8 +309,8 @@ policy_arch_value() {
   local policy_file=".ai/harness/policy.json"
   local parsed=""
 
-  if [[ -f "$policy_file" ]] && command -v node >/dev/null 2>&1; then
-    parsed="$(POLICY_FILE="$policy_file" POLICY_KEY="$key" node -e '
+  if [[ -f "$policy_file" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    parsed="$(POLICY_FILE="$policy_file" POLICY_KEY="$key" rh_run_js_source <<'JS_EOF' 2>/dev/null || true
 const fs = require("fs");
 const file = process.env.POLICY_FILE;
 const key = process.env.POLICY_KEY;
@@ -312,7 +322,8 @@ try {
 } catch {
   process.exit(1);
 }
-' 2>/dev/null || true)"
+JS_EOF
+)"
   fi
 
   printf '%s' "${parsed:-$default_value}"

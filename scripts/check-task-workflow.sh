@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/check-task-workflow.sh [--strict]
@@ -39,13 +48,11 @@ report_issue() {
 }
 
 resolve_json_runtime() {
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
+  local js_runtime
 
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
+  js_runtime="$(rh_resolve_js_runtime || true)"
+  if [[ -n "$js_runtime" ]]; then
+    printf '%s' "$js_runtime"
     return 0
   fi
 
@@ -84,9 +91,9 @@ elif value is not None:
 PY_EOF
       ;;
     *)
-      "$runtime" -e '
+      rh_run_js_source "$WORKFLOW_CONTRACT_PATH" "$selector" <<'JS_EOF'
 const fs = require("fs");
-const [, filePath, selector] = process.argv;
+const [, , filePath, selector] = process.argv;
 let value = JSON.parse(fs.readFileSync(filePath, "utf8"));
 for (const part of selector.split(".")) {
   value = value && typeof value === "object" ? value[part] : undefined;
@@ -98,7 +105,7 @@ if (Array.isArray(value)) {
 } else if (value !== undefined && value !== null) {
   console.log(value);
 }
-' "$WORKFLOW_CONTRACT_PATH" "$selector"
+JS_EOF
       ;;
   esac
 }

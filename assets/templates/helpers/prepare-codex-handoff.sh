@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/prepare-codex-handoff.sh [--reason <reason>] [--print-prompt]
@@ -59,8 +68,8 @@ mkdir -p "$global_dir"
 
 repo_key="$(printf '%s' "$repo" | shasum | awk '{print substr($1, 1, 12)}')"
 
-if command -v node >/dev/null 2>&1; then
-  node - "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" <<'JS_EOF'
+if declare -F rh_run_js_source >/dev/null 2>&1; then
+  rh_run_js_source "$global_file" "$repo" "$repo_key" "$reason" "$repo_handoff" "$resume_file" <<'JS_EOF'
 const fs = require("fs");
 const path = require("path");
 

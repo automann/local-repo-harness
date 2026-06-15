@@ -37,10 +37,12 @@ describe("runtime reclaim", () => {
     const repo = tempRepo("runtime-reclaim-generated-");
     try {
       copyHelper(repo, "check-task-workflow.sh");
+      copyHelper(repo, "contract-run.ts");
       writeJson(join(repo, "package.json"), {
         name: "demo",
         scripts: {
           "check:task-workflow": "bash .ai/harness/scripts/check-task-workflow.sh --strict",
+          "contract:run": "bun .ai/harness/scripts/contract-run.ts --contract tasks/contracts/demo.contract.md",
           "app:test": "node app-test.js",
         },
       });
@@ -53,12 +55,19 @@ describe("runtime reclaim", () => {
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
         "local-repo-harness run check-task-workflow",
       );
+      const tsWrapper = readFileSync(join(repo, "scripts/contract-run.ts"), "utf-8");
+      expect(tsWrapper).toContain('"local-repo-harness", "run", "contract-run"');
+      expect(tsWrapper).not.toContain('"repo-harness", "run"');
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
       expect(pkg.scripts["check:task-workflow"]).toBe("local-repo-harness run check-task-workflow --strict");
+      expect(pkg.scripts["contract:run"]).toBe(
+        "bun .ai/harness/scripts/contract-run.ts --contract tasks/contracts/demo.contract.md",
+      );
       expect(pkg.scripts["app:test"]).toBe("node app-test.js");
       expect(existsSync(join(repo, ".ai/harness/runtime-manifest.json"))).toBe(true);
       const archive = result.runtime_reclaim.archive ?? "";
       expect(existsSync(join(repo, archive, "files/.ai/harness/scripts/check-task-workflow.sh"))).toBe(true);
+      expect(existsSync(join(repo, archive, "files/.ai/harness/scripts/contract-run.ts"))).toBe(true);
       expect(existsSync(join(repo, archive, "files/package.json"))).toBe(true);
     } finally {
       rmSync(repo, { recursive: true, force: true });

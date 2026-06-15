@@ -23,8 +23,10 @@ function tmpRepo(fn: (cwd: string) => void): void {
   const cwd = mkdtempSync(join(tmpdir(), "architecture-queue-"));
   try {
     mkdirSync(join(cwd, "scripts"), { recursive: true });
+    mkdirSync(join(cwd, "scripts", "lib"), { recursive: true });
     mkdirSync(join(cwd, "docs/architecture/requests"), { recursive: true });
     mkdirSync(join(cwd, ".ai/harness/architecture"), { recursive: true });
+    copyFileSync(join(ROOT, "scripts", "lib", "js-runtime.sh"), join(cwd, "scripts", "lib", "js-runtime.sh"));
     for (const file of ["architecture-queue.sh", "architecture-event.ts", "archive-architecture-request.sh"]) {
       copyFileSync(join(ROOT, "scripts", file), join(cwd, "scripts", file));
     }

@@ -436,8 +436,8 @@ hook block 工作时，先看 terminal 里的结构化输出。核心字段是
 
 ## 当前 Release
 
-- npm package：`local-repo-harness@0.5.2`
-- Generated workflow stamp：`local-repo-harness@0.5.2+template@0.5.2`
+- npm package：`local-repo-harness@0.5.3`
+- Generated workflow stamp：`local-repo-harness@0.5.3+template@0.5.3`
 - GitHub repository：`automann/local-repo-harness`
 - Release history：[`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

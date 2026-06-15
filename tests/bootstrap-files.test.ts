@@ -58,7 +58,7 @@ describe("Bootstrap Script Contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     const cliEntry = read("src/cli/index.ts");
     expect(pkg.name).toBe("local-repo-harness");
-    expect(pkg.version).toBe("0.5.2");
+    expect(pkg.version).toBe("0.5.3");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["local-repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin).not.toHaveProperty("repo-harness");
@@ -73,6 +73,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(pkg.scripts["check:deploy-sql"]).toBe("bash scripts/check-deploy-sql-order.sh");
     expect(pkg.scripts["check:architecture-sync"]).toBe("bash scripts/check-architecture-sync.sh");
     expect(pkg.scripts["check:task-workflow"]).toBe("bash scripts/check-task-workflow.sh --strict");
+    expect(pkg.scripts["check:runtime-compat"]).toBe("bash scripts/check-runtime-compat.sh");
     expect(pkg.scripts["check:context-files"]).toBe("bash scripts/check-context-files.sh");
     expect(pkg.scripts["sync:brain-docs"]).toBe("bash scripts/sync-brain-docs.sh --all");
   });
@@ -85,6 +86,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(releaseGate).toContain(prepare);
     expect(releaseGate).toContain(resume);
     expect(releaseGate.indexOf(prepare)).toBeLessThan(releaseGate.indexOf(resume));
+    expect(releaseGate).toContain("bash scripts/check-runtime-compat.sh");
     expect(releaseGate.indexOf(resume)).toBeLessThan(releaseGate.indexOf("bash scripts/check-task-workflow.sh --strict"));
   });
 

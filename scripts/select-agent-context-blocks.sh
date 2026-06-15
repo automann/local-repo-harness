@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 repo="${1:-.}"
 repo="$(cd "$repo" && pwd)"
 config_file="${REPO_HARNESS_CONTEXT_BLOCKS_FILE:-$repo/.ai/context/agent-context-blocks.txt}"
@@ -31,8 +40,8 @@ if [[ -f "$registry_file" ]]; then
     exit 0
   fi
 
-  if command -v node >/dev/null 2>&1; then
-    node - "$registry_file" <<'JS_EOF' | emit_existing_dirs
+  if declare -F rh_run_js_source >/dev/null 2>&1; then
+    rh_run_js_source "$registry_file" <<'JS_EOF' | emit_existing_dirs
 const fs = require("fs");
 const registry = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
 for (const capability of registry.capabilities || []) {

@@ -1,6 +1,6 @@
 {
-  "version": "0.5.2",
-  "templateVersion": "0.5.2",
+  "version": "0.5.3",
+  "templateVersion": "0.5.3",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -135,6 +135,10 @@
     {
       "version": "0.5.2",
       "description": "Manages project-scoped CodeGraph under the harness runtime root and removes package.json requirements from downstream installs"
+    },
+    {
+      "version": "0.5.3",
+      "description": "Adds Bun/Node runtime compatibility cleanup, removes stale repo-harness wrapper fallbacks, and gates releases against incompatible helper invocation patterns"
     }
   ],
   "generatedProjectStamp": {

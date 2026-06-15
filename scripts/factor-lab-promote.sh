@@ -5,6 +5,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [[ -f "$SCRIPT_DIR/lib/js-runtime.sh" ]]; then
+  # shellcheck source=/dev/null
+  . "$SCRIPT_DIR/lib/js-runtime.sh"
+fi
 
 NAME=""
 
@@ -50,12 +54,7 @@ if [[ -d "$CANDIDATE_DIR/raw-backtest" ]]; then
   cp -R "$CANDIDATE_DIR/raw-backtest"/. "$PROMOTED_DIR/backtest-data/"
 fi
 
-JS_RUNTIME=""
-if command -v node >/dev/null 2>&1; then JS_RUNTIME=node
-elif command -v bun >/dev/null 2>&1; then JS_RUNTIME=bun
-else echo "No JavaScript runtime (node or bun) found" >&2; exit 1; fi
-
-$JS_RUNTIME - "$REGISTRY" "$SLUG" <<'NODE_EOF'
+rh_run_js_source "$REGISTRY" "$SLUG" <<'NODE_EOF'
 const fs = require("fs");
 const [,, registryPath, slug] = process.argv;
 const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));

@@ -142,7 +142,7 @@ function writeFakeBunInstaller(fakeBin: string, logFile: string) {
       "  chmod +x node_modules/.bin/codegraph",
       "  exit 0",
       "fi",
-      "exit 1",
+      `exec "${process.execPath}" "$@"`,
       "",
     ].join("\n"),
   );

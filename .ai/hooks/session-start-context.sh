@@ -147,7 +147,7 @@ render_tooling_update_context() {
   local report_file="$1"
   local js='
 const fs = require("fs");
-const report = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+const report = JSON.parse(fs.readFileSync(process.env.REPORT_FILE, "utf8"));
 const actions = Array.isArray(report.agent_actions) ? report.agent_actions : [];
 const updateActions = actions.filter((action) => {
   const id = typeof action?.id === "string" ? action.id : "";
@@ -170,9 +170,9 @@ if (updateActions.length > 5) {
 '
 
   if command -v node >/dev/null 2>&1; then
-    node -e "$js" "$report_file"
+    REPORT_FILE="$report_file" node -e "$js"
   elif command -v bun >/dev/null 2>&1; then
-    bun -e "$js" "$report_file"
+    REPORT_FILE="$report_file" bun -e "$js"
   fi
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "local-repo-harness",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Independent local-repo-harness package based on repo-harness@0.5.0, with project-scoped install support for repo-local hooks, skills, and agent tooling",
   "license": "MIT",
   "repository": {
@@ -38,6 +38,7 @@
     "check:deploy-sql": "bash scripts/check-deploy-sql-order.sh",
     "check:architecture-sync": "bash scripts/check-architecture-sync.sh",
     "check:task-sync": "bash scripts/check-task-sync.sh",
+    "check:runtime-compat": "bash scripts/check-runtime-compat.sh",
     "check:task-workflow": "bash scripts/check-task-workflow.sh --strict",
     "prepublishOnly": "bash scripts/check-npm-release.sh",
     "sync:brain-docs": "bash scripts/sync-brain-docs.sh --all",

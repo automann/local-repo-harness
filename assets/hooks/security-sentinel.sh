@@ -64,7 +64,7 @@ render_context() {
 const fs = require("fs");
 let report;
 try {
-  const raw = fs.readFileSync(process.argv[1], "utf8").trim();
+  const raw = fs.readFileSync(process.env.REPORT_FILE, "utf8").trim();
   if (!raw) process.exit(0);
   report = JSON.parse(raw);
 } catch {
@@ -79,9 +79,9 @@ const bits = [`${report.findings.length} finding(s)`, `${high} high`, `${warn} w
 console.log(`[SecurityConfig] ${bits.join(", ")}. First: ${first.ruleId} at ${first.filePath}. Run local-repo-harness security scan --json.`);
 '
   if command -v node >/dev/null 2>&1; then
-    node -e "$js" "$report_file"
+    REPORT_FILE="$report_file" node -e "$js"
   elif command -v bun >/dev/null 2>&1; then
-    bun -e "$js" "$report_file"
+    REPORT_FILE="$report_file" bun -e "$js"
   fi
 }
 

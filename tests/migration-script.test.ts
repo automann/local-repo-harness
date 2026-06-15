@@ -361,6 +361,9 @@ describe("Migration script contract", () => {
       expect(readFileSync(join(repo, "scripts/sprint-backlog.sh"), "utf-8")).toContain(
         "local-repo-harness run sprint-backlog"
       );
+      const tsWrapper = readFileSync(join(repo, "scripts/contract-run.ts"), "utf-8");
+      expect(tsWrapper).toContain('"local-repo-harness", "run", "contract-run"');
+      expect(tsWrapper).not.toContain('"repo-harness", "run"');
       expect(existsSync(join(repo, "scripts/skill-factory-create.sh"))).toBe(false);
       expect(existsSync(join(repo, "scripts/skill-factory-check.sh"))).toBe(false);
       expect(existsSync(join(repo, ".ai/hooks/README.md"))).toBe(true);

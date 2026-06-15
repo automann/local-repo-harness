@@ -430,12 +430,19 @@ write_version_stamp() {
     local sv_version="unknown"
     local sv_template_version="unknown"
 
-    if [ -f "$skill_version_file" ] && command_exists bun; then
-        sv_version=$(bun -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).version)")
-        sv_template_version=$(bun -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).templateVersion)")
-    elif [ -f "$skill_version_file" ] && command_exists node; then
-        sv_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).version)")
-        sv_template_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).templateVersion)")
+    if [ -f "$skill_version_file" ] && declare -F rh_run_js_source >/dev/null 2>&1; then
+        sv_version="$(rh_run_js_source "$skill_version_file" <<'JS_EOF' || printf 'unknown\n'
+const fs = require("fs");
+const [, , skillVersionFile] = process.argv;
+console.log(JSON.parse(fs.readFileSync(skillVersionFile, "utf8")).version);
+JS_EOF
+)"
+        sv_template_version="$(rh_run_js_source "$skill_version_file" <<'JS_EOF' || printf 'unknown\n'
+const fs = require("fs");
+const [, , skillVersionFile] = process.argv;
+console.log(JSON.parse(fs.readFileSync(skillVersionFile, "utf8")).templateVersion);
+JS_EOF
+)"
     fi
 
     mkdir -p "$stamp_dir"

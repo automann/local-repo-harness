@@ -4,8 +4,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PACKAGE_NAME="$(bun -e 'const pkg = await Bun.file("package.json").json(); console.log(pkg.name)')"
-PACKAGE_VERSION="$(bun -e 'const pkg = await Bun.file("package.json").json(); console.log(pkg.version)')"
+# shellcheck source=/dev/null
+. "$ROOT/scripts/lib/js-runtime.sh"
+PACKAGE_NAME="$(rh_run_js_source <<'JS_EOF'
+const fs = require("fs");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+console.log(pkg.name);
+JS_EOF
+)"
+PACKAGE_VERSION="$(rh_run_js_source <<'JS_EOF'
+const fs = require("fs");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+console.log(pkg.version);
+JS_EOF
+)"
 NPM_RELEASE_REGISTRY="${NPM_RELEASE_REGISTRY:-https://registry.npmjs.org/}"
 LOOKUP_STDERR="$(mktemp)"
 trap 'rm -f "$LOOKUP_STDERR"' EXIT
@@ -31,6 +43,7 @@ bun test --timeout "$BUN_TEST_TIMEOUT_MS" --max-concurrency "$BUN_TEST_MAX_CONCU
 bash scripts/check-deploy-sql-order.sh
 bash scripts/check-architecture-sync.sh
 bash scripts/check-task-sync.sh
+bash scripts/check-runtime-compat.sh
 if [[ -f scripts/prepare-handoff.sh ]]; then
   REPO_HARNESS_SKIP_RESUME_REFRESH=1 bash scripts/prepare-handoff.sh "release gate" >/dev/null
 fi

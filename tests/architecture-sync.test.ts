@@ -14,9 +14,11 @@ function tmpRepo(fn: (cwd: string) => void): void {
   const cwd = mkdtempSync(join(tmpdir(), "architecture-sync-"));
   try {
     mkdirSync(join(cwd, "scripts"), { recursive: true });
+    mkdirSync(join(cwd, "scripts", "lib"), { recursive: true });
     mkdirSync(join(cwd, ".ai/context"), { recursive: true });
     mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
     mkdirSync(join(cwd, "docs/architecture/requests"), { recursive: true });
+    copyFileSync(join(ROOT, "scripts", "lib", "js-runtime.sh"), join(cwd, "scripts", "lib", "js-runtime.sh"));
     for (const file of [
       "check-architecture-sync.sh",
       "architecture-queue.sh",

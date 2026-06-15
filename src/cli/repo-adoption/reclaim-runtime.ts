@@ -425,7 +425,7 @@ import { join } from "node:path";
 const sourceRoot = process.env.REPO_HARNESS_SOURCE_ROOT;
 const command = sourceRoot && existsSync(join(sourceRoot, "src", "cli", "index.ts"))
   ? ["bun", join(sourceRoot, "src", "cli", "index.ts"), "run", "${id}"]
-  : ["repo-harness", "run", "${id}"];
+  : ["local-repo-harness", "run", "${id}"];
 const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice(2)], {
   cwd: process.cwd(),
   env: process.env,

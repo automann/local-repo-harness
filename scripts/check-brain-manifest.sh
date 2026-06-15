@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/check-brain-manifest.sh [--manifest PATH] [--require-vault]
@@ -35,21 +44,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-resolve_js_runtime() {
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
-
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
-    return 0
-  fi
-
-  return 1
-}
-
-runtime="$(resolve_js_runtime || true)"
+runtime="$(rh_resolve_js_runtime || true)"
 if [[ -z "$runtime" ]]; then
   echo "[brain] Missing node or bun to read brain manifest: $manifest_path"
   exit 1
@@ -256,4 +251,4 @@ if (issues === 0) {
 process.exit(1);
 JS_EOF
 
-"$runtime" "$js_runner" "$manifest_path" "$require_vault"
+rh_run_js_file "$js_runner" "$manifest_path" "$require_vault"

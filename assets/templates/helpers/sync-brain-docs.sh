@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/sync-brain-docs.sh [--manifest PATH] (--all | --changed PATH | --check) [--dry-run] [--require-vault]
@@ -55,21 +64,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-resolve_js_runtime() {
-  if command -v node >/dev/null 2>&1; then
-    printf 'node'
-    return 0
-  fi
-
-  if command -v bun >/dev/null 2>&1; then
-    printf 'bun'
-    return 0
-  fi
-
-  return 1
-}
-
-runtime="$(resolve_js_runtime || true)"
+runtime="$(rh_resolve_js_runtime || true)"
 if [[ -z "$runtime" ]]; then
   echo "[BrainSync] Missing node or bun to read brain manifest: $manifest_path" >&2
   exit 1
@@ -84,10 +79,10 @@ fi
 changed_json='[]'
 if [[ "${#changed_paths[@]}" -gt 0 ]]; then
   changed_json="$(
-    "$runtime" -e '
-const values = process.argv.slice(1);
+    rh_run_js_source "${changed_paths[@]}" <<'JS_EOF'
+const values = process.argv.slice(2);
 process.stdout.write(JSON.stringify(values));
-' "${changed_paths[@]}"
+JS_EOF
   )"
 fi
 
@@ -382,4 +377,4 @@ if (selected.length === 0 && (modeAll || modeCheck)) {
 }
 JS_EOF
 
-"$runtime" "$js_runner" "$manifest_path" "$mode_all" "$mode_check" "$dry_run" "$require_vault" "$changed_json"
+rh_run_js_file "$js_runner" "$manifest_path" "$mode_all" "$mode_check" "$dry_run" "$require_vault" "$changed_json"

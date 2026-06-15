@@ -23,6 +23,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PI_LIB_DIR="$SCRIPT_DIR/lib"
+if [[ -f "$PI_LIB_DIR/js-runtime.sh" ]]; then
+  # shellcheck source=/dev/null
+  . "$PI_LIB_DIR/js-runtime.sh"
+fi
 if [[ -f "$PI_LIB_DIR/project-init-lib.sh" ]]; then
   # shellcheck source=/dev/null
   . "$PI_LIB_DIR/project-init-lib.sh"
@@ -62,18 +66,7 @@ run_ts_script() {
   local script_path="$1"
   shift
 
-  if command -v bun >/dev/null 2>&1; then
-    bun "$script_path" "$@"
-    return $?
-  fi
-
-  if command -v node >/dev/null 2>&1; then
-    node --experimental-strip-types "$script_path" "$@"
-    return $?
-  fi
-
-  echo "[migrate] Missing bun/node runtime for TypeScript helper: $script_path" >&2
-  return 1
+  rh_run_ts_file "$script_path" "$@"
 }
 
 merge_hook_settings_json() {
@@ -81,7 +74,7 @@ merge_hook_settings_json() {
   local patch_file="$2"
   local output_file="$3"
 
-  node - "$base_file" "$patch_file" "$output_file" <<'NODE_EOF'
+  rh_run_js_source "$base_file" "$patch_file" "$output_file" <<'NODE_EOF'
 const fs = require("fs");
 
 const [, , basePath, patchPath, outputPath] = process.argv;
@@ -300,12 +293,12 @@ prune_removed_hook_commands() {
     return 0
   fi
 
-  if ! command -v node >/dev/null 2>&1; then
-    log "Skipping removed-hook pruning for $settings_file because node is unavailable"
+  if ! declare -F rh_run_js_source >/dev/null 2>&1; then
+    log "Skipping removed-hook pruning for $settings_file because js-runtime.sh is unavailable"
     return 0
   fi
 
-  node - "$settings_file" <<'NODE_EOF'
+  rh_run_js_source "$settings_file" <<'NODE_EOF'
 const fs = require("fs");
 const path = process.argv[2];
 const removedFragments = ["memory-intake.sh", "skill-factory-session-end.sh"];
@@ -1096,12 +1089,19 @@ update_version_stamp() {
   local sv_version="unknown"
   local sv_template_version="unknown"
 
-  if [[ -f "$skill_version_file" ]] && command -v bun >/dev/null 2>&1; then
-    sv_version=$(bun -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).version)")
-    sv_template_version=$(bun -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).templateVersion)")
-  elif [[ -f "$skill_version_file" ]] && command -v node >/dev/null 2>&1; then
-    sv_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).version)")
-    sv_template_version=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$skill_version_file','utf-8')).templateVersion)")
+  if [[ -f "$skill_version_file" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    sv_version="$(rh_run_js_source "$skill_version_file" <<'JS_EOF' || printf 'unknown\n'
+const fs = require("fs");
+const [, , skillVersionFile] = process.argv;
+console.log(JSON.parse(fs.readFileSync(skillVersionFile, "utf8")).version);
+JS_EOF
+)"
+    sv_template_version="$(rh_run_js_source "$skill_version_file" <<'JS_EOF' || printf 'unknown\n'
+const fs = require("fs");
+const [, , skillVersionFile] = process.argv;
+console.log(JSON.parse(fs.readFileSync(skillVersionFile, "utf8")).templateVersion);
+JS_EOF
+)"
   fi
 
   if [[ "$MODE" == "apply" ]]; then

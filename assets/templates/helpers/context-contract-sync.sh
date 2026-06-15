@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtime.sh" "$SCRIPT_DIR/../../../scripts/lib/js-runtime.sh"; do
+  if [[ -f "$runtime_lib" ]]; then
+    # shellcheck source=/dev/null
+    . "$runtime_lib"
+    break
+  fi
+done
+
 usage() {
   cat <<'USAGE_EOF'
 Usage:
@@ -64,8 +73,8 @@ json_get() {
     parsed="$(printf '%s' "$json_input" | jq -r ".$key // empty" 2>/dev/null || true)"
   fi
 
-  if [[ -z "$parsed" ]] && command -v node >/dev/null 2>&1; then
-    parsed="$(JSON_INPUT="$json_input" JSON_KEY="$key" node -e '
+  if [[ -z "$parsed" ]] && declare -F rh_run_js_source >/dev/null 2>&1; then
+    parsed="$(JSON_INPUT="$json_input" JSON_KEY="$key" rh_run_js_source <<'JS_EOF' 2>/dev/null || true
 const raw = process.env.JSON_INPUT || "";
 const key = process.env.JSON_KEY || "";
 try {
@@ -75,21 +84,8 @@ try {
 } catch {
   process.exit(1);
 }
-' 2>/dev/null || true)"
-  fi
-
-  if [[ -z "$parsed" ]] && command -v bun >/dev/null 2>&1; then
-    parsed="$(JSON_INPUT="$json_input" JSON_KEY="$key" bun -e '
-const raw = process.env.JSON_INPUT || "";
-const key = process.env.JSON_KEY || "";
-try {
-  const value = JSON.parse(raw)[key];
-  if (value === undefined || value === null) process.exit(1);
-  process.stdout.write(String(value));
-} catch {
-  process.exit(1);
-}
-' 2>/dev/null || true)"
+JS_EOF
+)"
   fi
 
   [[ -n "$parsed" ]] || return 1
@@ -252,7 +248,6 @@ sync_context_map() {
   local contract_claude="${6:-$block/CLAUDE.md}"
   local lsp_profile="${7:-typescript-lsp}"
   local context_map=".ai/context/context-map.json"
-  local runtime=""
 
   if architecture_event sync-context-map \
     --context-map "$context_map" \
@@ -266,11 +261,7 @@ sync_context_map() {
     return 0
   fi
 
-  if command -v node >/dev/null 2>&1; then
-    runtime="node"
-  elif command -v bun >/dev/null 2>&1; then
-    runtime="bun"
-  else
+  if ! declare -F rh_run_js_source >/dev/null 2>&1; then
     echo "[ContextContractSync] Context map update skipped: node or bun not found."
     return 0
   fi
@@ -293,7 +284,7 @@ sync_context_map() {
 CONTEXT_EOF
   fi
 
-  CONTEXT_MAP="$context_map" BLOCK_PATH="$block" CAPABILITY_ID="$capability_id" CONTRACT_AGENTS="$contract_agents" CONTRACT_CLAUDE="$contract_claude" ARCH_DOMAIN="$domain_slug" ARCH_CAPABILITY="$capability_slug" LSP_PROFILE="$lsp_profile" "$runtime" <<'JS_EOF'
+  CONTEXT_MAP="$context_map" BLOCK_PATH="$block" CAPABILITY_ID="$capability_id" CONTRACT_AGENTS="$contract_agents" CONTRACT_CLAUDE="$contract_claude" ARCH_DOMAIN="$domain_slug" ARCH_CAPABILITY="$capability_slug" LSP_PROFILE="$lsp_profile" rh_run_js_source <<'JS_EOF'
 const fs = require("fs");
 const path = process.env.CONTEXT_MAP;
 const block = process.env.BLOCK_PATH;

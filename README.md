@@ -512,8 +512,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `local-repo-harness@0.5.2`
-- Generated workflow stamp: `local-repo-harness@0.5.2+template@0.5.2`
+- npm package: `local-repo-harness@0.5.3`
+- Generated workflow stamp: `local-repo-harness@0.5.3+template@0.5.3`
 - GitHub repository: `automann/local-repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 
