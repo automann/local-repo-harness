@@ -4,6 +4,17 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-06-16
+
+### Fixed
+
+- Managed project-scoped CodeGraph installs under `.ai/harness/tools/codegraph`
+  so downstream projects no longer need a root `package.json` just to install
+  CodeGraph locally.
+- Updated project-scoped install guidance and readiness checks to prefer the
+  harness-owned CodeGraph tool root over package-manager state in the project
+  root.
+
 ## [0.5.1] - 2026-06-16
 
 ### Added
