@@ -4,6 +4,8 @@ All notable changes to this skill are documented here.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-16
+
 ### Added
 
 - Added project/user scope diagnostics for status, doctor, security scan,
