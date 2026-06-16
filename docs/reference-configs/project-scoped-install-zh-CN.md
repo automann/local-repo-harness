@@ -59,7 +59,7 @@ git checkout -b chore/adopt-local-repo-harness-project-scope
 
 ## 版本和 Bun minimumReleaseAge
 
-真实项目级安装建议使用 `local-repo-harness@0.5.5` 或更新版本。`0.5.5`
+真实项目级安装建议使用 `local-repo-harness@0.5.6` 或更新版本。`0.5.6`
 包含 project-managed bootstrap，能把 local-repo-harness 自身安装到
 `.ai/harness/tools/local-repo-harness/`，避免零 package.json 项目因为 `bun add`
 污染父目录；同时修复项目级 CLI 版本显示、项目 helper wrapper 对
