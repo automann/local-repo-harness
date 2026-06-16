@@ -81,23 +81,28 @@ minimumReleaseAgeExcludes = ["local-repo-harness"]
 这属于 Bun 包管理器的用户级安全策略，不是 local-repo-harness 的 user-level hooks、
 skills、MCP 或 brain 安装产物。
 
-## 第一步：把 local-repo-harness 放进目标项目
+## 第一步：最小安全 bootstrap
 
-### 推荐路径：零 package.json 项目也安全的 bootstrap
+### 推荐路径：零 package.json 项目也安全
 
-如果 `local-repo-harness` 已经发布到你要使用的 registry，推荐直接用 `bootstrap`。它只把 `bunx` 当作一次性 seed，随后会把持久 runtime 安装到项目内 `.ai/harness/tools/local-repo-harness/`，并通过 `.ai/harness/bin/local-repo-harness` 继续执行 `adopt`。
+如果 `local-repo-harness` 已经发布到你要使用的 registry，推荐先用最小 scope 跑
+`bootstrap`。它只把 `bunx` 当作一次性 seed，随后会把持久 runtime 安装到项目内
+`.ai/harness/tools/local-repo-harness/`，写入 `.ai/harness/bin/local-repo-harness`，
+并只落地 repo-local workflow contract。
+
+这一步不是完整安装：它不写项目 hooks，不安装项目 skills，不安装外部 tools，也不启用
+CodeGraph。后面第三步再选择是否升级到配方 B 或配方 C。
 
 ```bash
 cd /path/to/target-project
 bunx --bun local-repo-harness@latest bootstrap \
   --repo "$PWD" \
-  --host-adapter-scope project \
-  --runtime project-vendored-bun \
-  --skill-scope project \
-  --external-tool-scope project \
-  --codegraph-mcp-scope project \
-  --sync-codegraph \
-  --brain-mode manifest-only
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
 ```
 
 之后统一用目标项目里的项目级 CLI：
@@ -107,9 +112,13 @@ cd /path/to/target-project
 ./.ai/harness/bin/local-repo-harness --version
 ```
 
+如果你只需要 repo-local workflow contract，到这里已经完成配方 A。若要启用项目 hooks、
+项目 skills、外部 skills 或 CodeGraph，继续看第二步和第三步。
+
 ### 可选路径：已有根 package.json 的 JS 项目
 
-如果你的目标项目本身就是 JS 项目，并且根目录已经有自己的 `package.json`，也可以使用 `bun add`。这条路径必须 fail fast，避免 Bun 上溯污染父目录：
+如果你的目标项目本身就是 JS 项目，并且根目录已经有自己的 `package.json`，也可以先用
+`bun add` 把 seed CLI 放进项目 devDependency。这条路径必须 fail fast，避免 Bun 上溯污染父目录：
 
 ```bash
 cd /path/to/target-project
@@ -118,6 +127,14 @@ test -f package.json || {
   exit 1
 }
 bun add -d local-repo-harness@latest
+bun --bun local-repo-harness bootstrap \
+  --repo "$PWD" \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
 ```
 
 如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到已有根 `package.json` 的目标项目：
@@ -134,11 +151,20 @@ test -f package.json || {
   exit 1
 }
 bun add -d /tmp/local-repo-harness-pack/local-repo-harness-*.tgz
+bun --bun local-repo-harness bootstrap \
+  --repo "$PWD" \
+  --package /tmp/local-repo-harness-pack/local-repo-harness-*.tgz \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
 ```
 
 ## 第二步：做最小 dry-run
 
-先只预览 repo-local workflow contract，不写 hooks、skills、外部工具或 CodeGraph MCP：
+在启用项目 hooks、skills、外部工具或 CodeGraph 之前，先确认最小 contract 刷新不会写用户级路径：
 
 ```bash
 cd /path/to/target-project
@@ -170,7 +196,9 @@ cd /path/to/target-project
 
 ### 配方 A：只安装 workflow contract
 
-适合先让项目拥有 repo-harness 的文件化协作结构，但暂时不启用 Codex/Claude hooks：
+适合先让项目拥有 repo-harness 的文件化协作结构，但暂时不启用 Codex/Claude hooks。
+如果你已经按第一步推荐路径执行了最小 bootstrap，配方 A 已经完成；下面命令用于以后刷新
+最小 contract，或用于已有项目级 CLI 的仓库：
 
 ```bash
 ./.ai/harness/bin/local-repo-harness adopt \
@@ -360,22 +388,26 @@ bash .ai/harness/scripts/check-agent-tooling.sh --json --host both
 
 ## 后续刷新
 
-升级 local-repo-harness 版本后，推荐重新执行 `bootstrap`，它会刷新项目内 managed runtime，再用相同 scope 重新执行 `adopt`：
+升级 local-repo-harness 版本后，推荐先用最小 scope 重新执行 `bootstrap`，刷新项目内
+managed runtime 和 workflow contract：
 
 ```bash
 cd /path/to/target-project
 bunx --bun local-repo-harness@latest bootstrap \
   --repo "$PWD" \
-  --host-adapter-scope project \
-  --runtime project-vendored-bun \
-  --skill-scope project \
-  --external-tool-scope project \
-  --codegraph-mcp-scope project \
-  --sync-codegraph \
-  --brain-mode manifest-only
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
 ```
 
-如果你走的是已有根 `package.json` 的 JS 项目路径，也可以先 guarded `bun add`，再执行项目内 `adopt`：
+然后按你当前选择的配方重跑第三步中的 A、B 或 C。这样可以把“刷新
+local-repo-harness 自身”与“启用 hooks/skills/CodeGraph”分开检查。
+
+如果你走的是已有根 `package.json` 的 JS 项目路径，也可以先 guarded `bun add`，再执行项目内
+`adopt`。下面示例适用于当前选择的是配方 C 的项目：
 
 ```bash
 cd /path/to/target-project
