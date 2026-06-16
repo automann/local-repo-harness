@@ -59,13 +59,35 @@ if [ ! -f package.json ]; then
 fi
 ```
 
+## 版本和 Bun minimumReleaseAge
+
+真实项目级安装建议使用 `local-repo-harness@0.5.3` 或更新版本。`0.5.3`
+包含 Bun/Node runtime 兼容性修复、旧 `repo-harness` wrapper fallback 清理，以及
+CodeGraph 项目级安装不污染目标根 `package.json` 的测试覆盖。
+
+如果你的机器启用了 Bun 的 `minimumReleaseAge`，刚发布的 `local-repo-harness`
+版本可能会被 Bun 拦截，报类似 `all versions blocked by minimum-release-age`。
+这种情况下，在运行 `bun add -d local-repo-harness` 之前，先把包名加入 Bun 的
+release-age 白名单：
+
+```toml
+# ~/.bunfig.toml
+[install]
+minimumReleaseAge = 259200
+minimumReleaseAgeExcludes = ["local-repo-harness"]
+```
+
+如果 `minimumReleaseAgeExcludes` 已经存在，把 `"local-repo-harness"` 追加进去即可。
+这属于 Bun 包管理器的用户级安全策略，不是 local-repo-harness 的 user-level hooks、
+skills、MCP 或 brain 安装产物。
+
 ## 第一步：把 local-repo-harness 放进目标项目
 
 如果 `local-repo-harness` 已经发布到你要使用的 registry：
 
 ```bash
 cd /path/to/target-project
-bun add -d local-repo-harness
+bun add -d local-repo-harness@latest
 ```
 
 如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到目标项目：
