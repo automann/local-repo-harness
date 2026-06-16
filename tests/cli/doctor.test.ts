@@ -214,6 +214,27 @@ describe('doctor command (Phase 1C)', () => {
         }
 
         const r = runDoctor(repoRoot);
+        const cliOnPath = r.checks.find((c) => c.id === 'cli-on-path')!;
+        const codexAdapter = r.checks.find((c) => c.id === 'codex-adapter')!;
+        const claudeAdapter = r.checks.find((c) => c.id === 'claude-adapter')!;
+
+        expect(cliOnPath.status).toBe('na');
+        expect(cliOnPath.detail).toContain('global PATH CLI is not required');
+        expect(cliOnPath.detail).toContain(path.join(repoRoot, '.ai/harness/bin/local-repo-harness'));
+        expect(codexAdapter.status).toBe('na');
+        expect(codexAdapter.detail).toContain('global codex adapter is not required');
+        expect(codexAdapter.detail).toContain('see project-codex-adapter');
+        expect(claudeAdapter.status).toBe('na');
+        expect(claudeAdapter.detail).toContain('global claude adapter is not required');
+        expect(claudeAdapter.detail).toContain('see project-claude-adapter');
+        for (const check of [cliOnPath, codexAdapter, claudeAdapter]) {
+          expect(check.detail).not.toContain('npm install -g');
+          expect(check.detail).not.toContain('--location global');
+          expect(check.detail).not.toContain('local-repo-harness init');
+        }
+        expect(r.checks.some((c) => c.status === 'warn' && ['cli-on-path', 'codex-adapter', 'claude-adapter'].includes(c.id))).toBe(false);
+        expect(r.checks.map((c) => c.detail).join('\n')).not.toContain('local-repo-harness install --target codex --location global');
+        expect(r.checks.map((c) => c.detail).join('\n')).not.toContain('local-repo-harness install --target claude --location global');
         expect(r.checks.find((c) => c.id === 'hook-scope-intent')?.status).toBe('ok');
         expect(r.checks.find((c) => c.id === 'project-codex-adapter')?.status).toBe('ok');
         expect(r.checks.find((c) => c.id === 'project-claude-adapter')?.status).toBe('ok');
@@ -239,9 +260,14 @@ describe('doctor command (Phase 1C)', () => {
         runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
 
         const r = runDoctor(repoRoot);
+        expect(r.checks.find((c) => c.id === 'codex-adapter')?.status).toBe('na');
+        expect(r.checks.find((c) => c.id === 'codex-adapter')?.detail).toContain('see project-codex-adapter');
+        expect(r.checks.find((c) => c.id === 'claude-adapter')?.status).toBe('na');
+        expect(r.checks.find((c) => c.id === 'claude-adapter')?.detail).toContain('see project-claude-adapter');
         const mixed = r.checks.find((c) => c.id === 'mixed-scope-adapters')!;
         expect(mixed.status).toBe('warn');
         expect(mixed.detail).toContain('project-only intent');
+        expect(mixed.detail).toContain(path.join(process.env.HOME ?? '', '.codex/hooks.json'));
       });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);

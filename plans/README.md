@@ -2,9 +2,10 @@
 
 Generated and updated by the improve skill on 2026-06-16. This index tracks the
 active project-scoped CodeGraph, Bun/Node runtime compatibility,
-package-boundary-free project bootstrap, and post-0.5.5 real-acceptance
-diagnostic cleanup plans. Older plans in this directory and `plans/archive/`
-remain historical context unless a future task explicitly reactivates them.
+package-boundary-free project bootstrap, post-0.5.5 real-acceptance diagnostic
+cleanup plans, and the remaining project-scope doctor readiness cleanup. Older
+plans in this directory and `plans/archive/` remain historical context unless a
+future task explicitly reactivates them.
 
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
@@ -23,6 +24,7 @@ row when done.
 | 007 | Clarify helper runtime policy semantics | P1 | M | 006 | DONE (verified 2026-06-16; migration/reclaim/workflow gates) |
 | 008 | Clean project-scope external tooling reports | P1 | M | - | DONE (verified 2026-06-16; Waza reporting/generation gates) |
 | 009 | Make security scan and doctor scope-aware | P1 | M | 006 | DONE (verified 2026-06-16; scope-aware security/doctor gates) |
+| 010 | Make doctor readiness fully project-scope aware | P1 | S | 009 | DONE (verified 2026-06-16; focused, release, and real install gates) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -53,6 +55,10 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - 009 depends on 006 only because both plans touch the project-scoped install
   guide. It separates project-level security acceptance from ambient user-level
   hook findings.
+- 010 depends on 009 because 009 made `security-config` project-scope aware but
+  left `cli-on-path`, `codex-adapter`, and `claude-adapter` as global/PATH WARNs
+  in project-intent `doctor --json` output. It finishes the doctor readiness
+  cleanup for strict project-scoped installs.
 
 ## Findings considered and rejected
 
@@ -81,3 +87,8 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   project-scoped install failures: rejected because they are ambient host risk,
   not evidence that local-repo-harness wrote to user-level config during a
   project-scoped install.
+- Treat missing global PATH CLI or missing global host adapters as failures for
+  project-scoped recipe C installs: rejected because project-scoped installs use
+  `.ai/harness/bin/local-repo-harness`, project hook adapters, and project
+  skills; global adapters are optional ambient host setup unless the policy
+  intent is user/global.

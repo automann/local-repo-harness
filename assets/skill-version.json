@@ -1,6 +1,6 @@
 {
-  "version": "0.5.6",
-  "templateVersion": "0.5.6",
+  "version": "0.5.7",
+  "templateVersion": "0.5.7",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -151,6 +151,10 @@
     {
       "version": "0.5.6",
       "description": "Hardens project-scoped helper dispatch, cleans external tooling diagnostics, and makes security scan plus doctor scope-aware"
+    },
+    {
+      "version": "0.5.7",
+      "description": "Makes doctor readiness fully project-scope aware so strict project installs do not require global PATH CLI or global host adapters"
     }
   ],
   "generatedProjectStamp": {

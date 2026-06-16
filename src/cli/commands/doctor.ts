@@ -57,9 +57,24 @@ function homeDir(): string {
   return process.env.HOME ?? os.homedir();
 }
 
-function checkPath(): DoctorCheckResult {
+function hasProjectHookIntent(statusReport: StatusReport): boolean {
+  return statusReport.repo.inGitRepo && statusReport.repo.optIn && statusReport.scopes.intent.hooks === 'project';
+}
+
+function checkPath(statusReport: StatusReport): DoctorCheckResult {
   const id = 'cli-on-path';
   const describe = 'local-repo-harness resolvable via PATH';
+  if (hasProjectHookIntent(statusReport)) {
+    const projectCli = statusReport.repo.repoRoot
+      ? path.join(statusReport.repo.repoRoot, '.ai/harness/bin/local-repo-harness')
+      : '.ai/harness/bin/local-repo-harness';
+    return {
+      id,
+      describe,
+      status: 'na',
+      detail: `project hook scope is intended; global PATH CLI is not required; project_cli=${projectCli}`,
+    };
+  }
   const result = spawnSync('which', ['local-repo-harness'], { encoding: 'utf-8' });
   if (result.status === 0 && (result.stdout ?? '').trim()) {
     return { id, describe, status: 'ok', detail: (result.stdout as string).trim() };
@@ -145,10 +160,18 @@ function checkCliUpdate(): DoctorCheckResult {
   return { id, describe, status: 'ok', detail: `current=${CLI_VERSION}; latest=${latest.version}` };
 }
 
-function checkTargetInstall(target: (typeof ALL_TARGETS)[number]): DoctorCheckResult {
-  const det = target.detect('global');
+function checkTargetInstall(target: (typeof ALL_TARGETS)[number], statusReport: StatusReport): DoctorCheckResult {
   const id = `${target.id}-adapter`;
   const describe = `${target.displayName} global adapter`;
+  if (hasProjectHookIntent(statusReport)) {
+    return {
+      id,
+      describe,
+      status: 'na',
+      detail: `project hook scope is intended; global ${target.id} adapter is not required; see project-${target.id}-adapter`,
+    };
+  }
+  const det = target.detect('global');
   if (!det.installed) {
     return {
       id,
@@ -518,7 +541,7 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
 }
 
 function securityScopeForStatus(statusReport: StatusReport): SecurityScanScope {
-  if (statusReport.repo.inGitRepo && statusReport.repo.optIn && statusReport.scopes.intent.hooks === 'project') {
+  if (hasProjectHookIntent(statusReport)) {
     return 'project';
   }
   return 'all';
@@ -578,12 +601,12 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   const statusReport = runStatus(cwd);
   const codegraphProbe = probeCodegraph(cwd);
   const securityReport = runSecurityScan({ cwd, scope: securityScopeForStatus(statusReport) });
-  checks.push(checkPath());
+  checks.push(checkPath(statusReport));
   checks.push(checkVersion());
   checks.push(checkCliUpdate());
   for (const target of ALL_TARGETS) {
     if (target.supportsLocation('global')) {
-      checks.push(checkTargetInstall(target));
+      checks.push(checkTargetInstall(target, statusReport));
     }
   }
   checks.push(checkHookScopeIntent(statusReport));

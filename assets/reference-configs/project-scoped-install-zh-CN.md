@@ -59,12 +59,13 @@ git checkout -b chore/adopt-local-repo-harness-project-scope
 
 ## 版本和 Bun minimumReleaseAge
 
-真实项目级安装建议使用 `local-repo-harness@0.5.6` 或更新版本。`0.5.6`
+真实项目级安装建议使用 `local-repo-harness@0.5.7` 或更新版本。`0.5.7`
 包含 project-managed bootstrap，能把 local-repo-harness 自身安装到
 `.ai/harness/tools/local-repo-harness/`，避免零 package.json 项目因为 `bun add`
 污染父目录；同时修复项目级 CLI 版本显示、项目 helper wrapper 对
 `.ai/harness/bin/local-repo-harness` 的解析，以及 project-scoped Waza skills
-检查误报为用户级缺失的问题。
+检查误报为用户级缺失的问题，并让 `doctor --json` 不再把 global PATH CLI
+或 user-level host adapter 作为项目级 readiness 的通过条件。
 
 如果你的机器启用了 Bun 的 `minimumReleaseAge`，刚发布的 `local-repo-harness`
 版本可能会被 Bun 拦截，报类似 `all versions blocked by minimum-release-age`。
@@ -391,7 +392,14 @@ bash scripts/check-agent-tooling.sh --json --host both
 期望结果：
 
 - `status` 能看到 repo opt-in 和 project scope 状态。
-- `doctor` 不要求 user-level hooks 才能通过项目级安装。
+- `doctor --json` 以项目级 readiness 为准：检查 project hooks adapter、
+  project hook runtime、project skills、project CodeGraph/MCP 和 project
+  security scan。
+- 严格项目级安装下，global PATH 里的 `local-repo-harness` CLI 和 user-level
+  Codex/Claude adapter 不是通过条件；`cli-on-path`、`codex-adapter` 和
+  `claude-adapter` 可以是 `na`，不应该建议运行 `--location global`。
+- 如果项目级 intent 同时发现真实 user-level adapter 残留，
+  `mixed-scope-adapters` 仍应报告 `warn` 并给出对应用户级配置路径。
 - `security scan` 不报告项目 hooks adapter 指向未知脚本。
 - `check-task-workflow.sh --strict` 通过。
 - `check-agent-tooling.sh` 中 Waza 的 `effective_scope` 为 `project`，主
