@@ -64,6 +64,7 @@ describe("Bootstrap Script Contracts", () => {
     expect(pkg.bin).not.toHaveProperty("repo-harness");
     expect(pkg.bin["local-repo-harness-hook"]).toBe("src/cli/hook-entry.ts");
     expect(pkg.files).toContain("assets/");
+    expect(pkg.files).toContain("QUICK_START.md");
     expect(pkg.files).not.toContain("docs/reference-configs/");
     expect(cliEntry).toContain("CLI_VERSION");
     expect(cliEntry).toContain("buildDocsCommand");

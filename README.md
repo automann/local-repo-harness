@@ -493,6 +493,9 @@ state、artifacts、logs 和 scratch files。可提交的运维资料放在 `dep
 内部步骤 `hooks-init`、`docs-init`、`create-project-dirs` 不是 public CLI
 contract，也就是 not public。
 
+想知道这些 skills 什么时候用、如何和 Waza、Mermaid、cross-review skills、
+CodeGraph 搭配，请先读 [QUICK_START.md](QUICK_START.md)。
+
 ## Verification
 
 维护本仓库时，至少运行：

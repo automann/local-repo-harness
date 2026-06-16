@@ -80,9 +80,31 @@ describe("README DX contract", () => {
     expect(hookAuthority).toContain(".ai/hooks/");
     expect(hookAuthority).toContain("local-repo-harness-hook");
     expect(hookAuthority).toContain("route registry");
+    expect(readme).toContain("[QUICK_START.md](QUICK_START.md)");
     expect(maintainer).toContain("npx -y local-repo-harness init");
     expect(maintainer).toContain("broad-impact machine bootstrap path");
     expect(maintainer).toContain("bun scripts/assemble-template.ts --plan C --name \"MyProject\"");
+  });
+
+  test("quick start teaches workflow routing and external tooling combinations", () => {
+    const quickStart = read("QUICK_START.md");
+
+    expect(quickStart).toContain("repo-harness 的核心不是某个 hook 或某个 skill");
+    expect(quickStart).toContain("Action Command Skills 怎么选");
+    expect(quickStart).toContain("外部 skills 和工具怎么搭配");
+    expect(quickStart).toContain("Waza");
+    expect(quickStart).toContain("Mermaid");
+    expect(quickStart).toContain("cross-review skills");
+    expect(quickStart).toContain("CodeGraph");
+    expect(quickStart).toContain("repo-harness-prd");
+    expect(quickStart).toContain("repo-harness-sprint");
+    expect(quickStart).toContain("repo-harness-plan");
+    expect(quickStart).toContain("repo-harness-check");
+    expect(quickStart).toContain("repo-harness-ship");
+    expect(quickStart).toContain("repo-harness-repair");
+    expect(quickStart).toContain("repo-harness-architecture");
+    expect(quickStart).toContain("不要把 CodeGraph 查询结果当作测试结果");
+    expect(quickStart).toContain("不要让 project-scoped 安装回退到");
   });
 
   test("links to the hook operations reference and parity contract", () => {
