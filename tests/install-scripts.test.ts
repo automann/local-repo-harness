@@ -39,15 +39,19 @@ describe("install script contracts", () => {
     expect(script).not.toMatch(/\bnode\b/i);
   });
 
-  test("README front-loads the no-Node installer and package-manager fallback", () => {
+  test("README keeps global installers as maintainer reference behind the project-scoped path", () => {
     const readme = read("README.md");
     const zhReadme = read("README.zh-CN.md");
     const pkg = JSON.parse(read("package.json"));
 
+    expect(readme.indexOf("bunx --bun local-repo-harness@latest bootstrap")).toBeLessThan(
+      readme.indexOf("curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh"),
+    );
     expect(readme).toContain("curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh");
     expect(readme).toContain("irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex");
-    expect(readme).toContain("<summary>Already have Bun or Node? Use package managers instead</summary>");
+    expect(readme).toContain("<summary>已经有 Bun 或 Node？包管理器路径仅作为维护者参考</summary>");
     expect(readme).toContain("npx -y local-repo-harness init");
+    expect(readme).toContain("broad-impact machine bootstrap path");
     expect(zhReadme).toContain("curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh");
     expect(zhReadme).toContain("irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex");
     expect(pkg.files).toContain("install.sh");

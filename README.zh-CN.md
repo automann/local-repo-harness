@@ -193,8 +193,8 @@ contract 开始，并在 dry-run 看起来正确之前保持 host runtime 写入
 `package.json`。
 
 如果你的目标是只在某一个项目里安装和应用 local-repo-harness，不注册任何 user-level
-hooks、skills 或 MCP config，请先阅读
-[`docs/reference-configs/project-scoped-install-zh-CN.md`](docs/reference-configs/project-scoped-install-zh-CN.md)。
+hooks、skills 或 MCP config，请以根目录 [`README.md`](README.md) 为准；它现在是
+project-scoped install 的中文 canonical README。
 
 ### 1. 只预览 repo-local contract
 

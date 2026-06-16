@@ -1,255 +1,143 @@
 # local-repo-harness
 
-> **Project statement:** `local-repo-harness` is an independent npm package
-> based on the original [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness).
-> It preserves the upstream workflow model, uses `local-repo-harness` as the
-> public CLI command, and adds project-scoped install support so a downstream
-> project can install the harness, hooks, skills, and external tooling inside
-> that project instead of relying on user-level hook registration.
+> `local-repo-harness` 是一个独立 npm 包，基于原
+> [`repo-harness@0.5.0`](https://github.com/Ancienttwo/repo-harness)
+> fork 而来。这个 fork 的目标很明确：服务那些只想在某一个项目里安装和应用
+> repo-harness 工作流的用户，把 CLI runtime、hooks、skills、外部工具和
+> CodeGraph MCP 尽量收束在目标项目内，而不是注册到用户级配置里。
 
-<p align="center">
-  <img src="docs/images/image.png" alt="One next button joining Claude and Codex under local-repo-harness workflow rules" width="760">
-</p>
+仓库：`https://github.com/automann/local-repo-harness`
 
-`local-repo-harness` turns Claude/Codex coding sessions into a repeatable repo-local
-workflow. It ships a CLI plus skill/runtime hooks that write context, plans,
-handoffs, checks, and review evidence back into the project, so the next agent
-session can continue from files instead of chat memory.
+当前版本：`local-repo-harness@0.5.8`
 
-Use it to:
+## 这个项目适合谁
 
-- adopt an existing repo with a tasks-first agent contract
-- keep Claude and Codex aligned on the same plans, checks, handoffs, and context
-  boundaries
-- spend fewer tokens rediscovering structure by using CodeGraph and progressive
-  context loading
+适合你，如果你想要：
 
-Give the agent a complete PRD or Sprint; after that, your loop is just review
-and `next`, or start `/goal` and go AFK.
+- 在单个项目里安装 repo-harness 风格的计划、任务、验收和 handoff 工作流。
+- 让 Codex 和 Claude 读取同一个项目内的 `plans/`、`tasks/`、`.ai/harness/`
+  状态，而不是依赖聊天记录。
+- 使用项目级 `.codex/hooks.json` 和 `.claude/settings.json`，不注册
+  `~/.codex/hooks.json` 或 `~/.claude/settings.json`。
+- 把 Waza、Mermaid、repo-harness skills、cross-review skills 和 CodeGraph
+  MCP 装进项目目录。
+- 让 CodeGraph 使用项目内 `.ai/harness/bin/codegraph`，并默认带
+  `CODEGRAPH_NO_DAEMON=1`，避免在 `~/.codegraph/daemons` 写入当前项目的
+  daemon registry。
 
-Repository: `https://github.com/automann/local-repo-harness`
+不适合你，如果你要的是：
 
-[English](README.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md) | [Français](README.fr.md) | [Español](README.es.md)
+- 机器级统一 hooks bootstrap。
+- user-level skills 或全局 CodeGraph MCP。
+- 继续使用上游 `repo-harness` 包名和 `repo-harness` CLI alias。
 
-## Why local-repo-harness
-
-- **File-backed sessions, not chat memory.** Separate agent sessions — Claude and
-  Codex, now and later — stay coordinated through the repo, not a thread.
-  `.ai/hooks/session-start-context.sh` injects the prior session's resume packet
-  (`.ai/harness/handoff/resume.md`, `tasks/current.md`) when a new session starts;
-  `finalize-handoff.sh` and `post-edit-guard.sh` write the next handoff back on stop
-  and after edits. A session can end mid-task and the next one resumes the exact next
-  step, blockers, and changed files without re-deriving them.
-- **Token-lean by design.** Instead of grep-and-read loops that re-scan the repo every
-  session, the harness leans on a pre-built CodeGraph index for structural queries
-  (callers, callees, definitions) and on progressive context loading via
-  `.ai/context/context-map.json` and `capabilities.json`: a small, stable root context
-  (~12KB) plus capability blocks loaded only when the files you touch need them. Agents
-  read a 1KB capability contract or query the index instead of spending thousands of
-  tokens rediscovering structure.
-
-In an adopted repo, the surface area is intentionally small:
-
-| Surface | Purpose |
-| --- | --- |
-| `docs/spec.md` and `docs/reference-configs/` | Shared standards and stable product intent that every agent session can read. |
-| `plans/`, `plans/prds/`, and `plans/sprints/` | Decision-complete work packages before implementation starts. |
-| `tasks/contracts/`, `tasks/reviews/`, and `.ai/harness/checks/` | Scope, verification, and review evidence for proving the work is done. |
-| `.ai/harness/handoff/` and `tasks/current.md` | Session journal and resumable status, derived from workflow artifacts instead of chat memory. |
-
-## What's New in 0.5.0
-
-- **Clean command boundary.** `local-repo-harness update` now refreshes only the
-  user-level CLI/runtime surface, while `local-repo-harness adopt` owns repo-local
-  workflow install, refresh, and migration.
-- **Package-dispatched helper runtime.** Generated `scripts/*` wrappers can
-  delegate through `local-repo-harness run <helper>`, so adopted repos do not need to
-  vendor every helper implementation when the installed package already owns it.
-- **Eight managed hook routes.** The README now documents the exact hook route
-  matrix that Claude and Codex adapters install: session context, edit guards,
-  delegated-agent routing, post-edit and post-bash observers, always-on trace,
-  prompt routing, and stop closeout.
-- **Release-ready install examples.** The first-run and refresh commands now
-  show the split between machine bootstrap, user-level updates, read-only setup
-  audit, and repo-local adoption.
-
-## What local-repo-harness Does
-
-`local-repo-harness` turns AI-assisted development from chat-memory coordination into
-repo-local workflow state. It installs a small, file-backed contract into a
-target repository so Claude, Codex, and humans can agree on:
-
-- what product intent is stable
-- which plan is approved for execution
-- what the current sprint contract allows
-- which checks and review evidence prove the work is done
-- how hooks should warn, block, trace, and hand off work across sessions
-
-It is not an agent gateway, product runtime, database service, or MCP server.
-The product boundary is deliberately boring: inspect a repo, install or refresh
-workflow files, route host events through repo-local hooks, and verify that the
-workflow surfaces stay consistent.
-
-## How It Works
-
-The design has three layers:
-
-1. **Source package**: this repository owns the CLI, CLI-backed command facades,
-   templates, hook assets, workflow contract, tests, and release gate.
-2. **Target repo contract**: `local-repo-harness adopt` or migration writes repo-local
-   files such as `docs/spec.md`, `plans/`, `tasks/`, `.ai/context/`,
-   `.ai/harness/`, helper scripts, and `.ai/hooks/`.
-3. **Host adapters**: by default, user-level `~/.claude/settings.json` and
-   `~/.codex/hooks.json` route Claude/Codex events into `local-repo-harness-hook`.
-   Projects that need repo-local isolation can instead install project-scoped
-   `.claude/settings.json` and `.codex/hooks.json` with
-   `local-repo-harness install --target both --scope project` or
-   `local-repo-harness update --host-adapter-scope project`. The hook entrypoint
-   exits silently for non-opt-in repos. For opted-in repos, it resolves hooks
-   central-first through the packaged install or `~/.repo-harness/hooks/`, with
-   repo policy able to pin self-host development back to `.ai/hooks/*`.
-
-For `UserPromptSubmit`, the public adapter contract stays
-`local-repo-harness-hook UserPromptSubmit --route default`. The CLI route registry
-dispatches that route to `.ai/hooks/prompt-guard.sh`. The shell hook remains the
-repo-local adapter for host JSON parsing, workflow file reads, capture side
-effects, and host-safe stdout/stderr. It pipes the prompt text into
-`local-repo-harness-hook prompt-guard-decide`, where every prompt-text intent
-classifier (Unicode-aware, `src/cli/hook/prompt-intents.ts`) and the
-`intent x plan state` decision table live; the engine returns one verdict JSON
-line with the action, the classified intent facts, and derived strings. The
-shell keeps no duplicate classifier or fallback decision table — when the
-engine is unreachable the prompt layer degrades to a one-shot advisory.
-
-Prompt-layer plan/spec/contract gates are advisory routing. Hard enforcement
-lives at the edit boundary: `pre-edit-guard.sh` blocks implementation edits
-unless the active plan is Approved/Executing (policy
-`.guards.edit_plan_gate`: enforce | advice | off). Done-claim gates keep
-blocking because they verify file-backed completion evidence, not language.
-
-The core invariant is that durable truth lives in the repo, not in a chat
-thread. Hooks are accelerators and guardrails; the authority remains the
-file-backed plan, contract, review, checks, and handoff artifacts.
-
-## Task Workflow: Plan to Closeout
-
-The diagram below assumes the harness is already installed in the repo. It shows
-the normal lifecycle from a program sprint backlog down to one contract task:
-draft or select the task, project it into execution files, check out the
-contract worktree when policy requires it, implement under hooks, verify, review,
-complete the sprint task when applicable, and close out. The 0.4.x loop-system
-surfaces add scheduled heartbeat discovery, state-snapshot/eval evidence for
-routing changes, architecture queue freshness, and optional contract-run
-delegation without changing the file-backed authority model.
-
-```mermaid
-flowchart TD
-  Program["Program goal or release theme"] --> Sprint{"Sprint layer needed?"}
-  Sprint -->|yes| PRD["Upper-layer PRD<br/>plans/prds/*.prd.md"]
-  PRD --> SprintDoc["Sprint backlog<br/>plans/sprints/*.sprint.md"]
-  SprintDoc --> NextTask["Select next sprint task<br/>sprint-backlog.sh next"]
-  Sprint -->|no| UserTask["User task or planning prompt"]
-  Heartbeat["Heartbeat triage<br/>scripts/heartbeat-triage.sh<br/>.ai/harness/triage/"] --> UserTask
-  NextTask --> UserTask
-
-  UserTask --> Discovery["Due diligence<br/>P1 map, P2 trace, P3 decision"]
-  Discovery --> LoopEvidence["Loop evidence when routing changes<br/>state-snapshot --json<br/>route-nl-vs-ts / cutover gate"]
-  LoopEvidence --> PlanDraft["Draft plan<br/>plans/plan-*.md"]
-  PlanDraft --> PlanReview{"Plan ready for execution?"}
-  PlanReview -->|no| Refine["Refine plan, scope, evidence contract"]
-  Refine --> PlanDraft
-  PlanReview -->|yes| Approve["Approved plan<br/>Status: Approved"]
-
-  Approve --> Project["Project plan into execution<br/>capture-plan.sh --execute<br/>or plan-to-todo.sh --plan"]
-  Project --> Active["Active markers<br/>.ai/harness/active-plan<br/>.ai/harness/active-worktree"]
-  Project --> SprintActive["Sprint projection<br/>active-sprint marker<br/>tasks/current.md"]
-  Project --> Contract["Sprint contract<br/>tasks/contracts/YYYYMMDD-HHMM-task-slug.contract.md"]
-  Project --> ReviewFile["Review file<br/>tasks/reviews/YYYYMMDD-HHMM-task-slug.review.md"]
-  Project --> Notes["Task notes<br/>tasks/notes/YYYYMMDD-HHMM-task-slug.notes.md"]
-
-  Contract --> Delegation["Delegation contract<br/>budget / permission_scope / roles"]
-  Delegation --> Delegate{"Use contract-run delegation?"}
-  Delegate -->|yes| ContractRun["Worker/verifier child run<br/>scripts/contract-run.ts"]
-  Delegate -->|no| WorktreePolicy{"Contract worktree required?"}
-  WorktreePolicy -->|yes| Checkout["Checkout isolated worktree<br/>contract-worktree.sh start --plan<br/>branch codex/task-slug"]
-  WorktreePolicy -->|no| CurrentTree["Use current worktree<br/>small or explicitly allowed slice"]
-  Checkout --> Implement
-  CurrentTree --> Implement
-  ContractRun --> Changes
-
-  Implement["Edit and run commands"] --> PreHooks["Pre-edit guards<br/>PlanStatusGuard, ContractScopeGuard, WorktreeGuard"]
-  PreHooks -->|blocked| ScopeFix["Fix plan, contract, worktree, or scope"]
-  ScopeFix --> Implement
-  PreHooks -->|allowed| Changes["Code, docs, tests, or config changes"]
-  Changes --> PostHooks["Post-edit and post-bash hooks<br/>trace, drift request, handoff, check evidence"]
-  PostHooks --> ArchQueue["Architecture queue<br/>architecture-queue.sh record/reindex<br/>check-architecture-sync.sh"]
-  ArchQueue --> Verify["Run verification<br/>tests plus repo workflow checks"]
-
-  Verify --> Checks["Structured evidence<br/>.ai/harness/checks/latest.json<br/>.ai/harness/runs/*.json"]
-  Checks --> CheckReview["Evaluator review<br/>Waza /check -> review file"]
-  CheckReview --> External["External acceptance advice<br/>or explicit manual override"]
-  External --> DoneGate{"Contract, checks, review, and acceptance pass?"}
-  DoneGate -->|no| Repair["Repair failing evidence or implementation"]
-  Repair --> Implement
-  DoneGate -->|yes| SprintComplete{"Sprint task active?"}
-  SprintComplete -->|yes| MarkSprint["Mark backlog item complete<br/>sprint-backlog.sh complete-task"]
-  SprintComplete -->|no| Closeout["Closeout<br/>scripts/contract-worktree.sh finish"]
-  MarkSprint --> Closeout
-
-  Closeout --> Commit["Commit contract branch"]
-  Commit --> Merge["Fast-forward target branch"]
-  Merge --> Archive["Archive plan/todo and refresh handoff"]
-  Archive --> Cleanup["Cleanup merged worktree<br/>contract-worktree.sh cleanup"]
-  Cleanup --> Done["Reviewable completed task"]
-```
-
-## Long-Running Product Loops
-
-For Greenfield and Brownfield work, front-load discovery and engineering-plan
-judgment in Claude-Fable before asking Codex to loop on execution:
-
-1. In Claude-Fable, use gstack `office-hours` for product discovery or
-   `plan-eng-review` for engineering plan review. The output should be the
-   development documents that lock product intent, architecture, risks, and the
-   evidence contract.
-2. Turn those documents into an upper-layer PRD under `plans/prds/`, then into
-   an ordered sprint backlog under `plans/sprints/` with detailed sub-plans for
-   each execution slice.
-3. In Codex, create a Goal that points at that sprint file. The harness can then
-   project each sprint item through the normal plan -> contract -> worktree ->
-   verification flow.
-
-That handoff keeps long-running loops precise: Claude-Fable owns the broad
-front-loaded judgment, the PRD remains the upper source of truth, the sprint
-backlog is the durable execution queue, and Codex Goal mode resumes against a
-concrete sprint instead of reinterpreting the original chat.
-
-## First 5 Minutes
-
-This is the fastest path for an AI tooling owner evaluating whether the workflow is
-safe to adopt in a real repo. Start with the repo-local contract and keep host
-runtime writes off until the dry-run output looks right. When you want a
-project-only install, use `bootstrap`: it seeds a project-managed CLI under
-`.ai/harness/tools/local-repo-harness/` and does not require the target repo to
-have a root `package.json`.
-
-### 1. Preview the repo-local contract only
+本项目不提供 `repo-harness` 兼容 alias。公开 CLI 是：
 
 ```bash
-bunx --bun local-repo-harness@latest adopt --dry-run \
-  --host-adapter-scope none \
-  --skill-scope none \
-  --external-tool-scope none \
-  --codegraph-mcp-scope none
+local-repo-harness
+local-repo-harness-hook
 ```
 
-This is the lowest-impact inspection path. It should not write user hooks,
-user skills, user MCP config, or brain root state. It only reports the repo
-workflow contract that would be created or refreshed.
+## 与上游 repo-harness 的关系
 
-### 2. Apply the repo-local contract only
+这个包保留上游 repo-harness 的文件化 workflow 模型：
+
+- `plans/` 记录可执行计划和 PRD/Sprint。
+- `tasks/` 记录 contract、review、notes、current status。
+- `.ai/harness/` 记录 policy、runtime、handoff、checks、events。
+- hooks 在会话开始、编辑前后、命令后、停止前提供上下文和防护。
+
+但这个 fork 改变了默认重心：
+
+- 默认文档面向 project-scoped install。
+- 推荐入口是 `bootstrap` 加项目内 `./.ai/harness/bin/local-repo-harness adopt`。
+- 不推荐普通用户从 `local-repo-harness init` 开始。
+- 不推荐为了项目级安装去执行 `bun add -g`、`npx -y local-repo-harness init`
+  或任何 user-level hook/skill/MCP 注册命令。
+
+## 核心模型
+
+安装以后，请把目标项目分成三层理解：
+
+| 层级 | 典型路径 | 作用 |
+| --- | --- | --- |
+| 项目 workflow contract | `plans/`, `tasks/`, `docs/spec.md`, `.ai/harness/workflow-contract.json` | 人和 agent 共同认可的工作流事实 |
+| 项目 managed runtime | `.ai/harness/tools/local-repo-harness/`, `.ai/harness/bin/local-repo-harness`, `.ai/harness/runtime/local-repo-harness/` | 当前项目自己的 local-repo-harness 运行副本 |
+| 项目 host adapter | `.codex/hooks.json`, `.claude/settings.json`, `.codex/config.toml`, `.mcp.json` | 当前项目自己的 Codex/Claude hooks 和 MCP 配置 |
+
+不要把 `.ai/harness/tools/local-repo-harness/` 当成本仓库源码来改。那是下游项目里的安装副本。
+
+## 不要先运行这些命令
+
+如果目标是项目级安装，请不要先运行：
 
 ```bash
+local-repo-harness init
+local-repo-harness update
+npx -y local-repo-harness init
+bun add -g local-repo-harness
+bunx skills add tw93/Waza -g
+```
+
+原因：
+
+- `local-repo-harness init` 是广影响面的机器级 bootstrap 路径，会处理
+  user-level hooks、skills、brain root 和 CodeGraph MCP。
+- `local-repo-harness update` 刷新 user-level CLI/runtime，不负责刷新某个目标项目。
+- `-g` 会把包、skills 或工具安装到用户级位置。
+
+维护者仍可以使用这些机器级路径，但它们不是这个 README 的默认用户路径。
+
+## 前置条件
+
+目标项目需要：
+
+- 已经是 Git 仓库。
+- 能运行 `bash`。
+- 已安装 Bun。
+- 不要求目标项目根目录已有 `package.json`。
+
+不要为了安装 local-repo-harness 而运行 `bun init -y`。它会生成
+`README.md`、`index.ts`、`tsconfig.json` 等应用脚手架文件，容易污染非 JS 项目。
+
+建议先从干净分支开始：
+
+```bash
+cd /path/to/target-project
+git status --short
+git checkout -b chore/adopt-local-repo-harness-project-scope
+```
+
+## Bun minimumReleaseAge
+
+如果你的 Bun 启用了 `minimumReleaseAge`，刚发布的 `local-repo-harness`
+可能会被拦截，报类似：
+
+```text
+all versions blocked by minimum-release-age
+```
+
+可以把包名加入 Bun release-age 白名单：
+
+```toml
+# ~/.bunfig.toml
+[install]
+minimumReleaseAge = 259200
+minimumReleaseAgeExcludes = ["local-repo-harness"]
+```
+
+这是 Bun 的包管理器安全策略，不是 local-repo-harness 的 user-level hooks、
+skills、MCP 或 brain 安装产物。
+
+## 前 5 分钟
+
+### 1. 安全 bootstrap
+
+这一步只把持久 CLI runtime 安装到项目内，并落地最小 workflow contract。它不安装
+项目 hooks、不安装 skills、不启用 CodeGraph。
+
+```bash
+cd /path/to/target-project
 bunx --bun local-repo-harness@latest bootstrap \
   --repo "$PWD" \
   --host-adapter-scope none \
@@ -260,16 +148,56 @@ bunx --bun local-repo-harness@latest bootstrap \
   --no-codegraph
 ```
 
-This installs the file-backed workflow surface without registering Codex or
-Claude adapters and without installing external skills. It also writes
-`.ai/harness/bin/local-repo-harness`, so follow-up repo-local commands can use the
-project-managed shim directly. Existing repos use `local-repo-harness adopt`; new
-projects or modules use `repo-harness-scaffold`.
-
-### 3. Enable project hooks and project skills
+之后统一使用项目内 CLI：
 
 ```bash
-bunx --bun local-repo-harness@latest bootstrap \
+./.ai/harness/bin/local-repo-harness --version
+```
+
+bootstrap 会把当前项目自己的 managed package runtime 放在
+`.ai/harness/tools/local-repo-harness/`，不要把它当成本仓库源码来编辑。
+
+### 2. 最小 dry-run
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt --dry-run \
+  --repo "$PWD" \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
+```
+
+这个命令应该只预览项目内 workflow 文件。它不应该写：
+
+- user hooks
+- user skills
+- user MCP config
+- brain root
+- `~/.repo-harness`
+- `~/.codegraph`
+
+### 3. 选择安装配方
+
+配方 A：只安装 workflow contract。
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
+```
+
+配方 B：项目 hooks 加项目 repo-harness skills。
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -280,489 +208,344 @@ bunx --bun local-repo-harness@latest bootstrap \
   --no-codegraph
 ```
 
-Project Codex skills live under `.agents/skills`; project Claude skills live
-under `.claude/skills`. Project adapters live under `.codex/hooks.json` and
-`.claude/settings.json`, and project runtime lives under `.ai/harness/bin/` plus
-`.ai/harness/runtime/`. The project-managed CLI package lives under
-`.ai/harness/tools/local-repo-harness/`. Codex still requires trusting the
-project hooks file in Codex Settings before hooks run.
-
-Keep `--external-tool-scope none` until you deliberately want project copies of
-Waza/Mermaid. Project Waza/Mermaid installs use the skills CLI without `-g`.
-Keep `--codegraph-mcp-scope none` unless you want project MCP config in
-`.codex/config.toml` and `.mcp.json`. gbrain remains manual or manifest-only in
-project-only mode.
-
-After bootstrap, run refreshes through the project shim:
+配方 C：完整项目级安装，包含外部 skills 和 CodeGraph MCP。
 
 ```bash
-./.ai/harness/bin/local-repo-harness adopt --repo "$PWD" --dry-run
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only
 ```
 
-### 4. Optional CLI install
+配方 C 会：
 
-No Node.js required for the default path: the installer uses Bun as the runtime.
-If Bun is missing, it installs Bun first, then installs the `local-repo-harness` CLI.
+- 写入 `.codex/hooks.json` 和 `.claude/settings.json`。
+- 写入 `.agents/skills/repo-harness` 和 `.claude/skills/repo-harness`。
+- 把 Waza、Mermaid、cross-review skills 写入项目 skill roots。
+- 把 CodeGraph 安装到 `.ai/harness/tools/codegraph/`。
+- 通过 `.ai/harness/bin/codegraph` 暴露项目级 CodeGraph 命令。
+- 写入 `.codex/config.toml` 和 `.mcp.json`。
+- 让 CodeGraph MCP env 包含 `CODEGRAPH_TELEMETRY=0`、`DO_NOT_TRACK=1`、
+  `CODEGRAPH_INSTALL_DIR=.ai/harness/codegraph-runtime` 和 `CODEGRAPH_NO_DAEMON=1`。
+
+如果暂时不需要 CodeGraph，继续使用 `--codegraph-mcp-scope none --no-codegraph`。
+
+## 已有 package.json 的项目
+
+如果目标项目本身已经有根 `package.json`，也可以先把 seed CLI 放进
+`devDependencies`。这条路径必须先检查 package 边界，避免 Bun 上溯污染父目录。
 
 ```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh
+cd /path/to/target-project
+test -f package.json || {
+  echo "ERROR: package.json missing; use the bootstrap recipe instead." >&2
+  exit 1
+}
+bun add -d local-repo-harness@latest
+bun --bun local-repo-harness bootstrap \
+  --repo "$PWD" \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
+```
 
-# Windows (PowerShell)
+如果只是普通项目，不要为了这条路径创建 `package.json`。直接使用前面的
+`bunx --bun local-repo-harness@latest bootstrap`。
+
+## 安装后的目录地图
+
+| 路径 | 作用 |
+| --- | --- |
+| `.ai/harness/workflow-contract.json` | workflow contract 入口 |
+| `.ai/harness/policy.json` | 当前项目的 scope 决策 |
+| `.ai/harness/bin/local-repo-harness` | project-managed CLI shim |
+| `.ai/harness/bin/local-repo-harness-hook` | project-vendored hook entrypoint |
+| `.ai/harness/runtime/local-repo-harness/` | project-vendored hook runtime |
+| `.ai/harness/tools/local-repo-harness/` | project-managed package runtime |
+| `.ai/harness/tools/codegraph/` | project-managed CodeGraph package |
+| `.ai/harness/bin/codegraph` | project CodeGraph shim |
+| `.ai/harness/codegraph-runtime/` | project-scoped CodeGraph install/runtime state |
+| `.codex/hooks.json` | Codex 项目 hooks adapter |
+| `.claude/settings.json` | Claude 项目 hooks adapter |
+| `.agents/skills/` | Codex 项目 skills root |
+| `.claude/skills/` | Claude 项目 skills root |
+| `.codex/config.toml` | Codex 项目 MCP config |
+| `.mcp.json` | Claude 项目 MCP config |
+| `.codegraph/` | CodeGraph 项目索引 |
+| `_ops/` | ignored local operations state |
+
+这些是安装产物或 runtime state，不等同于 `local-repo-harness` 源码仓库。
+
+## 验收：确认没有回退到用户级
+
+如果这些路径原本不存在，安装后可以直接检查：
+
+```bash
+test ! -e "$HOME/.codex/hooks.json"
+test ! -e "$HOME/.codex/config.toml"
+test ! -e "$HOME/.codex/skills"
+test ! -e "$HOME/.claude/settings.json"
+test ! -e "$HOME/.claude.json"
+test ! -e "$HOME/.claude/skills"
+test ! -e "$HOME/.agents/skills"
+test ! -e "$HOME/.repo-harness"
+```
+
+如果这些路径原本就存在，先做安装前后快照：
+
+```bash
+snapshot_repo_harness_user_paths() {
+  for p in \
+    "$HOME/.codex/hooks.json" \
+    "$HOME/.codex/config.toml" \
+    "$HOME/.codex/skills" \
+    "$HOME/.claude/settings.json" \
+    "$HOME/.claude.json" \
+    "$HOME/.claude/skills" \
+    "$HOME/.agents/skills" \
+    "$HOME/.repo-harness" \
+    "$HOME/.codegraph"
+  do
+    if [ -e "$p" ]; then
+      echo "EXISTS $p"
+      find "$p" -type f -print 2>/dev/null | LC_ALL=C sort | while IFS= read -r f; do
+        shasum -a 256 "$f"
+      done
+    else
+      echo "MISSING $p"
+    fi
+  done
+}
+
+snapshot_repo_harness_user_paths > /tmp/repo-harness-user-before.txt
+# 在这里运行 bootstrap 或项目内 adopt
+snapshot_repo_harness_user_paths > /tmp/repo-harness-user-after.txt
+diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
+```
+
+严格项目级安装下，diff 不应该显示 local-repo-harness 管理的 user-level hooks、
+skills、MCP、brain 或 CodeGraph state 写入。
+
+CodeGraph MCP 还应额外确认：
+
+```bash
+rg -n 'swarm-discussion-codex|/path/to/target-project' "$HOME/.codegraph/daemons" 2>/dev/null || true
+```
+
+正常情况下，项目级 MCP 配置带 `CODEGRAPH_NO_DAEMON=1` 后，不应为当前项目创建
+`~/.codegraph/daemons/<id>.json`。
+
+## 验收：确认功能可用
+
+在目标项目运行：
+
+```bash
+./.ai/harness/bin/local-repo-harness status --json
+./.ai/harness/bin/local-repo-harness doctor --json
+./.ai/harness/bin/local-repo-harness security scan --scope project --json
+bash scripts/check-task-workflow.sh --strict
+```
+
+如果启用了外部工具和 CodeGraph：
+
+```bash
+bash scripts/check-agent-tooling.sh --json --host both
+./.ai/harness/bin/local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
+```
+
+期望结果：
+
+- `status` 能看到 repo opt-in 和 project scope 状态。
+- `doctor --json` 以项目级 readiness 为准。
+- `cli-on-path`、`codex-adapter`、`claude-adapter` 在 project intent 下可以是 `na`。
+- `project-codex-adapter` 和 `project-claude-adapter` 是 `ok`。
+- `mixed-scope-adapters` 在没有用户级残留时是 `ok`。
+- `security scan` findings 为 0。
+- CodeGraph 是 `source=local`，`global_fallback_used=false`。
+- Codex/Claude CodeGraph MCP 都指向项目路径。
+
+## Codex Desktop 和项目 hooks
+
+项目级安装只负责写 `.codex/hooks.json`。Codex Desktop 还需要加载并信任该项目 hooks：
+
+- Codex 打开的 workspace 必须是目标项目。
+- 需要在 Codex Desktop 中信任目标项目的 `.codex/hooks.json`。
+- 新开一个 Codex session 后再验证 hooks 是否触发。
+
+不要因为项目 hooks 暂时没执行，就运行 `local-repo-harness init` 去注册
+user-level hooks。那会改变隔离目标。
+
+## 后续刷新
+
+升级 `local-repo-harness` 后，先刷新项目内 managed runtime：
+
+```bash
+cd /path/to/target-project
+bunx --bun local-repo-harness@latest bootstrap \
+  --repo "$PWD" \
+  --host-adapter-scope none \
+  --skill-scope none \
+  --external-tool-scope none \
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
+```
+
+然后按当前选择重跑配方 A、B 或 C。这样可以把“刷新 local-repo-harness 自身”和
+“启用 hooks/skills/CodeGraph”分开检查。
+
+## 常见问题
+
+### dry-run 看起来要写用户级 hooks
+
+检查是否忘了传：
+
+```bash
+--host-adapter-scope none
+```
+
+或：
+
+```bash
+--host-adapter-scope project --runtime project-vendored-bun
+```
+
+### 外部 skills 安装到了用户级
+
+项目级外部 skills 必须走：
+
+```bash
+--external-tool-scope project
+```
+
+如果第三方工具不能项目级安装，local-repo-harness 应该报告失败，而不是回退到
+global install。
+
+### CodeGraph 看起来仍然依赖用户级命令
+
+先确认当前目录就是目标项目根目录，然后执行：
+
+```bash
+./.ai/harness/bin/local-repo-harness tools ensure codegraph --repo "$PWD"
+```
+
+再重跑项目级 adopt：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --codegraph-mcp-scope project \
+  --sync-codegraph
+```
+
+项目 `.codex/config.toml` 应优先使用 `./.ai/harness/bin/codegraph`。
+
+### 项目里为什么有 `_ops/`
+
+`_ops/` 是 ignored local operations state，用于 secrets、真实 env、provider
+state、artifacts、logs 和 scratch files。可提交的运维资料放在 `deploy/`，
+不要让 agent 编辑 `_ops/*`。
+
+## Hook Authority Map
+
+项目级 hooks 的权威边界：
+
+- `.codex/hooks.json` 和 `.claude/settings.json` 是 host adapter。
+- `.ai/harness/bin/local-repo-harness-hook` 是项目 hook entrypoint。
+- `local-repo-harness-hook` 进入 CLI route registry。
+- route registry 再调度 `.ai/hooks/` 或 package 内 hook assets。
+- 计划、合同、review、checks 和 handoff 文件才是最终工作流事实。
+
+更多 hook 操作细节见：
+
+- `docs/reference-configs/hook-operations.md`
+- `Generated vs Self-Hosted Hook Parity`
+
+## 公开命令与技能入口
+
+这些 action command skills 是公开入口：
+
+- `repo-harness-plan`
+- `repo-harness-review`
+- `repo-harness-autoplan`
+- `repo-harness-ship`
+- `repo-harness-init`
+- `repo-harness-scaffold`
+- `repo-harness-migrate`
+- `repo-harness-upgrade`
+- `repo-harness-capability`
+- `repo-harness-architecture`
+- `repo-harness-handoff`
+- `repo-harness-deploy`
+- `repo-harness-repair`
+- `repo-harness-check`
+- `repo-harness-prd`
+- `repo-harness-sprint`
+
+内部步骤 `hooks-init`、`docs-init`、`create-project-dirs` 不是 public CLI
+contract，也就是 not public。
+
+## Verification
+
+维护本仓库时，至少运行：
+
+```bash
+bun test
+bun run check:release
+```
+
+涉及 skill 路由或 command surface 时，使用真实 eval 证据：
+
+```bash
+bun run benchmark:skills --eval route-workflow-check
+```
+
+不要把全 dry-run benchmark 当成 skill-effectiveness authority。
+
+## Maintainer Reference
+
+机器级安装脚本仍保留给维护者和明确需要 user-level runtime 的用户：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/automann/local-repo-harness/main/install.sh | sh
+```
+
+```powershell
 irm https://raw.githubusercontent.com/automann/local-repo-harness/main/install.ps1 | iex
 ```
 
 <details>
-<summary>Already have Bun or Node? Use package managers instead</summary>
+<summary>已经有 Bun 或 Node？包管理器路径仅作为维护者参考</summary>
 
 ```bash
-# Bun
-bun add -g local-repo-harness
-local-repo-harness adopt --dry-run
-
-# Node/npm, with Bun already on PATH because the CLI runs on Bun
-local-repo-harness adopt --dry-run
-```
-
-</details>
-
-### 5. Optional user-level bootstrap
-
-```bash
+bun add -g local-repo-harness@latest
 npx -y local-repo-harness init
 ```
 
-`init` is the broad-impact machine bootstrap path. It installs the current npm
-package as the global CLI, refreshes user skill aliases, writes user-level
-Codex/Claude hook adapters, installs Waza/Mermaid runtime skills into user
-skill roots, persists a brain root under `~/.repo-harness/config.json`, and
-configures user-level CodeGraph MCP. Use it when you intentionally want
-local-repo-harness available across repos on the machine.
+这些是 broad-impact machine bootstrap path，不是项目级安装默认路径。
 
-For an Agent-owned, read-only bootstrap audit, run `npx -y local-repo-harness setup
-check --json` or add `--check-updates` for version advisories. `setup check` is
-not a runtime hook: it does not write user-level files, install updates, or
-register adapters. It emits `agent_actions` with the reason, risk, target files,
-optional command, and verification surface for the Agent to execute deliberately.
-`local-repo-harness init-hook` remains a legacy shortcut for `setup check`.
+</details>
 
-### Install and refresh examples
+模板组装示例：
 
 ```bash
-# First machine bootstrap after installing the CLI: skills, host adapters, Waza, brain, CodeGraph.
-local-repo-harness init
-
-# Refresh user-level CLI/runtime pieces after a package update.
-local-repo-harness update
-
-# Ask for read-only repair guidance without writing files.
-local-repo-harness update --check
-
-# Refresh repo-local workflow files in an adopted repository.
-local-repo-harness adopt --repo /path/to/repo
+bun scripts/assemble-template.ts --plan C --name "MyProject"
 ```
 
-### 6. Prove the workflow
+## 贡献归因
 
-```bash
-bash scripts/check-task-workflow.sh --strict
-bun test
-```
-
-After apply, the repo should have a reviewable file-backed contract rather than
-tool-specific chat setup. Agents should be able to find the stable intent in
-`docs/spec.md`, execution state in `plans/` and `tasks/`, and resume state in
-`.ai/harness/handoff/`.
-
-Only maintainers editing the package need a source checkout:
-
-```bash
-git clone https://github.com/automann/local-repo-harness.git ~/Projects/local-repo-harness
-cd ~/Projects/local-repo-harness
-bun src/cli/index.ts update
-```
-
-Local path model:
-
-- Source repo: `~/Projects/local-repo-harness`
-- Claude skill alias: `~/.claude/skills/repo-harness`
-- Codex discoverable skill alias: `~/.codex/skills/repo-harness`
-
-The `~/Projects/local-repo-harness` repo is the only editable source of truth. Local
-Claude/Codex paths are symlink-backed runtime entrypoints. Only
-`~/.codex/skills/repo-harness` should expose `SKILL.md` and
-`assets/skill-commands/`. The retired `repo-harness-skill` and
-`project-initializer` directories under `~/.codex/skills` and
-`~/.claude/skills` are deleted by `scripts/sync-codex-installed-copies.sh`.
-
-### Minimum prerequisites
-
-- Git working tree
-- `bash`
-- `bun` for follow-up verification and template assembly
-- `jq` is optional for `--dry-run`, but recommended when applying settings merges
-
-### Default project-safe shortcut
-
-For an existing repo, run from the repo root:
-
-```bash
-local-repo-harness adopt --dry-run
-```
-
-Apply only after the dry-run report looks correct:
-
-```bash
-local-repo-harness adopt
-```
-
-For a new project or module, use the branch command `repo-harness-scaffold`. For
-an existing repo, use `local-repo-harness adopt`; it installs or refreshes the harness
-without creating an application stack.
-
-### Success looks like this
-
-The command should end with `=== Migration Report ===` and summarize:
-
-- `Project hooks synced from:` to show where generated hook behavior comes from
-- `Host hook config target:` to show whether no adapter, a project adapter, or a user adapter is selected
-- `Host hook adapters default to user scope:` to remind the user to install user adapters deliberately or opt into project-scoped adapters and trust the matching Codex hooks file
-- `Workflow migration:` to show the repo-local harness surfaces it will create or refresh
-- `Helper runtime:` to show package-dispatched through `local-repo-harness run` with `scripts/*` compatibility wrappers after apply
-- `--- External Tooling ---` to show default gstack/Waza/gbrain routing plus advisory install/update hints
-
-If the dry-run output looks wrong, stop there and inspect
-[`docs/reference-configs/hook-operations.md`](docs/reference-configs/hook-operations.md)
-before applying anything.
-
-## Hook Authority Map
-
-- `.ai/hooks/` is the only shared hook implementation you should edit first.
-- `~/.claude/settings.json` is the user-level Claude adapter that dispatches into opted-in repos.
-- `~/.codex/hooks.json` is the user-level Codex adapter that dispatches into the same runner.
-- Repo-local `.claude/settings.json` and `.codex/hooks.json` are supported project-scoped adapters for repos that should not register user-level hooks.
-- `local-repo-harness adopt` owns repo-local workflow install/refresh/migration; pass `--host-adapter-scope project` for repo-local adapters or `--host-adapter-scope none` to skip adapter writes.
-- `local-repo-harness init` and `local-repo-harness update` own user-level bootstrap/refresh paths and should be treated as broad-impact machine operations.
-- Codex must mark the active hooks file (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`) as trusted in Codex Settings before those hooks run.
-- Debug in this order: active adapter config -> `local-repo-harness-hook` (or fallback `local-repo-harness hook`) -> route registry -> `.ai/hooks/*`.
-- If `local-repo-harness-hook` reports `.ai/hooks` drift, refresh the repo-local copy with `local-repo-harness adopt --repo <root>`.
-
-The installed adapter owns eight managed hook routes. The route tuple
-`event + routeId + matcher` is the stable contract; script names are the current
-implementation under `assets/hooks/` or a repo-pinned `.ai/hooks/` copy.
-
-| Route | Matcher | Scripts | Function |
-| --- | --- | --- | --- |
-| `SessionStart.default` | all sessions | `session-start-context.sh`, `security-sentinel.sh` | Injects prior handoff, sprint status, and read-only config-security findings before work starts. |
-| `PreToolUse.edit` | `Edit|Write` | `worktree-guard.sh`, `pre-edit-guard.sh` | Enforces worktree policy and plan/contract readiness before implementation edits. |
-| `PreToolUse.subagent` | `Task|Agent|SendUserMessage` | `subagent-return-channel-guard.sh` | Keeps delegated work returning through the parent session instead of leaking completion claims. |
-| `PostToolUse.edit` | `Edit|Write` | `post-edit-guard.sh` | Records edit traces, refreshes handoff/task status, and queues architecture drift when controlled files change. |
-| `PostToolUse.bash` | `Bash` | `post-bash.sh` | Observes command results and captures verification evidence without replacing the command runner. |
-| `PostToolUse.always` | all tools | `post-tool-observer.sh` | Provides low-noise always-on trace and runtime observation; stale pinned copies soft-skip with a refresh hint. |
-| `UserPromptSubmit.default` | all prompts | `prompt-guard.sh` | Classifies prompt intent, routes planning/check/hunt hints, and renders host-safe workflow guidance. |
-| `Stop.default` | session stop | `stop-orchestrator.sh` | Finalizes handoff and guards against ending with unresolved draft-plan or completion evidence gaps. |
-
-`SessionStart` resolves hooks central-first, then runs two ordered scripts before
-work begins:
-
-```mermaid
-flowchart LR
-  SessionStart["Claude/Codex SessionStart"] --> Adapter["active adapter<br/>user or project"]
-  Adapter --> Entry["local-repo-harness-hook SessionStart --route default"]
-  Entry --> Source{"hook source"}
-  Source -->|central default| Central["packaged hooks<br/>or ~/.repo-harness/hooks"]
-  Source -->|repo policy pin| Repo["repo .ai/hooks<br/>self-host development"]
-  Central --> Ctx["session-start-context.sh<br/>resume + sprint + handoff context"]
-  Repo --> Ctx
-  Ctx --> Sec["security-sentinel.sh<br/>read-only config scan, fingerprint-gated"]
-  Sec --> SSOut["SessionStart additionalContext<br/>prior-session state + SecurityConfig findings"]
-```
-
-`SessionStart` and `Stop` hooks are advisory for missing repo-local scripts: stale
-repos get a drift warning instead of a startup failure. Required guard routes,
-including edit and prompt gates, still fail closed when their scripts are
-missing.
-
-Prompt guard has one extra internal step:
-
-```mermaid
-flowchart LR
-  Host["Claude/Codex UserPromptSubmit"] --> Adapter["active adapter<br/>user or project"]
-  Adapter --> CLI["local-repo-harness-hook UserPromptSubmit --route default"]
-  CLI --> Route["route registry"]
-  Route --> Shell[".ai/hooks/prompt-guard.sh"]
-  Shell -->|"stdin {prompt}"| Decision["local-repo-harness-hook prompt-guard-decide<br/>TypeScript classifiers + decision table"]
-  Decision -->|"verdict JSON<br/>action + intent facts + derived"| Shell
-  Shell --> RouteHint["Waza route hint<br/>explicit think/planning matched first → /think"]
-  Shell --> HostOutput["host-safe advice, done gate, or capture output"]
-```
-
-The shell layer owns filesystem authority and side effects. TypeScript owns all
-prompt-text classification plus the `intent x plan state` decision table.
-Plan-state blocks render at the PreToolUse edit layer, not here.
-
-## Hook Failure Playbook
-
-When a hook blocks work, start with the structured output in the terminal. The core
-fields are `guard`, `reason`, `fix`, `failure_class`, and `run_id`.
-
-- Failure log: `.ai/harness/failures/latest.jsonl`
-- Trace log: `.claude/.trace.jsonl`
-- Deep guide: [`docs/reference-configs/hook-operations.md`](docs/reference-configs/hook-operations.md)
-
-Most common guards:
-
-- `PlanStatusGuard` (edit layer): an implementation edit was attempted with no active plan, or the plan is not ready to execute; the prompt layer emits the same guard name as advisory guidance
-- `ContractGuard`: approved execution has not yet produced the contract/review/notes scaffold
-- `ContractGuard`: completion was claimed before the task contract passed
-- `WorktreeGuard`: writes were attempted in the primary worktree while linked worktrees are enforced
-
-## Repo Workflow
-
-- Root routing docs: `CLAUDE.md`, `AGENTS.md`
-- Shared hook layer: `.ai/hooks/`
-- Adapter layer: default user-scoped `~/.claude/settings.json`, `~/.codex/hooks.json`; optional project-scoped `.claude/settings.json`, `.codex/hooks.json`
-- Active execution surface: `tasks/`
-- Plan source of truth: `plans/`
-- Durable progress: `tasks/workstreams/`
-- Release history: `docs/CHANGELOG.md`
-
-## Current Release
-
-- npm package: `local-repo-harness@0.5.8`
-- Generated workflow stamp: `local-repo-harness@0.5.8+template@0.5.8`
-- GitHub repository: `automann/local-repo-harness`
-- Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
-
-## Current Model
-
-- Question flow uses **12 grouped decision points** with harness defaults inferred first.
-- Plan menu is tiered:
-  - **Core Plans (A-F)** first.
-  - **Custom Presets (G-K)** only when needed.
-- Skill routing is inspection-first:
-  - `scripts/inspect-project-state.ts`
-  - `scripts/migrate-workflow-docs.ts`
-  - `assets/workflow-contract.v1.json`
-- Runtime mode is configurable with template vars:
-  - `{{RUNTIME_MODE}}`
-  - `{{RUNTIME_PROFILE}}`
-  - `{{RECOVERY_PROFILE}}`
-  - `{{STATE_PROFILE}}`
-- Question-pack source of truth is in:
-  - `assets/initializer-question-pack.v4.json`
-- Generated repos default to the repo-local harness flow:
-  - `docs/spec.md -> plans/ -> tasks/contracts/ -> tasks/reviews/ -> .ai/context/context-map.json -> .ai/harness/*`
-- Generated and self-hosted repos install:
-  - `.ai/harness/workflow-contract.json`
-  - `.ai/harness/policy.json`
-- Generated and migrated repos default `external_tooling` to:
-  - `complex -> gstack`
-  - `simple -> Waza` with Codex-first user runtime copies in `~/.codex/skills`,
-    or project copies in `.agents/skills` when project scope is selected
-  - `knowledge -> gbrain`
-- `local-repo-harness init` bootstraps the Codex/Claude runtime pieces needed for the
-  default workflow:
-  - refreshes `repo-harness` skill aliases
-  - installs global Codex/Claude hook adapters
-  - installs Waza skills (`think`, `hunt`, `check`, `health`) and Mermaid through the skills CLI
-  - persists the brain root in `~/.repo-harness/config.json`
-  - configures CodeGraph MCP for selected host agents
-- Other external tooling stays advisory-only:
-  - `bash scripts/check-agent-tooling.sh --host both --check-updates`
-  - Waza update checks compare upstream `tw93/Waza` `SKILL.md` hashes without running `npx skills check`
-  - no automatic gstack, gbrain MCP, CodeGraph daemon, or provider setup in
-    project-only mode
-- Manual distillation stays repo-local:
-  - repeated corrections -> `tasks/lessons.md`
-  - deep findings and hidden contracts -> topic-scoped `docs/researches/*.md`
-  - sprint verification evidence -> `tasks/reviews/*.review.md`
-  - durable capability progress -> `tasks/workstreams/`
-  - release history -> `docs/CHANGELOG.md`
-
-## Acknowledgements and Workflow Influences
-
-`local-repo-harness` is built around a small set of external skills, repos, and agent
-runtimes that
-proved useful while this project was being designed, debugged, and released.
-They are acknowledged here because they shaped the workflow contract, but they
-are not ordinary bundled product dependencies.
-
-| Tool or repo | Used for | Dependency shape |
-| --- | --- | --- |
-| [Hylarucoder](https://x.com/hylarucoder) / Geju | P1/P2/P3 due-diligence method and Geju practice that shaped the planning, tracing, and decision-rationale discipline in this workflow | Methodology contribution and acknowledgement; not a bundled dependency |
-| Waza by [TW93](https://x.com/HiTw93), including `think`, `hunt`, `check`, and `health` | Daily planning, bug hunts, verification, health checks, and Codex-first skill sync | Installed through the skills CLI into host skill roots |
-| gstack skills and `gbrain` by [Garry Tan](https://x.com/garrytan) | Product discovery, plan review, design review, post-ship documentation hygiene, knowledge sync, handoff retrieval, and long-form repo memory | External operator workflow plus optional external CLI/index; advisory by default |
-| `mermaid` | Human-readable architecture and system-flow diagrams when Mermaid is not enough | Runtime-referenced skill, not vendored into generated repos |
-| CodeGraph (`@colbymchenry/codegraph`) | Symbol-aware navigation, impact tracing, and readiness checks for this self-host repo | Dev dependency in this repo; generated repos can use project MCP/local index when policy opts in |
-| OpenAI Codex | Primary execution agent for repo-local implementation, verification, and GitHub contributor attribution when a commit materially includes Codex-authored work | External agent runtime; attribution is an explicit commit trailer, not hidden hook automation |
-
-### GitHub Contributor Attribution
-
-When Codex materially contributes to a commit, use GitHub's standard co-author
-trailer format at the end of the commit message:
+如果使用 Codex 参与提交，建议逐 commit 显式添加 commit trailer：
 
 ```text
 Co-authored-by: codex <codex@openai.com>
 ```
 
-Keep this opt-in and visible per commit. Do not bake it into downstream
-local-repo-harness commit scripts or hooks unless that repo explicitly adopts the same
-policy.
-
-## Action Command Skills
-
-Source-owned command facades live in `assets/skill-commands/`. They keep host
-skill discovery compatible while the CLI and hooks own execution:
-
-- Planning and review: `repo-harness-plan`, `repo-harness-review`, `repo-harness-autoplan`
-- Product planning layer: `repo-harness-prd` (upper-layer PRDs in `plans/prds/`, evidence-marked unknowns, sprint-consumable sections)
-- Sprint program layer: `repo-harness-sprint` (ordered sprint backlogs in `plans/sprints/`, each row expanded with `$think` before the contract flow)
-- Repo workflow actions: `repo-harness-ship`, `repo-harness-init`, `repo-harness-migrate`, `repo-harness-upgrade`, `repo-harness-capability`, `repo-harness-architecture`, `repo-harness-handoff`, `repo-harness-deploy`, `repo-harness-repair`, `repo-harness-check`
-- Branch project creation command: `repo-harness-scaffold`
-
-`local-repo-harness adopt` is for an existing repo; `repo-harness-scaffold` creates a
-new project or module scaffold as a side command. `hooks-init`, `docs-init`, and
-`create-project-dirs` are internal steps, not public commands.
-
-`repo-harness-scaffold` keeps the A-K plan catalog as the project-type authority
-and adds AI-native app structure through an optional `ai_native_profile` overlay.
-The default profile is `none`, so existing scaffold output remains unchanged.
-When selected, profiles such as `runtime-console`, `product-copilot`, and
-`sidecar-kernel` document the AG-UI event boundary, assistant-ui or CopilotKit
-UI runtime, Bun/Hono gateway, shared contracts, observability, and MCP/HTTP
-sidecar rules without installing model providers or making Python, Go, Rust, or
-A2UI mandatory defaults.
-
-Webapp rendering is a separate overlay. Client-only Vite remains Plan B, while
-React webapps that need public SEO/SSR plus an authenticated workspace should
-use Plan C: one TanStack Start + Vite app deployed as a Cloudflare Worker under
-`apps/web`, with `/` SSR/prerender-capable and `/app` client-only. The scaffold
-does not default to separate `apps/marketing` and `apps/web` frontend deploys.
-
-Use `repo-harness-capability` when the harness already exists and only selected
-capability boundaries should be added. It updates `.ai/context/capabilities.json`,
-syncs the requested local `AGENTS.md` / `CLAUDE.md` contract files, and validates
-the registry without running a full init, migrate, or upgrade pass.
-
-Use `repo-harness-architecture`, `repo-harness-handoff`, and `repo-harness-deploy`
-for focused architecture documentation, rollover, and deploy/ops readiness
-passes. These commands call existing repo-local helpers and keep their scope
-narrow instead of refreshing the full harness.
-
-Codex installed-copy rule: only `~/.codex/skills/repo-harness` exposes the root
-skill and `repo-harness-*` command facades. The retired `repo-harness-skill`
-and `project-initializer` directories under `~/.codex/skills` and
-`~/.claude/skills` are removed during sync.
-
-After cloning or moving this source repo, rebuild the local runtime aliases with:
-
-```bash
-bash scripts/sync-codex-installed-copies.sh
-```
-
-By default, the script keeps local Claude/Codex runtime paths linked back to the
-source repo. Set `AGENTIC_DEV_LINK_INSTALLED_COPIES=0` for copy-based staging,
-and set `CODEX_SKILLS_ROOT` or `CLAUDE_SKILLS_ROOT` to stage under alternate
-runtime roots.
-
-## Maintainer Reference
-
-### Self-check this repository's workflow contract
-
-```bash
-bash scripts/check-task-sync.sh
-bash scripts/check-task-workflow.sh --strict
-bun scripts/inspect-project-state.ts --repo . --format text
-bash scripts/migrate-project-template.sh --repo . --dry-run
-```
-
-### Runtime reference docs
-
-Generic local-repo-harness runtime/reference docs live in the installed package under
-`assets/reference-configs/` and are resolved through the CLI:
-
-```bash
-local-repo-harness docs list
-local-repo-harness docs path harness-overview
-local-repo-harness docs show harness-overview
-```
-
-Generated and migrated repos still keep `docs/reference-configs/*.md`, but
-those files are deterministic pointer stubs. Repo-local workflow state,
-policy, checks, runs, handoff packets, context maps, and helper snapshots stay
-under `.ai/`.
-
-### Explicit template assembly
-
-```bash
-bun scripts/assemble-template.ts --plan C --name "MyProject"
-bun scripts/assemble-template.ts --target agents --plan C --name "MyProject"
-```
-
-### Local benchmark skeleton
-
-```bash
-bun run benchmark:skills --dry-run
-```
-
-Dry-run benchmark output is a wiring smoke only. Release or readiness evidence
-needs a non-dry-run eval with grader output.
-
-### Run one eval across both Claude and Codex
-
-```bash
-bun run benchmark:skills --eval repair-agents-task-sync
-```
-
-## Key Files
-
-- Skill spec: `SKILL.md`
-- Root routing docs: `CLAUDE.md`, `AGENTS.md`
-- Plan mapping: `assets/plan-map.json`
-- Question-pack: `assets/initializer-question-pack.v4.json`
-- Shared hooks: `assets/hooks/`
-- Runtime reference docs: `assets/reference-configs/` via `local-repo-harness docs`
-- Workflow contract: `assets/workflow-contract.v1.json`
-- Source repo reference docs: `docs/reference-configs/*.md`
-- Template assembler: `scripts/assemble-template.ts`
-- Question inference helper: `scripts/initializer-question-pack.ts`
-- State inspector: `scripts/inspect-project-state.ts`
-- Legacy-doc migrator: `scripts/migrate-workflow-docs.ts`
-- External tooling detector: `scripts/check-agent-tooling.sh`
-- Scaffolding scripts:
-  - `scripts/init-project.sh`
-  - `scripts/create-project-dirs.sh`
-
-## Generated vs Self-Hosted Hook Parity
-
-- Downstream hook behavior is defined by generated output from `assets/hooks/` plus
-  `assets/reference-configs/`.
-- This repo dogfoods the same contract, but self-host behavior is not magically in
-  sync with generated repos unless a change explicitly updates both surfaces.
-- Every hook change should say whether it affects `self-host`, `generated`, or `both`.
-
-## Package Manager Defaults
-
-- General default priority: `bun > pnpm > npm`
-- **Plan G/H** (Python-centric) default to **`uv`** as primary package manager.
-
-## Runtime Profiles
-
-- `Plan-only (recommended)` (default)
-- `Plan + Permissionless`
-- `Standard (ask before each action)`
-
-Configured in `assets/initializer-question-pack.v4.json` and consumed by `scripts/initializer-question-pack.ts`.
-
-## Verification
-
-```bash
-bun test
-bash scripts/check-task-sync.sh
-bash scripts/check-task-workflow.sh --strict
-bun scripts/inspect-project-state.ts --repo . --format text
-bash scripts/migrate-project-template.sh --repo . --dry-run
-bash scripts/check-agent-tooling.sh --host both --check-updates
-bun run benchmark:skills --eval route-workflow-check
-```
+这是 explicit commit trailer，也就是说不是 `not hidden hook automation`。

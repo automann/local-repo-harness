@@ -43,15 +43,18 @@ function isAllowedRuntimeReference(file: string, line: string): boolean {
 }
 
 describe("README DX contract", () => {
-  test("front-loads project-safe bootstrap and hook authority guidance", () => {
+  test("front-loads the Chinese project-scoped install path and hook authority guidance", () => {
     const readme = read("README.md");
-    const firstFive = section(readme, "First 5 Minutes");
+    const firstFive = section(readme, "前 5 分钟");
     const hookAuthority = section(readme, "Hook Authority Map");
     const maintainer = section(readme, "Maintainer Reference");
 
-    expect(readme.indexOf("## First 5 Minutes")).toBeLessThan(readme.indexOf("## Current Model"));
-    expect(firstFive.indexOf("bunx --bun local-repo-harness@latest adopt --dry-run")).toBeLessThan(
-      firstFive.indexOf("npx -y local-repo-harness init"),
+    expect(readme).toContain("基于原");
+    expect(readme).toContain("repo-harness@0.5.0");
+    expect(readme).toContain("只想在某一个项目里安装和应用");
+    expect(readme.indexOf("## 前 5 分钟")).toBeLessThan(readme.indexOf("## 公开命令与技能入口"));
+    expect(firstFive.indexOf("bunx --bun local-repo-harness@latest bootstrap")).toBeLessThan(
+      readme.indexOf("## Maintainer Reference"),
     );
     expect(firstFive).toContain("--host-adapter-scope none");
     expect(firstFive).toContain("--skill-scope none");
@@ -59,28 +62,26 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("--host-adapter-scope project");
     expect(firstFive).toContain("--runtime project-vendored-bun");
     expect(firstFive).toContain("--skill-scope project");
-    expect(firstFive).toContain("--codegraph-mcp-scope none");
+    expect(firstFive).toContain("--external-tool-scope project");
+    expect(firstFive).toContain("--codegraph-mcp-scope project");
+    expect(firstFive).toContain("--sync-codegraph");
     expect(firstFive).toContain("user hooks");
     expect(firstFive).toContain("user skills");
     expect(firstFive).toContain("user MCP config");
     expect(firstFive).toContain("brain root");
-    expect(firstFive).toContain("npx -y local-repo-harness init");
-    expect(firstFive).toContain("bunx --bun local-repo-harness@latest adopt --dry-run");
     expect(firstFive).toContain("bunx --bun local-repo-harness@latest bootstrap");
     expect(firstFive).toContain("./.ai/harness/bin/local-repo-harness");
     expect(firstFive).toContain(".ai/harness/tools/local-repo-harness/");
-    expect(firstFive).toContain("broad-impact machine bootstrap path");
-    expect(firstFive.match(/bunx --bun local-repo-harness@latest adopt --dry-run/g)?.length).toBe(1);
+    expect(firstFive).toContain("CODEGRAPH_NO_DAEMON=1");
+    expect(firstFive.match(/bunx --bun local-repo-harness@latest bootstrap/g)?.length).toBe(1);
     expect(firstFive).not.toContain("npx -y local-repo-harness update --dry-run");
     expect(firstFive).not.toContain("npx -y local-repo-harness init --dry-run");
     expect(firstFive).not.toContain("bun scripts/assemble-template.ts");
-    expect(firstFive).toContain("=== Migration Report ===");
-    expect(firstFive).toContain("Project hooks synced from:");
-    expect(firstFive).toContain("Host hook config target:");
-    expect(firstFive).toContain("Host hook adapters default to user scope:");
     expect(hookAuthority).toContain(".ai/hooks/");
     expect(hookAuthority).toContain("local-repo-harness-hook");
     expect(hookAuthority).toContain("route registry");
+    expect(maintainer).toContain("npx -y local-repo-harness init");
+    expect(maintainer).toContain("broad-impact machine bootstrap path");
     expect(maintainer).toContain("bun scripts/assemble-template.ts --plan C --name \"MyProject\"");
   });
 
