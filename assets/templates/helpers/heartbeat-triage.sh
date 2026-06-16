@@ -116,9 +116,25 @@ policy_get() {
 }
 
 helper_runtime_dir="$(policy_get '.harness.helper_runtime_dir' '.ai/harness/scripts')"
+helper_source="$(policy_get '.harness.helper_source' 'package')"
+helper_repo_runtime_required="$(policy_get '.harness.helper_dispatch.repo_runtime_required' '')"
+
+helper_runtime_required() {
+  case "${helper_repo_runtime_required:-}" in
+    true) return 0 ;;
+    false) return 1 ;;
+  esac
+
+  [[ "${helper_source:-package}" != "package" ]]
+}
 
 helper_path() {
   local helper_name="$1"
+
+  if ! helper_runtime_required && [[ -f "scripts/$helper_name" ]]; then
+    printf '%s/%s' "scripts" "$helper_name"
+    return 0
+  fi
 
   if [[ -f "$helper_runtime_dir/$helper_name" ]]; then
     printf '%s/%s' "$helper_runtime_dir" "$helper_name"
@@ -126,6 +142,11 @@ helper_path() {
   fi
 
   if [[ -f "scripts/$helper_name" ]]; then
+    printf '%s/%s' "scripts" "$helper_name"
+    return 0
+  fi
+
+  if ! helper_runtime_required; then
     printf '%s/%s' "scripts" "$helper_name"
     return 0
   fi

@@ -1,9 +1,27 @@
 import { describe, test, expect } from "bun:test";
+import { readdirSync, readFileSync, statSync } from "fs";
+import { join, relative } from "path";
 import {
   assembleTemplate,
   getPartials,
   parseTarget,
 } from "../scripts/assemble-template";
+
+const ROOT = join(import.meta.dir, "..");
+
+function collectMarkdownFiles(dir: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      files.push(...collectMarkdownFiles(fullPath));
+    } else if (entry.endsWith(".md")) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
 
 describe("AGENTS Target Assembly", () => {
   test("should read agents partials in correct order", () => {
@@ -51,9 +69,9 @@ describe("AGENTS Target Assembly", () => {
     expect(output).toContain("new-sprint.sh");
     expect(output).toContain("The main agent decides whether to spawn based on task breadth");
     expect(output).toContain("Do not ask the user for spawn confirmation");
-    expect(output).toContain("bash .ai/harness/scripts/check-task-sync.sh");
-    expect(output).toContain("bash .ai/harness/scripts/check-task-workflow.sh --strict");
-    expect(output).toContain("bash .ai/harness/scripts/verify-contract.sh --contract <active-plan-contract> --strict");
+    expect(output).toContain("bash scripts/check-task-sync.sh");
+    expect(output).toContain("bash scripts/check-task-workflow.sh --strict");
+    expect(output).toContain("bash scripts/verify-contract.sh --contract <active-plan-contract> --strict");
     expect(output).toContain("Which workflow artifacts were updated");
   });
 
@@ -120,5 +138,28 @@ describe("AGENTS Target Assembly", () => {
 
   test("should reject invalid target values", () => {
     expect(() => parseTarget("invalid-target")).toThrow("Invalid target");
+  });
+
+  test("project-scoped docs do not advertise reclaimed helper paths", () => {
+    const files = [
+      join(ROOT, "AGENTS.md"),
+      join(ROOT, "CLAUDE.md"),
+      ...collectMarkdownFiles(join(ROOT, ".claude", "templates")),
+      ...collectMarkdownFiles(join(ROOT, "assets", "partials")),
+      ...collectMarkdownFiles(join(ROOT, "assets", "partials-agents")),
+      ...collectMarkdownFiles(join(ROOT, "assets", "skill-commands")),
+      ...collectMarkdownFiles(join(ROOT, "docs", "reference-configs")),
+      ...collectMarkdownFiles(join(ROOT, "assets", "reference-configs")),
+    ];
+
+    const offenders = files.flatMap((file) => {
+      return readFileSync(file, "utf-8")
+        .split("\n")
+        .map((line, index) => ({ line, index: index + 1 }))
+        .filter(({ line }) => /bash \.ai\/harness\/scripts\//.test(line))
+        .map(({ line, index }) => `${relative(ROOT, file)}:${index}: ${line.trim()}`);
+    });
+
+    expect(offenders).toEqual([]);
   });
 });

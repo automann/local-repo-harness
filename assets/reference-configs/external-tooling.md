@@ -74,7 +74,7 @@ original installations.
 
 ## Detect Safely
 
-Use `bash .ai/harness/scripts/check-agent-tooling.sh` for a read-only tooling report.
+Use `bash scripts/check-agent-tooling.sh` for a read-only tooling report.
 Init and migration reports run the detector without update checks by default;
 set `REPO_HARNESS_CHECK_TOOLING_UPDATES=1` when that advisory pass should
 also compare upstream versions.
@@ -139,15 +139,21 @@ npx -y skills add tw93/Waza -g -a claude-code -s think hunt check health -y
 
 Replace `claude-code` with `codex` when installing for Codex only.
 
-Project-scoped install omits `-g` and runs from the target repo:
+Project-scoped install is owned by `local-repo-harness adopt` so the detector
+can keep Codex skills under `.agents/skills` and Claude Code skills under
+`.claude/skills`:
 
 ```bash
-npx -y skills add tw93/Waza -a claude-code codex -s think hunt check health -y --copy
-npx -y skills add BfdCampos/dotfiles -a claude-code codex -s mermaid -y --copy
+local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project
+bash scripts/check-agent-tooling.sh --json --host both
 ```
 
-After installing or updating through the skills CLI, verify Codex has its own
-runtime copy:
+In JSON reports, project-scoped Waza should show `effective_scope: "project"`,
+project paths such as `.agents/skills` and `.claude/skills`, and
+`stage_command: "not-applicable-project-scope"`. The legacy user-scope staging
+commands remain under `user_scope_commands` only as reference material.
+
+For user-scoped installs or upgrades, verify Codex has its own runtime copy:
 
 ```bash
 for d in think hunt check health; do
@@ -305,6 +311,13 @@ for f in anti-patterns.md chinese.md durable-context.md english.md; do
 done
 ```
 
+For project-scoped Waza upgrades, rerun the project refresh instead:
+
+```bash
+local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project
+bash scripts/check-agent-tooling.sh --json --host both
+```
+
 ### gbrain
 
 ```bash
@@ -370,9 +383,9 @@ After that, PostEdit hooks sync only that source file. Manual sync and drift
 checks are also available:
 
 ```bash
-bash .ai/harness/scripts/check-brain-manifest.sh
-bash .ai/harness/scripts/sync-brain-docs.sh --all
-bash .ai/harness/scripts/sync-brain-docs.sh --check
+bash scripts/check-brain-manifest.sh
+bash scripts/sync-brain-docs.sh --all
+bash scripts/sync-brain-docs.sh --check
 ```
 
 ## Why gbrain MCP Stays Off by Default

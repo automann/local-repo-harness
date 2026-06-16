@@ -16,7 +16,7 @@ Use this command to generate an upper-layer PRD under `plans/prds/`. The PRD is 
 4. Write a new `plans/prds/<YYYYMMDD>-<HHMM>-<slug>.prd.md`. Fill every core section; include optional sections only when tier or user request requires them. Keep section headings in English and write body content in the user's language.
 5. Use evidence rules: do not invent competitor facts, API behavior, platform limits, model capabilities, package sizes, or current market facts. Mark unverifiable details as `[UNKNOWN]` or `[UNVERIFIED]`.
 6. Inline response should include only the AI Quick-Read Card and the PRD file path, not the full document.
-7. Verify with `bash .ai/harness/scripts/check-task-workflow.sh --strict` when the helper exists; in this self-host source repo, `bash scripts/check-task-workflow.sh --strict` is also valid. If verification fails, stop and fix the PRD instead of bypassing the check.
+7. Verify with `bash scripts/check-task-workflow.sh --strict` when the helper exists; in this self-host source repo, `bash scripts/check-task-workflow.sh --strict` is also valid. If verification fails, stop and fix the PRD instead of bypassing the check.
 8. Suggest `repo-harness-sprint plan from-prd <prd-file>` only after the PRD exists and the user wants an ordered Sprint backlog.
 
 ## Failure Modes

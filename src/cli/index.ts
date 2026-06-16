@@ -19,7 +19,7 @@ import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
 import { buildDocsCommand } from './commands/docs';
 import { buildRunCommand } from './commands/run';
-import { formatSecurityScan, runSecurityScan } from './commands/security';
+import { formatSecurityScan, runSecurityScan, SECURITY_SCAN_SCOPES, type SecurityScanScope } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runBootstrap } from './commands/bootstrap';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
@@ -616,9 +616,15 @@ export function buildProgram(): Command {
     .command('scan')
     .description('Scan Claude/Codex hook configs and VS Code folder-open tasks')
     .option('--json', 'Output JSON instead of human-readable text')
+    .option('--scope <scope>', `Scan scope: ${SECURITY_SCAN_SCOPES.join('|')}`, 'all')
     .option('--strict', 'Exit non-zero when high-risk or failed findings are present')
-    .action((rawOpts: { json?: boolean; strict?: boolean }) => {
-      const report = runSecurityScan();
+    .action((rawOpts: { json?: boolean; scope?: string; strict?: boolean }) => {
+      const scope = rawOpts.scope ?? 'all';
+      if (!SECURITY_SCAN_SCOPES.includes(scope as SecurityScanScope)) {
+        console.error(`local-repo-harness security scan: invalid --scope "${scope}" (expected: ${SECURITY_SCAN_SCOPES.join(', ')})`);
+        process.exit(2);
+      }
+      const report = runSecurityScan({ scope: scope as SecurityScanScope });
       console.log(formatSecurityScan(report, rawOpts.json === true));
       const strictFailure = report.findings.some((finding) => finding.severity === 'high' || finding.severity === 'fail');
       process.exit(rawOpts.strict === true && strictFailure ? 1 : 0);

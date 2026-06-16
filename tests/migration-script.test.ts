@@ -449,6 +449,16 @@ describe("Migration script contract", () => {
       expect(policy.external_tooling.readiness_gate).toBe("local-repo-harness run check-agent-tooling --host codex --strict-readiness");
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.sync_mode).toBe("stage-upstream-then-copy-to-codex");
+      expect(policy.external_tooling.waza.project_paths).toEqual({
+        codex: ".agents/skills",
+        claude: ".claude/skills",
+      });
+      expect(policy.external_tooling.waza.user_reference_paths).toEqual({
+        codex: "~/.codex/skills",
+        claude: "~/.claude/skills",
+        staging: "~/.agents/skills",
+        staging_rules: "~/.agents/rules",
+      });
       expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(policy.external_tooling.codex_automation_profile.mode).toBe("codex-runtime-reference");
       expect(policy.external_tooling.codex_automation_profile.routes.architecture_diagram).toBe("mermaid");
@@ -513,6 +523,14 @@ describe("Migration script contract", () => {
       expect(policy.harness.helper_runtime_dir).toBe(".ai/harness/scripts");
       expect(policy.harness.helper_compat_dir).toBe("scripts");
       expect(policy.harness.helper_source).toBe("package");
+      expect(policy.harness.helper_dispatch).toEqual({
+        strategy: "package-runner",
+        command_template: "local-repo-harness run <helper>",
+        project_cli: ".ai/harness/bin/local-repo-harness",
+        wrapper_dir: "scripts",
+        repo_runtime_dir: ".ai/harness/scripts",
+        repo_runtime_required: false,
+      });
       expect(policy.sprints.helper_script).toBe("scripts/sprint-backlog.sh");
       expect(policy.upgrade.cleanup.remove_only_ownership).toBe("known_generated");
       expect(policy.upgrade.action_classes.preserve).toContain("user-authored hooks");

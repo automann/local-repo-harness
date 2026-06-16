@@ -812,7 +812,14 @@ ARCHITECTURE_INDEX_EOF
     "runs_dir": ".ai/harness/runs",
     "helper_runtime_dir": "scripts",
     "helper_compat_dir": "scripts",
-    "helper_source": "compat-bootstrap"
+    "helper_source": "compat-bootstrap",
+    "helper_dispatch": {
+      "strategy": "compat-bootstrap",
+      "command_template": "bash scripts/<helper>.sh",
+      "wrapper_dir": "scripts",
+      "repo_runtime_dir": "scripts",
+      "repo_runtime_required": false
+    }
   },
   "architecture": {
     "index_file": "docs/architecture/index.md",
@@ -984,7 +991,19 @@ ARCHITECTURE_INDEX_EOF
       "managed_skills": ["think", "hunt", "check", "health"],
       "primary_host": "codex",
       "codex_primary_path": "~/.codex/skills",
+      "codex_project_path": ".agents/skills",
+      "claude_project_path": ".claude/skills",
+      "project_paths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      },
       "staging_cache_path": "~/.agents/skills",
+      "user_reference_paths": {
+        "codex": "~/.codex/skills",
+        "claude": "~/.claude/skills",
+        "staging": "~/.agents/skills",
+        "staging_rules": "~/.agents/rules"
+      },
       "sync_mode": "stage-upstream-then-copy-to-codex",
       "host_drift_policy": "report-per-host-version-staging-and-upstream-drift"
     },

@@ -13,9 +13,10 @@ Authoritative split:
 
 - `assets/hooks/`: installable shared hook source.
 - `.ai/hooks/`: self-host runtime hook implementation.
-- `.ai/harness/scripts/`: installed workflow helper runtime for generated and
-  downstream repos. This is not a hook route implementation surface; the
-  self-host repo keeps source helpers under root `scripts/`.
+- `scripts/`: compatibility wrapper command surface for generated and
+  downstream repos in package-dispatched mode. This is not a hook route
+  implementation surface; repo-pinned helper runtime may still live under
+  `.ai/harness/scripts/`.
 - `src/cli/installer/targets/*`: scope-aware adapter writers for default user-scoped `~/.claude/settings.json` / `~/.codex/hooks.json` and explicit project-scoped `.claude/settings.json` / `.codex/hooks.json`.
 - `src/cli/hook/*`: public route registry and compatibility runtime bridge.
 - `src/cli/hook-entry.ts`: minimal hook-only entrypoint that checks repo opt-in and dispatches ordered `.ai/hooks/*` scripts without loading the full CLI.
@@ -247,9 +248,10 @@ non-hook command modules.
 - The PRD/Sprint catalog split does not add a hook adapter route. SessionStart
   may project the active Sprint pointer from `plans/sprints/*.sprint.md`, but
   Sprint expansion and plan capture remain workflow-helper behavior.
-- Generated and downstream repos install repo-harness workflow helpers under
-  `.ai/harness/scripts/` to avoid colliding with app-owned root `scripts/`.
-  Hook route scripts remain under `.ai/hooks/`.
+- Generated and downstream repos use root `scripts/` wrappers that dispatch
+  through `local-repo-harness run <helper>` in package mode; repo-pinned helper
+  runtime may still live under `.ai/harness/scripts/`. Hook route scripts remain
+  under `.ai/hooks/`.
 - The self-host source repo keeps root `scripts/` as the product source for
   helper implementations. Migration cleanup preserves those source helpers and
   only removes downstream root helpers when repo-harness ownership is

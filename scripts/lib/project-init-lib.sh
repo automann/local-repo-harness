@@ -174,7 +174,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Run snapshots: `.ai/harness/runs/`
 - Scope authority: `tasks/contracts/{{ARTIFACT_STEM}}.contract.md` `allowed_paths`
 - Concurrency rule: `.ai/harness/active-plan` selects the active plan for this worktree when present; `.ai/harness/active-worktree` records the owning worktree; `.claude/.active-plan` is a legacy fallback during transition. If another worktree already owns active work, open or switch to the matching worktree instead of serializing unrelated plans.
-- Execution isolation: approved contract-level work projects through `.ai/harness/scripts/plan-to-todo.sh --plan {{PLAN_FILE}}` and may start `.ai/harness/scripts/contract-worktree.sh start --plan {{PLAN_FILE}}`.
+- Execution isolation: approved contract-level work projects through `scripts/plan-to-todo.sh --plan {{PLAN_FILE}}` and may start `scripts/contract-worktree.sh start --plan {{PLAN_FILE}}`.
 
 ## Approach
 ### Strategy
@@ -199,7 +199,7 @@ Complete this inventory before implementation. If any line is unknown, keep the 
 - Review file: `tasks/reviews/{{ARTIFACT_STEM}}.review.md`
 - Implementation notes file: `tasks/notes/{{ARTIFACT_STEM}}.notes.md`
 - Template: `.claude/templates/contract.template.md`
-- Verification command: `bash .ai/harness/scripts/verify-contract.sh --contract tasks/contracts/{{ARTIFACT_STEM}}.contract.md --strict`
+- Verification command: `bash scripts/verify-contract.sh --contract tasks/contracts/{{ARTIFACT_STEM}}.contract.md --strict`
 - Active plan rule: `.ai/harness/active-plan` is authoritative for this worktree when present; `.ai/harness/active-worktree` records the owning worktree; `.claude/.active-plan` is a legacy fallback during transition. Do not infer active execution from the latest non-archived plan.
 
 ## Handoff
@@ -1335,21 +1335,31 @@ pi_resolve_external_tooling_detector() {
   local repo_dir="$1"
   local fallback_script="${2:-}"
   local repo_detector="$repo_dir/.ai/harness/scripts/check-agent-tooling.sh"
-  local legacy_repo_detector="$repo_dir/scripts/check-agent-tooling.sh"
+  local wrapper_detector="$repo_dir/scripts/check-agent-tooling.sh"
 
   if [[ -n "$fallback_script" && -f "$fallback_script" ]]; then
     printf '%s' "$fallback_script"
     return 0
   fi
 
-  if [[ -f "$repo_detector" ]]; then
-    printf '%s' "$repo_detector"
-    return 0
-  fi
-
-  if [[ -f "$legacy_repo_detector" ]]; then
-    printf '%s' "$legacy_repo_detector"
-    return 0
+  if pi_repo_pins_helper_source "$repo_dir"; then
+    if [[ -f "$repo_detector" ]]; then
+      printf '%s' "$repo_detector"
+      return 0
+    fi
+    if [[ -f "$wrapper_detector" ]]; then
+      printf '%s' "$wrapper_detector"
+      return 0
+    fi
+  else
+    if [[ -f "$wrapper_detector" ]]; then
+      printf '%s' "$wrapper_detector"
+      return 0
+    fi
+    if [[ -f "$repo_detector" ]]; then
+      printf '%s' "$repo_detector"
+      return 0
+    fi
   fi
 
   return 1
@@ -1614,13 +1624,25 @@ pi_legacy_context_block_candidates() {
 pi_context_block_candidates() {
   local target_dir="$1"
   local registry_file
+  local resolver_output
   local selector
 
   registry_file="$(pi_capability_registry_file "$target_dir")"
   if [[ -f "$registry_file" ]]; then
+    if command -v bun >/dev/null 2>&1 && [[ -f "$target_dir/scripts/capability-resolver.ts" ]]; then
+      resolver_output="$(cd "$target_dir" && bun scripts/capability-resolver.ts list --format prefixes 2>/dev/null || true)"
+      if [[ -n "$resolver_output" ]]; then
+        printf '%s\n' "$resolver_output"
+        return 0
+      fi
+    fi
+
     if command -v bun >/dev/null 2>&1 && [[ -f "$target_dir/.ai/harness/scripts/capability-resolver.ts" ]]; then
-      (cd "$target_dir" && bun .ai/harness/scripts/capability-resolver.ts list --format prefixes 2>/dev/null || true)
-      return 0
+      resolver_output="$(cd "$target_dir" && bun .ai/harness/scripts/capability-resolver.ts list --format prefixes 2>/dev/null || true)"
+      if [[ -n "$resolver_output" ]]; then
+        printf '%s\n' "$resolver_output"
+        return 0
+      fi
     fi
 
     if declare -F rh_run_js_source >/dev/null 2>&1; then
@@ -1970,6 +1992,14 @@ pi_write_harness_policy() {
     "helper_runtime_dir": ".ai/harness/scripts",
     "helper_compat_dir": "scripts",
     "helper_source": "package",
+    "helper_dispatch": {
+      "strategy": "package-runner",
+      "command_template": "local-repo-harness run <helper>",
+      "project_cli": ".ai/harness/bin/local-repo-harness",
+      "wrapper_dir": "scripts",
+      "repo_runtime_dir": ".ai/harness/scripts",
+      "repo_runtime_required": false
+    },
     "helper_package_dir": "assets/templates/helpers"
   },
   "architecture": {
@@ -1987,7 +2017,7 @@ pi_write_harness_policy() {
     "pending_card_scope": "capability",
     "pending_block_begin": "<!-- BEGIN ARCHITECTURE PENDING REQUESTS -->",
     "pending_block_end": "<!-- END ARCHITECTURE PENDING REQUESTS -->",
-    "queue_script": ".ai/harness/scripts/architecture-queue.sh",
+    "queue_script": "scripts/architecture-queue.sh",
     "contract_block_begin": "<!-- BEGIN ARCHITECTURE CONTRACT -->",
     "contract_block_end": "<!-- END ARCHITECTURE CONTRACT -->",
     "rule": "hooks record architecture queue cards and sync controlled local context blocks; agents author semantic snapshots and diagrams"
@@ -2143,7 +2173,17 @@ pi_write_harness_policy() {
       "codex_primary_path": "~/.codex/skills",
       "codex_project_path": ".agents/skills",
       "claude_project_path": ".claude/skills",
+      "project_paths": {
+        "codex": ".agents/skills",
+        "claude": ".claude/skills"
+      },
       "staging_cache_path": "~/.agents/skills",
+      "user_reference_paths": {
+        "codex": "~/.codex/skills",
+        "claude": "~/.claude/skills",
+        "staging": "~/.agents/skills",
+        "staging_rules": "~/.agents/rules"
+      },
       "sync_mode": "stage-upstream-then-copy-to-codex",
       "host_drift_policy": "report-per-host-version-staging-and-upstream-drift",
       "project_install": "skills-cli-without-global-flag"
@@ -2607,10 +2647,10 @@ CURRENT_STATUS_EOF
 
 ## Architecture Drift Flow
 
-- `.ai/harness/scripts/architecture-queue.sh` records architecture-sensitive edits as requests.
-- `.ai/harness/scripts/archive-architecture-request.sh` archives handled requests after an agent records the resolution status and linked artifacts.
-- `.ai/harness/scripts/context-contract-sync.sh` keeps only the controlled architecture block in functional-block `AGENTS.md` and `CLAUDE.md` files aligned.
-- `.ai/harness/scripts/workstream-sync.sh` keeps durable multi-session progress under `tasks/workstreams/<domain>/<capability>/` and projects only pointers into local contracts.
+- `scripts/architecture-queue.sh` records architecture-sensitive edits as requests.
+- `scripts/archive-architecture-request.sh` archives handled requests after an agent records the resolution status and linked artifacts.
+- `scripts/context-contract-sync.sh` keeps only the controlled architecture block in functional-block `AGENTS.md` and `CLAUDE.md` files aligned.
+- `scripts/workstream-sync.sh` keeps durable multi-session progress under `tasks/workstreams/<domain>/<capability>/` and projects only pointers into local contracts.
 - Semantic architecture diagrams live as Mermaid fenced blocks in the relevant module or snapshot Markdown.
 - Human-readable architecture diagrams are optional `mermaid` HTML files in `docs/architecture/diagrams/` and should link back to the Markdown semantic source.
 

@@ -220,7 +220,7 @@ cd /path/to/target-project
 - `tasks/`
 - `.ai/harness/workflow-contract.json`
 - `.ai/harness/policy.json`
-- `.ai/harness/scripts/`
+- `.ai/harness/scripts/` 目录标记；默认 package mode 不要求这里存在 helper 脚本
 
 不会写项目 hooks，也不会安装 repo-harness skills。
 
@@ -368,9 +368,18 @@ diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
 ```bash
 ./.ai/harness/bin/local-repo-harness status --json
 ./.ai/harness/bin/local-repo-harness doctor --json
-./.ai/harness/bin/local-repo-harness security scan --json
+./.ai/harness/bin/local-repo-harness security scan --scope project --json
 bash scripts/check-task-workflow.sh --strict
 ```
+
+默认项目级 package mode 下，`.ai/harness/scripts/` 可能只包含 `.gitkeep`。
+这是正常状态：人工检查命令使用 `bash scripts/<helper>.sh ...`，直接调用
+项目内 CLI 时使用 `./.ai/harness/bin/local-repo-harness run <helper> ...`。
+对应 policy 语义是 `harness.helper_source=package` 且
+`harness.helper_dispatch.repo_runtime_required=false`，表示 helper 由项目内
+CLI 从 package assets 分发执行；只有 `helper_source=repo` 或
+`repo_runtime_required=true` 时，才要求 `.ai/harness/scripts/*` 存在真实 helper
+脚本。
 
 如果启用了外部工具和 CodeGraph，再运行：
 
@@ -385,6 +394,11 @@ bash scripts/check-agent-tooling.sh --json --host both
 - `doctor` 不要求 user-level hooks 才能通过项目级安装。
 - `security scan` 不报告项目 hooks adapter 指向未知脚本。
 - `check-task-workflow.sh --strict` 通过。
+- `check-agent-tooling.sh` 中 Waza 的 `effective_scope` 为 `project`，主
+  `install_command`/`sync_command` 是
+  `local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project`。
+  用户级 `~/.agents -> ~/.codex` 同步命令只应出现在
+  `user_scope_commands` 参考字段里，不能作为 project-scope 主建议。
 - CodeGraph 使用项目本地 MCP config 和项目 runtime env。
 
 ## 后续刷新
@@ -455,6 +469,9 @@ bun --bun local-repo-harness adopt \
 ```
 
 并且 skills CLI 命令不应该带 `-g`。如果第三方工具不能项目级安装，local-repo-harness 应该报告失败，而不是回退到 global install。
+如果 `check-agent-tooling.sh` 已经检测到 `.agents/skills` 和 `.claude/skills`
+下的 project skills，却仍把 `~/.agents/skills` 或 `rsync ~/.agents -> ~/.codex`
+打印成主安装/同步路径，那是诊断输出错误，应先修复 local-repo-harness，而不是手工执行这些 user-level 命令。
 
 ### CodeGraph 仍然依赖用户级命令
 

@@ -65,6 +65,13 @@ export interface RuntimeReclaimResult {
       hook_source: 'central' | 'repo';
       helper_source: 'package' | 'repo';
     };
+    helper_dispatch: {
+      strategy: 'package-runner' | 'repo-runtime';
+      command_template: string;
+      wrapper_dir: string;
+      repo_runtime_dir: string;
+      repo_runtime_required: boolean;
+    };
     files: RuntimeReclaimFile[];
     blocked: string[];
     requires_user_review: RuntimeReclaimFile[];
@@ -388,6 +395,21 @@ function buildPlan(opts: RuntimeReclaimOptions, repo: string): RuntimeReclaimRes
         hook_source: hookSourceRepo ? 'repo' : 'central',
         helper_source: helperSourceRepo ? 'repo' : 'package',
       },
+      helper_dispatch: helperSourceRepo
+        ? {
+            strategy: 'repo-runtime',
+            command_template: 'bash .ai/harness/scripts/<helper>.sh',
+            wrapper_dir: 'scripts',
+            repo_runtime_dir: '.ai/harness/scripts',
+            repo_runtime_required: true,
+          }
+        : {
+            strategy: 'package-runner',
+            command_template: 'local-repo-harness run <helper>',
+            wrapper_dir: 'scripts',
+            repo_runtime_dir: '.ai/harness/scripts',
+            repo_runtime_required: false,
+          },
       files,
       blocked: [],
       requires_user_review: requiresReview,

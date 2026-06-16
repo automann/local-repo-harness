@@ -474,6 +474,20 @@ function summarizeWazaStatus(hostStatuses) {
   return "missing";
 }
 
+function summarizeWazaEffectiveScope(hostStatuses) {
+  const scopes = Object.values(hostStatuses).map((entry) => entry.scope);
+  if (scopes.some((scope) => scope === "project-partial")) return "project-partial";
+  if (!scopes.some((scope) => String(scope).startsWith("project"))) return "user";
+  if (scopes.every((scope) => scope === "project")) return "project";
+  return "mixed";
+}
+
+function selectedHostPathMap(hostStatuses, key) {
+  return Object.fromEntries(
+    SELECTED_HOSTS.map((host) => [host, hostStatuses[host]?.[key] || null])
+  );
+}
+
 function fetchWazaUpstreamSkills() {
   if (!checkUpdates) {
     return {
@@ -809,14 +823,19 @@ function detectWaza() {
         : "Local Waza SKILL.md and shared rule files match upstream GitHub raw content.";
 
   const status = summarizeWazaStatus(hostStatuses);
+  const effectiveScope = summarizeWazaEffectiveScope(hostStatuses);
   const hasProjectScope = Object.values(hostStatuses).some((entry) => String(entry.scope).startsWith("project"));
-  const installCommand = hasProjectScope
-    ? "local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project"
-    : `npx -y skills add tw93/Waza -g -a ${
+  const projectCommandMode = hasProjectScope || effectiveScope === "mixed";
+  const projectRefreshCommand = "local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project";
+  const userInstallCommand = `npx -y skills add tw93/Waza -g -a ${
     hostMode === "both" ? "claude-code codex" : hostMode === "claude" ? "claude-code" : "codex"
   } -s think hunt check health -y`;
   const rulesList = WAZA_SHARED_RULES.join(" ");
-  const syncCommand = `for d in ${WAZA_MANAGED_SKILLS.join(" ")}; do rsync -a --delete ~/.agents/skills/$d/ ~/.codex/skills/$d/; done; mkdir -p ~/.codex/rules; for f in ${rulesList}; do cp ~/.agents/rules/$f ~/.codex/rules/$f; done`;
+  const userStageCommand = "npx -y skills update";
+  const userSyncCommand = `for d in ${WAZA_MANAGED_SKILLS.join(" ")}; do rsync -a --delete ~/.agents/skills/$d/ ~/.codex/skills/$d/; done; mkdir -p ~/.codex/rules; for f in ${rulesList}; do cp ~/.agents/rules/$f ~/.codex/rules/$f; done`;
+  const userVerifyCommand = `for d in ${WAZA_MANAGED_SKILLS.join(" ")}; do diff -qr ~/.agents/skills/$d ~/.codex/skills/$d; done; for f in ${rulesList}; do cmp -s ~/.agents/rules/$f ~/.codex/rules/$f; done`;
+  const userUpgradeCommand = `${userStageCommand} && ${userSyncCommand}`;
+  const projectVerifyCommand = `bash scripts/check-agent-tooling.sh --json --host ${hostMode}`;
 
   return {
     name: "waza",
@@ -833,6 +852,10 @@ function detectWaza() {
     shared_rules: WAZA_SHARED_RULES,
     primary_host: "codex",
     codex_primary_path: path.join(HOME, ".codex", "skills"),
+    project_paths: {
+      codex: ".agents/skills",
+      claude: ".claude/skills",
+    },
     staging_cache_path: WAZA_STAGING_DIR,
     staging_rules_path: WAZA_STAGING_RULES_DIR,
     sync_mode: "codex-first-copy-from-staging",
@@ -844,13 +867,29 @@ function detectWaza() {
     upstream_skills: upstream.skills,
     upstream_rules: upstream.rules,
     hosts: hostStatuses,
+    effective_scope: effectiveScope,
+    effective_paths: selectedHostPathMap(hostStatuses, "path"),
+    project_refresh_command: projectRefreshCommand,
+    user_reference_paths: {
+      codex: path.join(HOME, ".codex", "skills"),
+      claude: path.join(HOME, ".claude", "skills"),
+      staging: WAZA_STAGING_DIR,
+      staging_rules: WAZA_STAGING_RULES_DIR,
+    },
+    user_scope_commands: {
+      install: userInstallCommand,
+      stage: userStageCommand,
+      sync: userSyncCommand,
+      verify: userVerifyCommand,
+      upgrade: userUpgradeCommand,
+    },
     update_status: updateStatus,
     update_reason: updateReason,
-    install_command: installCommand,
-    stage_command: "npx -y skills update",
-    sync_command: syncCommand,
-    verify_command: `for d in ${WAZA_MANAGED_SKILLS.join(" ")}; do diff -qr ~/.agents/skills/$d ~/.codex/skills/$d; done; for f in ${rulesList}; do cmp -s ~/.agents/rules/$f ~/.codex/rules/$f; done`,
-    upgrade_command: `npx -y skills update && ${syncCommand}`,
+    install_command: projectCommandMode ? projectRefreshCommand : userInstallCommand,
+    stage_command: projectCommandMode ? "not-applicable-project-scope" : userStageCommand,
+    sync_command: projectCommandMode ? projectRefreshCommand : userSyncCommand,
+    verify_command: projectCommandMode ? projectVerifyCommand : userVerifyCommand,
+    upgrade_command: projectCommandMode ? projectRefreshCommand : userUpgradeCommand,
     impact: {
       complex_tasks: "unaffected",
       simple_tasks: status === "present" ? "full" : status === "partial" ? "degraded" : "missing",
@@ -1452,11 +1491,21 @@ function printText(result) {
   console.log("");
 
   const waza = result.tools.waza;
+  const wazaProjectCommandMode = waza.effective_scope === "project" || waza.effective_scope === "project-partial" || waza.effective_scope === "mixed";
   console.log(`Waza [${waza.status}]`);
-  console.log(`  - Source lock: ${waza.source_lock_file || "not found"}`);
-  console.log(`  - Primary: ${waza.primary_host} (${waza.codex_primary_path})`);
-  console.log(`  - Staging: ${waza.staging_cache_path}`);
-  console.log(`  - Skills CLI: ${waza.skills_cli_status}`);
+  console.log(`  - Effective scope: ${waza.effective_scope}`);
+  if (wazaProjectCommandMode) {
+    const projectPathBits = Object.entries(waza.effective_paths)
+      .map(([host, hostPath]) => `${host}=${hostPath}`)
+      .join(", ");
+    console.log(`  - Project paths: ${projectPathBits}`);
+    console.log("  - User staging reference: not used for project-scope readiness");
+  } else {
+    console.log(`  - Source lock: ${waza.source_lock_file || "not found"}`);
+    console.log(`  - Primary: ${waza.primary_host} (${waza.codex_primary_path})`);
+    console.log(`  - Staging: ${waza.staging_cache_path}`);
+    console.log(`  - Skills CLI: ${waza.skills_cli_status}`);
+  }
   for (const host of SELECTED_HOSTS) {
     const entry = waza.hosts[host];
     const versionBits = Object.entries(entry.versions)
@@ -1489,8 +1538,12 @@ function printText(result) {
   console.log(`  - Updates: ${waza.update_status} (${waza.update_reason})`);
   console.log(`  - Impact: simple=${waza.impact.simple_tasks}`);
   console.log(`  - Install: ${waza.install_command}`);
-  console.log(`  - Stage: ${waza.stage_command}`);
-  console.log(`  - Sync Codex: ${waza.sync_command}`);
+  if (wazaProjectCommandMode) {
+    console.log(`  - Project refresh: ${waza.project_refresh_command}`);
+  } else {
+    console.log(`  - Stage: ${waza.stage_command}`);
+    console.log(`  - Sync Codex: ${waza.sync_command}`);
+  }
   console.log(`  - Verify: ${waza.verify_command}`);
   console.log("");
 

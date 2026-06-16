@@ -268,6 +268,14 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.harness.helper_source).toBe("package");
       expect(policy.harness.helper_runtime_dir).toBe(".ai/harness/scripts");
       expect(policy.harness.helper_compat_dir).toBe("scripts");
+      expect(policy.harness.helper_dispatch).toEqual({
+        strategy: "package-runner",
+        command_template: "local-repo-harness run <helper>",
+        project_cli: ".ai/harness/bin/local-repo-harness",
+        wrapper_dir: "scripts",
+        repo_runtime_dir: ".ai/harness/scripts",
+        repo_runtime_required: false,
+      });
       expect(policy.sprints.helper_script).toBe("scripts/sprint-backlog.sh");
       expect(policy.external_tooling.routing).toEqual({
         complex: "gstack",
@@ -280,6 +288,16 @@ describe("create-project-dirs runtime smoke", () => {
       expect(policy.external_tooling.waza.primary_host).toBe("codex");
       expect(policy.external_tooling.waza.managed_skills).toEqual(["think", "hunt", "check", "health"]);
       expect(policy.external_tooling.waza.codex_primary_path).toBe("~/.codex/skills");
+      expect(policy.external_tooling.waza.project_paths).toEqual({
+        codex: ".agents/skills",
+        claude: ".claude/skills",
+      });
+      expect(policy.external_tooling.waza.user_reference_paths).toEqual({
+        codex: "~/.codex/skills",
+        claude: "~/.claude/skills",
+        staging: "~/.agents/skills",
+        staging_rules: "~/.agents/rules",
+      });
       expect(policy.external_tooling.codex_automation_profile.required_skills).toEqual(["health", "check", "mermaid"]);
       expect(policy.external_tooling.codex_automation_profile.mode).toBe("codex-runtime-reference");
       expect(policy.external_tooling.codex_automation_profile.source).toBe("~/.codex/skills");

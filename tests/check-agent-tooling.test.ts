@@ -360,20 +360,36 @@ describe("check-agent-tooling", () => {
       writeFakeGbrain(envRoot.fakeBin);
       writeFakeCodeGraph(envRoot.fakeBin);
 
+      const env = {
+        ...process.env,
+        HOME: envRoot.home,
+        PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+        AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+      };
       const res = spawnSync("bash", [SCRIPT, "--json", "--host", "both"], {
         cwd: repo,
         encoding: "utf-8",
-        env: {
-          ...process.env,
-          HOME: envRoot.home,
-          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
-          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
-        },
+        env,
       });
 
       expect(res.status).toBe(0);
       const report = JSON.parse(res.stdout);
       expect(report.tools.waza.status).toBe("present");
+      expect(report.tools.waza.effective_scope).toBe("project");
+      expect(report.tools.waza.effective_paths).toEqual({
+        claude: join(realRepo, ".claude", "skills"),
+        codex: join(realRepo, ".agents", "skills"),
+      });
+      expect(report.tools.waza.project_paths).toEqual({
+        codex: ".agents/skills",
+        claude: ".claude/skills",
+      });
+      expect(report.tools.waza.user_reference_paths).toEqual({
+        codex: join(envRoot.home, ".codex", "skills"),
+        claude: join(envRoot.home, ".claude", "skills"),
+        staging: join(envRoot.home, ".agents", "skills"),
+        staging_rules: join(envRoot.home, ".agents", "rules"),
+      });
       expect(report.tools.waza.hosts.codex.scope).toBe("project");
       expect(report.tools.waza.hosts.codex.status).toBe("present");
       expect(report.tools.waza.hosts.codex.path).toBe(join(realRepo, ".agents", "skills"));
@@ -384,6 +400,24 @@ describe("check-agent-tooling", () => {
       expect(report.tools.waza.hosts.claude.scope).toBe("project");
       expect(report.tools.waza.install_command).toContain("local-repo-harness adopt --repo .");
       expect(report.tools.waza.install_command).not.toContain(" -g ");
+      expect(report.tools.waza.stage_command).toBe("not-applicable-project-scope");
+      expect(report.tools.waza.sync_command).toBe("local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project");
+      expect(report.tools.waza.verify_command).toBe("bash scripts/check-agent-tooling.sh --json --host both");
+      expect(report.tools.waza.user_scope_commands.sync).toContain("~/.agents/skills");
+      expect(report.tools.waza.user_scope_commands.sync).toContain("rsync -a --delete");
+
+      const textRes = spawnSync("bash", [SCRIPT, "--host", "both"], {
+        cwd: repo,
+        encoding: "utf-8",
+        env,
+      });
+      expect(textRes.status).toBe(0);
+      expect(textRes.stdout).toContain("Effective scope: project");
+      expect(textRes.stdout).toContain(`codex=${join(realRepo, ".agents", "skills")}`);
+      expect(textRes.stdout).toContain("Project refresh: local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project");
+      expect(textRes.stdout).not.toContain("~/.agents/skills");
+      expect(textRes.stdout).not.toContain("rsync -a --delete ~/.agents");
+      expect(textRes.stdout).not.toContain(join(envRoot.home, ".agents", "skills"));
     } finally {
       rmSync(envRoot.root, { recursive: true, force: true });
     }

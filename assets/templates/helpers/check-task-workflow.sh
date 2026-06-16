@@ -431,7 +431,7 @@ check_required_file() {
 
   if [[ "$path" == .ai/harness/scripts/* ]]; then
     local helper_name="${path##*/}"
-    if [[ "${helper_source:-package}" == "package" && -f "scripts/$helper_name" ]]; then
+    if ! helper_runtime_required && [[ -f "scripts/$helper_name" ]]; then
       return 0
     fi
     if [[ -f "assets/templates/helpers/$helper_name" && -f "scripts/$helper_name" ]]; then
@@ -474,7 +474,7 @@ check_required_dir() {
     return 0
   fi
 
-  if [[ "$path" == ".ai/harness/scripts" && "${helper_source:-package}" == "package" && -d "scripts" ]]; then
+  if [[ "$path" == ".ai/harness/scripts" ]] && ! helper_runtime_required && [[ -d "scripts" ]]; then
     return 0
   fi
 
@@ -482,7 +482,21 @@ check_required_dir() {
     return 0
   fi
 
+  if [[ "$path" == "$helper_runtime_dir" ]] && helper_runtime_required; then
+    report_issue "Missing required helper runtime directory: $path (policy requires repo helper runtime)"
+    return
+  fi
+
   report_issue "Missing required directory: $path"
+}
+
+helper_runtime_required() {
+  case "${helper_repo_runtime_required:-}" in
+    true) return 0 ;;
+    false) return 1 ;;
+  esac
+
+  [[ "${helper_source:-package}" != "package" ]]
 }
 
 check_helper_runtime_files() {
@@ -513,13 +527,13 @@ check_helper_runtime_files() {
   fi
 
   check_required_dir "$helper_compat_dir"
-  if [[ "${helper_source:-package}" != "package" ]]; then
+  if helper_runtime_required; then
     check_required_dir "$helper_runtime_dir"
   fi
 
   for helper_name in "${helper_names[@]}"; do
     check_required_file "$helper_compat_dir/$helper_name"
-    if [[ "${helper_source:-package}" != "package" && "$helper_runtime_dir" != "$helper_compat_dir" ]]; then
+    if helper_runtime_required && [[ "$helper_runtime_dir" != "$helper_compat_dir" ]]; then
       check_required_file "$helper_runtime_dir/$helper_name"
     fi
   done
@@ -553,6 +567,7 @@ runs_dir="$(policy_get '.harness.runs_dir' '.ai/harness/runs')"
 helper_runtime_dir="$(policy_get '.harness.helper_runtime_dir' '.ai/harness/scripts')"
 helper_compat_dir="$(policy_get '.harness.helper_compat_dir' 'scripts')"
 helper_source="$(policy_get '.harness.helper_source' 'package')"
+helper_repo_runtime_required="$(policy_get '.harness.helper_dispatch.repo_runtime_required' '')"
 context_map_file="$(policy_get '.context.map_file' '.ai/context/context-map.json')"
 handoff_file="$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')"
 resume_file="$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')"
@@ -577,7 +592,7 @@ check_required_dir "$workstreams_dir"
 check_required_dir ".claude/templates"
 check_required_dir ".ai/context"
 check_required_dir ".ai/harness"
-if [[ "$helper_source" != "package" ]]; then
+if helper_runtime_required; then
   check_required_dir "$helper_runtime_dir"
 fi
 check_required_dir "$runs_dir"

@@ -1,10 +1,10 @@
 # Active Improve Plans
 
 Generated and updated by the improve skill on 2026-06-16. This index tracks the
-active project-scoped CodeGraph, Bun/Node runtime compatibility, and
-package-boundary-free project bootstrap plans. Older plans in this directory and
-`plans/archive/` remain historical context unless a future task explicitly
-reactivates them.
+active project-scoped CodeGraph, Bun/Node runtime compatibility,
+package-boundary-free project bootstrap, and post-0.5.5 real-acceptance
+diagnostic cleanup plans. Older plans in this directory and `plans/archive/`
+remain historical context unless a future task explicitly reactivates them.
 
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
@@ -19,6 +19,10 @@ row when done.
 | 003 | Standardize shell JavaScript runtime invocation | P1 | L | 002 | DONE (verified 2026-06-16; 26aee5c) |
 | 004 | Add a runtime compatibility gate | P1 | M | 002, 003 | DONE (verified 2026-06-16; 26aee5c) |
 | 005 | Add package-boundary-free project bootstrap for local-repo-harness | P1 | L | 001 | DONE (verified 2026-06-16) |
+| 006 | Canonicalize project helper entrypoints | P1 | M | - | DONE (verified 2026-06-16; focused helper/docs/runtime gates) |
+| 007 | Clarify helper runtime policy semantics | P1 | M | 006 | DONE (verified 2026-06-16; migration/reclaim/workflow gates) |
+| 008 | Clean project-scope external tooling reports | P1 | M | - | DONE (verified 2026-06-16; Waza reporting/generation gates) |
+| 009 | Make security scan and doctor scope-aware | P1 | M | 006 | DONE (verified 2026-06-16; scope-aware security/doctor gates) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -37,6 +41,18 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - 005 depends on the managed tool-root pattern from 001. It extends that pattern
   from CodeGraph to `local-repo-harness` itself, so a target repo with no root
   `package.json` does not leak `bun add` writes into an ancestor package.
+- 006 handles the immediate false-negative exposed by the 0.5.5 real acceptance
+  run: package-mode installs intentionally use root `scripts/*.sh` wrappers or
+  `local-repo-harness run <helper>`, not `.ai/harness/scripts/check-*.sh`.
+- 007 depends on 006 because it codifies the same helper-entrypoint contract in
+  `.ai/harness/policy.json`, so future agents can infer the correct execution
+  surface without reading shell implementation details.
+- 008 is independent of 006 and 007. It cleans diagnostic output so
+  project-scoped Waza/tooling reports no longer look like user-level leakage
+  when project skills are actually present.
+- 009 depends on 006 only because both plans touch the project-scoped install
+  guide. It separates project-level security acceptance from ambient user-level
+  hook findings.
 
 ## Findings considered and rejected
 
@@ -56,3 +72,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   install command: rejected for zero-package repos because Bun walks up to an
   ancestor package boundary and can modify unrelated parent `package.json`,
   `bun.lock`, and `node_modules`.
+- Restore `.ai/harness/scripts/check-agent-tooling.sh` and
+  `.ai/harness/scripts/check-task-workflow.sh` for default project-scoped
+  package installs: rejected because runtime reclaim deliberately removed those
+  generated helper copies after root wrappers and project CLI dispatch became
+  the supported package-mode execution surface.
+- Treat pre-existing user-level Vibe Island or GitNexus hook findings as
+  project-scoped install failures: rejected because they are ambient host risk,
+  not evidence that local-repo-harness wrote to user-level config during a
+  project-scoped install.

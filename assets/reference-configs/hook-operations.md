@@ -48,7 +48,7 @@ branch-heavy logic truly need to exist; it must not override trust-boundary
 validation, data-loss prevention, security, accessibility, or explicit
 user-requested behavior.
 
-`.ai/harness/scripts/sync-brain-docs.sh --changed <path>` is hot-path optimized: the PostEdit hook starts it only when the changed repo path appears in the brain manifest. The script still owns authoritative JSON parsing and containment checks. Source files that resolve outside the repo, or brain targets that resolve outside the configured brain root through symlinks, are rejected.
+`scripts/sync-brain-docs.sh --changed <path>` is hot-path optimized: the PostEdit hook starts it only when the changed repo path appears in the brain manifest. The script still owns authoritative JSON parsing and containment checks. Source files that resolve outside the repo, or brain targets that resolve outside the configured brain root through symlinks, are rejected.
 
 Architecture drift requests use the current capability match as the pending pointer owner. Recording a newer request removes stale pending index lines for the same capability/path. Archiving a request removes it from the index and clears any local `AGENTS.md`/`CLAUDE.md` contract block that still points at that request.
 
@@ -72,9 +72,9 @@ Common guards:
 
 Hook scope is detect, classify, record, and remind:
 
-- `.ai/harness/scripts/architecture-queue.sh` writes requests/events.
-- `.ai/harness/scripts/workstream-sync.sh` maintains durable capability workstreams.
-- `.ai/harness/scripts/context-contract-sync.sh` updates only controlled local agent-context blocks.
+- `scripts/architecture-queue.sh` writes requests/events.
+- `scripts/workstream-sync.sh` maintains durable capability workstreams.
+- `scripts/context-contract-sync.sh` updates only controlled local agent-context blocks.
 - `local-repo-harness capability-context request` may enqueue ignored runtime work under `.ai/harness/capability-context/`; `SessionStart` reminds the current agent to run `local-repo-harness capability-context sync --pending --apply`.
 
 Agents, not hooks, author semantic snapshots and diagrams.
@@ -93,4 +93,4 @@ Every hook change should state whether it affects `self-host`, `generated`, or
 
 ## Verification Checklist
 
-Run after hook or workflow contract changes: `bun test`, `bash .ai/harness/scripts/check-task-sync.sh`, `bash .ai/harness/scripts/check-task-workflow.sh --strict`, and `bash scripts/migrate-project-template.sh --repo . --dry-run`.
+Run after hook or workflow contract changes: `bun test`, `bash scripts/check-task-sync.sh`, `bash scripts/check-task-workflow.sh --strict`, and `bash scripts/migrate-project-template.sh --repo . --dry-run`.

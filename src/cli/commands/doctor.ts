@@ -13,7 +13,7 @@ import { spawnSync } from 'child_process';
 import { ALL_TARGETS } from '../installer/targets/registry';
 import { checkCodegraph, type CodegraphCheckResult } from '../tools/codegraph';
 import { CLI_VERSION, runStatus, type StatusReport } from './status';
-import { runSecurityScan, type SecurityScanReport } from './security';
+import { runSecurityScan, type SecurityScanReport, type SecurityScanScope } from './security';
 import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
 
@@ -501,7 +501,7 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
       id,
       describe,
       status: 'ok',
-      detail: `scanned ${report.scannedFiles.length} files; no findings`,
+      detail: `scope=${report.scope}; scanned ${report.scannedFiles.length} files; no findings`,
     };
   }
 
@@ -513,8 +513,15 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
     id,
     describe,
     status: report.status === 'fail' ? 'fail' : 'warn',
-    detail: `${report.findings.length} finding(s): ${high} high, ${warn} warn, ${fail} fail; first=${first.ruleId} at ${first.filePath}`,
+    detail: `scope=${report.scope}; ${report.findings.length} finding(s): ${high} high, ${warn} warn, ${fail} fail; first=${first.ruleId} at ${first.filePath}`,
   };
+}
+
+function securityScopeForStatus(statusReport: StatusReport): SecurityScanScope {
+  if (statusReport.repo.inGitRepo && statusReport.repo.optIn && statusReport.scopes.intent.hooks === 'project') {
+    return 'project';
+  }
+  return 'all';
 }
 
 function checkHookScriptDrift(cwd: string): DoctorCheckResult {
@@ -570,7 +577,7 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   const checks: DoctorCheckResult[] = [];
   const statusReport = runStatus(cwd);
   const codegraphProbe = probeCodegraph(cwd);
-  const securityReport = runSecurityScan({ cwd });
+  const securityReport = runSecurityScan({ cwd, scope: securityScopeForStatus(statusReport) });
   checks.push(checkPath());
   checks.push(checkVersion());
   checks.push(checkCliUpdate());

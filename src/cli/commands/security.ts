@@ -13,6 +13,8 @@ import { LEGACY_MANAGED_TAG, MANAGED_TAG, type HookEntry } from '../installer/ma
 export type SecurityStatus = 'ok' | 'warn' | 'fail';
 export type SecuritySeverity = 'warn' | 'high' | 'fail';
 export type ScannedFileKind = 'claude-hooks' | 'codex-hooks' | 'vscode-tasks';
+export const SECURITY_SCAN_SCOPES = ['all', 'project', 'user'] as const;
+export type SecurityScanScope = (typeof SECURITY_SCAN_SCOPES)[number];
 
 export interface SecurityFinding {
   filePath: string;
@@ -27,18 +29,31 @@ export interface SecurityFinding {
 export interface SecurityScannedFile {
   filePath: string;
   kind: ScannedFileKind;
+  scope: 'user' | 'project';
   exists: boolean;
 }
 
 export interface SecurityScanReport {
+  scope: SecurityScanScope;
   status: SecurityStatus;
   findings: SecurityFinding[];
   scannedFiles: SecurityScannedFile[];
+  summary: {
+    findings: number;
+    scannedFiles: number;
+    byScope: Record<'user' | 'project', { findings: number; scannedFiles: number }>;
+  };
 }
 
 export interface SecurityScanOptions {
   cwd?: string;
   home?: string;
+  scope?: SecurityScanScope;
+}
+
+interface SecurityScanCandidate extends Omit<SecurityScannedFile, 'exists'> {
+  host: 'claude' | 'codex' | 'vscode';
+  label: string;
 }
 
 interface HookCommand {
@@ -273,32 +288,69 @@ function reportStatus(findings: SecurityFinding[]): SecurityStatus {
   return 'ok';
 }
 
+function includesScope(scanScope: SecurityScanScope, fileScope: SecurityFinding['scope']): boolean {
+  return scanScope === 'all' || scanScope === fileScope;
+}
+
+function securitySummary(
+  scope: SecurityScanScope,
+  findings: SecurityFinding[],
+  scannedFiles: SecurityScannedFile[],
+): SecurityScanReport['summary'] {
+  const byScope: SecurityScanReport['summary']['byScope'] = {
+    user: { findings: 0, scannedFiles: 0 },
+    project: { findings: 0, scannedFiles: 0 },
+  };
+  for (const file of scannedFiles) byScope[file.scope].scannedFiles += 1;
+  for (const finding of findings) byScope[finding.scope].findings += 1;
+  return {
+    findings: findings.length,
+    scannedFiles: scannedFiles.length,
+    byScope: scope === 'all'
+      ? byScope
+      : {
+          user: scope === 'user' ? byScope.user : { findings: 0, scannedFiles: 0 },
+          project: scope === 'project' ? byScope.project : { findings: 0, scannedFiles: 0 },
+        },
+  };
+}
+
 export function runSecurityScan(opts: SecurityScanOptions = {}): SecurityScanReport {
   const cwd = opts.cwd ?? process.cwd();
   const home = opts.home ?? homeDir();
+  const scope = opts.scope ?? 'all';
   const repoRoot = resolveRepoRoot(cwd);
-  const scannedFiles: SecurityScannedFile[] = [
-    { filePath: path.join(home, '.claude', 'settings.json'), kind: 'claude-hooks', exists: false },
-    { filePath: path.join(home, '.codex', 'hooks.json'), kind: 'codex-hooks', exists: false },
-    { filePath: path.join(repoRoot, '.vscode', 'tasks.json'), kind: 'vscode-tasks', exists: false },
-    { filePath: path.join(repoRoot, '.claude', 'settings.json'), kind: 'claude-hooks', exists: false },
-    { filePath: path.join(repoRoot, '.codex', 'hooks.json'), kind: 'codex-hooks', exists: false },
-  ].map((entry) => ({ ...entry, exists: fs.existsSync(entry.filePath) }));
+  const candidates: SecurityScanCandidate[] = [
+    { filePath: path.join(home, '.claude', 'settings.json'), kind: 'claude-hooks', scope: 'user', host: 'claude', label: 'Claude user-level' },
+    { filePath: path.join(home, '.codex', 'hooks.json'), kind: 'codex-hooks', scope: 'user', host: 'codex', label: 'Codex user-level' },
+    { filePath: path.join(repoRoot, '.vscode', 'tasks.json'), kind: 'vscode-tasks', scope: 'project', host: 'vscode', label: 'VS Code project-level' },
+    { filePath: path.join(repoRoot, '.claude', 'settings.json'), kind: 'claude-hooks', scope: 'project', host: 'claude', label: 'Claude project-level' },
+    { filePath: path.join(repoRoot, '.codex', 'hooks.json'), kind: 'codex-hooks', scope: 'project', host: 'codex', label: 'Codex project-level' },
+  ];
+  const selectedCandidates = candidates.filter((entry) => includesScope(scope, entry.scope));
+  const scannedFiles: SecurityScannedFile[] = selectedCandidates.map((entry) => ({
+    filePath: entry.filePath,
+    kind: entry.kind,
+    scope: entry.scope,
+    exists: fs.existsSync(entry.filePath),
+  }));
 
   const findings: SecurityFinding[] = [];
-  scanHookConfig(findings, scannedFiles[0].filePath, 'Claude user-level', 'claude', 'user');
-  scanHookConfig(findings, scannedFiles[1].filePath, 'Codex user-level', 'codex', 'user');
-  scanVscodeTasks(findings, scannedFiles[2].filePath);
-  scanHookConfig(findings, scannedFiles[3].filePath, 'Claude project-level', 'claude', 'project');
-  scanHookConfig(findings, scannedFiles[4].filePath, 'Codex project-level', 'codex', 'project');
+  for (const candidate of selectedCandidates) {
+    if (candidate.kind === 'vscode-tasks') {
+      scanVscodeTasks(findings, candidate.filePath);
+    } else {
+      scanHookConfig(findings, candidate.filePath, candidate.label, candidate.host as 'claude' | 'codex', candidate.scope);
+    }
+  }
 
-  return { status: reportStatus(findings), findings, scannedFiles };
+  return { scope, status: reportStatus(findings), findings, scannedFiles, summary: securitySummary(scope, findings, scannedFiles) };
 }
 
 export function formatSecurityScan(report: SecurityScanReport, asJson = false): string {
   if (asJson) return JSON.stringify(report, null, 2);
   const lines: string[] = [];
-  lines.push(`Security config: ${report.status}`);
+  lines.push(`Security config: ${report.status} (scope=${report.scope})`);
   lines.push(`Scanned files: ${report.scannedFiles.length}`);
   if (report.findings.length === 0) {
     lines.push('No findings.');

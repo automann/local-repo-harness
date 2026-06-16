@@ -367,6 +367,54 @@ describe('doctor command (Phase 1C)', () => {
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
+  test('project hook intent makes doctor security check ignore ambient user-level hook findings', () => {
+    withTempHome((home) => {
+      const userHooksPath = path.join(home, '.codex/hooks.json');
+      fs.mkdirSync(path.dirname(userHooksPath), { recursive: true });
+      fs.writeFileSync(userHooksPath, '{ not json');
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'none' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+          }, null, 2),
+        );
+        runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
+
+        const r = runDoctor(repoRoot);
+        const security = r.checks.find((c) => c.id === 'security-config')!;
+        expect(security.status).toBe('ok');
+        expect(security.detail).toContain('scope=project');
+        expect(security.detail).not.toContain('invalid-json');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('project hook intent still fails doctor security check for project-level invalid JSON', () => {
+    withTempHome(() => {
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'none' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+          }, null, 2),
+        );
+        runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
+        fs.writeFileSync(path.join(repoRoot, '.codex', 'hooks.json'), '{ not json');
+
+        const r = runDoctor(repoRoot);
+        const security = r.checks.find((c) => c.id === 'security-config')!;
+        expect(security.status).toBe('fail');
+        expect(security.detail).toContain('scope=project');
+        expect(security.detail).toContain('invalid-json');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
   test('project CodeGraph intent reports project-local remediation when CLI is missing', () => {
     const envRoot = setupFakeEnvironment('repo-harness-doctor-project-codegraph');
     try {

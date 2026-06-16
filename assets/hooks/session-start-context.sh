@@ -17,20 +17,32 @@ resume_file="$(workflow_resume_packet_file)"
 
 helper_script_path() {
   local helper_name="$1"
-  local helper_dir
+  local helper_dir helper_source
 
   helper_dir="$(workflow_policy_get '.harness.helper_runtime_dir' '.ai/harness/scripts')"
-  if [[ -f "$helper_dir/$helper_name" ]]; then
-    printf '%s/%s' "$helper_dir" "$helper_name"
-    return 0
+  helper_source="$(workflow_policy_get '.harness.helper_source' 'package')"
+
+  if [[ "$helper_source" == "repo" ]]; then
+    if [[ -f "$helper_dir/$helper_name" ]]; then
+      printf '%s/%s' "$helper_dir" "$helper_name"
+      return 0
+    fi
+    if [[ -f "scripts/$helper_name" ]]; then
+      printf '%s/%s' "scripts" "$helper_name"
+      return 0
+    fi
+  else
+    if [[ -f "scripts/$helper_name" ]]; then
+      printf '%s/%s' "scripts" "$helper_name"
+      return 0
+    fi
+    if [[ -f "$helper_dir/$helper_name" ]]; then
+      printf '%s/%s' "$helper_dir" "$helper_name"
+      return 0
+    fi
   fi
 
-  if [[ -f "scripts/$helper_name" ]]; then
-    printf '%s/%s' "scripts" "$helper_name"
-    return 0
-  fi
-
-  printf '%s/%s' "$helper_dir" "$helper_name"
+  printf '%s/%s' "scripts" "$helper_name"
 }
 
 resume_available() {

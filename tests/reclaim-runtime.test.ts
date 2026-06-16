@@ -50,6 +50,13 @@ describe("runtime reclaim", () => {
       const result = runRuntimeReclaim({ repo, apply: true, compact: true, verify: false });
 
       expect(result.status).toBe("ok");
+      expect(result.runtime_reclaim.helper_dispatch).toEqual({
+        strategy: "package-runner",
+        command_template: "local-repo-harness run <helper>",
+        wrapper_dir: "scripts",
+        repo_runtime_dir: ".ai/harness/scripts",
+        repo_runtime_required: false,
+      });
       expect(result.runtime_reclaim.archive).toBeDefined();
       expect(existsSync(join(repo, ".ai/harness/scripts/check-task-workflow.sh"))).toBe(false);
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
@@ -207,6 +214,13 @@ describe("runtime reclaim", () => {
       const result = runRuntimeReclaim({ repo, apply: true, verify: false });
       const entry = result.runtime_reclaim.files.find((file) => file.path === ".ai/harness/scripts/check-task-workflow.sh");
 
+      expect(result.runtime_reclaim.helper_dispatch).toEqual({
+        strategy: "repo-runtime",
+        command_template: "bash .ai/harness/scripts/<helper>.sh",
+        wrapper_dir: "scripts",
+        repo_runtime_dir: ".ai/harness/scripts",
+        repo_runtime_required: true,
+      });
       expect(entry?.classification).toBe("self-host-pinned");
       expect(entry?.action).toBe("preserve");
       expect(existsSync(join(repo, ".ai/harness/scripts/check-task-workflow.sh"))).toBe(true);
