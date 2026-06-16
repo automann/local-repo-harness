@@ -21,6 +21,7 @@ import { buildDocsCommand } from './commands/docs';
 import { buildRunCommand } from './commands/run';
 import { formatSecurityScan, runSecurityScan } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
+import { runBootstrap } from './commands/bootstrap';
 import { runPromptGuardDecideCli } from './commands/prompt-guard-decision';
 import { runRuntimeReclaim, runRuntimeRollback } from './repo-adoption/reclaim-runtime';
 import type { InstallScope, Location } from './installer/types';
@@ -39,6 +40,7 @@ export const SUBCOMMANDS = [
   'migrate',
   'security',
   'update',
+  'bootstrap',
   'adopt',
   'run',
   'setup',
@@ -187,6 +189,115 @@ export function buildProgram(): Command {
         externalSkills: rawOpts.withExternalSkills === true,
         codegraph: rawOpts.configureCodegraph === true,
         brainRoot: rawOpts.brainRoot,
+      });
+      if (rawOpts.json === true) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        for (const line of result.lines) console.log(line);
+      }
+      process.exit(result.exitCode);
+    });
+
+  program
+    .command('bootstrap')
+    .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
+    .option('--repo <path>', 'Target repository path (defaults to cwd)')
+    .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime')
+    .option('--version <version>', 'Install a specific local-repo-harness package version into the project-managed runtime')
+    .option('--channel <channel>', 'Install package channel: latest|next')
+    .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
+    .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
+    .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
+    .option('--host-adapter-scope <scope>', `Hook adapter scope: ${VALID_SCOPES.join('|')}`, 'project')
+    .option('--runtime <runtime>', `Hook runtime mode: ${VALID_RUNTIMES.join('|')}`, 'project-vendored-bun')
+    .option('--no-external-skills', 'Skip Waza and Mermaid third-party skill bootstrap during delegated adopt')
+    .option('--external-tool-scope <scope>', `Third-party tooling scope: ${VALID_SCOPES.join('|')}`, 'project')
+    .option('--no-verify', 'Skip repo workflow verification during delegated adopt')
+    .option('--no-codegraph', 'Skip building the CodeGraph index and MCP readiness check during delegated adopt')
+    .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')}`, 'project')
+    .option('--sync-codegraph', 'Sync the CodeGraph index after ensure during delegated adopt')
+    .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'manifest-only')
+    .option('--json', 'Output JSON instead of human-readable text')
+    .action((rawOpts: {
+      repo?: string;
+      target: string;
+      package?: string;
+      version?: string;
+      channel?: string;
+      syncSkill?: boolean;
+      skillScope?: string;
+      hostAdapters?: boolean;
+      hostAdapterScope?: string;
+      runtime?: string;
+      externalSkills?: boolean;
+      externalToolScope?: string;
+      verify?: boolean;
+      codegraph?: boolean;
+      codegraphMcpScope?: string;
+      syncCodegraph?: boolean;
+      brainMode?: string;
+      json?: boolean;
+    }) => {
+      if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
+        console.error(
+          `local-repo-harness bootstrap: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      if (rawOpts.channel !== undefined && !['latest', 'next'].includes(rawOpts.channel)) {
+        console.error('local-repo-harness bootstrap: invalid --channel (expected: latest, next)');
+        process.exit(2);
+      }
+      if ([rawOpts.package, rawOpts.version, rawOpts.channel].filter((value) => value !== undefined).length > 1) {
+        console.error('local-repo-harness bootstrap: use only one of --package, --version, or --channel');
+        process.exit(2);
+      }
+      if (!['skip', 'manifest-only'].includes(rawOpts.brainMode ?? 'manifest-only')) {
+        console.error('local-repo-harness bootstrap: invalid --brain-mode (expected: skip, manifest-only)');
+        process.exit(2);
+      }
+      if (!VALID_SCOPES.includes(rawOpts.hostAdapterScope as InstallScope)) {
+        console.error(
+          `local-repo-harness bootstrap: invalid --host-adapter-scope "${rawOpts.hostAdapterScope}" (expected: ${VALID_SCOPES.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      for (const [flag, value] of [
+        ['--skill-scope', rawOpts.skillScope],
+        ['--external-tool-scope', rawOpts.externalToolScope],
+        ['--codegraph-mcp-scope', rawOpts.codegraphMcpScope],
+      ] as const) {
+        if (value && !VALID_SCOPES.includes(value as InstallScope)) {
+          console.error(`local-repo-harness bootstrap: invalid ${flag} "${value}" (expected: ${VALID_SCOPES.join(', ')})`);
+          process.exit(2);
+        }
+      }
+      if (!isRuntimeSelection(rawOpts.runtime ?? 'project-vendored-bun')) {
+        console.error(
+          `local-repo-harness bootstrap: invalid --runtime "${rawOpts.runtime}" (expected: ${VALID_RUNTIMES.join(', ')})`,
+        );
+        process.exit(2);
+      }
+      const result = runBootstrap({
+        repo: rawOpts.repo,
+        target: rawOpts.target as InstallTargetSpec,
+        packageSpec: rawOpts.package,
+        version: rawOpts.version,
+        channel: rawOpts.channel,
+        syncSkill: rawOpts.syncSkill !== false,
+        skillScope: rawOpts.skillScope as ToolingScope | undefined,
+        hostAdapters: rawOpts.hostAdapters !== false,
+        hostAdapterScope: rawOpts.hostAdapterScope as InstallScope,
+        runtime: rawOpts.runtime as RuntimeSelection,
+        externalSkills: rawOpts.externalSkills !== false,
+        externalToolScope: rawOpts.externalToolScope as ToolingScope | undefined,
+        verify: rawOpts.verify !== false,
+        codegraph: rawOpts.codegraph !== false,
+        codegraphMcpScope: rawOpts.codegraphMcpScope as ToolingScope | undefined,
+        syncCodegraph: rawOpts.syncCodegraph === true,
+        brainMode: rawOpts.brainMode as InitBrainMode,
+        json: rawOpts.json === true,
       });
       if (rawOpts.json === true) {
         console.log(JSON.stringify(result, null, 2));

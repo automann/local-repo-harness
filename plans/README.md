@@ -1,9 +1,10 @@
 # Active Improve Plans
 
 Generated and updated by the improve skill on 2026-06-16. This index tracks the
-active project-scoped CodeGraph and Bun/Node runtime compatibility plans. Older
-plans in this directory and `plans/archive/` remain historical context unless a
-future task explicitly reactivates them.
+active project-scoped CodeGraph, Bun/Node runtime compatibility, and
+package-boundary-free project bootstrap plans. Older plans in this directory and
+`plans/archive/` remain historical context unless a future task explicitly
+reactivates them.
 
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
@@ -17,6 +18,7 @@ row when done.
 | 002 | Remove stale `repo-harness` fallbacks from generated wrappers | P1 | S | - | DONE (verified 2026-06-16; 26aee5c) |
 | 003 | Standardize shell JavaScript runtime invocation | P1 | L | 002 | DONE (verified 2026-06-16; 26aee5c) |
 | 004 | Add a runtime compatibility gate | P1 | M | 002, 003 | DONE (verified 2026-06-16; 26aee5c) |
+| 005 | Add package-boundary-free project bootstrap for local-repo-harness | P1 | L | 001 | DONE (verified 2026-06-16) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -32,6 +34,9 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   name. It performs the broad script-level cleanup.
 - 004 depends on 002 and 003 because the static gate is meant to prevent
   reintroducing patterns that should already have been removed.
+- 005 depends on the managed tool-root pattern from 001. It extends that pattern
+  from CodeGraph to `local-repo-harness` itself, so a target repo with no root
+  `package.json` does not leak `bun add` writes into an ancestor package.
 
 ## Findings considered and rejected
 
@@ -47,3 +52,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - Depend on Node being available in project-scoped installs: rejected because
   `project-vendored-bun` is the documented runtime target and prior real tests
   already exposed Bun-only failures.
+- Treat `bun add -d local-repo-harness@latest` as the default project-scoped
+  install command: rejected for zero-package repos because Bun walks up to an
+  ancestor package boundary and can modify unrelated parent `package.json`,
+  `bun.lock`, and `node_modules`.

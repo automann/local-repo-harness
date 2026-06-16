@@ -2,7 +2,7 @@
 
 这份教程面向只想把 local-repo-harness 用在某一个项目里的用户。目标是：
 
-- local-repo-harness CLI 作为目标项目的开发依赖存在。
+- local-repo-harness CLI 作为目标项目的 managed runtime 存在，默认放在 `.ai/harness/tools/local-repo-harness/`。
 - hooks、skills、外部工具配置和 CodeGraph MCP 尽量写入目标项目。
 - 不注册 user-level Codex/Claude hooks。
 - 不把 Waza、Mermaid、gbrain、CodeGraph MCP 写进用户级目录。
@@ -14,9 +14,9 @@
 同步开发或本地测试时，通常会同时看到两个 local-repo-harness 相关副本：
 
 - **源码 local-repo-harness**：你 fork 或 clone 的 local-repo-harness 源码仓库，用来开发、打包、验证 local-repo-harness 本身。
-- **下游 / 目标项目**：真正要接入 local-repo-harness 工作流的业务项目。项目级安装时，local-repo-harness 会作为这个项目的 `devDependencies`、项目 hooks runtime 和项目 skills 出现。
+- **下游 / 目标项目**：真正要接入 local-repo-harness 工作流的业务项目。项目级安装时，local-repo-harness 会作为这个项目的 managed runtime、项目 hooks runtime 和项目 skills 出现；已有根 `package.json` 的 JS 项目也可以选择把它作为 `devDependencies` 安装。
 
-除非你正在开发 local-repo-harness 本身，否则不要在目标项目里编辑 `.agents/skills/repo-harness`、`.claude/skills/repo-harness` 或 `.ai/harness/runtime/local-repo-harness`。这些是安装副本和运行时副本，不是产品源码。
+除非你正在开发 local-repo-harness 本身，否则不要在目标项目里编辑 `.agents/skills/repo-harness`、`.claude/skills/repo-harness`、`.ai/harness/runtime/local-repo-harness` 或 `.ai/harness/tools/local-repo-harness`。这些是安装副本和运行时副本，不是产品源码。
 
 ## 不要运行这些命令
 
@@ -36,7 +36,7 @@ bunx skills add tw93/Waza -g
 - `local-repo-harness update` 刷新的是 user-level CLI/runtime，不负责刷新某个项目。
 - `-g` 会把外部 skills 或工具装到用户级位置。
 
-项目级刷新使用 `local-repo-harness adopt --repo <target-project>`，并显式传入 project/none scope。
+bootstrap 之后，项目级刷新使用 `./.ai/harness/bin/local-repo-harness adopt --repo <target-project>`，并显式传入 project/none scope。
 
 ## 前置条件
 
@@ -45,7 +45,8 @@ bunx skills add tw93/Waza -g
 - 已经是 Git 仓库。
 - 能运行 `bash`。
 - 已安装 Bun。
-- 目标项目根目录已经有 `package.json`。如果没有，先建立一个最小项目级 package 边界；不要在没有 `package.json` 的子目录里直接运行 `bun add`，否则 Bun 会沿用上级 package 边界。
+- 默认推荐路径不要求目标项目根目录有 `package.json`。不要在没有 `package.json` 的目标项目里直接运行 `bun add`，否则 Bun 会沿用上级 package 边界。
+- 如果你的项目本身就是 JS 项目，并且你明确要使用 `bun add` 路径，必须先确认目标项目根目录已经有自己的 `package.json`。
 - 不要用 `bun init -y` 只为建立 package 边界；它会生成 `README.md`、`index.ts`、`tsconfig.json` 等应用脚手架文件。
 
 建议先从干净分支开始：
@@ -54,20 +55,19 @@ bunx skills add tw93/Waza -g
 cd /path/to/target-project
 git status --short
 git checkout -b chore/adopt-local-repo-harness-project-scope
-if [ ! -f package.json ]; then
-  printf '%s\n' '{' '  "private": true' '}' > package.json
-fi
 ```
 
 ## 版本和 Bun minimumReleaseAge
 
-真实项目级安装建议使用 `local-repo-harness@0.5.3` 或更新版本。`0.5.3`
-包含 Bun/Node runtime 兼容性修复、旧 `repo-harness` wrapper fallback 清理，以及
-CodeGraph 项目级安装不污染目标根 `package.json` 的测试覆盖。
+真实项目级安装建议使用 `local-repo-harness@0.5.4` 或更新版本。`0.5.4`
+包含 project-managed bootstrap，能把 local-repo-harness 自身安装到
+`.ai/harness/tools/local-repo-harness/`，避免零 package.json 项目因为 `bun add`
+污染父目录；同时保留 Bun/Node runtime 兼容性修复、旧 `repo-harness` wrapper
+fallback 清理，以及 CodeGraph 项目级安装不污染目标根 `package.json` 的测试覆盖。
 
 如果你的机器启用了 Bun 的 `minimumReleaseAge`，刚发布的 `local-repo-harness`
 版本可能会被 Bun 拦截，报类似 `all versions blocked by minimum-release-age`。
-这种情况下，在运行 `bun add -d local-repo-harness` 之前，先把包名加入 Bun 的
+这种情况下，在运行 `bunx --bun local-repo-harness@latest bootstrap` 或 `bun add -d local-repo-harness` 之前，先把包名加入 Bun 的
 release-age 白名单：
 
 ```toml
@@ -83,14 +83,44 @@ skills、MCP 或 brain 安装产物。
 
 ## 第一步：把 local-repo-harness 放进目标项目
 
-如果 `local-repo-harness` 已经发布到你要使用的 registry：
+### 推荐路径：零 package.json 项目也安全的 bootstrap
+
+如果 `local-repo-harness` 已经发布到你要使用的 registry，推荐直接用 `bootstrap`。它只把 `bunx` 当作一次性 seed，随后会把持久 runtime 安装到项目内 `.ai/harness/tools/local-repo-harness/`，并通过 `.ai/harness/bin/local-repo-harness` 继续执行 `adopt`。
 
 ```bash
 cd /path/to/target-project
+bunx --bun local-repo-harness@latest bootstrap \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only
+```
+
+之后统一用目标项目里的项目级 CLI：
+
+```bash
+cd /path/to/target-project
+./.ai/harness/bin/local-repo-harness --version
+```
+
+### 可选路径：已有根 package.json 的 JS 项目
+
+如果你的目标项目本身就是 JS 项目，并且根目录已经有自己的 `package.json`，也可以使用 `bun add`。这条路径必须 fail fast，避免 Bun 上溯污染父目录：
+
+```bash
+cd /path/to/target-project
+test -f package.json || {
+  echo "ERROR: package.json missing; use the bootstrap recipe instead." >&2
+  exit 1
+}
 bun add -d local-repo-harness@latest
 ```
 
-如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到目标项目：
+如果你要测试自己的 fork，可以先在源码仓库打 tarball，再安装到已有根 `package.json` 的目标项目：
 
 ```bash
 cd /path/to/source-local-repo-harness
@@ -99,14 +129,11 @@ mkdir -p /tmp/local-repo-harness-pack
 bun pm pack --destination /tmp/local-repo-harness-pack
 
 cd /path/to/target-project
+test -f package.json || {
+  echo "ERROR: package.json missing; use the bootstrap recipe instead." >&2
+  exit 1
+}
 bun add -d /tmp/local-repo-harness-pack/local-repo-harness-*.tgz
-```
-
-之后统一用目标项目里的本地 CLI：
-
-```bash
-cd /path/to/target-project
-bun --bun local-repo-harness --version
 ```
 
 ## 第二步：做最小 dry-run
@@ -115,7 +142,7 @@ bun --bun local-repo-harness --version
 
 ```bash
 cd /path/to/target-project
-bun --bun local-repo-harness adopt --dry-run \
+./.ai/harness/bin/local-repo-harness adopt --dry-run \
   --repo "$PWD" \
   --host-adapter-scope none \
   --skill-scope none \
@@ -146,7 +173,7 @@ bun --bun local-repo-harness adopt --dry-run \
 适合先让项目拥有 repo-harness 的文件化协作结构，但暂时不启用 Codex/Claude hooks：
 
 ```bash
-bun --bun local-repo-harness adopt \
+./.ai/harness/bin/local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope none \
   --skill-scope none \
@@ -173,7 +200,7 @@ bun --bun local-repo-harness adopt \
 适合只想让当前项目启用 Codex/Claude hooks 和 repo-harness skills，但暂时不安装 Waza、Mermaid、CodeGraph：
 
 ```bash
-bun --bun local-repo-harness adopt \
+./.ai/harness/bin/local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -209,7 +236,7 @@ cd /path/to/target-project
 然后执行：
 
 ```bash
-bun --bun local-repo-harness adopt \
+./.ai/harness/bin/local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
@@ -240,8 +267,10 @@ bun --bun local-repo-harness adopt \
 | `.ai/harness/workflow-contract.json` | local-repo-harness 工作流合约入口 |
 | `.ai/harness/policy.json` | 当前项目的 harness policy 和 scope 决策 |
 | `.ai/harness/scripts/` | 项目内 helper script compatibility layer |
+| `.ai/harness/bin/local-repo-harness` | project-managed local-repo-harness CLI shim |
 | `.ai/harness/bin/local-repo-harness-hook` | project-vendored hook entrypoint |
 | `.ai/harness/runtime/local-repo-harness/` | project-vendored local-repo-harness hook runtime |
+| `.ai/harness/tools/local-repo-harness/` | project-managed local-repo-harness package runtime |
 | `.ai/harness/codegraph-runtime/` | project-scoped CodeGraph runtime/install state |
 | `.codex/hooks.json` | Codex 项目级 hooks adapter |
 | `.claude/settings.json` | Claude 项目级 hooks adapter |
@@ -296,7 +325,7 @@ snapshot_repo_harness_user_paths() {
 }
 
 snapshot_repo_harness_user_paths > /tmp/repo-harness-user-before.txt
-# 在这里运行 bun --bun local-repo-harness adopt ...
+# 在这里运行 bootstrap 或 ./.ai/harness/bin/local-repo-harness adopt ...
 snapshot_repo_harness_user_paths > /tmp/repo-harness-user-after.txt
 diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
 ```
@@ -308,9 +337,9 @@ diff -u /tmp/repo-harness-user-before.txt /tmp/repo-harness-user-after.txt
 在目标项目运行：
 
 ```bash
-bun --bun local-repo-harness status --json
-bun --bun local-repo-harness doctor --json
-bun --bun local-repo-harness security scan --json
+./.ai/harness/bin/local-repo-harness status --json
+./.ai/harness/bin/local-repo-harness doctor --json
+./.ai/harness/bin/local-repo-harness security scan --json
 bash .ai/harness/scripts/check-task-workflow.sh --strict
 ```
 
@@ -318,7 +347,7 @@ bash .ai/harness/scripts/check-task-workflow.sh --strict
 
 ```bash
 bash .ai/harness/scripts/check-agent-tooling.sh --json --host both
-bun --bun local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
+./.ai/harness/bin/local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
 ```
 
 期望结果：
@@ -331,21 +360,39 @@ bun --bun local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
 
 ## 后续刷新
 
-升级 local-repo-harness 版本后，先更新目标项目依赖，再用相同 scope 重新执行 `adopt`：
+升级 local-repo-harness 版本后，推荐重新执行 `bootstrap`，它会刷新项目内 managed runtime，再用相同 scope 重新执行 `adopt`：
 
 ```bash
 cd /path/to/target-project
-bun add -d local-repo-harness@latest
+bunx --bun local-repo-harness@latest bootstrap \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only
+```
 
+如果你走的是已有根 `package.json` 的 JS 项目路径，也可以先 guarded `bun add`，再执行项目内 `adopt`：
+
+```bash
+cd /path/to/target-project
+test -f package.json || {
+  echo "ERROR: package.json missing; use the bootstrap recipe instead." >&2
+  exit 1
+}
+bun add -d local-repo-harness@latest
 bun --bun local-repo-harness adopt \
   --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
   --skill-scope project \
-  --external-tool-scope none \
-  --codegraph-mcp-scope none \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
   --brain-mode manifest-only \
-  --no-codegraph
+  --sync-codegraph
 ```
 
 不要用 `local-repo-harness update --repo <path>` 刷新目标项目。`update` 是 user-level runtime 命令；项目级安装和刷新统一由 `adopt` 负责。
@@ -382,13 +429,13 @@ bun --bun local-repo-harness adopt \
 
 ```bash
 cd /path/to/target-project
-bun --bun local-repo-harness tools ensure codegraph --repo "$PWD"
+./.ai/harness/bin/local-repo-harness tools ensure codegraph --repo "$PWD"
 ```
 
 再运行：
 
 ```bash
-bun --bun local-repo-harness adopt \
+./.ai/harness/bin/local-repo-harness adopt \
   --repo "$PWD" \
   --codegraph-mcp-scope project \
   --sync-codegraph

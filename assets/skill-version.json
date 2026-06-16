@@ -1,6 +1,6 @@
 {
-  "version": "0.5.3",
-  "templateVersion": "0.5.3",
+  "version": "0.5.4",
+  "templateVersion": "0.5.4",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -139,6 +139,10 @@
     {
       "version": "0.5.3",
       "description": "Adds Bun/Node runtime compatibility cleanup, removes stale repo-harness wrapper fallbacks, and gates releases against incompatible helper invocation patterns"
+    },
+    {
+      "version": "0.5.4",
+      "description": "Adds package-boundary-free project bootstrap for local-repo-harness, installing the CLI under .ai/harness/tools/local-repo-harness for zero-package repos"
     }
   ],
   "generatedProjectStamp": {

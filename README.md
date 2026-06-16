@@ -228,12 +228,15 @@ concrete sprint instead of reinterpreting the original chat.
 
 This is the fastest path for an AI tooling owner evaluating whether the workflow is
 safe to adopt in a real repo. Start with the repo-local contract and keep host
-runtime writes off until the dry-run output looks right.
+runtime writes off until the dry-run output looks right. When you want a
+project-only install, use `bootstrap`: it seeds a project-managed CLI under
+`.ai/harness/tools/local-repo-harness/` and does not require the target repo to
+have a root `package.json`.
 
 ### 1. Preview the repo-local contract only
 
 ```bash
-npx -y local-repo-harness adopt --dry-run \
+bunx --bun local-repo-harness@latest adopt --dry-run \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
@@ -247,40 +250,54 @@ workflow contract that would be created or refreshed.
 ### 2. Apply the repo-local contract only
 
 ```bash
-npx -y local-repo-harness adopt \
+bunx --bun local-repo-harness@latest bootstrap \
+  --repo "$PWD" \
   --host-adapter-scope none \
   --skill-scope none \
   --external-tool-scope none \
-  --codegraph-mcp-scope none
+  --codegraph-mcp-scope none \
+  --brain-mode skip \
+  --no-codegraph
 ```
 
 This installs the file-backed workflow surface without registering Codex or
-Claude adapters and without installing external skills. Existing repos use
-`local-repo-harness adopt`; new projects or modules use `repo-harness-scaffold`.
+Claude adapters and without installing external skills. It also writes
+`.ai/harness/bin/local-repo-harness`, so follow-up repo-local commands can use the
+project-managed shim directly. Existing repos use `local-repo-harness adopt`; new
+projects or modules use `repo-harness-scaffold`.
 
 ### 3. Enable project hooks and project skills
 
 ```bash
-npx -y local-repo-harness adopt \
+bunx --bun local-repo-harness@latest bootstrap \
+  --repo "$PWD" \
   --host-adapter-scope project \
   --runtime project-vendored-bun \
   --skill-scope project \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
-  --brain-mode manifest-only
+  --brain-mode manifest-only \
+  --no-codegraph
 ```
 
 Project Codex skills live under `.agents/skills`; project Claude skills live
 under `.claude/skills`. Project adapters live under `.codex/hooks.json` and
 `.claude/settings.json`, and project runtime lives under `.ai/harness/bin/` plus
-`.ai/harness/runtime/`. Codex still requires trusting the project hooks file in
-Codex Settings before hooks run.
+`.ai/harness/runtime/`. The project-managed CLI package lives under
+`.ai/harness/tools/local-repo-harness/`. Codex still requires trusting the
+project hooks file in Codex Settings before hooks run.
 
 Keep `--external-tool-scope none` until you deliberately want project copies of
 Waza/Mermaid. Project Waza/Mermaid installs use the skills CLI without `-g`.
 Keep `--codegraph-mcp-scope none` unless you want project MCP config in
 `.codex/config.toml` and `.mcp.json`. gbrain remains manual or manifest-only in
 project-only mode.
+
+After bootstrap, run refreshes through the project shim:
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt --repo "$PWD" --dry-run
+```
 
 ### 4. Optional CLI install
 
@@ -512,8 +529,8 @@ Most common guards:
 
 ## Current Release
 
-- npm package: `local-repo-harness@0.5.3`
-- Generated workflow stamp: `local-repo-harness@0.5.3+template@0.5.3`
+- npm package: `local-repo-harness@0.5.4`
+- Generated workflow stamp: `local-repo-harness@0.5.4+template@0.5.4`
 - GitHub repository: `automann/local-repo-harness`
 - Release history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 

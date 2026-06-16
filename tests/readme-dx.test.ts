@@ -43,14 +43,16 @@ function isAllowedRuntimeReference(file: string, line: string): boolean {
 }
 
 describe("README DX contract", () => {
-  test("front-loads a single first-run path and hook authority guidance", () => {
+  test("front-loads project-safe bootstrap and hook authority guidance", () => {
     const readme = read("README.md");
     const firstFive = section(readme, "First 5 Minutes");
     const hookAuthority = section(readme, "Hook Authority Map");
     const maintainer = section(readme, "Maintainer Reference");
 
     expect(readme.indexOf("## First 5 Minutes")).toBeLessThan(readme.indexOf("## Current Model"));
-    expect(firstFive.indexOf("npx -y local-repo-harness adopt --dry-run")).toBeLessThan(firstFive.indexOf("npx -y local-repo-harness init"));
+    expect(firstFive.indexOf("bunx --bun local-repo-harness@latest adopt --dry-run")).toBeLessThan(
+      firstFive.indexOf("npx -y local-repo-harness init"),
+    );
     expect(firstFive).toContain("--host-adapter-scope none");
     expect(firstFive).toContain("--skill-scope none");
     expect(firstFive).toContain("--external-tool-scope none");
@@ -63,10 +65,12 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("user MCP config");
     expect(firstFive).toContain("brain root");
     expect(firstFive).toContain("npx -y local-repo-harness init");
-    expect(firstFive).toContain("npx -y local-repo-harness adopt --dry-run");
-    expect(firstFive).toContain("npx -y local-repo-harness adopt");
+    expect(firstFive).toContain("bunx --bun local-repo-harness@latest adopt --dry-run");
+    expect(firstFive).toContain("bunx --bun local-repo-harness@latest bootstrap");
+    expect(firstFive).toContain("./.ai/harness/bin/local-repo-harness");
+    expect(firstFive).toContain(".ai/harness/tools/local-repo-harness/");
     expect(firstFive).toContain("broad-impact machine bootstrap path");
-    expect(firstFive.match(/npx -y local-repo-harness adopt --dry-run/g)?.length).toBe(1);
+    expect(firstFive.match(/bunx --bun local-repo-harness@latest adopt --dry-run/g)?.length).toBe(1);
     expect(firstFive).not.toContain("npx -y local-repo-harness update --dry-run");
     expect(firstFive).not.toContain("npx -y local-repo-harness init --dry-run");
     expect(firstFive).not.toContain("bun scripts/assemble-template.ts");
