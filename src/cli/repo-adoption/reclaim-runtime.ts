@@ -400,10 +400,22 @@ function shellWrapper(helper: string): string {
   return `#!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+if [[ "$(basename "$SCRIPT_DIR")" == "repo-harness" ]]; then
+  REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+else
+  REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+PROJECT_CLI="$REPO_ROOT/.ai/harness/bin/local-repo-harness"
+
 if [[ -n "\${REPO_HARNESS_SOURCE_ROOT:-}" && -f "\${REPO_HARNESS_SOURCE_ROOT}/src/cli/index.ts" ]]; then
   if command -v bun >/dev/null 2>&1; then
     exec bun "\${REPO_HARNESS_SOURCE_ROOT}/src/cli/index.ts" run ${id} "$@"
   fi
+fi
+
+if [[ -x "$PROJECT_CLI" ]]; then
+  exec "$PROJECT_CLI" run ${id} "$@"
 fi
 
 if command -v local-repo-harness >/dev/null 2>&1; then
@@ -420,11 +432,17 @@ function tsWrapper(helper: string): string {
   return `#!/usr/bin/env bun
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const sourceRoot = process.env.REPO_HARNESS_SOURCE_ROOT;
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = basename(scriptDir) === "repo-harness" ? resolve(scriptDir, "..", "..") : resolve(scriptDir, "..");
+const projectCli = join(repoRoot, ".ai", "harness", "bin", "local-repo-harness");
 const command = sourceRoot && existsSync(join(sourceRoot, "src", "cli", "index.ts"))
   ? ["bun", join(sourceRoot, "src", "cli", "index.ts"), "run", "${id}"]
+  : existsSync(projectCli)
+    ? [projectCli, "run", "${id}"]
   : ["local-repo-harness", "run", "${id}"];
 const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice(2)], {
   cwd: process.cwd(),

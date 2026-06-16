@@ -1,6 +1,6 @@
 {
-  "version": "0.5.4",
-  "templateVersion": "0.5.4",
+  "version": "0.5.5",
+  "templateVersion": "0.5.5",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -143,6 +143,10 @@
     {
       "version": "0.5.4",
       "description": "Adds package-boundary-free project bootstrap for local-repo-harness, installing the CLI under .ai/harness/tools/local-repo-harness for zero-package repos"
+    },
+    {
+      "version": "0.5.5",
+      "description": "Fixes project-managed install reporting by deriving the CLI version from package metadata, resolving helper wrappers through the project CLI, and recognizing project-scoped Waza skills"
     }
   ],
   "generatedProjectStamp": {

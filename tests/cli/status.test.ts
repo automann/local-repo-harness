@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
-import { runStatus, formatStatus } from '../../src/cli/commands/status';
+import { CLI_VERSION, runStatus, formatStatus } from '../../src/cli/commands/status';
 import { runInstall } from '../../src/cli/commands/install';
 
 function withTempHome(fn: (home: string) => void): void {
@@ -20,6 +20,11 @@ function withTempHome(fn: (home: string) => void): void {
 }
 
 describe('status command (Phase 1C)', () => {
+  test('reports the package.json version instead of a hard-coded release string', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(import.meta.dir, '..', '..', 'package.json'), 'utf-8'));
+    expect(CLI_VERSION).toBe(pkg.version);
+  });
+
   test('reports CLI version + 8 routes with correct per-event breakdown', () => {
     withTempHome(() => {
       const r = runStatus();

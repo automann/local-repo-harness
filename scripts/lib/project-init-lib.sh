@@ -1156,14 +1156,20 @@ pi_write_helper_wrapper() {
 #!/usr/bin/env bun
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const sourceRoot =
   process.env.REPO_HARNESS_SOURCE_ROOT ||
   process.env.AGENTIC_DEV_ROOT ||
   process.env.AGENTIC_DEV_SKILL_ROOT;
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = basename(scriptDir) === "repo-harness" ? resolve(scriptDir, "..", "..") : resolve(scriptDir, "..");
+const projectCli = join(repoRoot, ".ai", "harness", "bin", "local-repo-harness");
 const command = sourceRoot && existsSync(join(sourceRoot, "src", "cli", "index.ts"))
   ? ["bun", join(sourceRoot, "src", "cli", "index.ts"), "run", "$(basename "$helper_name" .ts)"]
+  : existsSync(projectCli)
+    ? [projectCli, "run", "$(basename "$helper_name" .ts)"]
   : ["local-repo-harness", "run", "$(basename "$helper_name" .ts)"];
 
 const result = spawnSync(command[0], [...command.slice(1), ...process.argv.slice(2)], {
@@ -1186,12 +1192,23 @@ EOF_WRAPPER_TS
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+if [[ "\$(basename "\$SCRIPT_DIR")" == "repo-harness" ]]; then
+  REPO_ROOT="\$(cd "\$SCRIPT_DIR/../.." && pwd)"
+else
+  REPO_ROOT="\$(cd "\$SCRIPT_DIR/.." && pwd)"
+fi
+PROJECT_CLI="\$REPO_ROOT/.ai/harness/bin/local-repo-harness"
 SOURCE_ROOT="\${REPO_HARNESS_SOURCE_ROOT:-\${AGENTIC_DEV_ROOT:-\${AGENTIC_DEV_SKILL_ROOT:-}}}"
 
 if [[ -n "\$SOURCE_ROOT" && -f "\$SOURCE_ROOT/src/cli/index.ts" ]]; then
   if command -v bun >/dev/null 2>&1; then
     exec bun "\$SOURCE_ROOT/src/cli/index.ts" run $helper_id "\$@"
   fi
+fi
+
+if [[ -x "\$PROJECT_CLI" ]]; then
+  exec "\$PROJECT_CLI" run $helper_id "\$@"
 fi
 
 if command -v local-repo-harness >/dev/null 2>&1; then

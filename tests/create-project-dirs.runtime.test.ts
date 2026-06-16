@@ -142,6 +142,9 @@ describe("create-project-dirs runtime smoke", () => {
       expect(readFileSync(join(cwd, "scripts/sprint-backlog.sh"), "utf-8")).toContain(
         "local-repo-harness run sprint-backlog"
       );
+      expect(readFileSync(join(cwd, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
+        ".ai/harness/bin/local-repo-harness"
+      );
       expect(existsSync(join(cwd, ".claude/templates/sprint.template.md"))).toBe(true);
       expect(existsSync(join(cwd, "scripts/context-budget.ts"))).toBe(false);
       expect(existsSync(join(cwd, "scripts/prepare-codex-handoff.sh"))).toBe(true);

@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -337,6 +338,52 @@ describe("check-agent-tooling", () => {
       expect(report.tools.codegraph.mcp_hosts.codex.scope).toBe("user");
       expect(report.tools.codegraph.project_index.status).toBe("up-to-date");
       expect(report.tools.codegraph.impact.code_navigation).toBe("missing");
+    } finally {
+      rmSync(envRoot.root, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("treats project-scoped Waza skills as present without requiring user-level skills", () => {
+    const envRoot = setupFakeEnvironment("check-agent-tooling-project-waza");
+    const repo = join(envRoot.root, "repo");
+    try {
+      mkdirSync(repo, { recursive: true });
+      const realRepo = realpathSync(repo);
+      mkdirSync(join(envRoot.home, ".claude"), { recursive: true });
+      mkdirSync(join(envRoot.home, ".codex"), { recursive: true });
+      writeFileSync(join(envRoot.home, ".claude", "settings.json"), "{}\n");
+      writeFileSync(join(envRoot.home, ".codex", "config.toml"), "# no user-level mcp\n");
+      writeWazaBundle(join(repo, ".agents", "skills"), "3.0.0");
+      writeWazaBundle(join(repo, ".claude", "skills"), "3.0.0");
+      writeSkill(join(repo, ".agents", "skills"), "mermaid", "1.0.0");
+      writeFakeNpx(envRoot.fakeBin);
+      writeFakeGbrain(envRoot.fakeBin);
+      writeFakeCodeGraph(envRoot.fakeBin);
+
+      const res = spawnSync("bash", [SCRIPT, "--json", "--host", "both"], {
+        cwd: repo,
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          HOME: envRoot.home,
+          PATH: `${envRoot.fakeBin}:${process.env.PATH ?? ""}`,
+          AGENTIC_DEV_CODEGRAPH_ALLOW_REPO_LOCAL: "0",
+        },
+      });
+
+      expect(res.status).toBe(0);
+      const report = JSON.parse(res.stdout);
+      expect(report.tools.waza.status).toBe("present");
+      expect(report.tools.waza.hosts.codex.scope).toBe("project");
+      expect(report.tools.waza.hosts.codex.status).toBe("present");
+      expect(report.tools.waza.hosts.codex.path).toBe(join(realRepo, ".agents", "skills"));
+      expect(report.tools.waza.hosts.codex.installed_skills).toEqual(WAZA_SKILLS);
+      expect(report.tools.waza.hosts.codex.missing_skills).toEqual([]);
+      expect(report.tools.waza.hosts.codex.scope_summary.user.status).toBe("missing");
+      expect(report.tools.waza.hosts.codex.scope_summary.project.status).toBe("present");
+      expect(report.tools.waza.hosts.claude.scope).toBe("project");
+      expect(report.tools.waza.install_command).toContain("local-repo-harness adopt --repo .");
+      expect(report.tools.waza.install_command).not.toContain(" -g ");
     } finally {
       rmSync(envRoot.root, { recursive: true, force: true });
     }

@@ -55,8 +55,12 @@ describe("runtime reclaim", () => {
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
         "local-repo-harness run check-task-workflow",
       );
+      expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain(
+        ".ai/harness/bin/local-repo-harness",
+      );
       const tsWrapper = readFileSync(join(repo, "scripts/contract-run.ts"), "utf-8");
       expect(tsWrapper).toContain('"local-repo-harness", "run", "contract-run"');
+      expect(tsWrapper).toContain('".ai", "harness", "bin", "local-repo-harness"');
       expect(tsWrapper).not.toContain('"repo-harness", "run"');
       const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf-8"));
       expect(pkg.scripts["check:task-workflow"]).toBe("local-repo-harness run check-task-workflow --strict");
@@ -107,6 +111,9 @@ describe("runtime reclaim", () => {
       expect(readFileSync(join(repo, "scripts/check-task-workflow.sh"), "utf-8")).toContain("app-owned");
       expect(readFileSync(join(repo, "scripts/repo-harness/check-task-workflow.sh"), "utf-8")).toContain(
         "local-repo-harness run check-task-workflow",
+      );
+      expect(readFileSync(join(repo, "scripts/repo-harness/check-task-workflow.sh"), "utf-8")).toContain(
+        ".ai/harness/bin/local-repo-harness",
       );
     } finally {
       rmSync(repo, { recursive: true, force: true });

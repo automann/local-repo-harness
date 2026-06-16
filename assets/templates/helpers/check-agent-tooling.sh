@@ -703,6 +703,25 @@ function detectWaza() {
       .filter((entry) => entry.stale_status === "stale" || entry.stale_status === "missing-local")
       .map((entry) => entry.name);
     const status = missingSkills.length === 0 ? "present" : installedSkills.length > 0 ? "partial" : "missing";
+    const userSummary = {
+      path: HOSTS[host].skillsDir,
+      status,
+      installed_skills: installedSkills,
+      missing_skills: missingSkills,
+      skills,
+    };
+    const effectiveSummary = projectSummary.status === "present"
+      ? projectSummary
+      : projectSummary.status === "partial" && status !== "present"
+        ? projectSummary
+        : userSummary;
+    const effectiveSkills = effectiveSummary.skills || skills;
+    const effectiveStatus = effectiveSummary.status;
+    const effectiveInstalledSkills = effectiveSummary.installed_skills || [];
+    const effectiveMissingSkills = effectiveSummary.missing_skills || [];
+    const effectiveScope = effectiveSummary === projectSummary
+      ? (effectiveStatus === "present" ? "project" : "project-partial")
+      : "user";
     const stagingSync = status === "missing"
       ? "missing"
       : unsyncedSkills.length > 0 || unsyncedSharedRules.length > 0
@@ -732,41 +751,36 @@ function detectWaza() {
 
     hostStatuses[host] = {
       label: HOSTS[host].label,
-      path: HOSTS[host].skillsDir,
+      path: effectiveSummary.path,
       user_path: HOSTS[host].skillsDir,
       project_path: HOSTS[host].projectSkillsDir,
-      scope: projectSummary.status === "present" ? "project" : status === "present" ? "user" : projectSummary.status === "partial" ? "project-partial" : status,
-      status,
-      present: status === "present",
-      installed_skills: installedSkills,
-      missing_skills: missingSkills,
+      scope: effectiveScope,
+      status: effectiveStatus,
+      present: effectiveStatus === "present",
+      installed_skills: effectiveInstalledSkills,
+      missing_skills: effectiveMissingSkills,
       drift_skills: driftSkills,
       stale_skills: staleSkills,
-      shared_rules: installedSharedRules,
-      missing_shared_rules: missingSharedRules,
-      drift_shared_rules: driftSharedRules,
-      stale_shared_rules: staleSharedRules,
-      shared_rules_staging_sync: sharedRulesStagingSync,
-      shared_rules_stale_status: sharedRulesStaleStatus,
-      versions: Object.fromEntries(skills.filter((entry) => entry.present).map((entry) => [entry.name, entry.version])),
-      staging_sync: stagingSync,
+      shared_rules: effectiveScope.startsWith("project") ? [] : installedSharedRules,
+      missing_shared_rules: effectiveScope.startsWith("project") ? [] : missingSharedRules,
+      drift_shared_rules: effectiveScope.startsWith("project") ? [] : driftSharedRules,
+      stale_shared_rules: effectiveScope.startsWith("project") ? [] : staleSharedRules,
+      shared_rules_staging_sync: effectiveScope.startsWith("project") ? "project-scope" : sharedRulesStagingSync,
+      shared_rules_stale_status: effectiveScope.startsWith("project") ? "not-checked" : sharedRulesStaleStatus,
+      versions: Object.fromEntries(effectiveSkills.filter((entry) => entry.present).map((entry) => [entry.name, entry.version])),
+      staging_sync: effectiveScope.startsWith("project") ? "project-scope" : stagingSync,
       stale_status: staleStatus,
-      skills,
+      skills: effectiveSkills,
       shared_rule_details: sharedRules,
       scope_summary: {
-        user: {
-          path: HOSTS[host].skillsDir,
-          status,
-          installed_skills: installedSkills,
-          missing_skills: missingSkills,
-        },
+        user: userSummary,
         project: projectSummary,
       },
-      reason: status === "present"
-        ? `Detected all ${WAZA_MANAGED_SKILLS.length} Waza skills for ${HOSTS[host].label} from the real host skill path.`
-        : status === "partial"
-          ? `Detected ${installedSkills.length}/${WAZA_MANAGED_SKILLS.length} Waza skills for ${HOSTS[host].label}; missing ${missingSkills.join(", ")}.`
-          : `No Waza skills detected at ${HOSTS[host].skillsDir}.`,
+      reason: effectiveStatus === "present"
+        ? `Detected all ${WAZA_MANAGED_SKILLS.length} Waza skills for ${HOSTS[host].label} from the ${effectiveScope} skill path.`
+        : effectiveStatus === "partial"
+          ? `Detected ${effectiveInstalledSkills.length}/${WAZA_MANAGED_SKILLS.length} Waza skills for ${HOSTS[host].label}; missing ${effectiveMissingSkills.join(", ")}.`
+          : `No Waza skills detected at ${HOSTS[host].skillsDir} or ${HOSTS[host].projectSkillsDir}.`,
     };
   }
 
@@ -795,7 +809,10 @@ function detectWaza() {
         : "Local Waza SKILL.md and shared rule files match upstream GitHub raw content.";
 
   const status = summarizeWazaStatus(hostStatuses);
-  const installCommand = `npx -y skills add tw93/Waza -g -a ${
+  const hasProjectScope = Object.values(hostStatuses).some((entry) => String(entry.scope).startsWith("project"));
+  const installCommand = hasProjectScope
+    ? "local-repo-harness adopt --repo . --skill-scope project --external-tool-scope project"
+    : `npx -y skills add tw93/Waza -g -a ${
     hostMode === "both" ? "claude-code codex" : hostMode === "claude" ? "claude-code" : "codex"
   } -s think hunt check health -y`;
   const rulesList = WAZA_SHARED_RULES.join(" ");
@@ -1445,7 +1462,7 @@ function printText(result) {
     const versionBits = Object.entries(entry.versions)
       .map(([name, version]) => `${name}@${version || "unknown"}`)
       .join(", ");
-    console.log(`  - ${entry.label}: ${entry.status}, scope=${entry.scope}, ${entry.installed_skills.length}/${waza.managed_skills.length} user skills, project=${entry.scope_summary.project.status}, sync=${entry.staging_sync}, stale=${entry.stale_status}`);
+    console.log(`  - ${entry.label}: ${entry.status}, scope=${entry.scope}, ${entry.installed_skills.length}/${waza.managed_skills.length} skills, project=${entry.scope_summary.project.status}, sync=${entry.staging_sync}, stale=${entry.stale_status}`);
     if (versionBits) {
       console.log(`    versions: ${versionBits}`);
     }

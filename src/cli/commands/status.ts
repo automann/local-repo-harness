@@ -10,13 +10,28 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
 import { ALL_TARGETS } from '../installer/targets/registry';
 import { ROUTES } from '../hook/route-registry';
 import { isManagedEntry, type HooksByEvent } from '../installer/managed-entries';
 import { readJsonOrEmpty } from '../installer/shared';
 import { locationToScope, type InstallScope, type Location } from '../installer/types';
 
-export const CLI_VERSION = '0.5.3';
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = path.resolve(SCRIPT_DIR, '..', '..', '..');
+
+function readPackageVersion(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8')) as {
+      version?: unknown;
+    };
+    return typeof pkg.version === 'string' && pkg.version.trim() ? pkg.version : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+export const CLI_VERSION = readPackageVersion();
 
 const OPT_IN_MARKER = '.ai/harness/workflow-contract.json';
 const POLICY_FILE = '.ai/harness/policy.json';
