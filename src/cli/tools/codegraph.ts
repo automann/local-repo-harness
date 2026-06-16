@@ -17,6 +17,11 @@ const CODEGRAPH_TELEMETRY_ENV = {
   CODEGRAPH_TELEMETRY: "0",
   DO_NOT_TRACK: "1",
 } as const;
+const CODEGRAPH_PROJECT_MCP_ENV = {
+  ...CODEGRAPH_TELEMETRY_ENV,
+  CODEGRAPH_INSTALL_DIR: CODEGRAPH_RUNTIME_DIR_REL,
+  CODEGRAPH_NO_DAEMON: "1",
+} as const;
 
 export type CodegraphSource = "local" | "global" | "missing";
 export type CodegraphStatus = "present" | "warning" | "partial" | "missing";
@@ -111,7 +116,7 @@ function codegraphRuntimeEnv(repoRoot: string, env?: NodeJS.ProcessEnv): NodeJS.
 
 function codegraphMcpEnv(location: CodegraphConfigureLocation): Record<string, string> {
   return location === "local"
-    ? { ...CODEGRAPH_TELEMETRY_ENV, CODEGRAPH_INSTALL_DIR: CODEGRAPH_RUNTIME_DIR_REL }
+    ? { ...CODEGRAPH_PROJECT_MCP_ENV }
     : { ...CODEGRAPH_TELEMETRY_ENV };
 }
 

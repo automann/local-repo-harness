@@ -59,11 +59,10 @@ rh_run_ts_file() {
 
 rh_run_js_source() {
   local script_path
+  local temp_dir
+  local tmp_base
   local status
   local had_errexit=0
-
-  script_path="$(mktemp "${TMPDIR:-/tmp}/repo-harness-js.XXXXXX.js")" || return 1
-  cat > "$script_path"
 
   case "$-" in
     *e*)
@@ -72,9 +71,31 @@ rh_run_js_source() {
       ;;
   esac
 
+  tmp_base="${TMPDIR:-/tmp}"
+  tmp_base="${tmp_base%/}"
+  temp_dir="$(mktemp -d "${tmp_base}/repo-harness-js.XXXXXX")"
+  status=$?
+  if [[ "$status" -ne 0 ]]; then
+    if [[ "$had_errexit" -eq 1 ]]; then
+      set -e
+    fi
+    return "$status"
+  fi
+
+  script_path="$temp_dir/source.js"
+  cat > "$script_path"
+  status=$?
+  if [[ "$status" -ne 0 ]]; then
+    rm -rf "$temp_dir"
+    if [[ "$had_errexit" -eq 1 ]]; then
+      set -e
+    fi
+    return "$status"
+  fi
+
   rh_run_js_file "$script_path" "$@"
   status=$?
-  rm -f "$script_path"
+  rm -rf "$temp_dir"
 
   if [[ "$had_errexit" -eq 1 ]]; then
     set -e

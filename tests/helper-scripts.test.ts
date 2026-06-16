@@ -168,6 +168,36 @@ function externalAcceptanceAdvice(reviewer = "Codex", source = "codex-review"): 
 }
 
 describe("Workflow helper scripts", () => {
+  test("js runtime source helper uses a temp directory instead of a suffixed mktemp file", () => {
+    const cwd = tmpWorkspace("helper-js-runtime");
+    try {
+      const tmpBase = join(cwd, "tmp");
+      mkdirSync(tmpBase, { recursive: true });
+      writeFileSync(join(tmpBase, "repo-harness-js.XXXXXX.js"), "stale literal collision\n");
+
+      const res = run(
+        "bash",
+        [
+          "-lc",
+          [
+            `source ${JSON.stringify(join(ROOT, "scripts/lib/js-runtime.sh"))}`,
+            "rh_run_js_source <<'JS'",
+            "console.log('runtime-ok');",
+            "JS",
+          ].join("\n"),
+        ],
+        cwd,
+        { TMPDIR: tmpBase },
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stdout.trim()).toBe("runtime-ok");
+      expect(readdirSync(tmpBase)).toEqual(["repo-harness-js.XXXXXX.js"]);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("capability resolver ignores local worktrees during legacy discovery", () => {
     const cwd = tmpWorkspace("helper-capability-worktrees");
     try {

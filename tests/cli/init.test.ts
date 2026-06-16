@@ -817,7 +817,7 @@ describe("init command", () => {
       expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
       const codexConfig = readFileSync(join(repo, ".codex", "config.toml"), "utf-8");
       expect(codexConfig).toContain('args = ["serve", "--mcp", "--path", "."]');
-      expect(codexConfig).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+      expect(codexConfig).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime", CODEGRAPH_NO_DAEMON = "1" }');
       const claudeMcp = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph;
       expect(claudeMcp.args).toEqual([
         "serve",
@@ -829,6 +829,7 @@ describe("init command", () => {
         CODEGRAPH_TELEMETRY: "0",
         DO_NOT_TRACK: "1",
         CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+        CODEGRAPH_NO_DAEMON: "1",
       });
       expect(existsSync(join(home, ".codex", "config.toml"))).toBe(false);
       expect(existsSync(join(home, ".claude.json"))).toBe(false);
@@ -877,6 +878,7 @@ describe("init command", () => {
       const codexConfig = readFileSync(join(repo, ".codex", "config.toml"), "utf-8");
       expect(codexConfig).toContain('command = "./.ai/harness/bin/codegraph"');
       expect(codexConfig).toContain('CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime"');
+      expect(codexConfig).toContain('CODEGRAPH_NO_DAEMON = "1"');
       const claudeMcp = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf-8")).mcpServers.codegraph;
       expect(claudeMcp.command).toBe("./.ai/harness/bin/codegraph");
       expect(claudeMcp.args).toEqual(["serve", "--mcp", "--path", "."]);
@@ -884,6 +886,7 @@ describe("init command", () => {
         CODEGRAPH_TELEMETRY: "0",
         DO_NOT_TRACK: "1",
         CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+        CODEGRAPH_NO_DAEMON: "1",
       });
       expect(existsSync(join(home, ".codex", "config.toml"))).toBe(false);
       expect(existsSync(join(home, ".claude.json"))).toBe(false);

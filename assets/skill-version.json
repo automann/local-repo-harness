@@ -1,6 +1,6 @@
 {
-  "version": "0.5.7",
-  "templateVersion": "0.5.7",
+  "version": "0.5.8",
+  "templateVersion": "0.5.8",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -155,6 +155,10 @@
     {
       "version": "0.5.7",
       "description": "Makes doctor readiness fully project-scope aware so strict project installs do not require global PATH CLI or global host adapters"
+    },
+    {
+      "version": "0.5.8",
+      "description": "Runs project-local CodeGraph MCP in direct mode to avoid user-level daemon registry residue and hardens temporary JavaScript helper execution"
     }
   ],
   "generatedProjectStamp": {

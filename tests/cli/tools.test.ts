@@ -408,13 +408,14 @@ describe("tools configure codegraph", () => {
     expect(log).toContain(`env CODEGRAPH_TELEMETRY=0 DO_NOT_TRACK=1 CODEGRAPH_INSTALL_DIR=${repo}/.ai/harness/codegraph-runtime`);
     expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
-    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime", CODEGRAPH_NO_DAEMON = "1" }');
     expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./.ai/harness/bin/codegraph");
     expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
     expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
       CODEGRAPH_TELEMETRY: "0",
       DO_NOT_TRACK: "1",
       CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+      CODEGRAPH_NO_DAEMON: "1",
     });
     expect(codexConfigAfter).toBe("");
     expect(claudeRootConfigAfter).toBeNull();
@@ -443,7 +444,7 @@ describe("tools configure codegraph", () => {
     expect(projectPath?.status).toBe("changed");
     expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
-    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime", CODEGRAPH_NO_DAEMON = "1" }');
     expect(codexConfigAfter).toBe("");
   }, 15000);
 
@@ -475,13 +476,14 @@ describe("tools configure codegraph", () => {
     expect(log).toBe("");
     expect(projectCodexConfigAfter).toContain('command = "./.ai/harness/bin/codegraph"');
     expect(projectCodexConfigAfter).toContain('args = ["serve", "--mcp", "--path", "."]');
-    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime" }');
+    expect(projectCodexConfigAfter).toContain('env = { CODEGRAPH_TELEMETRY = "0", DO_NOT_TRACK = "1", CODEGRAPH_INSTALL_DIR = ".ai/harness/codegraph-runtime", CODEGRAPH_NO_DAEMON = "1" }');
     expect(projectMcpAfter?.mcpServers?.codegraph?.command).toBe("./.ai/harness/bin/codegraph");
     expect(projectMcpAfter?.mcpServers?.codegraph?.args).toEqual(["serve", "--mcp", "--path", "."]);
     expect(projectMcpAfter?.mcpServers?.codegraph?.env).toEqual({
       CODEGRAPH_TELEMETRY: "0",
       DO_NOT_TRACK: "1",
       CODEGRAPH_INSTALL_DIR: ".ai/harness/codegraph-runtime",
+      CODEGRAPH_NO_DAEMON: "1",
     });
     expect(codexConfigAfter).toBe("");
     expect(claudeRootConfigAfter).toBeNull();

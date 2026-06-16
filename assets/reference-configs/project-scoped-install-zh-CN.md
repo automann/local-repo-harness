@@ -59,13 +59,15 @@ git checkout -b chore/adopt-local-repo-harness-project-scope
 
 ## 版本和 Bun minimumReleaseAge
 
-真实项目级安装建议使用 `local-repo-harness@0.5.7` 或更新版本。`0.5.7`
+真实项目级安装建议使用 `local-repo-harness@0.5.8` 或更新版本。`0.5.8`
 包含 project-managed bootstrap，能把 local-repo-harness 自身安装到
 `.ai/harness/tools/local-repo-harness/`，避免零 package.json 项目因为 `bun add`
 污染父目录；同时修复项目级 CLI 版本显示、项目 helper wrapper 对
 `.ai/harness/bin/local-repo-harness` 的解析，以及 project-scoped Waza skills
 检查误报为用户级缺失的问题，并让 `doctor --json` 不再把 global PATH CLI
-或 user-level host adapter 作为项目级 readiness 的通过条件。
+或 user-level host adapter 作为项目级 readiness 的通过条件。`0.5.8`
+还会让项目级 CodeGraph MCP 默认使用 direct mode，避免启动后在
+`~/.codegraph/daemons` 留下当前项目的 daemon registry 记录。
 
 如果你的机器启用了 Bun 的 `minimumReleaseAge`，刚发布的 `local-repo-harness`
 版本可能会被 Bun 拦截，报类似 `all versions blocked by minimum-release-age`。

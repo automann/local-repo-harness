@@ -1,6 +1,6 @@
 {
   "name": "local-repo-harness",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Independent local-repo-harness package based on repo-harness@0.5.0, with project-scoped install support for repo-local hooks, skills, and agent tooling",
   "license": "MIT",
   "repository": {

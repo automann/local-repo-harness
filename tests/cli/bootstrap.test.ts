@@ -27,7 +27,7 @@ function writeFakeBunForHarnessBootstrap(fakeBin: string, logFile: string): void
       "set -euo pipefail",
       `printf 'managed PWD=%s ARGS=%s\\n' "$PWD" "$*" >> ${JSON.stringify(logFile)}`,
       "if [[ \"${1:-}\" == \"--version\" ]]; then",
-      "  echo '0.5.7'",
+      "  echo '0.5.8'",
       "  exit 0",
       "fi",
       "if [[ \"${1:-}\" == \"adopt\" ]]; then",
