@@ -75,6 +75,7 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("user MCP config");
     expect(firstFive).toContain("brain root");
     expect(firstFive).toContain("bunx --bun local-repo-harness@latest bootstrap");
+    expect(firstFive).toContain("--package local-repo-harness@0.5.x");
     expect(firstFive).toContain("./.ai/harness/bin/local-repo-harness");
     expect(firstFive).toContain(".ai/harness/tools/local-repo-harness/");
     expect(firstFive).toContain("CODEGRAPH_NO_DAEMON=1");

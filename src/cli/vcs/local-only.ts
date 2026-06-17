@@ -579,7 +579,7 @@ export function cleanupLocalOnlyVcs(
     ? [["git", "-C", repoRoot, "rm", "--cached", "-r", "--ignore-unmatch", "--", ...cleanupPaths]]
     : [];
   const removedFromIndex: string[] = [];
-  if (!dryRun && cleanupPaths.length > 0 && audit.requiresUserReview.length === 0) {
+  if (!dryRun && cleanupPaths.length > 0) {
     const result = gitPath(repoRoot, ["rm", "--cached", "-r", "--ignore-unmatch", "--", ...cleanupPaths]);
     if (!result.ok) {
       throw new Error(result.stderr || result.stdout || "git rm --cached failed");

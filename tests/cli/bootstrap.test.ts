@@ -47,6 +47,34 @@ function writeFakeBunForHarnessBootstrap(fakeBin: string, logFile: string): void
 }
 
 describe("bootstrap command", () => {
+  test("does not advertise bootstrap --version; package pinning uses --package", () => {
+    const help = spawnSync(process.execPath, [CLI, "bootstrap", "--help"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+    expect(help.status).toBe(0);
+    expect(help.stdout).toContain("--package <spec>");
+    expect(help.stdout).toContain("local-repo-harness@0.5.10");
+    expect(help.stdout).not.toContain("--version <version>");
+    expect(help.stdout).not.toContain("--channel <channel>");
+
+    const topLevelVersion = spawnSync(process.execPath, [CLI, "--version"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+    expect(topLevelVersion.status).toBe(0);
+    expect(topLevelVersion.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
+
+    const bootstrapVersion = spawnSync(process.execPath, [CLI, "bootstrap", "--version", "0.5.9"], {
+      cwd: ROOT,
+      encoding: "utf-8",
+    });
+    expect(bootstrapVersion.status).toBe(1);
+    expect(bootstrapVersion.stderr).toContain("unknown option '--version'");
+    expect(bootstrapVersion.stderr).toContain("--package local-repo-harness@<version>");
+    expect(bootstrapVersion.stdout.trim()).toBe("");
+  });
+
   test("installs local-repo-harness into a harness-managed tool root without touching parent package boundary", () => {
     const tmp = join(tmpdir(), `repo-harness-bootstrap-${Date.now()}`);
     const parent = join(tmp, "parent");

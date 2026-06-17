@@ -94,6 +94,37 @@ describe("local-only VCS boundary", () => {
     }
   });
 
+  test("cleanup still removes safe files when other files require review", () => {
+    const repo = tempRepo("repo-harness-vcs-partial-cleanup-");
+    try {
+      const safeRel = ".mcp.json";
+      const reviewRel = "scripts/check-task-workflow.sh";
+      const safeFile = join(repo, safeRel);
+      const reviewFile = join(repo, "scripts", "check-task-workflow.sh");
+      mkdirSync(join(repo, "scripts"), { recursive: true });
+      writeFileSync(safeFile, "{}\n");
+      writeFileSync(reviewFile, "#!/bin/bash\necho user-authored\n");
+      expect(git(repo, ["add", safeRel, reviewRel]).status).toBe(0);
+
+      syncLocalVcsBoundary(repo, { vcsScope: "local", projectScoped: true, apply: true });
+      const audit = auditLocalOnlyVcs(repo, { vcsScope: "local" });
+      expect(audit.trackedLocalOnly.map((issue) => issue.path)).toContain(safeRel);
+      expect(audit.requiresUserReview.map((issue) => issue.path)).toContain(reviewRel);
+
+      const applied = cleanupLocalOnlyVcs(repo, { vcsScope: "local", apply: true });
+      expect(applied.removedFromIndex).toContain(safeRel);
+      expect(applied.removedFromIndex).not.toContain(reviewRel);
+      expect(git(repo, ["ls-files", "--", safeRel]).stdout.trim()).toBe("");
+      expect(git(repo, ["ls-files", "--", reviewRel]).stdout.trim()).toBe(reviewRel);
+      expect(existsSync(safeFile)).toBe(true);
+      expect(existsSync(reviewFile)).toBe(true);
+      expect(applied.safeToCommit).toBe(false);
+      expect(applied.requiresUserReview.map((issue) => issue.path)).toContain(reviewRel);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
   test("CLI vcs audit and cleanup expose JSON reports", () => {
     const repo = tempRepo("repo-harness-vcs-cli-");
     try {

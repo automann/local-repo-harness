@@ -65,6 +65,7 @@ export function buildProgram(): Command {
     .name('local-repo-harness')
     .description('Make Claude/Codex work resumable, reviewable, and repo-local')
     .version(CLI_VERSION)
+    .enablePositionalOptions()
     .exitOverride();
 
   program
@@ -206,9 +207,7 @@ export function buildProgram(): Command {
     .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
     .option('--repo <path>', 'Target repository path (defaults to cwd)')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--package <spec>', 'Package spec to install into the project-managed runtime')
-    .option('--version <version>', 'Install a specific local-repo-harness package version into the project-managed runtime')
-    .option('--channel <channel>', 'Install package channel: latest|next')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.10')
     .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
     .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
@@ -223,12 +222,11 @@ export function buildProgram(): Command {
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'manifest-only')
     .option('--vcs-scope <scope>', 'Git tracking scope for project-scoped install artifacts: local|tracked', 'local')
     .option('--json', 'Output JSON instead of human-readable text')
+    .showHelpAfterError('Use --package local-repo-harness@<version> to pin the project-managed runtime.')
     .action((rawOpts: {
       repo?: string;
       target: string;
       package?: string;
-      version?: string;
-      channel?: string;
       syncSkill?: boolean;
       skillScope?: string;
       hostAdapters?: boolean;
@@ -248,14 +246,6 @@ export function buildProgram(): Command {
         console.error(
           `local-repo-harness bootstrap: invalid --target "${rawOpts.target}" (expected: ${VALID_TARGETS.join(', ')})`,
         );
-        process.exit(2);
-      }
-      if (rawOpts.channel !== undefined && !['latest', 'next'].includes(rawOpts.channel)) {
-        console.error('local-repo-harness bootstrap: invalid --channel (expected: latest, next)');
-        process.exit(2);
-      }
-      if ([rawOpts.package, rawOpts.version, rawOpts.channel].filter((value) => value !== undefined).length > 1) {
-        console.error('local-repo-harness bootstrap: use only one of --package, --version, or --channel');
         process.exit(2);
       }
       if (!['skip', 'manifest-only'].includes(rawOpts.brainMode ?? 'manifest-only')) {
@@ -292,8 +282,6 @@ export function buildProgram(): Command {
         repo: rawOpts.repo,
         target: rawOpts.target as InstallTargetSpec,
         packageSpec: rawOpts.package,
-        version: rawOpts.version,
-        channel: rawOpts.channel,
         syncSkill: rawOpts.syncSkill !== false,
         skillScope: rawOpts.skillScope as ToolingScope | undefined,
         hostAdapters: rawOpts.hostAdapters !== false,

@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.9`
+当前版本：`local-repo-harness@0.5.10`
 
 ## 这个项目适合谁
 
@@ -148,6 +148,9 @@ bunx --bun local-repo-harness@latest bootstrap \
   --vcs-scope local \
   --no-codegraph
 ```
+
+需要固定项目内 managed runtime 版本时，不要使用 `bootstrap --version`；统一使用
+`--package local-repo-harness@0.5.x`。
 
 之后统一使用项目内 CLI：
 

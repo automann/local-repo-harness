@@ -37,8 +37,6 @@ export interface BootstrapOptions {
   brainMode?: InitBrainMode;
   vcsScope?: VcsScope;
   packageSpec?: string;
-  version?: string;
-  channel?: string;
   json?: boolean;
   env?: NodeJS.ProcessEnv;
 }
@@ -162,8 +160,6 @@ function managedHarnessShimPath(repoRoot: string): string {
 
 function resolveHarnessPackageSpec(opts: BootstrapOptions): string {
   if (opts.packageSpec?.trim()) return opts.packageSpec.trim();
-  if (opts.version?.trim()) return `${HARNESS_PACKAGE}@${opts.version.trim()}`;
-  if (opts.channel?.trim()) return `${HARNESS_PACKAGE}@${opts.channel.trim()}`;
   return `${HARNESS_PACKAGE}@latest`;
 }
 
