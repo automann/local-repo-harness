@@ -39,6 +39,7 @@ import {
 } from "../skills/project-skills";
 import {
   projectScopedRequested,
+  resolveLocalVcsPolicy,
   syncLocalVcsBoundary,
   type VcsMode,
   type VcsScope,
@@ -90,6 +91,8 @@ export interface InitCommandOptions {
   brainRoot?: string;
   brainMode?: InitBrainMode;
   vcsScope?: VcsScope;
+  vcsProfile?: string;
+  trackedWhitelist?: string[];
   mode?: VcsMode;
   target?: InstallTargetSpec;
   env?: NodeJS.ProcessEnv;
@@ -453,6 +456,13 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     brainMode,
   });
   const vcsScope = opts.vcsScope ?? (mode === "self-host" ? "tracked" : projectScoped ? "local" : "tracked");
+  const vcsPolicy = resolveLocalVcsPolicy(repoRoot, {
+    vcsScope,
+    vcsProfile: opts.vcsProfile,
+    trackedWhitelist: opts.trackedWhitelist,
+    mode,
+    projectScoped,
+  });
   const steps: InitStep[] = [];
 
   if (opts.brainRoot) {
@@ -472,9 +482,11 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     REPO_HARNESS_CODEGRAPH_MCP_SCOPE: codegraph ? codegraphMcpScope : "none",
     REPO_HARNESS_BRAIN_MODE: brainMode,
     REPO_HARNESS_VCS_SCOPE: vcsScope,
-    REPO_HARNESS_INSTALL_STATE_VCS_SCOPE: vcsScope,
-    REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE: vcsScope,
-    REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE: vcsScope,
+    REPO_HARNESS_VCS_PROFILE: vcsPolicy.profileName,
+    REPO_HARNESS_TRACKED_WHITELIST: vcsPolicy.trackedWhitelist.join(","),
+    REPO_HARNESS_INSTALL_STATE_VCS_SCOPE: vcsPolicy.installStateScope,
+    REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE: vcsPolicy.workflowStateScope,
+    REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE: vcsPolicy.productIntentScope,
   };
 
   const targetError = validateRepoAdoptionTarget(repoRoot, opts.repo !== undefined, commandEnv);
@@ -678,6 +690,8 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   try {
     const vcs = syncLocalVcsBoundary(repoRoot, {
       vcsScope,
+      vcsProfile: opts.vcsProfile,
+      trackedWhitelist: opts.trackedWhitelist,
       mode,
       projectScoped,
       apply,
@@ -687,7 +701,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
       status: vcs.skipped ? "skipped" : "ok",
       detail: vcs.skipped
         ? vcs.reason
-        : `${apply ? "applied" : "dry-run"}; scope=${vcs.policy.installStateScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
+        : `${apply ? "applied" : "dry-run"}; profile=${vcs.policy.profileName}; install=${vcs.policy.installStateScope}; workflow=${vcs.policy.workflowStateScope}; product-intent=${vcs.policy.productIntentScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
     });
   } catch (error) {
     steps.push({

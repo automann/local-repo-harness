@@ -65,8 +65,12 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("--external-tool-scope project");
     expect(firstFive).toContain("--codegraph-mcp-scope project");
     expect(firstFive).toContain("--sync-codegraph");
-    expect(firstFive).toContain("--vcs-scope local");
+    expect(firstFive).toContain("--vcs-profile project-local-install");
     expect(firstFive).toContain("local-only Git");
+    expect(readme).toContain("tracked_whitelist");
+    expect(readme).toContain("--tracked-whitelist");
+    expect(readme).toContain("根目录 `.gitignore` 是硬边界");
+    expect(readme).toContain("没有 `local_only_whitelist`");
     expect(readme).toContain("vcs audit --repo \"$PWD\" --json");
     expect(readme).toContain("vcs cleanup --repo \"$PWD\" --dry-run");
     expect(readme).toContain("local-only-vcs-boundary");
@@ -114,6 +118,9 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("vcs audit --repo \"$PWD\" --json");
     expect(quickStart).toContain("vcs cleanup --repo \"$PWD\" --apply");
     expect(quickStart).toContain("不要把 `.ai/harness/tools/local-repo-harness/`");
+    expect(quickStart).toContain("project-local-install");
+    expect(quickStart).toContain("tracked_whitelist");
+    expect(quickStart).toContain("没有 `local_only_whitelist`");
   });
 
   test("links to the hook operations reference and parity contract", () => {

@@ -10,6 +10,11 @@
 - local-only Git 边界已经建立：`.git/info/exclude` 和必要的本地 overlay
   `.gitignore` 会阻止安装产物进入产品提交
 
+默认 `project-local-install` VCS profile 会把安装态和 workflow 治理态留在本地，
+但产品意图文档默认仍可 tracked。根目录 `.gitignore` 是硬边界；
+`tracked_whitelist` 只能显式保留治理/意图文件，不能覆盖项目作者的忽略规则。
+没有 `local_only_whitelist`。
+
 `README.md` 负责安装；本文件负责回答三个问题：
 
 - 一件真实任务应该怎么在 repo-harness 工作流里推进。

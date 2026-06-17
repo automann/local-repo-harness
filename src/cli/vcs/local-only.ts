@@ -12,9 +12,12 @@ import { dirname, join, normalize, resolve, sep } from "path";
 export type VcsScope = "local" | "tracked";
 export type VcsArtifactGroup = "install-state" | "workflow-state" | "product-intent";
 export type VcsMode = "minimal" | "standard" | "self-host";
+export type VcsProfileName = "project-local-install" | "ephemeral-agent-workspace" | "tracked-governance" | "self-host";
 
 export interface LocalVcsPolicyOptions {
   vcsScope?: VcsScope;
+  vcsProfile?: string;
+  trackedWhitelist?: string[];
   installStateScope?: VcsScope;
   workflowStateScope?: VcsScope;
   productIntentScope?: VcsScope;
@@ -22,10 +25,23 @@ export interface LocalVcsPolicyOptions {
   projectScoped?: boolean;
 }
 
+export interface LocalVcsProfile {
+  version: 1;
+  name: VcsProfileName;
+  scopes: {
+    install_state_scope: VcsScope;
+    workflow_state_scope: VcsScope;
+    product_intent_scope: VcsScope;
+  };
+  tracked_whitelist: string[];
+}
+
 export interface LocalVcsPolicy {
+  profileName: string;
   installStateScope: VcsScope;
   workflowStateScope: VcsScope;
   productIntentScope: VcsScope;
+  trackedWhitelist: string[];
   excludeStrategy: "git-info-exclude-plus-local-overlays";
   manifestPath: string;
   source: "options" | "policy" | "default";
@@ -42,11 +58,13 @@ export interface LocalOnlyEntry {
 export interface LocalOnlyManifest {
   version: number;
   generated_by: string;
+  vcs_profile: string;
   vcs_scope: {
     install_state: VcsScope;
     workflow_state: VcsScope;
     product_intent: VcsScope;
   };
+  tracked_whitelist: string[];
   local_only: LocalOnlyEntry[];
   requires_user_review: string[];
 }
@@ -55,6 +73,8 @@ export interface VcsIssue {
   path: string;
   group?: VcsArtifactGroup;
   reason?: string;
+  source?: string;
+  pattern?: string;
 }
 
 export interface VcsAuditReport {
@@ -68,6 +88,7 @@ export interface VcsAuditReport {
   trackedLocalOnly: VcsIssue[];
   unignoredLocalOnly: VcsIssue[];
   requiresUserReview: VcsIssue[];
+  projectIgnoredConflicts: VcsIssue[];
   safeToCommit: boolean;
 }
 
@@ -93,6 +114,50 @@ export interface VcsBoundarySyncResult {
 const MANAGED_BEGIN = "# BEGIN: local-repo-harness local-only (managed)";
 const MANAGED_END = "# END: local-repo-harness local-only";
 export const DEFAULT_LOCAL_ONLY_MANIFEST = ".ai/harness/local-only-manifest.json";
+
+export const DEFAULT_VCS_PROFILE: VcsProfileName = "project-local-install";
+export const VCS_PROFILES: Record<VcsProfileName, LocalVcsProfile> = {
+  "project-local-install": {
+    version: 1,
+    name: "project-local-install",
+    scopes: {
+      install_state_scope: "local",
+      workflow_state_scope: "local",
+      product_intent_scope: "tracked",
+    },
+    tracked_whitelist: [],
+  },
+  "ephemeral-agent-workspace": {
+    version: 1,
+    name: "ephemeral-agent-workspace",
+    scopes: {
+      install_state_scope: "local",
+      workflow_state_scope: "local",
+      product_intent_scope: "local",
+    },
+    tracked_whitelist: [],
+  },
+  "tracked-governance": {
+    version: 1,
+    name: "tracked-governance",
+    scopes: {
+      install_state_scope: "local",
+      workflow_state_scope: "tracked",
+      product_intent_scope: "tracked",
+    },
+    tracked_whitelist: [],
+  },
+  "self-host": {
+    version: 1,
+    name: "self-host",
+    scopes: {
+      install_state_scope: "tracked",
+      workflow_state_scope: "tracked",
+      product_intent_scope: "tracked",
+    },
+    tracked_whitelist: [],
+  },
+};
 
 const INSTALL_STATE_PATHS: readonly string[] = [
   ".ai/harness/tools/local-repo-harness/",
@@ -229,6 +294,55 @@ function scopeFrom(value: unknown): VcsScope | undefined {
   return value === "local" || value === "tracked" ? value : undefined;
 }
 
+export function vcsProfileIsValid(value: string | undefined): value is VcsProfileName {
+  return value === "project-local-install" ||
+    value === "ephemeral-agent-workspace" ||
+    value === "tracked-governance" ||
+    value === "self-host";
+}
+
+function profileFromScope(scope: VcsScope): VcsProfileName {
+  return scope === "local" ? "project-local-install" : "self-host";
+}
+
+function profileFrom(value: unknown): VcsProfileName | undefined {
+  return typeof value === "string" && vcsProfileIsValid(value) ? value : undefined;
+}
+
+function whitelistFrom(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter(Boolean).map(safeRelPath);
+  }
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .flatMap((item) => item.split(","))
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map(safeRelPath);
+}
+
+export function parseTrackedWhitelist(value: string | string[] | undefined): string[] {
+  return uniquePaths(whitelistFrom(value));
+}
+
+function uniquePaths(paths: string[]): string[] {
+  return [...new Set(paths.map(safeRelPath))];
+}
+
+function pathMatchesPattern(path: string, pattern: string): boolean {
+  const normalizedPath = safeRelPath(path);
+  const normalizedPattern = safeRelPath(pattern);
+  if (normalizedPattern.endsWith("/")) {
+    return normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern);
+  }
+  return normalizedPath === normalizedPattern;
+}
+
+function matchesAnyPath(path: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => pathMatchesPattern(path, pattern));
+}
+
 export function resolveGitRepoRoot(input?: string): string | null {
   const cwd = resolve(input ?? process.cwd());
   const result = spawnSync("git", ["-C", cwd, "rev-parse", "--show-toplevel"], {
@@ -242,29 +356,64 @@ function policyFile(repoRoot: string): Record<string, any> | null {
   return readJson(join(repoRoot, ".ai", "harness", "policy.json"));
 }
 
-function policyDefaults(opts: LocalVcsPolicyOptions): VcsScope {
-  if (opts.mode === "self-host") return "tracked";
-  if (opts.projectScoped === true) return "local";
-  return "tracked";
+function defaultProfileName(opts: LocalVcsPolicyOptions, raw: Record<string, any>): VcsProfileName {
+  const rawProfile = profileFrom(raw.profile ?? raw.profile_name ?? raw.name);
+  if (opts.vcsProfile && vcsProfileIsValid(opts.vcsProfile)) return opts.vcsProfile;
+  if (rawProfile) return rawProfile;
+  if (opts.vcsScope) return profileFromScope(opts.vcsScope);
+  const rawScope = scopeFrom(raw.scope);
+  if (rawScope) return profileFromScope(rawScope);
+  if (opts.mode === "self-host") return "self-host";
+  if (opts.projectScoped === true) return DEFAULT_VCS_PROFILE;
+  return "self-host";
+}
+
+function rawGroupScopesAreLegacyBroadScope(raw: Record<string, any>): boolean {
+  const scope = scopeFrom(raw.scope);
+  if (!scope) return false;
+  const install = scopeFrom(raw.install_state_scope) ?? scopeFrom(raw.installStateScope);
+  const workflow = scopeFrom(raw.workflow_state_scope) ?? scopeFrom(raw.workflowStateScope);
+  const product = scopeFrom(raw.product_intent_scope) ?? scopeFrom(raw.productIntentScope);
+  return install === scope && workflow === scope && product === scope;
+}
+
+function rawGroupScope(raw: Record<string, any>, snake: string, camel: string, useRawGroupScopes: boolean): VcsScope | undefined {
+  if (!useRawGroupScopes) return undefined;
+  return scopeFrom(raw[snake]) ?? scopeFrom(raw[camel]);
 }
 
 export function resolveLocalVcsPolicy(repoRoot: string, opts: LocalVcsPolicyOptions = {}): LocalVcsPolicy {
   const data = policyFile(repoRoot);
   const raw = data?.vcs ?? {};
-  const base = opts.vcsScope ?? scopeFrom(raw.scope) ?? policyDefaults(opts);
+  const profileName = defaultProfileName(opts, raw);
+  const profile = VCS_PROFILES[profileName] ?? VCS_PROFILES[DEFAULT_VCS_PROFILE];
+  const useRawGroupScopes = !rawGroupScopesAreLegacyBroadScope(raw);
   const source: LocalVcsPolicy["source"] =
-    opts.vcsScope || opts.installStateScope || opts.workflowStateScope || opts.productIntentScope
+    opts.vcsScope || opts.vcsProfile || opts.trackedWhitelist || opts.installStateScope || opts.workflowStateScope || opts.productIntentScope
       ? "options"
       : data?.vcs
         ? "policy"
         : "default";
+  const trackedWhitelist = uniquePaths([
+    ...profile.tracked_whitelist,
+    ...whitelistFrom(raw.tracked_whitelist ?? raw.trackedWhitelist),
+    ...(opts.trackedWhitelist ?? []),
+  ]);
   return {
+    profileName,
     installStateScope:
-      opts.installStateScope ?? opts.vcsScope ?? scopeFrom(raw.install_state_scope) ?? scopeFrom(raw.installStateScope) ?? base,
+      opts.installStateScope ??
+      rawGroupScope(raw, "install_state_scope", "installStateScope", useRawGroupScopes) ??
+      profile.scopes.install_state_scope,
     workflowStateScope:
-      opts.workflowStateScope ?? opts.vcsScope ?? scopeFrom(raw.workflow_state_scope) ?? scopeFrom(raw.workflowStateScope) ?? base,
+      opts.workflowStateScope ??
+      rawGroupScope(raw, "workflow_state_scope", "workflowStateScope", useRawGroupScopes) ??
+      profile.scopes.workflow_state_scope,
     productIntentScope:
-      opts.productIntentScope ?? opts.vcsScope ?? scopeFrom(raw.product_intent_scope) ?? scopeFrom(raw.productIntentScope) ?? base,
+      opts.productIntentScope ??
+      rawGroupScope(raw, "product_intent_scope", "productIntentScope", useRawGroupScopes) ??
+      profile.scopes.product_intent_scope,
+    trackedWhitelist,
     excludeStrategy: "git-info-exclude-plus-local-overlays",
     manifestPath:
       typeof raw.local_only_manifest === "string" && raw.local_only_manifest.trim()
@@ -284,26 +433,39 @@ function entry(path: string, group: VcsArtifactGroup, autoCleanup = true, genera
   };
 }
 
+function groupEntries(group: VcsArtifactGroup): LocalOnlyEntry[] {
+  if (group === "install-state") {
+    return INSTALL_STATE_PATHS.map((path) => entry(path, "install-state"));
+  }
+  if (group === "workflow-state") {
+    return [
+      ...WORKFLOW_STATE_PATHS.map((path) => entry(path, "workflow-state", false)),
+      ...GENERATED_HELPER_PATHS.map((path) => entry(path, "workflow-state", true, true)),
+    ];
+  }
+  return PRODUCT_INTENT_PATHS.map((path) => entry(path, "product-intent", false));
+}
+
+function addUniqueEntry(out: LocalOnlyEntry[], seen: Set<string>, next: LocalOnlyEntry): void {
+  if (seen.has(next.path)) return;
+  seen.add(next.path);
+  out.push(next);
+}
+
 export function computeLocalOnlyEntries(policy: LocalVcsPolicy): LocalOnlyEntry[] {
   const out: LocalOnlyEntry[] = [];
   const seen = new Set<string>();
-  const add = (next: LocalOnlyEntry) => {
-    if (seen.has(next.path)) return;
-    seen.add(next.path);
-    out.push(next);
-  };
 
   if (policy.installStateScope === "local") {
-    for (const path of INSTALL_STATE_PATHS) add(entry(path, "install-state"));
+    for (const next of groupEntries("install-state")) addUniqueEntry(out, seen, next);
   }
   if (policy.workflowStateScope === "local") {
-    for (const path of WORKFLOW_STATE_PATHS) add(entry(path, "workflow-state"));
-    for (const path of GENERATED_HELPER_PATHS) add(entry(path, "workflow-state", true, true));
+    for (const next of groupEntries("workflow-state")) addUniqueEntry(out, seen, next);
   }
   if (policy.productIntentScope === "local") {
-    for (const path of PRODUCT_INTENT_PATHS) add(entry(path, "product-intent"));
+    for (const next of groupEntries("product-intent")) addUniqueEntry(out, seen, next);
   }
-  return out;
+  return out.filter((next) => !matchesAnyPath(next.path, policy.trackedWhitelist));
 }
 
 function gitPath(repoRoot: string, args: string[]): { ok: boolean; stdout: string; stderr: string; status: number | null } {
@@ -400,11 +562,13 @@ function writeManifest(repoRoot: string, policy: LocalVcsPolicy, entries: LocalO
   const manifest: LocalOnlyManifest = {
     version: 1,
     generated_by: "local-repo-harness",
+    vcs_profile: policy.profileName,
     vcs_scope: {
       install_state: policy.installStateScope,
       workflow_state: policy.workflowStateScope,
       product_intent: policy.productIntentScope,
     },
+    tracked_whitelist: policy.trackedWhitelist,
     local_only: entries,
     requires_user_review: review.map((item) => item.path),
   };
@@ -459,6 +623,99 @@ function isIgnored(repoRoot: string, relPath: string): boolean {
   return result.status === 0;
 }
 
+function rootGitignoreMatch(repoRoot: string, relPath: string): { ignored: boolean; source?: string; pattern?: string } {
+  const probePath = relPath.endsWith("/") ? relPath.slice(0, -1) : relPath;
+  const result = gitPath(repoRoot, ["check-ignore", "-v", "--no-index", "--", probePath]);
+  if (result.status !== 0) return { ignored: false };
+  const line = result.stdout.split(/\r?\n/).find(Boolean);
+  if (!line) return { ignored: false };
+  const [meta] = line.split("\t");
+  const match = meta.match(/^(.*?):\d+:(.*)$/);
+  if (!match) return { ignored: false };
+  const source = match[1];
+  const pattern = match[2];
+  const sourceAbs = resolve(repoRoot, source);
+  const rootIgnoreAbs = join(repoRoot, ".gitignore");
+  const ignored = source === ".gitignore" || sourceAbs === rootIgnoreAbs;
+  return ignored ? { ignored, source, pattern } : { ignored: false, source, pattern };
+}
+
+function allKnownEntries(): LocalOnlyEntry[] {
+  const out: LocalOnlyEntry[] = [];
+  const seen = new Set<string>();
+  for (const group of ["install-state", "workflow-state", "product-intent"] as const) {
+    for (const next of groupEntries(group)) addUniqueEntry(out, seen, next);
+  }
+  return out;
+}
+
+function trackedIntentEntries(policy: LocalVcsPolicy): LocalOnlyEntry[] {
+  const out: LocalOnlyEntry[] = [];
+  const seen = new Set<string>();
+  if (policy.installStateScope === "tracked") {
+    for (const next of groupEntries("install-state")) addUniqueEntry(out, seen, next);
+  }
+  if (policy.workflowStateScope === "tracked") {
+    for (const next of groupEntries("workflow-state")) addUniqueEntry(out, seen, next);
+  }
+  if (policy.productIntentScope === "tracked") {
+    for (const next of groupEntries("product-intent")) addUniqueEntry(out, seen, next);
+  }
+  const known = allKnownEntries();
+  for (const path of policy.trackedWhitelist) {
+    const existing = entryForPath(known, path);
+    addUniqueEntry(out, seen, existing ?? entry(path, "workflow-state", false));
+  }
+  return out;
+}
+
+function projectIgnoredConflicts(repoRoot: string, policy: LocalVcsPolicy, localOnlyEntries: LocalOnlyEntry[], tracked: Set<string>): VcsIssue[] {
+  const issues: VcsIssue[] = [];
+  const seen = new Set<string>();
+  const trackedPaths = [...tracked];
+  const add = (issue: VcsIssue) => {
+    const key = `${issue.path}:${issue.reason ?? ""}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    issues.push(issue);
+  };
+
+  for (const entry of localOnlyEntries) {
+    const trackedEntryPaths = trackedPaths.filter((path) => entryForPath([entry], path));
+    for (const trackedPath of trackedEntryPaths) {
+      const match = rootGitignoreMatch(repoRoot, trackedPath);
+      if (!match.ignored) continue;
+      add({
+        path: trackedPath,
+        group: entry.group,
+        reason: "tracked local-only path is ignored by project .gitignore",
+        source: match.source,
+        pattern: match.pattern,
+      });
+    }
+  }
+
+  for (const entry of trackedIntentEntries(policy)) {
+    if (!pathExists(repoRoot, entry.path)) continue;
+    const probePath = isDirectoryEntry(entry) ? entry.path.slice(0, -1) : entry.path;
+    const match = rootGitignoreMatch(repoRoot, probePath);
+    if (match.ignored) {
+      const whitelisted = matchesAnyPath(entry.path, policy.trackedWhitelist);
+      add({
+        path: entry.path,
+        group: entry.group,
+        reason: whitelisted
+          ? "tracked_whitelist path is ignored by project .gitignore"
+          : "tracked profile path is ignored by project .gitignore",
+        source: match.source,
+        pattern: match.pattern,
+      });
+    }
+  }
+
+  return issues;
+}
+
 function unignoredEntries(repoRoot: string, entries: LocalOnlyEntry[], tracked: Set<string>): VcsIssue[] {
   const issues: VcsIssue[] = [];
   for (const entry of entries) {
@@ -499,6 +756,7 @@ export function auditLocalOnlyVcs(repoRootInput: string, opts: LocalVcsPolicyOpt
   const trackedSet = new Set(tracked);
   const review = reviewIssues(repoRoot, entries, tracked);
   const unignored = unignoredEntries(repoRoot, entries, trackedSet);
+  const ignoredConflicts = projectIgnoredConflicts(repoRoot, policy, entries, trackedSet);
   const excludePath = gitInfoExcludePath(repoRoot);
   const overlays = overlayDirs(entries).map((dir) => {
     const relPath = normalizeRelPath(`${dir}/.gitignore`);
@@ -519,7 +777,8 @@ export function auditLocalOnlyVcs(repoRootInput: string, opts: LocalVcsPolicyOpt
     trackedLocalOnly: trackedIssues,
     unignoredLocalOnly: unignored,
     requiresUserReview: review,
-    safeToCommit: trackedIssues.length === 0 && unignored.length === 0 && review.length === 0,
+    projectIgnoredConflicts: ignoredConflicts,
+    safeToCommit: trackedIssues.length === 0 && unignored.length === 0 && review.length === 0 && ignoredConflicts.length === 0,
   };
 }
 
@@ -602,14 +861,19 @@ export function formatVcsAudit(report: VcsAuditReport, asJson = false): string {
   const lines: string[] = [];
   lines.push(`Repo: ${report.repoRoot}`);
   lines.push(
+    `VCS profile: ${report.policy.profileName}`,
+  );
+  lines.push(
     `VCS scope: install=${report.policy.installStateScope}; workflow=${report.policy.workflowStateScope}; productIntent=${report.policy.productIntentScope}`,
   );
+  lines.push(`Tracked whitelist: ${report.policy.trackedWhitelist.length}`);
   lines.push(`Local-only entries: ${report.localOnly.length}`);
   lines.push(`Tracked local-only: ${report.trackedLocalOnly.length}`);
   lines.push(`Unignored local-only: ${report.unignoredLocalOnly.length}`);
   lines.push(`Requires review: ${report.requiresUserReview.length}`);
+  lines.push(`Project .gitignore conflicts: ${report.projectIgnoredConflicts.length}`);
   lines.push(`Safe to commit: ${report.safeToCommit ? "yes" : "no"}`);
-  for (const issue of [...report.trackedLocalOnly, ...report.unignoredLocalOnly, ...report.requiresUserReview].slice(0, 12)) {
+  for (const issue of [...report.trackedLocalOnly, ...report.unignoredLocalOnly, ...report.requiresUserReview, ...report.projectIgnoredConflicts].slice(0, 12)) {
     lines.push(`- ${issue.path}${issue.reason ? ` (${issue.reason})` : ""}`);
   }
   return lines.join("\n");

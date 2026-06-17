@@ -561,19 +561,22 @@ function checkLocalOnlyVcsBoundary(statusReport: StatusReport): DoctorCheckResul
       id,
       describe,
       status: 'ok',
-      detail: `local-only entries=${audit.localOnly.length}; manifest=${audit.policy.manifestPath}`,
+      detail: `profile=${audit.policy.profileName}; local-only entries=${audit.localOnly.length}; manifest=${audit.policy.manifestPath}`,
     };
   }
-  const first = [...audit.trackedLocalOnly, ...audit.unignoredLocalOnly, ...audit.requiresUserReview]
+  const issues = [...audit.trackedLocalOnly, ...audit.unignoredLocalOnly, ...audit.requiresUserReview, ...audit.projectIgnoredConflicts];
+  const hardFailures = [...audit.trackedLocalOnly, ...audit.unignoredLocalOnly, ...audit.projectIgnoredConflicts]
+    .filter((issue) => issue.group === 'install-state' || issue.reason?.includes('project .gitignore'));
+  const first = issues
     .slice(0, 5)
     .map((issue) => issue.path)
     .join(', ');
   return {
     id,
     describe,
-    status: 'fail',
+    status: hardFailures.length > 0 ? 'fail' : 'warn',
     detail:
-      `tracked=${audit.trackedLocalOnly.length}; unignored=${audit.unignoredLocalOnly.length}; review=${audit.requiresUserReview.length}; first=${first}; remediation=local-repo-harness vcs cleanup --repo ${statusReport.repo.repoRoot} --dry-run`,
+      `profile=${audit.policy.profileName}; tracked=${audit.trackedLocalOnly.length}; unignored=${audit.unignoredLocalOnly.length}; review=${audit.requiresUserReview.length}; project-ignored=${audit.projectIgnoredConflicts.length}; first=${first}; remediation=local-repo-harness vcs cleanup --repo ${statusReport.repo.repoRoot} --dry-run`,
   };
 }
 

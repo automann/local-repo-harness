@@ -2293,13 +2293,15 @@ pi_update_harness_policy_intent() {
   REPO_HARNESS_HOOK_RUNTIME_MODE="${REPO_HARNESS_HOOK_RUNTIME_MODE:-global-path}" \
   REPO_HARNESS_SKILL_SCOPE="${REPO_HARNESS_SKILL_SCOPE:-user}" \
   REPO_HARNESS_EXTERNAL_TOOL_SCOPE="${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}" \
-  REPO_HARNESS_CODEGRAPH_MCP_SCOPE="${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}" \
-  REPO_HARNESS_BRAIN_MODE="${REPO_HARNESS_BRAIN_MODE:-skip}" \
-  REPO_HARNESS_VCS_SCOPE="${REPO_HARNESS_VCS_SCOPE:-tracked}" \
-  REPO_HARNESS_INSTALL_STATE_VCS_SCOPE="${REPO_HARNESS_INSTALL_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
-  REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE="${REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
-  REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE="${REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
-  rh_run_js_source "$policy_file" <<'JS_EOF'
+	  REPO_HARNESS_CODEGRAPH_MCP_SCOPE="${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}" \
+	  REPO_HARNESS_BRAIN_MODE="${REPO_HARNESS_BRAIN_MODE:-skip}" \
+	  REPO_HARNESS_VCS_SCOPE="${REPO_HARNESS_VCS_SCOPE:-tracked}" \
+	  REPO_HARNESS_VCS_PROFILE="${REPO_HARNESS_VCS_PROFILE:-self-host}" \
+	  REPO_HARNESS_TRACKED_WHITELIST="${REPO_HARNESS_TRACKED_WHITELIST:-}" \
+	  REPO_HARNESS_INSTALL_STATE_VCS_SCOPE="${REPO_HARNESS_INSTALL_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
+	  REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE="${REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
+	  REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE="${REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}" \
+	  rh_run_js_source "$policy_file" <<'JS_EOF'
 const fs = require("fs");
 const [, , policyPath] = process.argv;
 const policy = JSON.parse(fs.readFileSync(policyPath, "utf8"));
@@ -2313,9 +2315,14 @@ policy.host_adapters.project_runtime_dir ||= ".ai/harness/runtime/local-repo-har
 
 policy.vcs ||= {};
 policy.vcs.scope = process.env.REPO_HARNESS_VCS_SCOPE;
+policy.vcs.profile = process.env.REPO_HARNESS_VCS_PROFILE;
 policy.vcs.install_state_scope = process.env.REPO_HARNESS_INSTALL_STATE_VCS_SCOPE;
 policy.vcs.workflow_state_scope = process.env.REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE;
 policy.vcs.product_intent_scope = process.env.REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE;
+policy.vcs.tracked_whitelist = (process.env.REPO_HARNESS_TRACKED_WHITELIST || "")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
 policy.vcs.exclude_strategy = "git-info-exclude-plus-local-overlays";
 policy.vcs.local_only_manifest = ".ai/harness/local-only-manifest.json";
 

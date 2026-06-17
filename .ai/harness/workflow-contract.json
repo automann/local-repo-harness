@@ -9,6 +9,14 @@
     "repoLocalFirst": true,
     "repoWorkflowStateLocalFirst": true,
     "defaultVcsScope": "local",
+    "defaultVcsProfile": "project-local-install",
+    "defaultVcsScopes": {
+      "install_state_scope": "local",
+      "workflow_state_scope": "local",
+      "product_intent_scope": "tracked"
+    },
+    "trackedWhitelist": [],
+    "rootGitignorePrecedence": true,
     "selfHostVcsScope": "tracked",
     "localOnlyVcsBoundary": "git-info-exclude-plus-local-overlays",
     "defaultHelperSource": "package",

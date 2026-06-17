@@ -36,6 +36,8 @@ export interface BootstrapOptions {
   syncCodegraph?: boolean;
   brainMode?: InitBrainMode;
   vcsScope?: VcsScope;
+  vcsProfile?: string;
+  trackedWhitelist?: string[];
   packageSpec?: string;
   json?: boolean;
   env?: NodeJS.ProcessEnv;
@@ -237,7 +239,7 @@ function buildAdoptArgs(opts: Required<Pick<
   BootstrapOptions,
   "target" | "syncSkill" | "skillScope" | "hostAdapters" | "hostAdapterScope" | "runtime" |
   "externalSkills" | "externalToolScope" | "verify" | "codegraph" | "codegraphMcpScope" |
-  "syncCodegraph" | "brainMode" | "vcsScope" | "json"
+  "syncCodegraph" | "brainMode" | "vcsScope" | "vcsProfile" | "trackedWhitelist" | "json"
 >> & { repoRoot: string }): string[] {
   const args = [
     "adopt",
@@ -263,6 +265,10 @@ function buildAdoptArgs(opts: Required<Pick<
   if (!opts.verify) args.push("--no-verify");
   args.push("--brain-mode", opts.brainMode);
   args.push("--vcs-scope", opts.vcsScope);
+  args.push("--vcs-profile", opts.vcsProfile);
+  if (opts.trackedWhitelist.length > 0) {
+    args.push("--tracked-whitelist", opts.trackedWhitelist.join(","));
+  }
   if (opts.json) args.push("--json");
 
   return args;
@@ -309,6 +315,8 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
   try {
     const vcs = syncLocalVcsBoundary(repoRoot, {
       vcsScope: opts.vcsScope ?? "local",
+      vcsProfile: opts.vcsProfile ?? "project-local-install",
+      trackedWhitelist: opts.trackedWhitelist ?? [],
       projectScoped: true,
       apply: true,
     });
@@ -317,7 +325,7 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
       status: vcs.skipped ? "skipped" : "ok",
       detail: vcs.skipped
         ? vcs.reason
-        : `scope=${vcs.policy.installStateScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
+        : `profile=${vcs.policy.profileName}; install=${vcs.policy.installStateScope}; workflow=${vcs.policy.workflowStateScope}; product-intent=${vcs.policy.productIntentScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
     });
   } catch (error) {
     steps.push({
@@ -353,6 +361,8 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
     syncCodegraph: opts.syncCodegraph === true,
     brainMode: opts.brainMode ?? "manifest-only",
     vcsScope: opts.vcsScope ?? "local",
+    vcsProfile: opts.vcsProfile ?? "project-local-install",
+    trackedWhitelist: opts.trackedWhitelist ?? [],
     json: opts.json === true,
   });
   const delegatedStep = runProcess(shim, adoptArgs, repoRoot, opts.env);

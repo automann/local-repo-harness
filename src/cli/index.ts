@@ -29,7 +29,7 @@ import type { InstallScope, Location } from './installer/types';
 import { isRuntimeSelection, type RuntimeSelection } from './installer/hook-command';
 import type { HookEvent, RouteId } from './hook/route-registry';
 import type { ToolingScope } from './skills/project-skills';
-import { scopesAreValid, type VcsScope } from './vcs/local-only';
+import { parseTrackedWhitelist, scopesAreValid, vcsProfileIsValid, type VcsScope } from './vcs/local-only';
 
 export const SUBCOMMANDS = [
   'init',
@@ -207,7 +207,7 @@ export function buildProgram(): Command {
     .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
     .option('--repo <path>', 'Target repository path (defaults to cwd)')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.10')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.11')
     .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
     .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
@@ -220,7 +220,9 @@ export function buildProgram(): Command {
     .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure during delegated adopt')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'manifest-only')
-    .option('--vcs-scope <scope>', 'Git tracking scope for project-scoped install artifacts: local|tracked', 'local')
+    .option('--vcs-scope <scope>', 'Compatibility VCS shorthand: local=project-local-install, tracked=self-host', 'local')
+    .option('--vcs-profile <profile>', 'VCS profile: project-local-install|ephemeral-agent-workspace|tracked-governance|self-host')
+    .option('--tracked-whitelist <paths>', 'Comma-separated repo-relative paths to keep tracked despite local workflow profile')
     .option('--json', 'Output JSON instead of human-readable text')
     .showHelpAfterError('Use --package local-repo-harness@<version> to pin the project-managed runtime.')
     .action((rawOpts: {
@@ -240,6 +242,8 @@ export function buildProgram(): Command {
       syncCodegraph?: boolean;
       brainMode?: string;
       vcsScope?: string;
+      vcsProfile?: string;
+      trackedWhitelist?: string;
       json?: boolean;
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
@@ -278,6 +282,10 @@ export function buildProgram(): Command {
         console.error('local-repo-harness bootstrap: invalid --vcs-scope (expected: local, tracked)');
         process.exit(2);
       }
+      if (rawOpts.vcsProfile !== undefined && !vcsProfileIsValid(rawOpts.vcsProfile)) {
+        console.error('local-repo-harness bootstrap: invalid --vcs-profile (expected: project-local-install, ephemeral-agent-workspace, tracked-governance, self-host)');
+        process.exit(2);
+      }
       const result = runBootstrap({
         repo: rawOpts.repo,
         target: rawOpts.target as InstallTargetSpec,
@@ -295,6 +303,8 @@ export function buildProgram(): Command {
         syncCodegraph: rawOpts.syncCodegraph === true,
         brainMode: rawOpts.brainMode as InitBrainMode,
         vcsScope: rawOpts.vcsScope as VcsScope,
+        vcsProfile: rawOpts.vcsProfile,
+        trackedWhitelist: parseTrackedWhitelist(rawOpts.trackedWhitelist),
         json: rawOpts.json === true,
       });
       if (rawOpts.json === true) {
@@ -330,7 +340,9 @@ export function buildProgram(): Command {
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
     .option('--brain-root <path>', 'Deprecated: user-level brain config belongs to local-repo-harness update/setup')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'skip')
-    .option('--vcs-scope <scope>', 'Git tracking scope for project-scoped install artifacts: local|tracked')
+    .option('--vcs-scope <scope>', 'Compatibility VCS shorthand: local=project-local-install, tracked=self-host')
+    .option('--vcs-profile <profile>', 'VCS profile: project-local-install|ephemeral-agent-workspace|tracked-governance|self-host')
+    .option('--tracked-whitelist <paths>', 'Comma-separated repo-relative paths to keep tracked despite local workflow profile')
     .option('--interactive', 'Run the numbered interactive install planner')
     .option('--json', 'Output JSON instead of human-readable text')
     .action(async (action: string | undefined, rawOpts: {
@@ -356,6 +368,8 @@ export function buildProgram(): Command {
       brainRoot?: string;
       brainMode?: string;
       vcsScope?: string;
+      vcsProfile?: string;
+      trackedWhitelist?: string;
       interactive?: boolean;
       json?: boolean;
     }) => {
@@ -426,6 +440,10 @@ export function buildProgram(): Command {
         console.error('local-repo-harness adopt: invalid --vcs-scope (expected: local, tracked)');
         process.exit(2);
       }
+      if (rawOpts.vcsProfile !== undefined && !vcsProfileIsValid(rawOpts.vcsProfile)) {
+        console.error('local-repo-harness adopt: invalid --vcs-profile (expected: project-local-install, ephemeral-agent-workspace, tracked-governance, self-host)');
+        process.exit(2);
+      }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
@@ -445,6 +463,8 @@ export function buildProgram(): Command {
         brainRoot: rawOpts.brainRoot,
         brainMode: rawOpts.brainMode as InitBrainMode,
         vcsScope: rawOpts.vcsScope as VcsScope | undefined,
+        vcsProfile: rawOpts.vcsProfile,
+        trackedWhitelist: parseTrackedWhitelist(rawOpts.trackedWhitelist),
         mode: rawOpts.mode as 'minimal' | 'standard' | 'self-host',
       };
       const result = rawOpts.interactive === true

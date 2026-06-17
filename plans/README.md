@@ -1,12 +1,15 @@
 # Active Improve Plans
 
-Generated and updated by the improve skill on 2026-06-16. This index tracks the
+Generated and updated by the improve skill on 2026-06-17. This index tracks the
 active project-scoped CodeGraph, Bun/Node runtime compatibility,
 package-boundary-free project bootstrap, post-0.5.5 real-acceptance diagnostic
 cleanup plans, the remaining project-scope doctor readiness cleanup, and the
 local-only VCS isolation needed to keep downstream project installs out of
-product Git history. Older plans in this directory and `plans/archive/` remain
-historical context unless a future task explicitly reactivates them.
+product Git history. Plan 012 narrows that VCS isolation with explicit profiles,
+a tracked whitelist, and root `.gitignore` precedence so public downstream
+projects do not accidentally treat repo-harness governance as product source.
+Older plans in this directory and `plans/archive/` remain historical context
+unless a future task explicitly reactivates them.
 
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
@@ -27,6 +30,7 @@ row when done.
 | 009 | Make security scan and doctor scope-aware | P1 | M | 006 | DONE (verified 2026-06-16; scope-aware security/doctor gates) |
 | 010 | Make doctor readiness fully project-scope aware | P1 | S | 009 | DONE (verified 2026-06-16; focused, release, and real install gates) |
 | 011 | Keep project-scoped installs out of downstream Git history | P1 | L | 005, 009, 010 | DONE (verified 2026-06-17; release gate passed for 0.5.9) |
+| 012 | Narrow local-only VCS policy with profiles and tracked whitelist | P1 | L | 011 | DONE (verified 2026-06-18; `check:release` passed for 0.5.11) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -66,6 +70,11 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   and 010 because the VCS boundary must appear in the same scope-aware
   `doctor --json` readiness surface rather than as a separate undocumented
   check.
+- 012 depends on 011 because 011 added the local-only VCS machinery, but real
+  downstream testing showed its default policy is too broad: `--vcs-scope local`
+  currently makes install state, workflow state, and product intent all local.
+  012 keeps the machinery and narrows the policy using profiles,
+  `tracked_whitelist`, and root `.gitignore` precedence.
 
 ## Findings considered and rejected
 
@@ -108,3 +117,7 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - Ask users to remember not to commit `local-repo-harness` artifacts manually:
   rejected because this is exactly the kind of state boundary the installer and
   doctor should enforce mechanically.
+- Add a user-extensible `local_only_whitelist`: rejected because it is too easy
+  for agents or users to turn it into a broad "remove project source from Git"
+  footgun. Plan 012 keeps only three layers: root `.gitignore` hard boundary,
+  `tracked_whitelist`, and VCS profile scopes.

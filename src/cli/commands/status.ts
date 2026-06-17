@@ -106,13 +106,16 @@ export interface StatusReport {
       path?: string;
     };
     vcs: {
+      profile: string;
       installStateScope: VcsScope;
       workflowStateScope: VcsScope;
       productIntentScope: VcsScope;
+      trackedWhitelist: string[];
       manifestPath: string;
       trackedLocalOnly: number;
       unignoredLocalOnly: number;
       requiresUserReview: number;
+      projectIgnoredConflicts: number;
       safeToCommit: boolean;
     };
   };
@@ -320,23 +323,29 @@ function buildScopeSummary(
     },
     vcs: vcs
       ? {
+          profile: vcs.policy.profileName,
           installStateScope: vcs.policy.installStateScope,
           workflowStateScope: vcs.policy.workflowStateScope,
           productIntentScope: vcs.policy.productIntentScope,
+          trackedWhitelist: vcs.policy.trackedWhitelist,
           manifestPath: vcs.manifestPath,
           trackedLocalOnly: vcs.trackedLocalOnly.length,
           unignoredLocalOnly: vcs.unignoredLocalOnly.length,
           requiresUserReview: vcs.requiresUserReview.length,
+          projectIgnoredConflicts: vcs.projectIgnoredConflicts.length,
           safeToCommit: vcs.safeToCommit,
         }
       : {
+          profile: 'self-host',
           installStateScope: 'tracked',
           workflowStateScope: 'tracked',
           productIntentScope: 'tracked',
+          trackedWhitelist: [],
           manifestPath: '',
           trackedLocalOnly: 0,
           unignoredLocalOnly: 0,
           requiresUserReview: 0,
+          projectIgnoredConflicts: 0,
           safeToCommit: true,
         },
   };
@@ -441,7 +450,7 @@ export function formatStatus(report: StatusReport, asJson = false): string {
   lines.push(`  external tools: scope=${report.scopes.externalTools.scope}; waza=${report.scopes.externalTools.waza}; mermaid=${report.scopes.externalTools.mermaid}`);
   lines.push(`  codegraph: index=${report.scopes.codegraph.index.status}; mcp=${report.scopes.codegraph.mcpScope}`);
   lines.push(`  brain: mode=${report.scopes.brain.mode}; manifest=${report.scopes.brain.manifest}`);
-  lines.push(`  vcs: install=${report.scopes.vcs.installStateScope}; workflow=${report.scopes.vcs.workflowStateScope}; product-intent=${report.scopes.vcs.productIntentScope}; safe-to-commit=${report.scopes.vcs.safeToCommit ? 'yes' : 'no'}`);
+  lines.push(`  vcs: profile=${report.scopes.vcs.profile}; install=${report.scopes.vcs.installStateScope}; workflow=${report.scopes.vcs.workflowStateScope}; product-intent=${report.scopes.vcs.productIntentScope}; whitelist=${report.scopes.vcs.trackedWhitelist.length}; conflicts=${report.scopes.vcs.projectIgnoredConflicts}; safe-to-commit=${report.scopes.vcs.safeToCommit ? 'yes' : 'no'}`);
   lines.push('');
   lines.push('Routes:');
   lines.push(`  ${report.routes.total} total`);

@@ -58,7 +58,7 @@ describe("Bootstrap Script Contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     const cliEntry = read("src/cli/index.ts");
     expect(pkg.name).toBe("local-repo-harness");
-    expect(pkg.version).toBe("0.5.10");
+    expect(pkg.version).toBe("0.5.11");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["local-repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin).not.toHaveProperty("repo-harness");

@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.10`
+当前版本：`local-repo-harness@0.5.11`
 
 ## 这个项目适合谁
 
@@ -145,7 +145,7 @@ bunx --bun local-repo-harness@latest bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 
@@ -160,8 +160,9 @@ bunx --bun local-repo-harness@latest bootstrap \
 
 bootstrap 会把当前项目自己的 managed package runtime 放在
 `.ai/harness/tools/local-repo-harness/`，不要把它当成本仓库源码来编辑。
-默认情况下，bootstrap 还会建立 local-only Git 边界：安装产物、workflow
-state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目的产品提交。
+默认情况下，bootstrap 还会建立 `project-local-install` local-only Git 边界：
+安装产物、workflow state、hooks、skills、MCP 配置只留在本地；产品意图文档
+默认保留为 tracked，不会被当成安装产物清掉。
 
 ### 2. 最小 dry-run
 
@@ -173,7 +174,7 @@ state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 
@@ -198,7 +199,7 @@ state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 
@@ -213,7 +214,7 @@ state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode manifest-only \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 
@@ -229,7 +230,7 @@ state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目
   --codegraph-mcp-scope project \
   --sync-codegraph \
   --brain-mode manifest-only \
-  --vcs-scope local
+  --vcs-profile project-local-install
 ```
 
 配方 C 会：
@@ -264,7 +265,7 @@ bun --bun local-repo-harness bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 
@@ -297,9 +298,39 @@ bun --bun local-repo-harness bootstrap \
 | `_ops/` | ignored local operations state |
 
 这些是安装产物或 runtime state，不等同于 `local-repo-harness` 源码仓库。
-默认 `--vcs-scope local` 会让这些开发态产物留在本机。只有维护
-local-repo-harness 自身，或团队明确要把治理文件纳入产品仓库时，才使用
-`--vcs-scope tracked` 或 `adopt --mode self-host`。
+默认 `--vcs-profile project-local-install` 会让安装态和 workflow 治理态留在本机，
+同时让 `docs/spec.md`、`docs/architecture/`、`docs/researches/` 等产品意图文档
+保持 tracked。旧的 `--vcs-scope local` 只是兼容 shorthand，等价于
+`--vcs-profile project-local-install`，不再表示 install/workflow/product-intent
+三类全部 local。
+
+VCS 判定顺序只有三层：
+
+1. 根目录 `.gitignore` 是硬边界；项目作者忽略的路径，profile 和 whitelist
+   都不能反向纳入 tracked。
+2. `tracked_whitelist` / `--tracked-whitelist` 显式保留治理或意图文件。
+3. `--vcs-profile` 提供默认 scopes。
+
+没有 `local_only_whitelist`。如果团队明确要把 repo-harness 治理文件纳入产品仓库，
+使用 `--vcs-profile tracked-governance` 或 `adopt --mode self-host`。
+
+常见 profile：
+
+| Profile | install | workflow | product intent | 场景 |
+| --- | --- | --- | --- | --- |
+| `project-local-install` | local | local | tracked | 默认公开项目友好模式 |
+| `tracked-governance` | local | tracked | tracked | 团队要提交治理文件 |
+| `ephemeral-agent-workspace` | local | local | local | 临时私有 agent workspace |
+| `self-host` | tracked | tracked | tracked | 维护 local-repo-harness 自身 |
+
+需要显式提交部分治理文件时：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --vcs-profile project-local-install \
+  --tracked-whitelist AGENTS.md,tasks/,plans/
+```
 
 ## 验收：确认没有进入产品 Git 历史
 
@@ -446,7 +477,7 @@ bunx --bun local-repo-harness@latest bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
-  --vcs-scope local \
+  --vcs-profile project-local-install \
   --no-codegraph
 ```
 

@@ -6,6 +6,8 @@ import { join } from "path";
 import {
   auditLocalOnlyVcs,
   cleanupLocalOnlyVcs,
+  computeLocalOnlyEntries,
+  resolveLocalVcsPolicy,
   syncLocalVcsBoundary,
 } from "../../src/cli/vcs/local-only";
 
@@ -23,6 +25,116 @@ function git(repo: string, args: string[]) {
 }
 
 describe("local-only VCS boundary", () => {
+  test("project-scoped defaults use project-local-install profile", () => {
+    const repo = tempRepo("repo-harness-vcs-profile-default-");
+    try {
+      const policy = resolveLocalVcsPolicy(repo, { projectScoped: true });
+      expect(policy.profileName).toBe("project-local-install");
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("local");
+      expect(policy.productIntentScope).toBe("tracked");
+      const entries = computeLocalOnlyEntries(policy).map((entry) => entry.path);
+      expect(entries).toContain(".mcp.json");
+      expect(entries).toContain("AGENTS.md");
+      expect(entries).not.toContain("docs/spec.md");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("legacy scope local maps to project-local-install instead of all-local", () => {
+    const repo = tempRepo("repo-harness-vcs-profile-legacy-");
+    try {
+      mkdirSync(join(repo, ".ai", "harness"), { recursive: true });
+      writeFileSync(
+        join(repo, ".ai", "harness", "policy.json"),
+        JSON.stringify({
+          vcs: {
+            scope: "local",
+            install_state_scope: "local",
+            workflow_state_scope: "local",
+            product_intent_scope: "local",
+          },
+        }, null, 2),
+      );
+      const policy = resolveLocalVcsPolicy(repo);
+      expect(policy.profileName).toBe("project-local-install");
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("local");
+      expect(policy.productIntentScope).toBe("tracked");
+      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).not.toContain("docs/spec.md");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("profiles and tracked whitelist shape local-only entries", () => {
+    const repo = tempRepo("repo-harness-vcs-profile-whitelist-");
+    try {
+      let policy = resolveLocalVcsPolicy(repo, { vcsProfile: "ephemeral-agent-workspace" });
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("local");
+      expect(policy.productIntentScope).toBe("local");
+      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).toContain("docs/spec.md");
+
+      policy = resolveLocalVcsPolicy(repo, { vcsProfile: "tracked-governance" });
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("tracked");
+      expect(policy.productIntentScope).toBe("tracked");
+      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).toContain(".mcp.json");
+      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).not.toContain("AGENTS.md");
+
+      policy = resolveLocalVcsPolicy(repo, { vcsScope: "tracked" });
+      expect(policy.profileName).toBe("self-host");
+      expect(computeLocalOnlyEntries(policy)).toEqual([]);
+
+      policy = resolveLocalVcsPolicy(repo, {
+        projectScoped: true,
+        trackedWhitelist: ["AGENTS.md", "tasks/"],
+      });
+      const entries = computeLocalOnlyEntries(policy).map((entry) => entry.path);
+      expect(entries).not.toContain("AGENTS.md");
+      expect(entries).not.toContain("tasks/");
+      expect(entries).toContain(".mcp.json");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("root gitignore wins over tracked whitelist", () => {
+    const repo = tempRepo("repo-harness-vcs-root-gitignore-");
+    try {
+      writeFileSync(join(repo, ".gitignore"), "AGENTS.md\n");
+      writeFileSync(join(repo, "AGENTS.md"), "# agents\n");
+      const audit = auditLocalOnlyVcs(repo, {
+        projectScoped: true,
+        trackedWhitelist: ["AGENTS.md"],
+      });
+      expect(audit.projectIgnoredConflicts.map((issue) => issue.path)).toContain("AGENTS.md");
+      expect(audit.projectIgnoredConflicts[0].reason).toContain("tracked_whitelist");
+      expect(audit.safeToCommit).toBe(false);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("root gitignore reports ignored tracked children under local workflow dirs", () => {
+    const repo = tempRepo("repo-harness-vcs-root-gitignore-dir-");
+    try {
+      mkdirSync(join(repo, "plans"), { recursive: true });
+      writeFileSync(join(repo, ".gitignore"), "plans/\n");
+      writeFileSync(join(repo, "plans", "example.md"), "# plan\n");
+      expect(git(repo, ["add", "-f", "plans/example.md"]).status).toBe(0);
+
+      const audit = auditLocalOnlyVcs(repo, { projectScoped: true });
+      expect(audit.projectIgnoredConflicts.map((issue) => issue.path)).toContain("plans/example.md");
+      expect(audit.projectIgnoredConflicts[0].reason).toContain("tracked local-only path");
+      expect(audit.safeToCommit).toBe(false);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
   test("local overlay ignores codex hooks even when root .gitignore negates it", () => {
     const repo = tempRepo("repo-harness-vcs-overlay-");
     try {
@@ -125,6 +237,61 @@ describe("local-only VCS boundary", () => {
     }
   });
 
+  test("cleanup does not auto-untrack broad workflow or product intent paths", () => {
+    const repo = tempRepo("repo-harness-vcs-review-workflow-product-");
+    try {
+      const paths = [
+        "AGENTS.md",
+        "tasks/todos.md",
+        "plans/example.md",
+        "docs/spec.md",
+      ];
+      mkdirSync(join(repo, "tasks"), { recursive: true });
+      mkdirSync(join(repo, "plans"), { recursive: true });
+      mkdirSync(join(repo, "docs"), { recursive: true });
+      for (const rel of paths) writeFileSync(join(repo, ...rel.split("/")), `${rel}\n`);
+      expect(git(repo, ["add", ...paths]).status).toBe(0);
+
+      syncLocalVcsBoundary(repo, { vcsProfile: "ephemeral-agent-workspace", projectScoped: true, apply: true });
+      const audit = auditLocalOnlyVcs(repo, { vcsProfile: "ephemeral-agent-workspace" });
+      expect(audit.requiresUserReview.map((issue) => issue.path)).toEqual(expect.arrayContaining(paths));
+
+      const applied = cleanupLocalOnlyVcs(repo, { vcsProfile: "ephemeral-agent-workspace", apply: true });
+      for (const rel of paths) {
+        expect(applied.removedFromIndex).not.toContain(rel);
+        expect(git(repo, ["ls-files", "--", rel]).stdout.trim()).toBe(rel);
+      }
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("tracked whitelist keeps workflow paths out of local-only findings", () => {
+    const repo = tempRepo("repo-harness-vcs-tracked-whitelist-");
+    try {
+      mkdirSync(join(repo, "tasks"), { recursive: true });
+      writeFileSync(join(repo, "AGENTS.md"), "# agents\n");
+      writeFileSync(join(repo, "tasks", "todos.md"), "# todos\n");
+      expect(git(repo, ["add", "AGENTS.md", "tasks/todos.md"]).status).toBe(0);
+
+      syncLocalVcsBoundary(repo, {
+        projectScoped: true,
+        trackedWhitelist: ["AGENTS.md", "tasks/"],
+        apply: true,
+      });
+      const audit = auditLocalOnlyVcs(repo, {
+        projectScoped: true,
+        trackedWhitelist: ["AGENTS.md", "tasks/"],
+      });
+      expect(audit.trackedLocalOnly.map((issue) => issue.path)).not.toContain("AGENTS.md");
+      expect(audit.trackedLocalOnly.map((issue) => issue.path)).not.toContain("tasks/todos.md");
+      expect(audit.requiresUserReview.map((issue) => issue.path)).not.toContain("AGENTS.md");
+      expect(audit.requiresUserReview.map((issue) => issue.path)).not.toContain("tasks/todos.md");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
   test("CLI vcs audit and cleanup expose JSON reports", () => {
     const repo = tempRepo("repo-harness-vcs-cli-");
     try {
@@ -138,7 +305,11 @@ describe("local-only VCS boundary", () => {
         encoding: "utf-8",
       });
       expect(audit.status).toBe(1);
-      expect(JSON.parse(audit.stdout).trackedLocalOnly[0].path).toBe(rel);
+      const auditJson = JSON.parse(audit.stdout);
+      expect(auditJson.policy.profileName).toBe("project-local-install");
+      expect(auditJson.policy.productIntentScope).toBe("tracked");
+      expect(Array.isArray(auditJson.projectIgnoredConflicts)).toBe(true);
+      expect(auditJson.trackedLocalOnly[0].path).toBe(rel);
 
       const cleanup = spawnSync("bun", [CLI, "vcs", "cleanup", "--repo", repo, "--vcs-scope", "local", "--apply", "--json"], {
         cwd: ROOT,

@@ -1,6 +1,6 @@
 {
-  "version": "0.5.10",
-  "templateVersion": "0.5.10",
+  "version": "0.5.11",
+  "templateVersion": "0.5.11",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -165,7 +165,7 @@
       "description": "Adds local-only VCS isolation for project-scoped installs with audit, cleanup, status, doctor, and downstream Git hygiene guidance"
     },
     {
-      "version": "0.5.10",
+      "version": "0.5.11",
       "description": "Fixes partial local-only VCS cleanup when review-only files remain and removes the misleading bootstrap --version entry in favor of --package pinning"
     }
   ],

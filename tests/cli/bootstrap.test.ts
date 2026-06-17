@@ -54,7 +54,7 @@ describe("bootstrap command", () => {
     });
     expect(help.status).toBe(0);
     expect(help.stdout).toContain("--package <spec>");
-    expect(help.stdout).toContain("local-repo-harness@0.5.10");
+    expect(help.stdout).toContain("local-repo-harness@0.5.11");
     expect(help.stdout).not.toContain("--version <version>");
     expect(help.stdout).not.toContain("--channel <channel>");
 
@@ -158,6 +158,7 @@ describe("bootstrap command", () => {
       expect(log).toContain("--codegraph-mcp-scope none");
       expect(log).toContain("--brain-mode skip");
       expect(log).toContain("--vcs-scope local");
+      expect(log).toContain("--vcs-profile project-local-install");
       expect(log).toContain("--no-codegraph");
       expect(log).toContain("--no-verify");
       expect(log).toContain("--json");
