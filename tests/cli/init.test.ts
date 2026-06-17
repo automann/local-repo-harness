@@ -360,6 +360,50 @@ describe("init command", () => {
     }
   });
 
+  test("explicit VCS profile overrides previously persisted policy scopes", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-vcs-profile-override-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(join(repo, ".ai", "harness"), { recursive: true });
+      setupFakeSource(source);
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
+      writeFileSync(
+        join(repo, ".ai", "harness", "policy.json"),
+        JSON.stringify({
+          vcs: {
+            scope: "local",
+            profile: "project-local-install",
+            install_state_scope: "local",
+            workflow_state_scope: "local",
+            product_intent_scope: "tracked",
+          },
+        }, null, 2),
+      );
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: false,
+        hostAdapters: false,
+        externalSkills: false,
+        externalToolScope: "none",
+        codegraph: false,
+        verify: false,
+        vcsProfile: "self-host",
+      });
+
+      expect(result.exitCode).toBe(0);
+      const vcsStep = result.steps.find((step) => step.step === "sync local-only vcs boundary");
+      expect(vcsStep?.status).toBe("skipped");
+      expect(vcsStep?.detail).toContain("all vcs scopes are tracked");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   test("project repo-harness skill install supports sourceRoot equal to repoRoot", () => {
     const tmp = join(tmpdir(), `repo-harness-init-project-self-source-${Date.now()}`);
     const repo = join(tmp, "repo");

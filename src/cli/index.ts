@@ -207,7 +207,7 @@ export function buildProgram(): Command {
     .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
     .option('--repo <path>', 'Target repository path (defaults to cwd)')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.11')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.12')
     .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
     .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
@@ -220,7 +220,7 @@ export function buildProgram(): Command {
     .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure during delegated adopt')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'manifest-only')
-    .option('--vcs-scope <scope>', 'Compatibility VCS shorthand: local=project-local-install, tracked=self-host', 'local')
+    .option('--vcs-scope <scope>', 'Compatibility VCS shorthand: local=project-local-install, tracked=self-host')
     .option('--vcs-profile <profile>', 'VCS profile: project-local-install|ephemeral-agent-workspace|tracked-governance|self-host')
     .option('--tracked-whitelist <paths>', 'Comma-separated repo-relative paths to keep tracked despite local workflow profile')
     .option('--json', 'Output JSON instead of human-readable text')
@@ -278,7 +278,7 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
-      if (!scopesAreValid(rawOpts.vcsScope)) {
+      if (rawOpts.vcsScope !== undefined && !scopesAreValid(rawOpts.vcsScope)) {
         console.error('local-repo-harness bootstrap: invalid --vcs-scope (expected: local, tracked)');
         process.exit(2);
       }

@@ -54,7 +54,7 @@ describe("bootstrap command", () => {
     });
     expect(help.status).toBe(0);
     expect(help.stdout).toContain("--package <spec>");
-    expect(help.stdout).toContain("local-repo-harness@0.5.11");
+    expect(help.stdout).toContain("local-repo-harness@0.5.12");
     expect(help.stdout).not.toContain("--version <version>");
     expect(help.stdout).not.toContain("--channel <channel>");
 
@@ -171,6 +171,68 @@ describe("bootstrap command", () => {
       expect(missing.status).toBe(127);
       expect(missing.stderr).toContain("local-repo-harness project runtime is missing");
       expect(missing.stderr).toContain("bunx --bun local-repo-harness@latest bootstrap");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  test("bootstrap --vcs-scope tracked is not overridden by the default project profile", () => {
+    const tmp = join(tmpdir(), `repo-harness-bootstrap-vcs-scope-${Date.now()}`);
+    const repo = join(tmp, "repo");
+    const home = join(tmp, "home");
+    const fakeBin = join(tmp, "bin");
+    const logFile = join(tmp, "bootstrap.log");
+    try {
+      mkdirSync(repo, { recursive: true });
+      mkdirSync(home, { recursive: true });
+      mkdirSync(fakeBin, { recursive: true });
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
+      writeFakeBunForHarnessBootstrap(fakeBin, logFile);
+
+      const res = spawnSync(
+        process.execPath,
+        [
+          CLI,
+          "bootstrap",
+          "--repo",
+          repo,
+          "--host-adapter-scope",
+          "none",
+          "--skill-scope",
+          "none",
+          "--external-tool-scope",
+          "none",
+          "--codegraph-mcp-scope",
+          "none",
+          "--brain-mode",
+          "skip",
+          "--no-codegraph",
+          "--no-verify",
+          "--vcs-scope",
+          "tracked",
+          "--json",
+        ],
+        {
+          cwd: repo,
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            HOME: home,
+            PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
+          },
+        },
+      );
+
+      expect(res.status).toBe(0);
+      expect(res.stderr).toBe("");
+      const output = JSON.parse(res.stdout);
+      const vcsStep = output.steps.find((step: { step: string }) => step.step === "sync local-only vcs boundary");
+      expect(vcsStep.status).toBe("skipped");
+      expect(vcsStep.detail).toContain("all vcs scopes are tracked");
+
+      const log = readFileSync(logFile, "utf-8");
+      expect(log).toContain("--vcs-scope tracked");
+      expect(log).not.toContain("--vcs-profile project-local-install");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

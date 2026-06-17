@@ -239,8 +239,8 @@ function buildAdoptArgs(opts: Required<Pick<
   BootstrapOptions,
   "target" | "syncSkill" | "skillScope" | "hostAdapters" | "hostAdapterScope" | "runtime" |
   "externalSkills" | "externalToolScope" | "verify" | "codegraph" | "codegraphMcpScope" |
-  "syncCodegraph" | "brainMode" | "vcsScope" | "vcsProfile" | "trackedWhitelist" | "json"
->> & { repoRoot: string }): string[] {
+  "syncCodegraph" | "brainMode" | "vcsScope" | "trackedWhitelist" | "json"
+>> & { repoRoot: string; vcsProfile?: string }): string[] {
   const args = [
     "adopt",
     "--repo",
@@ -265,7 +265,7 @@ function buildAdoptArgs(opts: Required<Pick<
   if (!opts.verify) args.push("--no-verify");
   args.push("--brain-mode", opts.brainMode);
   args.push("--vcs-scope", opts.vcsScope);
-  args.push("--vcs-profile", opts.vcsProfile);
+  if (opts.vcsProfile !== undefined) args.push("--vcs-profile", opts.vcsProfile);
   if (opts.trackedWhitelist.length > 0) {
     args.push("--tracked-whitelist", opts.trackedWhitelist.join(","));
   }
@@ -281,6 +281,7 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
   const toolRoot = managedHarnessToolRoot(repoRoot);
   const shim = managedHarnessShimPath(repoRoot);
   const steps: BootstrapStep[] = [];
+  const vcsProfile = opts.vcsProfile ?? (opts.vcsScope === undefined ? "project-local-install" : undefined);
 
   const targetError = validateBootstrapTarget(repoRoot, opts.repo !== undefined, opts.env);
   if (targetError) {
@@ -315,7 +316,7 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
   try {
     const vcs = syncLocalVcsBoundary(repoRoot, {
       vcsScope: opts.vcsScope ?? "local",
-      vcsProfile: opts.vcsProfile ?? "project-local-install",
+      vcsProfile,
       trackedWhitelist: opts.trackedWhitelist ?? [],
       projectScoped: true,
       apply: true,
@@ -361,7 +362,7 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
     syncCodegraph: opts.syncCodegraph === true,
     brainMode: opts.brainMode ?? "manifest-only",
     vcsScope: opts.vcsScope ?? "local",
-    vcsProfile: opts.vcsProfile ?? "project-local-install",
+    vcsProfile,
     trackedWhitelist: opts.trackedWhitelist ?? [],
     json: opts.json === true,
   });

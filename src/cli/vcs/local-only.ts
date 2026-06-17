@@ -359,8 +359,8 @@ function policyFile(repoRoot: string): Record<string, any> | null {
 function defaultProfileName(opts: LocalVcsPolicyOptions, raw: Record<string, any>): VcsProfileName {
   const rawProfile = profileFrom(raw.profile ?? raw.profile_name ?? raw.name);
   if (opts.vcsProfile && vcsProfileIsValid(opts.vcsProfile)) return opts.vcsProfile;
-  if (rawProfile) return rawProfile;
   if (opts.vcsScope) return profileFromScope(opts.vcsScope);
+  if (rawProfile) return rawProfile;
   const rawScope = scopeFrom(raw.scope);
   if (rawScope) return profileFromScope(rawScope);
   if (opts.mode === "self-host") return "self-host";
@@ -382,12 +382,18 @@ function rawGroupScope(raw: Record<string, any>, snake: string, camel: string, u
   return scopeFrom(raw[snake]) ?? scopeFrom(raw[camel]);
 }
 
+function shouldUseRawGroupScopes(raw: Record<string, any>, opts: LocalVcsPolicyOptions): boolean {
+  if (opts.vcsProfile || opts.vcsScope) return false;
+  if (profileFrom(raw.profile ?? raw.profile_name ?? raw.name)) return false;
+  return !rawGroupScopesAreLegacyBroadScope(raw);
+}
+
 export function resolveLocalVcsPolicy(repoRoot: string, opts: LocalVcsPolicyOptions = {}): LocalVcsPolicy {
   const data = policyFile(repoRoot);
   const raw = data?.vcs ?? {};
   const profileName = defaultProfileName(opts, raw);
   const profile = VCS_PROFILES[profileName] ?? VCS_PROFILES[DEFAULT_VCS_PROFILE];
-  const useRawGroupScopes = !rawGroupScopesAreLegacyBroadScope(raw);
+  const useRawGroupScopes = shouldUseRawGroupScopes(raw, opts);
   const source: LocalVcsPolicy["source"] =
     opts.vcsScope || opts.vcsProfile || opts.trackedWhitelist || opts.installStateScope || opts.workflowStateScope || opts.productIntentScope
       ? "options"

@@ -101,6 +101,53 @@ describe("local-only VCS boundary", () => {
     }
   });
 
+  test("explicit profile and scope override persisted policy group scopes", () => {
+    const repo = tempRepo("repo-harness-vcs-profile-overrides-policy-");
+    try {
+      mkdirSync(join(repo, ".ai", "harness"), { recursive: true });
+      writeFileSync(
+        join(repo, ".ai", "harness", "policy.json"),
+        JSON.stringify({
+          vcs: {
+            scope: "local",
+            profile: "project-local-install",
+            install_state_scope: "local",
+            workflow_state_scope: "local",
+            product_intent_scope: "tracked",
+          },
+        }, null, 2),
+      );
+
+      let policy = resolveLocalVcsPolicy(repo, { vcsProfile: "self-host" });
+      expect(policy.profileName).toBe("self-host");
+      expect(policy.installStateScope).toBe("tracked");
+      expect(policy.workflowStateScope).toBe("tracked");
+      expect(policy.productIntentScope).toBe("tracked");
+      expect(computeLocalOnlyEntries(policy)).toEqual([]);
+
+      policy = resolveLocalVcsPolicy(repo, { vcsProfile: "ephemeral-agent-workspace" });
+      expect(policy.profileName).toBe("ephemeral-agent-workspace");
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("local");
+      expect(policy.productIntentScope).toBe("local");
+      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).toContain("docs/spec.md");
+
+      policy = resolveLocalVcsPolicy(repo, { vcsScope: "tracked" });
+      expect(policy.profileName).toBe("self-host");
+      expect(policy.installStateScope).toBe("tracked");
+      expect(policy.workflowStateScope).toBe("tracked");
+      expect(policy.productIntentScope).toBe("tracked");
+
+      policy = resolveLocalVcsPolicy(repo, { vcsScope: "local" });
+      expect(policy.profileName).toBe("project-local-install");
+      expect(policy.installStateScope).toBe("local");
+      expect(policy.workflowStateScope).toBe("local");
+      expect(policy.productIntentScope).toBe("tracked");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
   test("root gitignore wins over tracked whitelist", () => {
     const repo = tempRepo("repo-harness-vcs-root-gitignore-");
     try {

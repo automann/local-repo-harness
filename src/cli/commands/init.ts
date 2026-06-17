@@ -463,6 +463,12 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     mode,
     projectScoped,
   });
+  const legacyVcsScope =
+    vcsPolicy.installStateScope === "tracked" &&
+    vcsPolicy.workflowStateScope === "tracked" &&
+    vcsPolicy.productIntentScope === "tracked"
+      ? "tracked"
+      : "local";
   const steps: InitStep[] = [];
 
   if (opts.brainRoot) {
@@ -481,7 +487,7 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     REPO_HARNESS_EXTERNAL_TOOL_SCOPE: externalToolScope,
     REPO_HARNESS_CODEGRAPH_MCP_SCOPE: codegraph ? codegraphMcpScope : "none",
     REPO_HARNESS_BRAIN_MODE: brainMode,
-    REPO_HARNESS_VCS_SCOPE: vcsScope,
+    REPO_HARNESS_VCS_SCOPE: legacyVcsScope,
     REPO_HARNESS_VCS_PROFILE: vcsPolicy.profileName,
     REPO_HARNESS_TRACKED_WHITELIST: vcsPolicy.trackedWhitelist.join(","),
     REPO_HARNESS_INSTALL_STATE_VCS_SCOPE: vcsPolicy.installStateScope,
