@@ -52,6 +52,73 @@ bash scripts/check-agent-tooling.sh --json --host both
 ./.ai/harness/bin/codegraph status .
 ```
 
+再确认当前 VCS profile 是否符合这个项目的交付方式：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
+```
+
+常用 profile：
+
+| Profile | 什么时候用 |
+| --- | --- |
+| `project-local-install` | 默认。安装产物和 workflow 治理态只留本地，产品意图文档可提交 |
+| `tracked-governance` | 团队想把 `plans/`、`tasks/`、`AGENTS.md` 等治理文件一起提交 |
+| `ephemeral-agent-workspace` | 临时/私有 agent workspace，连 `docs/spec.md` 这类产品意图也只留本地 |
+| `self-host` | 维护 local-repo-harness 自身或明确要把 harness 治理框架纳入源码 |
+
+切换前先预览，不要盲目 apply：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --json
+```
+
+真正切换时，复用 README 里的原安装配方 A/B/C，只改 `--vcs-profile`。例如把完整
+项目级安装切到团队共享治理文件：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only \
+  --vcs-profile tracked-governance
+```
+
+切换后再跑：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
+git status --short --ignored --untracked-files=all
+```
+
+如果有旧 profile 残留的 tracked local-only paths，先 dry-run，再 cleanup：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --dry-run
+```
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --apply
+```
+
+日常沟通里优先说 `--vcs-profile`，不要再用旧 shorthand `--vcs-scope` 描述新策略。
+`--vcs-scope local` 等价于 `project-local-install`，`--vcs-scope tracked` 等价于
+`self-host`。
+
 然后按任务类型选择入口：
 
 | 你要做什么 | 首选入口 | 外部工具搭配 |

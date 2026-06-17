@@ -323,6 +323,95 @@ VCS 判定顺序只有三层：
 | `ephemeral-agent-workspace` | local | local | local | 临时私有 agent workspace |
 | `self-host` | tracked | tracked | tracked | 维护 local-repo-harness 自身 |
 
+选择 profile 时，先判断这三个问题：
+
+| 问题 | 选项 |
+| --- | --- |
+| local-repo-harness 安装产物是否应该进 Git | 普通项目选 local；只有维护本仓库或明确 self-host 时才选 tracked |
+| `plans/`、`tasks/`、`AGENTS.md` 这类治理文件是否要给团队共享 | 要共享选 `tracked-governance`；只服务本机 agent 工作流选 `project-local-install` |
+| `docs/spec.md`、`docs/architecture/`、`docs/researches/` 这类产品意图是否要提交 | 普通项目保持 tracked；临时私有 agent workspace 才选 all-local |
+
+Profile 不是一次性选项。你可以先用 `vcs audit` 预览另一个 profile 的效果：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --json
+```
+
+切换 profile 时，推荐复用你原来的安装配方，只替换 `--vcs-profile`。例如，配方 C
+项目级完整安装要切到团队共享治理文件：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only \
+  --vcs-profile tracked-governance
+```
+
+如果这个目标项目只是临时 agent workspace，连产品意图文档也不准备提交：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --host-adapter-scope project \
+  --runtime project-vendored-bun \
+  --skill-scope project \
+  --external-tool-scope project \
+  --codegraph-mcp-scope project \
+  --sync-codegraph \
+  --brain-mode manifest-only \
+  --vcs-profile ephemeral-agent-workspace
+```
+
+如果你在维护 `local-repo-harness` 这类 self-host 仓库，才使用：
+
+```bash
+./.ai/harness/bin/local-repo-harness adopt \
+  --repo "$PWD" \
+  --mode self-host \
+  --vcs-profile self-host
+```
+
+切换后马上重新审计：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --json
+git status --short --ignored --untracked-files=all
+```
+
+如果审计显示旧 profile 下曾经 `git add` 过的 local-only 路径，先 dry-run：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --dry-run
+```
+
+确认只会 `git rm --cached` 预期的 managed paths 后再应用：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup \
+  --repo "$PWD" \
+  --vcs-profile tracked-governance \
+  --apply
+```
+
+`--vcs-scope local` 和 `--vcs-scope tracked` 只保留给旧脚本兼容。新文档和新命令
+都应该优先使用 `--vcs-profile`，因为它能表达 install、workflow、product intent
+三层的不同归属。
+
 需要显式提交部分治理文件时：
 
 ```bash

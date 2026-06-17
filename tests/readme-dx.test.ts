@@ -69,6 +69,11 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("local-only Git");
     expect(readme).toContain("tracked_whitelist");
     expect(readme).toContain("--tracked-whitelist");
+    expect(readme).toContain("切换 profile 时，推荐复用你原来的安装配方");
+    expect(readme).toContain("--vcs-profile tracked-governance");
+    expect(readme).toContain("--vcs-profile ephemeral-agent-workspace");
+    expect(readme).toContain("--vcs-profile self-host");
+    expect(readme).toContain("`--vcs-scope local` 和 `--vcs-scope tracked` 只保留给旧脚本兼容");
     expect(readme).toContain("根目录 `.gitignore` 是硬边界");
     expect(readme).toContain("没有 `local_only_whitelist`");
     expect(readme).toContain("vcs audit --repo \"$PWD\" --json");
@@ -119,6 +124,11 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("vcs cleanup --repo \"$PWD\" --apply");
     expect(quickStart).toContain("不要把 `.ai/harness/tools/local-repo-harness/`");
     expect(quickStart).toContain("project-local-install");
+    expect(quickStart).toContain("tracked-governance");
+    expect(quickStart).toContain("ephemeral-agent-workspace");
+    expect(quickStart).toContain("切换前先预览");
+    expect(quickStart).toContain("复用 README 里的原安装配方 A/B/C，只改 `--vcs-profile`");
+    expect(quickStart).toContain("`--vcs-scope local` 等价于 `project-local-install`");
     expect(quickStart).toContain("tracked_whitelist");
     expect(quickStart).toContain("没有 `local_only_whitelist`");
   });
