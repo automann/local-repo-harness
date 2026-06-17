@@ -65,6 +65,11 @@ describe("README DX contract", () => {
     expect(firstFive).toContain("--external-tool-scope project");
     expect(firstFive).toContain("--codegraph-mcp-scope project");
     expect(firstFive).toContain("--sync-codegraph");
+    expect(firstFive).toContain("--vcs-scope local");
+    expect(firstFive).toContain("local-only Git");
+    expect(readme).toContain("vcs audit --repo \"$PWD\" --json");
+    expect(readme).toContain("vcs cleanup --repo \"$PWD\" --dry-run");
+    expect(readme).toContain("local-only-vcs-boundary");
     expect(firstFive).toContain("user hooks");
     expect(firstFive).toContain("user skills");
     expect(firstFive).toContain("user MCP config");
@@ -105,6 +110,9 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("repo-harness-architecture");
     expect(quickStart).toContain("不要把 CodeGraph 查询结果当作测试结果");
     expect(quickStart).toContain("不要让 project-scoped 安装回退到");
+    expect(quickStart).toContain("vcs audit --repo \"$PWD\" --json");
+    expect(quickStart).toContain("vcs cleanup --repo \"$PWD\" --apply");
+    expect(quickStart).toContain("不要把 `.ai/harness/tools/local-repo-harness/`");
   });
 
   test("links to the hook operations reference and parity contract", () => {

@@ -13,6 +13,7 @@ import type { RuntimeSelection } from "../installer/hook-command";
 import type { InstallScope } from "../installer/types";
 import type { ToolingScope } from "../skills/project-skills";
 import type { InitBrainMode } from "./init";
+import { syncLocalVcsBoundary, type VcsScope } from "../vcs/local-only";
 
 const HARNESS_PACKAGE = "local-repo-harness";
 export const HARNESS_TOOL_DIR_REL = ".ai/harness/tools/local-repo-harness";
@@ -34,6 +35,7 @@ export interface BootstrapOptions {
   codegraphMcpScope?: ToolingScope;
   syncCodegraph?: boolean;
   brainMode?: InitBrainMode;
+  vcsScope?: VcsScope;
   packageSpec?: string;
   version?: string;
   channel?: string;
@@ -239,7 +241,7 @@ function buildAdoptArgs(opts: Required<Pick<
   BootstrapOptions,
   "target" | "syncSkill" | "skillScope" | "hostAdapters" | "hostAdapterScope" | "runtime" |
   "externalSkills" | "externalToolScope" | "verify" | "codegraph" | "codegraphMcpScope" |
-  "syncCodegraph" | "brainMode" | "json"
+  "syncCodegraph" | "brainMode" | "vcsScope" | "json"
 >> & { repoRoot: string }): string[] {
   const args = [
     "adopt",
@@ -264,6 +266,7 @@ function buildAdoptArgs(opts: Required<Pick<
   if (opts.syncCodegraph) args.push("--sync-codegraph");
   if (!opts.verify) args.push("--no-verify");
   args.push("--brain-mode", opts.brainMode);
+  args.push("--vcs-scope", opts.vcsScope);
   if (opts.json) args.push("--json");
 
   return args;
@@ -307,6 +310,37 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
     };
   }
 
+  try {
+    const vcs = syncLocalVcsBoundary(repoRoot, {
+      vcsScope: opts.vcsScope ?? "local",
+      projectScoped: true,
+      apply: true,
+    });
+    steps.push({
+      step: "sync local-only vcs boundary",
+      status: vcs.skipped ? "skipped" : "ok",
+      detail: vcs.skipped
+        ? vcs.reason
+        : `scope=${vcs.policy.installStateScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
+    });
+  } catch (error) {
+    steps.push({
+      step: "sync local-only vcs boundary",
+      status: "failed",
+      stderr: (error as Error).message,
+    });
+    return {
+      exitCode: 1,
+      repoRoot,
+      packageSpec,
+      dependencySpec,
+      toolRoot,
+      shim,
+      steps,
+      lines: steps.flatMap(renderStep),
+    };
+  }
+
   const adoptArgs = buildAdoptArgs({
     repoRoot,
     target: opts.target ?? "both",
@@ -322,6 +356,7 @@ export function runBootstrap(opts: BootstrapOptions = {}): BootstrapResult {
     codegraphMcpScope: opts.codegraphMcpScope ?? "project",
     syncCodegraph: opts.syncCodegraph === true,
     brainMode: opts.brainMode ?? "manifest-only",
+    vcsScope: opts.vcsScope ?? "local",
     json: opts.json === true,
   });
   const delegatedStep = runProcess(shim, adoptArgs, repoRoot, opts.env);

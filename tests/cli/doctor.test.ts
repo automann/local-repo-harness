@@ -11,6 +11,7 @@ import {
 } from '../../src/cli/commands/doctor';
 import { ROUTES } from '../../src/cli/hook/route-registry';
 import { runInstall } from '../../src/cli/commands/install';
+import { syncLocalVcsBoundary } from '../../src/cli/vcs/local-only';
 
 const DOCTOR_CHECK_TIMEOUT_MS = 15000;
 
@@ -151,6 +152,7 @@ describe('doctor command (Phase 1C)', () => {
       expect(ids).toContain('codegraph-index');
       expect(ids).toContain('security-config');
       expect(ids).toContain('repo-hook-scripts');
+      expect(ids).toContain('local-only-vcs-boundary');
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);
 
@@ -204,6 +206,12 @@ describe('doctor command (Phase 1C)', () => {
             host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
             skills: { repo_harness_scope: 'project' },
             external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+            vcs: {
+              install_state_scope: 'local',
+              workflow_state_scope: 'local',
+              product_intent_scope: 'local',
+              local_only_manifest: '.ai/harness/local-only-manifest.json',
+            },
           }, null, 2),
         );
         runInstall({ target: 'both', scope: 'project', cwd: repoRoot });
@@ -212,6 +220,7 @@ describe('doctor command (Phase 1C)', () => {
           fs.mkdirSync(path.dirname(skill), { recursive: true });
           fs.writeFileSync(skill, '# repo-harness\n');
         }
+        syncLocalVcsBoundary(repoRoot, { vcsScope: 'local', projectScoped: true, apply: true });
 
         const r = runDoctor(repoRoot);
         const cliOnPath = r.checks.find((c) => c.id === 'cli-on-path')!;
@@ -241,6 +250,40 @@ describe('doctor command (Phase 1C)', () => {
         expect(r.checks.find((c) => c.id === 'project-hook-runtime')?.status).toBe('ok');
         expect(r.checks.find((c) => c.id === 'project-skills')?.status).toBe('ok');
         expect(r.checks.find((c) => c.id === 'third-party-tooling')?.status).toBe('ok');
+        expect(r.checks.find((c) => c.id === 'local-only-vcs-boundary')?.status).toBe('ok');
+      });
+    });
+  }, DOCTOR_CHECK_TIMEOUT_MS);
+
+  test('local-only-vcs-boundary fails when managed project artifacts are tracked', () => {
+    withTempHome(() => {
+      withTempRepo({ optIn: true }, (repoRoot) => {
+        fs.writeFileSync(
+          path.join(repoRoot, '.ai/harness/policy.json'),
+          JSON.stringify({
+            host_adapters: { scope: 'project', hook_runtime_mode: 'project-vendored-bun' },
+            skills: { repo_harness_scope: 'none' },
+            external_tooling: { scope: 'none', codegraph: { mcp_scope: 'none' }, gbrain: { mode: 'skip' } },
+            vcs: {
+              install_state_scope: 'local',
+              workflow_state_scope: 'local',
+              product_intent_scope: 'local',
+              local_only_manifest: '.ai/harness/local-only-manifest.json',
+            },
+          }, null, 2),
+        );
+        fs.writeFileSync(path.join(repoRoot, '.mcp.json'), '{}\n');
+        execSync('git add .mcp.json', { cwd: repoRoot, stdio: 'ignore' });
+        syncLocalVcsBoundary(repoRoot, { vcsScope: 'local', projectScoped: true, apply: true });
+
+        const r = runDoctor(repoRoot);
+        const vcs = r.checks.find((c) => c.id === 'local-only-vcs-boundary')!;
+        expect(vcs.status).toBe('fail');
+        expect(vcs.detail).toContain('tracked=1');
+        expect(vcs.detail).toContain('.mcp.json');
+        expect(vcs.detail).toContain('local-repo-harness vcs cleanup');
+        expect(vcs.detail).not.toContain('npm install -g');
+        expect(vcs.detail).not.toContain('--location global');
       });
     });
   }, DOCTOR_CHECK_TIMEOUT_MS);

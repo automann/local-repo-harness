@@ -3,9 +3,10 @@
 Generated and updated by the improve skill on 2026-06-16. This index tracks the
 active project-scoped CodeGraph, Bun/Node runtime compatibility,
 package-boundary-free project bootstrap, post-0.5.5 real-acceptance diagnostic
-cleanup plans, and the remaining project-scope doctor readiness cleanup. Older
-plans in this directory and `plans/archive/` remain historical context unless a
-future task explicitly reactivates them.
+cleanup plans, the remaining project-scope doctor readiness cleanup, and the
+local-only VCS isolation needed to keep downstream project installs out of
+product Git history. Older plans in this directory and `plans/archive/` remain
+historical context unless a future task explicitly reactivates them.
 
 Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
@@ -25,6 +26,7 @@ row when done.
 | 008 | Clean project-scope external tooling reports | P1 | M | - | DONE (verified 2026-06-16; Waza reporting/generation gates) |
 | 009 | Make security scan and doctor scope-aware | P1 | M | 006 | DONE (verified 2026-06-16; scope-aware security/doctor gates) |
 | 010 | Make doctor readiness fully project-scope aware | P1 | S | 009 | DONE (verified 2026-06-16; focused, release, and real install gates) |
+| 011 | Keep project-scoped installs out of downstream Git history | P1 | L | 005, 009, 010 | DONE (verified 2026-06-17; release gate passed for 0.5.9) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -59,6 +61,11 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   left `cli-on-path`, `codex-adapter`, and `claude-adapter` as global/PATH WARNs
   in project-intent `doctor --json` output. It finishes the doctor readiness
   cleanup for strict project-scoped installs.
+- 011 depends on 005 because package-boundary-free project bootstrap established
+  the managed tool-root pattern that now needs a Git boundary. It depends on 009
+  and 010 because the VCS boundary must appear in the same scope-aware
+  `doctor --json` readiness surface rather than as a separate undocumented
+  check.
 
 ## Findings considered and rejected
 
@@ -92,3 +99,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   `.ai/harness/bin/local-repo-harness`, project hook adapters, and project
   skills; global adapters are optional ambient host setup unless the policy
   intent is user/global.
+- Rely on project path isolation alone: rejected because writing under the
+  target repo prevents user-level leakage but still lets Git commit runtime,
+  skills, hooks, MCP config, and workflow state into the downstream product.
+- Rely only on `.git/info/exclude`: rejected because tracked `.gitignore`
+  negations such as `!.codex/hooks.json` can make local-only paths appear
+  untracked anyway. Local overlay ignores and cleanup checks are required.
+- Ask users to remember not to commit `local-repo-harness` artifacts manually:
+  rejected because this is exactly the kind of state boundary the installer and
+  doctor should enforce mechanically.

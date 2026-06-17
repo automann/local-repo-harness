@@ -16,6 +16,7 @@ import { CLI_VERSION, runStatus, type StatusReport } from './status';
 import { runSecurityScan, type SecurityScanReport, type SecurityScanScope } from './security';
 import { isOptIn, resolveHooksDir, resolveRepoRoot } from '../hook/runtime';
 import { ROUTES } from '../hook/route-registry';
+import { auditLocalOnlyVcs } from '../vcs/local-only';
 
 const TRUST_STATE_LINE = /^\[hooks\.state\."[^"]+\/\.codex\/hooks\.json:/;
 const PACKAGE_NAME = 'local-repo-harness';
@@ -540,6 +541,42 @@ function checkSecurityConfig(report: SecurityScanReport): DoctorCheckResult {
   };
 }
 
+function checkLocalOnlyVcsBoundary(statusReport: StatusReport): DoctorCheckResult {
+  const id = 'local-only-vcs-boundary';
+  const describe = 'Project-scoped install artifacts stay out of Git history';
+  if (!statusReport.repo.inGitRepo || !statusReport.repo.optIn || !statusReport.repo.repoRoot) {
+    return { id, describe, status: 'na', detail: 'repo is not opted in' };
+  }
+  const scope = statusReport.scopes.vcs;
+  if (
+    scope.installStateScope !== 'local' &&
+    scope.workflowStateScope !== 'local' &&
+    scope.productIntentScope !== 'local'
+  ) {
+    return { id, describe, status: 'na', detail: 'vcs scope is tracked' };
+  }
+  const audit = auditLocalOnlyVcs(statusReport.repo.repoRoot);
+  if (audit.safeToCommit) {
+    return {
+      id,
+      describe,
+      status: 'ok',
+      detail: `local-only entries=${audit.localOnly.length}; manifest=${audit.policy.manifestPath}`,
+    };
+  }
+  const first = [...audit.trackedLocalOnly, ...audit.unignoredLocalOnly, ...audit.requiresUserReview]
+    .slice(0, 5)
+    .map((issue) => issue.path)
+    .join(', ');
+  return {
+    id,
+    describe,
+    status: 'fail',
+    detail:
+      `tracked=${audit.trackedLocalOnly.length}; unignored=${audit.unignoredLocalOnly.length}; review=${audit.requiresUserReview.length}; first=${first}; remediation=local-repo-harness vcs cleanup --repo ${statusReport.repo.repoRoot} --dry-run`,
+  };
+}
+
 function securityScopeForStatus(statusReport: StatusReport): SecurityScanScope {
   if (hasProjectHookIntent(statusReport)) {
     return 'project';
@@ -616,6 +653,7 @@ export function runDoctor(cwd: string = process.cwd()): DoctorReport {
   checks.push(checkProjectHookRuntime(statusReport));
   checks.push(checkProjectSkills(statusReport));
   checks.push(checkThirdPartyTooling(statusReport));
+  checks.push(checkLocalOnlyVcsBoundary(statusReport));
   checks.push(checkCodexTrustState());
   checks.push(checkCodegraphReadiness(codegraphProbe));
   checks.push(checkCodegraphMcpHost(codegraphProbe, 'codex'));

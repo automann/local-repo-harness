@@ -16,6 +16,7 @@ import { ROUTES } from '../hook/route-registry';
 import { isManagedEntry, type HooksByEvent } from '../installer/managed-entries';
 import { readJsonOrEmpty } from '../installer/shared';
 import { locationToScope, type InstallScope, type Location } from '../installer/types';
+import { auditLocalOnlyVcs, type VcsScope } from '../vcs/local-only';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = path.resolve(SCRIPT_DIR, '..', '..', '..');
@@ -103,6 +104,16 @@ export interface StatusReport {
       mode: string;
       manifest: 'present' | 'missing' | 'not-required' | 'unknown';
       path?: string;
+    };
+    vcs: {
+      installStateScope: VcsScope;
+      workflowStateScope: VcsScope;
+      productIntentScope: VcsScope;
+      manifestPath: string;
+      trackedLocalOnly: number;
+      unignoredLocalOnly: number;
+      requiresUserReview: number;
+      safeToCommit: boolean;
     };
   };
   routes: { total: number; byEvent: Record<string, number> };
@@ -270,6 +281,9 @@ function buildScopeSummary(
   ];
 
   const brainManifestPath = repoRoot ? path.join(repoRoot, '.ai', 'harness', 'brain-manifest.json') : undefined;
+  const vcs = repoRoot
+    ? auditLocalOnlyVcs(repoRoot)
+    : null;
   return {
     intent: {
       hooks: hookIntent,
@@ -304,6 +318,27 @@ function buildScopeSummary(
           : 'unknown',
       path: brainManifestPath,
     },
+    vcs: vcs
+      ? {
+          installStateScope: vcs.policy.installStateScope,
+          workflowStateScope: vcs.policy.workflowStateScope,
+          productIntentScope: vcs.policy.productIntentScope,
+          manifestPath: vcs.manifestPath,
+          trackedLocalOnly: vcs.trackedLocalOnly.length,
+          unignoredLocalOnly: vcs.unignoredLocalOnly.length,
+          requiresUserReview: vcs.requiresUserReview.length,
+          safeToCommit: vcs.safeToCommit,
+        }
+      : {
+          installStateScope: 'tracked',
+          workflowStateScope: 'tracked',
+          productIntentScope: 'tracked',
+          manifestPath: '',
+          trackedLocalOnly: 0,
+          unignoredLocalOnly: 0,
+          requiresUserReview: 0,
+          safeToCommit: true,
+        },
   };
 }
 
@@ -406,6 +441,7 @@ export function formatStatus(report: StatusReport, asJson = false): string {
   lines.push(`  external tools: scope=${report.scopes.externalTools.scope}; waza=${report.scopes.externalTools.waza}; mermaid=${report.scopes.externalTools.mermaid}`);
   lines.push(`  codegraph: index=${report.scopes.codegraph.index.status}; mcp=${report.scopes.codegraph.mcpScope}`);
   lines.push(`  brain: mode=${report.scopes.brain.mode}; manifest=${report.scopes.brain.manifest}`);
+  lines.push(`  vcs: install=${report.scopes.vcs.installStateScope}; workflow=${report.scopes.vcs.workflowStateScope}; product-intent=${report.scopes.vcs.productIntentScope}; safe-to-commit=${report.scopes.vcs.safeToCommit ? 'yes' : 'no'}`);
   lines.push('');
   lines.push('Routes:');
   lines.push(`  ${report.routes.total} total`);

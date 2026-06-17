@@ -19,6 +19,7 @@ import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
 import { buildDocsCommand } from './commands/docs';
 import { buildRunCommand } from './commands/run';
+import { buildVcsCommand } from './commands/vcs';
 import { formatSecurityScan, runSecurityScan, SECURITY_SCAN_SCOPES, type SecurityScanScope } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
 import { runBootstrap } from './commands/bootstrap';
@@ -28,6 +29,7 @@ import type { InstallScope, Location } from './installer/types';
 import { isRuntimeSelection, type RuntimeSelection } from './installer/hook-command';
 import type { HookEvent, RouteId } from './hook/route-registry';
 import type { ToolingScope } from './skills/project-skills';
+import { scopesAreValid, type VcsScope } from './vcs/local-only';
 
 export const SUBCOMMANDS = [
   'init',
@@ -48,6 +50,7 @@ export const SUBCOMMANDS = [
   'brain',
   'capability-context',
   'docs',
+  'vcs',
 ] as const;
 export type Subcommand = (typeof SUBCOMMANDS)[number];
 
@@ -218,6 +221,7 @@ export function buildProgram(): Command {
     .option('--codegraph-mcp-scope <scope>', `CodeGraph MCP scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure during delegated adopt')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'manifest-only')
+    .option('--vcs-scope <scope>', 'Git tracking scope for project-scoped install artifacts: local|tracked', 'local')
     .option('--json', 'Output JSON instead of human-readable text')
     .action((rawOpts: {
       repo?: string;
@@ -237,6 +241,7 @@ export function buildProgram(): Command {
       codegraphMcpScope?: string;
       syncCodegraph?: boolean;
       brainMode?: string;
+      vcsScope?: string;
       json?: boolean;
     }) => {
       if (!VALID_TARGETS.includes(rawOpts.target as InstallTargetSpec)) {
@@ -279,6 +284,10 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (!scopesAreValid(rawOpts.vcsScope)) {
+        console.error('local-repo-harness bootstrap: invalid --vcs-scope (expected: local, tracked)');
+        process.exit(2);
+      }
       const result = runBootstrap({
         repo: rawOpts.repo,
         target: rawOpts.target as InstallTargetSpec,
@@ -297,6 +306,7 @@ export function buildProgram(): Command {
         codegraphMcpScope: rawOpts.codegraphMcpScope as ToolingScope | undefined,
         syncCodegraph: rawOpts.syncCodegraph === true,
         brainMode: rawOpts.brainMode as InitBrainMode,
+        vcsScope: rawOpts.vcsScope as VcsScope,
         json: rawOpts.json === true,
       });
       if (rawOpts.json === true) {
@@ -332,6 +342,7 @@ export function buildProgram(): Command {
     .option('--sync-codegraph', 'Sync the CodeGraph index after ensure')
     .option('--brain-root <path>', 'Deprecated: user-level brain config belongs to local-repo-harness update/setup')
     .option('--brain-mode <mode>', 'Repo-local brain mode: skip|manifest-only', 'skip')
+    .option('--vcs-scope <scope>', 'Git tracking scope for project-scoped install artifacts: local|tracked')
     .option('--interactive', 'Run the numbered interactive install planner')
     .option('--json', 'Output JSON instead of human-readable text')
     .action(async (action: string | undefined, rawOpts: {
@@ -356,6 +367,7 @@ export function buildProgram(): Command {
       syncCodegraph?: boolean;
       brainRoot?: string;
       brainMode?: string;
+      vcsScope?: string;
       interactive?: boolean;
       json?: boolean;
     }) => {
@@ -422,6 +434,10 @@ export function buildProgram(): Command {
         );
         process.exit(2);
       }
+      if (rawOpts.vcsScope !== undefined && !scopesAreValid(rawOpts.vcsScope)) {
+        console.error('local-repo-harness adopt: invalid --vcs-scope (expected: local, tracked)');
+        process.exit(2);
+      }
       const common = {
         repo: rawOpts.repo,
         apply: rawOpts.dryRun !== true,
@@ -440,6 +456,8 @@ export function buildProgram(): Command {
         syncCodegraph: rawOpts.syncCodegraph === true,
         brainRoot: rawOpts.brainRoot,
         brainMode: rawOpts.brainMode as InitBrainMode,
+        vcsScope: rawOpts.vcsScope as VcsScope | undefined,
+        mode: rawOpts.mode as 'minimal' | 'standard' | 'self-host',
       };
       const result = rawOpts.interactive === true
         ? await runInteractiveInit({
@@ -597,6 +615,7 @@ export function buildProgram(): Command {
 
   program.addCommand(buildInitHookCommand());
   program.addCommand(buildSetupCommand());
+  program.addCommand(buildVcsCommand());
 
   program
     .command('migrate')

@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.8`
+当前版本：`local-repo-harness@0.5.9`
 
 ## 这个项目适合谁
 
@@ -145,6 +145,7 @@ bunx --bun local-repo-harness@latest bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
+  --vcs-scope local \
   --no-codegraph
 ```
 
@@ -156,6 +157,8 @@ bunx --bun local-repo-harness@latest bootstrap \
 
 bootstrap 会把当前项目自己的 managed package runtime 放在
 `.ai/harness/tools/local-repo-harness/`，不要把它当成本仓库源码来编辑。
+默认情况下，bootstrap 还会建立 local-only Git 边界：安装产物、workflow
+state、hooks、skills、MCP 配置只留在本地，不应该进入目标项目的产品提交。
 
 ### 2. 最小 dry-run
 
@@ -167,6 +170,7 @@ bootstrap 会把当前项目自己的 managed package runtime 放在
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
+  --vcs-scope local \
   --no-codegraph
 ```
 
@@ -191,6 +195,7 @@ bootstrap 会把当前项目自己的 managed package runtime 放在
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
+  --vcs-scope local \
   --no-codegraph
 ```
 
@@ -205,6 +210,7 @@ bootstrap 会把当前项目自己的 managed package runtime 放在
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode manifest-only \
+  --vcs-scope local \
   --no-codegraph
 ```
 
@@ -219,7 +225,8 @@ bootstrap 会把当前项目自己的 managed package runtime 放在
   --external-tool-scope project \
   --codegraph-mcp-scope project \
   --sync-codegraph \
-  --brain-mode manifest-only
+  --brain-mode manifest-only \
+  --vcs-scope local
 ```
 
 配方 C 会：
@@ -254,6 +261,7 @@ bun --bun local-repo-harness bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
+  --vcs-scope local \
   --no-codegraph
 ```
 
@@ -273,6 +281,9 @@ bun --bun local-repo-harness bootstrap \
 | `.ai/harness/tools/codegraph/` | project-managed CodeGraph package |
 | `.ai/harness/bin/codegraph` | project CodeGraph shim |
 | `.ai/harness/codegraph-runtime/` | project-scoped CodeGraph install/runtime state |
+| `.ai/harness/local-only-manifest.json` | local-only Git 边界清单 |
+| `.git/info/exclude` | 本地 Git exclude；不提交到仓库 |
+| `.codex/.gitignore`, `.agents/.gitignore`, `.claude/.gitignore`, `.ai/.gitignore` | 本地 overlay，用来兜底 `.gitignore` negation |
 | `.codex/hooks.json` | Codex 项目 hooks adapter |
 | `.claude/settings.json` | Claude 项目 hooks adapter |
 | `.agents/skills/` | Codex 项目 skills root |
@@ -283,6 +294,40 @@ bun --bun local-repo-harness bootstrap \
 | `_ops/` | ignored local operations state |
 
 这些是安装产物或 runtime state，不等同于 `local-repo-harness` 源码仓库。
+默认 `--vcs-scope local` 会让这些开发态产物留在本机。只有维护
+local-repo-harness 自身，或团队明确要把治理文件纳入产品仓库时，才使用
+`--vcs-scope tracked` 或 `adopt --mode self-host`。
+
+## 验收：确认没有进入产品 Git 历史
+
+项目级安装完成后先检查 local-only 边界：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
+git status --short --ignored --untracked-files=all
+```
+
+期望：
+
+- `vcs audit` 的 `safeToCommit` 是 `true`。
+- `trackedLocalOnly`、`unignoredLocalOnly`、`requiresUserReview` 都为空。
+- `git status` 不应把 `.ai/harness/tools/local-repo-harness/`、
+  `.agents/skills/repo-harness/`、`.codex/hooks.json`、`.mcp.json` 等
+  local-repo-harness 产物列为待提交文件。
+
+如果之前误提交或 `git add` 过这些产物，先 dry-run：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup --repo "$PWD" --dry-run
+```
+
+确认只会执行 `git rm --cached` 后再应用：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup --repo "$PWD" --apply
+```
+
+cleanup 只从 Git index 移除 safe managed paths，不删除工作区文件。
 
 ## 验收：确认没有回退到用户级
 
@@ -350,6 +395,7 @@ rg -n 'swarm-discussion-codex|/path/to/target-project' "$HOME/.codegraph/daemons
 ```bash
 ./.ai/harness/bin/local-repo-harness status --json
 ./.ai/harness/bin/local-repo-harness doctor --json
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
 ./.ai/harness/bin/local-repo-harness security scan --scope project --json
 bash scripts/check-task-workflow.sh --strict
 ```
@@ -365,6 +411,7 @@ bash scripts/check-agent-tooling.sh --json --host both
 
 - `status` 能看到 repo opt-in 和 project scope 状态。
 - `doctor --json` 以项目级 readiness 为准。
+- `local-only-vcs-boundary` 是 `ok`。
 - `cli-on-path`、`codex-adapter`、`claude-adapter` 在 project intent 下可以是 `na`。
 - `project-codex-adapter` 和 `project-claude-adapter` 是 `ok`。
 - `mixed-scope-adapters` 在没有用户级残留时是 `ok`。
@@ -396,6 +443,7 @@ bunx --bun local-repo-harness@latest bootstrap \
   --external-tool-scope none \
   --codegraph-mcp-scope none \
   --brain-mode skip \
+  --vcs-scope local \
   --no-codegraph
 ```
 

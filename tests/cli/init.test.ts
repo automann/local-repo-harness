@@ -207,6 +207,7 @@ describe("init command", () => {
       mkdirSync(repo, { recursive: true });
       mkdirSync(fakeBin, { recursive: true });
       setupFakeSource(source);
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
       makeExecutable(
         join(fakeBin, "npx"),
         `#!/bin/bash\nprintf '%s\\n' "$*" >> "${npxLog}"\nexit 0\n`,
@@ -257,6 +258,7 @@ describe("init command", () => {
       mkdirSync(repo, { recursive: true });
       mkdirSync(fakeBin, { recursive: true });
       setupFakeSource(source);
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
       makeExecutable(
         join(fakeBin, "npx"),
         [
@@ -305,11 +307,54 @@ describe("init command", () => {
       expect(existsSync(join(repo, ".claude", "skills", "codex-review", "SKILL.md"))).toBe(true);
       expect(existsSync(join(home, ".codex", "skills"))).toBe(false);
       expect(existsSync(join(home, ".claude", "skills"))).toBe(false);
+      expect(existsSync(join(repo, ".git", "info", "exclude"))).toBe(true);
+      const exclude = readFileSync(join(repo, ".git", "info", "exclude"), "utf-8");
+      expect(exclude).toContain(".agents/skills/repo-harness/");
+      expect(exclude).toContain(".agents/skills/think/");
+      expect(existsSync(join(repo, ".agents", ".gitignore"))).toBe(true);
+      expect(readFileSync(join(repo, ".agents", ".gitignore"), "utf-8")).toContain("skills/repo-harness/");
+      expect(existsSync(join(repo, ".ai", "harness", "local-only-manifest.json"))).toBe(true);
 
       const log = readFileSync(npxLog, "utf-8");
       expect(log).toContain(`PWD=${realpathSync(repo)} ARGS=-y skills add tw93/Waza -a claude-code codex -s think hunt check health -y --copy`);
       expect(log).toContain(`PWD=${realpathSync(repo)} ARGS=-y skills add BfdCampos/dotfiles -a claude-code codex -s mermaid -y --copy`);
       expect(log).not.toContain(" -g ");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("self-host mode keeps project artifacts tracked unless local VCS scope is explicit", () => {
+    const tmp = join(tmpdir(), `repo-harness-init-self-host-vcs-${Date.now()}`);
+    const source = join(tmp, "source");
+    const repo = join(tmp, "repo");
+    try {
+      mkdirSync(source, { recursive: true });
+      mkdirSync(repo, { recursive: true });
+      setupFakeSource(source);
+      expect(spawnSync("git", ["init", "-q"], { cwd: repo }).status).toBe(0);
+
+      const result = runInit({
+        repo,
+        sourceRoot: source,
+        syncSkill: true,
+        skillScope: "project",
+        hostAdapters: false,
+        externalSkills: false,
+        externalToolScope: "none",
+        codegraph: false,
+        verify: false,
+        mode: "self-host",
+      });
+
+      expect(result.exitCode).toBe(0);
+      const vcsStep = result.steps.find((step) => step.step === "sync local-only vcs boundary");
+      expect(vcsStep?.status).toBe("skipped");
+      expect(vcsStep?.detail).toContain("all vcs scopes are tracked");
+      const exclude = existsSync(join(repo, ".git", "info", "exclude"))
+        ? readFileSync(join(repo, ".git", "info", "exclude"), "utf-8")
+        : "";
+      expect(exclude).not.toContain(".agents/skills/repo-harness/");
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

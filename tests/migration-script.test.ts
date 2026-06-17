@@ -190,8 +190,15 @@ describe("Migration script contract", () => {
     expect(sharedLib).toContain("pi_print_codex_hook_trust_notice");
     expect(sharedLib).toContain("_ref/");
     expect(sharedLib).toContain("_ops/");
+    expect(sharedLib).toContain("REPO_HARNESS_VCS_SCOPE");
+    expect(sharedLib).toContain("policy.vcs");
+    expect(sharedLib).toContain("local_only_manifest");
+    expect(script).toContain("VCS scope:");
+    expect(script).toContain(".git/info/exclude plus local overlay .gitignore files");
     expect(script).toContain("tasks/contracts");
     expect(workflowContract).toContain("docs/architecture/index.md");
+    expect(workflowContract).toContain("defaultVcsScope");
+    expect(workflowContract).toContain("localOnlyVcsBoundary");
     expect(workflowContract).toContain(".ai/context/capabilities.json");
     expect(workflowContract).toContain(".ai/harness/architecture/events.jsonl");
     expect(workflowContract).toContain(".ai/harness/worktrees/");

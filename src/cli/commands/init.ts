@@ -37,6 +37,12 @@ import {
   skillRootFor,
   type ToolingScope,
 } from "../skills/project-skills";
+import {
+  projectScopedRequested,
+  syncLocalVcsBoundary,
+  type VcsMode,
+  type VcsScope,
+} from "../vcs/local-only";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, "..", "..", "..");
@@ -83,6 +89,8 @@ export interface InitCommandOptions {
   globalContext?: GlobalContextOptions;
   brainRoot?: string;
   brainMode?: InitBrainMode;
+  vcsScope?: VcsScope;
+  mode?: VcsMode;
   target?: InstallTargetSpec;
   env?: NodeJS.ProcessEnv;
 }
@@ -436,6 +444,15 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
   const syncCodegraph = opts.syncCodegraph === true;
   const brainMode = opts.brainMode ?? "skip";
   const target = opts.target ?? "both";
+  const mode = opts.mode ?? "standard";
+  const projectScoped = projectScopedRequested({
+    skillScope,
+    hostAdapterScope,
+    externalToolScope,
+    codegraphMcpScope,
+    brainMode,
+  });
+  const vcsScope = opts.vcsScope ?? (mode === "self-host" ? "tracked" : projectScoped ? "local" : "tracked");
   const steps: InitStep[] = [];
 
   if (opts.brainRoot) {
@@ -454,6 +471,10 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     REPO_HARNESS_EXTERNAL_TOOL_SCOPE: externalToolScope,
     REPO_HARNESS_CODEGRAPH_MCP_SCOPE: codegraph ? codegraphMcpScope : "none",
     REPO_HARNESS_BRAIN_MODE: brainMode,
+    REPO_HARNESS_VCS_SCOPE: vcsScope,
+    REPO_HARNESS_INSTALL_STATE_VCS_SCOPE: vcsScope,
+    REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE: vcsScope,
+    REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE: vcsScope,
   };
 
   const targetError = validateRepoAdoptionTarget(repoRoot, opts.repo !== undefined, commandEnv);
@@ -652,6 +673,28 @@ export function runInit(opts: InitCommandOptions = {}): InitCommandResult {
     steps.push(withStepName(verifyStep, "verify repo harness", "scripts/check-task-workflow.sh --strict"));
   } else {
     steps.push({ step: "verify repo harness", status: "skipped" });
+  }
+
+  try {
+    const vcs = syncLocalVcsBoundary(repoRoot, {
+      vcsScope,
+      mode,
+      projectScoped,
+      apply,
+    });
+    steps.push({
+      step: "sync local-only vcs boundary",
+      status: vcs.skipped ? "skipped" : "ok",
+      detail: vcs.skipped
+        ? vcs.reason
+        : `${apply ? "applied" : "dry-run"}; scope=${vcs.policy.installStateScope}; entries=${vcs.localOnly.length}; overlays=${vcs.overlays.length}`,
+    });
+  } catch (error) {
+    steps.push({
+      step: "sync local-only vcs boundary",
+      status: "failed",
+      detail: (error as Error).message,
+    });
   }
 
   const failed = steps.some((step) => step.status === "failed");

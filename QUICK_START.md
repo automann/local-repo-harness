@@ -7,6 +7,8 @@
 - `.codex/hooks.json` 或 `.claude/settings.json`
 - `.agents/skills/` 或 `.claude/skills/`
 - 可选的 `.ai/harness/bin/codegraph`
+- local-only Git 边界已经建立：`.git/info/exclude` 和必要的本地 overlay
+  `.gitignore` 会阻止安装产物进入产品提交
 
 `README.md` 负责安装；本文件负责回答三个问题：
 
@@ -34,6 +36,7 @@ repo-harness 的核心不是某个 hook 或某个 skill，而是把 agent 工作
 ```bash
 ./.ai/harness/bin/local-repo-harness status --json
 ./.ai/harness/bin/local-repo-harness doctor --json
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
 bash scripts/check-agent-tooling.sh --json --host both
 ```
 
@@ -305,6 +308,8 @@ repo-harness-check
 - 不要跳过计划批准、review、验证证据，直接让 agent 说“完成”。
 - 不要把 CodeGraph 查询结果当作测试结果。
 - 不要让 project-scoped 安装回退到 `~/.codex`、`~/.claude`、`~/.agents` 或 `~/.codegraph/daemons`。
+- 不要把 `.ai/harness/tools/local-repo-harness/`、`.agents/skills/repo-harness/`、
+  `.codex/hooks.json`、`.mcp.json` 这类 local-repo-harness 安装产物提交到产品仓库。
 - 不要编辑 `_ops/*`，那是 ignored local operations state。
 
 ## 每次完成前的最小检查
@@ -321,9 +326,22 @@ repo-harness-check
 
 ```bash
 git status --short --branch
+./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
 bash scripts/check-task-sync.sh
 bash scripts/check-task-workflow.sh --strict
 ./.ai/harness/bin/local-repo-harness doctor --json
+```
+
+如果 `vcs audit` 报告 tracked local-only paths，先看 dry-run：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup --repo "$PWD" --dry-run
+```
+
+确认只会 `git rm --cached` 后再执行：
+
+```bash
+./.ai/harness/bin/local-repo-harness vcs cleanup --repo "$PWD" --apply
 ```
 
 如果要交给下一轮 agent：
@@ -331,4 +349,3 @@ bash scripts/check-task-workflow.sh --strict
 ```text
 使用 repo-harness-handoff 刷新 handoff packet，并在最终回复里给出下一步。
 ```
-

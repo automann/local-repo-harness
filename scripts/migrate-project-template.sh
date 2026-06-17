@@ -1062,7 +1062,8 @@ print_report() {
   echo "- Third-party tool scope: ${REPO_HARNESS_EXTERNAL_TOOL_SCOPE:-user}"
   echo "- CodeGraph MCP scope: ${REPO_HARNESS_CODEGRAPH_MCP_SCOPE:-none}"
   echo "- Brain mode: ${REPO_HARNESS_BRAIN_MODE:-skip}"
-  echo "- Runtime temporary ignore block synced to .gitignore"
+  echo "- VCS scope: ${REPO_HARNESS_VCS_SCOPE:-tracked} (install=${REPO_HARNESS_INSTALL_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}, workflow=${REPO_HARNESS_WORKFLOW_STATE_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}}, product-intent=${REPO_HARNESS_PRODUCT_INTENT_VCS_SCOPE:-${REPO_HARNESS_VCS_SCOPE:-tracked}})"
+  echo "- Runtime cache ignore block synced to .gitignore; local-only project install state is managed by .git/info/exclude plus local overlay .gitignore files"
   pi_print_external_tooling_report "$repo" "$MODE" "$SCRIPT_DIR/check-agent-tooling.sh"
 }
 

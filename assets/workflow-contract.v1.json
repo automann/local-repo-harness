@@ -8,6 +8,9 @@
     ],
     "repoLocalFirst": true,
     "repoWorkflowStateLocalFirst": true,
+    "defaultVcsScope": "local",
+    "selfHostVcsScope": "tracked",
+    "localOnlyVcsBoundary": "git-info-exclude-plus-local-overlays",
     "defaultHelperSource": "package",
     "defaultHookSource": "package-or-project-runtime"
   },

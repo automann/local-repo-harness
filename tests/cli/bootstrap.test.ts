@@ -27,7 +27,7 @@ function writeFakeBunForHarnessBootstrap(fakeBin: string, logFile: string): void
       "set -euo pipefail",
       `printf 'managed PWD=%s ARGS=%s\\n' "$PWD" "$*" >> ${JSON.stringify(logFile)}`,
       "if [[ \"${1:-}\" == \"--version\" ]]; then",
-      "  echo '0.5.8'",
+      "  echo '0.5.9'",
       "  exit 0",
       "fi",
       "if [[ \"${1:-}\" == \"adopt\" ]]; then",
@@ -103,6 +103,9 @@ describe("bootstrap command", () => {
       expect(output.toolRoot).toBe(join(repo, ".ai", "harness", "tools", "local-repo-harness"));
       expect(output.shim).toBe(join(repo, ".ai", "harness", "bin", "local-repo-harness"));
       expect(output.delegated.status).toBe(0);
+      expect(output.steps.some((step: { step: string; status: string }) => (
+        step.step === "sync local-only vcs boundary" && step.status === "ok"
+      ))).toBe(true);
 
       expect(readFileSync(join(parent, "package.json"), "utf-8")).toBe(parentPackage);
       expect(existsSync(join(parent, "bun.lock"))).toBe(false);
@@ -113,6 +116,9 @@ describe("bootstrap command", () => {
       expect(existsSync(join(repo, ".ai", "harness", "tools", "local-repo-harness", "bun.lock"))).toBe(true);
       expect(existsSync(join(repo, ".ai", "harness", "tools", "local-repo-harness", "node_modules", ".bin", "local-repo-harness"))).toBe(true);
       expect(existsSync(join(repo, ".ai", "harness", "bin", "local-repo-harness"))).toBe(true);
+      expect(existsSync(join(repo, ".git", "info", "exclude"))).toBe(true);
+      expect(readFileSync(join(repo, ".git", "info", "exclude"), "utf-8")).toContain(".ai/harness/tools/local-repo-harness/");
+      expect(existsSync(join(repo, ".ai", "harness", "local-only-manifest.json"))).toBe(true);
 
       const realRepo = realpathSync(repo);
       const log = readFileSync(logFile, "utf-8");
@@ -123,6 +129,7 @@ describe("bootstrap command", () => {
       expect(log).toContain("--external-tool-scope none");
       expect(log).toContain("--codegraph-mcp-scope none");
       expect(log).toContain("--brain-mode skip");
+      expect(log).toContain("--vcs-scope local");
       expect(log).toContain("--no-codegraph");
       expect(log).toContain("--no-verify");
       expect(log).toContain("--json");
