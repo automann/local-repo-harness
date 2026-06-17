@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.12`
+当前版本：`local-repo-harness@0.5.13`
 
 ## 这个项目适合谁
 
@@ -320,7 +320,7 @@ VCS 判定顺序只有三层：
 | --- | --- | --- | --- | --- |
 | `project-local-install` | local | local | tracked | 默认公开项目友好模式 |
 | `tracked-governance` | local | tracked | tracked | 团队要提交治理文件 |
-| `ephemeral-agent-workspace` | local | local | local | 临时私有 agent workspace |
+| `ephemeral-agent-workspace` | local | local | local | 临时私有 agent workspace，`.agents/`、`.claude/`、`docs/`、`skills-lock.json` 全部留本地 |
 | `self-host` | tracked | tracked | tracked | 维护 local-repo-harness 自身 |
 
 选择 profile 时，先判断这三个问题：
@@ -356,7 +356,8 @@ Profile 不是一次性选项。你可以先用 `vcs audit` 预览另一个 prof
   --vcs-profile tracked-governance
 ```
 
-如果这个目标项目只是临时 agent workspace，连产品意图文档也不准备提交：
+如果这个目标项目只是临时 agent workspace，连 `.agents/`、`.claude/`、
+`docs/` 和 `skills-lock.json` 也不准备提交：
 
 ```bash
 ./.ai/harness/bin/local-repo-harness adopt \

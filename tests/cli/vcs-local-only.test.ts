@@ -75,7 +75,19 @@ describe("local-only VCS boundary", () => {
       expect(policy.installStateScope).toBe("local");
       expect(policy.workflowStateScope).toBe("local");
       expect(policy.productIntentScope).toBe("local");
-      expect(computeLocalOnlyEntries(policy).map((entry) => entry.path)).toContain("docs/spec.md");
+      const ephemeralEntries = computeLocalOnlyEntries(policy).map((entry) => entry.path);
+      expect(ephemeralEntries).toContain(".agents/");
+      expect(ephemeralEntries).toContain(".claude/");
+      expect(ephemeralEntries).toContain("docs/");
+      expect(ephemeralEntries).toContain("docs/spec.md");
+      expect(ephemeralEntries).toContain("skills-lock.json");
+
+      policy = resolveLocalVcsPolicy(repo, { projectScoped: true });
+      const projectLocalEntries = computeLocalOnlyEntries(policy).map((entry) => entry.path);
+      expect(projectLocalEntries).not.toContain(".agents/");
+      expect(projectLocalEntries).not.toContain(".claude/");
+      expect(projectLocalEntries).not.toContain("docs/");
+      expect(projectLocalEntries).not.toContain("skills-lock.json");
 
       policy = resolveLocalVcsPolicy(repo, { vcsProfile: "tracked-governance" });
       expect(policy.installStateScope).toBe("local");
@@ -199,6 +211,51 @@ describe("local-only VCS boundary", () => {
       const status = git(repo, ["status", "--short", "--ignored", "--untracked-files=all"]);
       expect(status.stdout).not.toContain("?? .codex/hooks.json");
       expect(status.stdout).toContain("!! .codex/hooks.json");
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  test("ephemeral profile ignores governance dirs, product docs, and skills lock", () => {
+    const repo = tempRepo("repo-harness-vcs-ephemeral-broad-local-");
+    try {
+      const trackedPaths = [
+        ".agents/skills/codex-review/SKILL.md",
+        ".claude/CLAUDE.md",
+        ".claude/skills/check/SKILL.md",
+        "docs/spec.md",
+        "docs/architecture/overview.md",
+        "skills-lock.json",
+      ];
+      for (const rel of trackedPaths) {
+        mkdirSync(join(repo, ...rel.split("/").slice(0, -1)), { recursive: true });
+        writeFileSync(join(repo, ...rel.split("/")), `${rel}\n`);
+      }
+      expect(git(repo, ["add", ...trackedPaths]).status).toBe(0);
+
+      const synced = syncLocalVcsBoundary(repo, {
+        vcsProfile: "ephemeral-agent-workspace",
+        projectScoped: true,
+        apply: true,
+      });
+      expect(synced.overlays).toEqual(expect.arrayContaining([
+        ".agents/.gitignore",
+        ".claude/.gitignore",
+        "docs/.gitignore",
+      ]));
+      expect(readFileSync(join(repo, ".agents", ".gitignore"), "utf-8")).toContain("*");
+      expect(readFileSync(join(repo, ".claude", ".gitignore"), "utf-8")).toContain("*");
+      expect(readFileSync(join(repo, "docs", ".gitignore"), "utf-8")).toContain("*");
+
+      const audit = auditLocalOnlyVcs(repo, { vcsProfile: "ephemeral-agent-workspace" });
+      const trackedLocalOnly = audit.trackedLocalOnly.map((issue) => issue.path);
+      const review = audit.requiresUserReview.map((issue) => issue.path);
+      expect(trackedLocalOnly).toEqual(expect.arrayContaining(trackedPaths));
+      expect(review).toEqual(expect.arrayContaining(trackedPaths));
+      expect(git(repo, ["check-ignore", "-q", "--no-index", "--", ".agents/skills/codex-review/SKILL.md"]).status).toBe(0);
+      expect(git(repo, ["check-ignore", "-q", "--no-index", "--", ".claude/skills/check/SKILL.md"]).status).toBe(0);
+      expect(git(repo, ["check-ignore", "-q", "--no-index", "--", "docs/spec.md"]).status).toBe(0);
+      expect(git(repo, ["check-ignore", "-q", "--no-index", "--", "skills-lock.json"]).status).toBe(0);
     } finally {
       rmSync(repo, { recursive: true, force: true });
     }

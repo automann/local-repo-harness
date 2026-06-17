@@ -1,6 +1,6 @@
 {
-  "version": "0.5.12",
-  "templateVersion": "0.5.12",
+  "version": "0.5.13",
+  "templateVersion": "0.5.13",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -171,6 +171,10 @@
     {
       "version": "0.5.12",
       "description": "Fixes VCS profile precedence so explicit project-local, ephemeral, tracked-governance, and self-host selections override stale persisted policy group scopes"
+    },
+    {
+      "version": "0.5.13",
+      "description": "Expands ephemeral-agent-workspace local-only coverage so .agents/, .claude/, docs/, and skills-lock.json stay out of downstream commits"
     }
   ],
   "generatedProjectStamp": {

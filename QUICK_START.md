@@ -64,7 +64,7 @@ bash scripts/check-agent-tooling.sh --json --host both
 | --- | --- |
 | `project-local-install` | 默认。安装产物和 workflow 治理态只留本地，产品意图文档可提交 |
 | `tracked-governance` | 团队想把 `plans/`、`tasks/`、`AGENTS.md` 等治理文件一起提交 |
-| `ephemeral-agent-workspace` | 临时/私有 agent workspace，连 `docs/spec.md` 这类产品意图也只留本地 |
+| `ephemeral-agent-workspace` | 临时/私有 agent workspace，`.agents/`、`.claude/`、`docs/`、`skills-lock.json` 都只留本地 |
 | `self-host` | 维护 local-repo-harness 自身或明确要把 harness 治理框架纳入源码 |
 
 切换前先预览，不要盲目 apply：

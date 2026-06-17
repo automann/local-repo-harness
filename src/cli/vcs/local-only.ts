@@ -216,6 +216,17 @@ const PRODUCT_INTENT_PATHS: readonly string[] = [
   "docs/researches/",
 ];
 
+const EPHEMERAL_WORKSPACE_PATHS: readonly string[] = [
+  ".agents/",
+  ".claude/",
+  "docs/",
+  "skills-lock.json",
+];
+
+const WHOLE_DIR_OVERLAY_PATHS = new Set(
+  EPHEMERAL_WORKSPACE_PATHS.filter((path) => path.endsWith("/")),
+);
+
 const GENERATED_HELPER_PATHS: readonly string[] = [
   "scripts/new-spec.sh",
   "scripts/new-sprint.sh",
@@ -452,10 +463,29 @@ function groupEntries(group: VcsArtifactGroup): LocalOnlyEntry[] {
   return PRODUCT_INTENT_PATHS.map((path) => entry(path, "product-intent", false));
 }
 
+function ephemeralWorkspaceEntries(): LocalOnlyEntry[] {
+  return EPHEMERAL_WORKSPACE_PATHS.map((path) => (
+    path === "docs/"
+      ? entry(path, "product-intent", false)
+      : entry(path, "workflow-state", false)
+  ));
+}
+
+function profileEntries(policy: LocalVcsPolicy): LocalOnlyEntry[] {
+  if (policy.profileName !== "ephemeral-agent-workspace") return [];
+  return ephemeralWorkspaceEntries();
+}
+
 function addUniqueEntry(out: LocalOnlyEntry[], seen: Set<string>, next: LocalOnlyEntry): void {
   if (seen.has(next.path)) return;
   seen.add(next.path);
   out.push(next);
+}
+
+function entryMatchesTrackedWhitelist(entryPath: string, whitelist: string[]): boolean {
+  if (matchesAnyPath(entryPath, whitelist)) return true;
+  if (!EPHEMERAL_WORKSPACE_PATHS.includes(entryPath)) return false;
+  return whitelist.some((trackedPath) => pathMatchesPattern(trackedPath, entryPath));
 }
 
 export function computeLocalOnlyEntries(policy: LocalVcsPolicy): LocalOnlyEntry[] {
@@ -471,7 +501,8 @@ export function computeLocalOnlyEntries(policy: LocalVcsPolicy): LocalOnlyEntry[
   if (policy.productIntentScope === "local") {
     for (const next of groupEntries("product-intent")) addUniqueEntry(out, seen, next);
   }
-  return out.filter((next) => !matchesAnyPath(next.path, policy.trackedWhitelist));
+  for (const next of profileEntries(policy)) addUniqueEntry(out, seen, next);
+  return out.filter((next) => !entryMatchesTrackedWhitelist(next.path, policy.trackedWhitelist));
 }
 
 function gitPath(repoRoot: string, args: string[]): { ok: boolean; stdout: string; stderr: string; status: number | null } {
@@ -529,13 +560,16 @@ function overlayLinesFor(dir: string, entries: LocalOnlyEntry[]): string[] {
   const prefix = `${dir}/`;
   const direct = entries
     .filter((entry) => entry.path.startsWith(prefix))
-    .map((entry) => entry.path.slice(prefix.length))
+    .map((entry) => {
+      if (entry.path === prefix && WHOLE_DIR_OVERLAY_PATHS.has(entry.path)) return "*";
+      return entry.path.slice(prefix.length);
+    })
     .filter((path) => path && path !== ".gitignore");
   return [...new Set(direct)].sort();
 }
 
 function overlayDirs(entries: LocalOnlyEntry[]): string[] {
-  const candidates = [".codex", ".claude", ".agents", ".ai", ".ai/harness"];
+  const candidates = [".codex", ".claude", ".agents", ".ai", ".ai/harness", "docs"];
   return candidates.filter((dir) => overlayLinesFor(dir, entries).length > 0);
 }
 
@@ -652,6 +686,7 @@ function allKnownEntries(): LocalOnlyEntry[] {
   for (const group of ["install-state", "workflow-state", "product-intent"] as const) {
     for (const next of groupEntries(group)) addUniqueEntry(out, seen, next);
   }
+  for (const next of ephemeralWorkspaceEntries()) addUniqueEntry(out, seen, next);
   return out;
 }
 
