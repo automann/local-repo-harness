@@ -351,7 +351,7 @@ describe("Workflow helper scripts", () => {
     expect(script).toContain("check_architecture_freshness");
     expect(script.indexOf('check_architecture_freshness "$target_branch"')).toBeGreaterThan(-1);
     expect(script.indexOf('check_architecture_freshness "$target_branch"')).toBeLessThan(
-      script.indexOf('bash "scripts/verify-sprint.sh"'),
+      script.indexOf("run_workflow_helper verify-sprint"),
     );
   });
 
@@ -1125,6 +1125,223 @@ describe("Workflow helper scripts", () => {
       rmSync(cwd, { recursive: true, force: true });
     }
   });
+
+  test("contract-worktree start seeds a project runtime bridge when linked worktree lacks tracked helpers", () => {
+    const cwd = tmpWorkspace("helper-contract-runtime-bridge");
+    const worktreePath = `${cwd}-wt-demo`;
+    try {
+      mkdirSync(join(cwd, "scripts"), { recursive: true });
+      copyFileSync(join(HELPER_DIR, "contract-worktree.sh"), join(cwd, "scripts/contract-worktree.sh"));
+      expect(run("bash", ["-lc", "chmod +x scripts/*.sh"], cwd).status).toBe(0);
+      mkdirSync(join(cwd, ".ai/harness/bin"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/bin/local-repo-harness"),
+        `#!/bin/bash\nexec bun ${JSON.stringify(join(ROOT, "src/cli/index.ts"))} "$@"\n`
+      );
+      expect(run("chmod", ["+x", ".ai/harness/bin/local-repo-harness"], cwd).status).toBe(0);
+      mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify(
+          {
+            worktree_strategy: {
+              auto_for_contract_tasks: true,
+              branch_prefix: "codex/",
+              base_branch: "main",
+              merge_back: { target: "main" },
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      );
+      writeFileSync(join(cwd, "README.md"), "# Fixture\n");
+      initGitRepo(cwd);
+      commitAll(cwd, "init product only");
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1440-demo.md"),
+        [
+          "# Plan: demo",
+          "",
+          "> **Status**: Approved",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Step one",
+        ].join("\n")
+      );
+
+      const res = run("bash", ["scripts/contract-worktree.sh", "start", "--plan", "plans/plan-20260304-1440-demo.md"], cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout).toContain("Seeded project runtime bridge");
+      expect(existsSync(join(worktreePath, ".ai/harness/bin/local-repo-harness"))).toBe(true);
+      expect(existsSync(join(worktreePath, ".ai/harness/tools/local-repo-harness/node_modules"))).toBe(false);
+      expect(existsSync(join(worktreePath, "scripts/plan-to-todo.sh"))).toBe(false);
+      expect(existsSync(join(worktreePath, "tasks/contracts/20260304-1440-demo.contract.md"))).toBe(true);
+      const bridge = readFileSync(join(worktreePath, ".ai/harness/bin/local-repo-harness"), "utf-8");
+      expect(bridge).toContain(join(cwd, ".ai/harness/bin/local-repo-harness"));
+      expect(bridge).not.toContain("~/.codex");
+      expect(bridge).not.toContain("~/.claude");
+      expect(bridge).not.toContain("~/.agents");
+      expect(bridge).not.toContain("~/.repo-harness");
+      expect(bridge).not.toContain("~/.codegraph");
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("contract-worktree finish syncs local-only sprint workflow artifacts back to the primary worktree", () => {
+    const cwd = tmpWorkspace("helper-contract-local-workflow-sync");
+    const worktreePath = `${cwd}-wt-demo`;
+    const sprintPath = "plans/sprints/20260618-0000-local-sync.sprint.md";
+    try {
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".claude/templates"), { recursive: true });
+      for (const file of readdirSync(TEMPLATE_DIR).filter((name) => name.endsWith(".md"))) {
+        copyFileSync(join(TEMPLATE_DIR, file), join(cwd, ".claude/templates", file));
+      }
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      copyFileSync(join(ROOT, "assets/hooks/lib/workflow-state.sh"), join(cwd, ".ai/hooks/lib/workflow-state.sh"));
+      writeFileSync(
+        join(cwd, ".gitignore"),
+        [
+          "plans/",
+          "tasks/",
+          ".ai/harness/checks/",
+          ".ai/harness/runs/",
+          ".ai/harness/sprint/",
+          ".ai/harness/worktrees/",
+        ].join("\n") + "\n"
+      );
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify(
+          {
+            worktree_strategy: {
+              auto_for_contract_tasks: true,
+              branch_prefix: "codex/",
+              base_branch: "main",
+              merge_back: { target: "main" },
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      );
+      writeFileSync(
+        join(cwd, "package.json"),
+        JSON.stringify({ scripts: { typecheck: "test -f src/modules/demo/index.ts" } }, null, 2) + "\n"
+      );
+      writeFileSync(join(cwd, "docs/spec.md"), "# Spec\n");
+      initGitRepo(cwd);
+      commitAll(cwd, "init workflow");
+
+      mkdirSync(join(cwd, "plans/sprints"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      writeFileSync(
+        join(cwd, sprintPath),
+        [
+          "# Sprint: Local Sync",
+          "",
+          "> **Status**: Approved",
+          "> **Slug**: local-sync",
+          "> **Created**: 2026-06-18 00:00",
+          "> **Updated**: 2026-06-18 00:00",
+          "> **Source Spec**: `docs/spec.md`",
+          "> **Goal Mode**: incremental",
+          "",
+          "## PRD",
+          "",
+          "Real problem statement with concrete user outcomes.",
+          "",
+          "## Backlog",
+          "",
+          "| # | Status | Task | Mode | Acceptance | Plan |",
+          "|---|--------|------|------|------------|------|",
+          "| 1 | [ ] | demo | contract | demo module exists | (pending) |",
+          "",
+          "## Execution Log",
+          "",
+          "| When | Task | Plan | Result |",
+          "|------|------|------|--------|",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), sprintPath);
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1500-demo.md"),
+        [
+          "# Plan: demo",
+          "",
+          "> **Status**: Approved",
+          "> **Source Ref**: sprint:" + sprintPath + "#demo",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Build demo",
+        ].join("\n")
+      );
+
+      const start = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1500-demo.md"], cwd);
+      expect(start.status).toBe(0);
+      expect(existsSync(worktreePath)).toBe(true);
+      expect(existsSync(join(worktreePath, sprintPath))).toBe(true);
+
+      mkdirSync(join(worktreePath, "src/modules/demo"), { recursive: true });
+      mkdirSync(join(worktreePath, "tests/unit"), { recursive: true });
+      writeFileSync(join(worktreePath, "src/modules/demo/index.ts"), "export const demo = true;\n");
+      writeFileSync(
+        join(worktreePath, "tests/unit/demo.test.ts"),
+        'import { test, expect } from "bun:test";\n' +
+          'test("demo", () => { expect(true).toBe(true); });\n'
+      );
+      writeFileSync(
+        join(worktreePath, "tasks/reviews/20260304-1500-demo.review.md"),
+        [
+          "# Sprint Review: demo",
+          "",
+          "> **Recommendation**: pass",
+          "",
+          "## Scorecard",
+          "",
+          "| Dimension | Score | Notes |",
+          "|-----------|-------|-------|",
+          "| Functionality | 8/10 | verified |",
+          "",
+          "## Verification Evidence",
+          "- Checked demo module.",
+          "",
+          externalAcceptanceAdvice(),
+          "",
+        ].join("\n")
+      );
+
+      const finish = run("bash", ["scripts/contract-worktree.sh", "finish"], worktreePath, { HOOK_HOST: "claude" });
+      expect(finish.status).toBe(0);
+      expect(finish.stdout).toContain("Synced local workflow artifact");
+      expect(existsSync(join(cwd, "src/modules/demo/index.ts"))).toBe(true);
+      expect(readFileSync(join(cwd, sprintPath), "utf-8")).toContain(
+        "| 1 | [x] | demo | contract | demo module exists | `plans/archive/plan-20260304-1500-demo.md` |"
+      );
+      expect(existsSync(join(cwd, "plans/archive/plan-20260304-1500-demo.md"))).toBe(true);
+      expect(existsSync(join(cwd, "tasks/contracts/20260304-1500-demo.contract.md"))).toBe(true);
+      expect(existsSync(join(cwd, "tasks/reviews/20260304-1500-demo.review.md"))).toBe(true);
+      expect(readdirSync(join(cwd, "tasks/archive")).some((name) => name.startsWith("notes-") && name.includes("demo"))).toBe(true);
+      expect(readdirSync(join(cwd, "tasks/archive")).some((name) => name.startsWith("todo-") && name.includes("demo"))).toBe(true);
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 15000);
 
   test("contract-worktree finish should require external acceptance, then verify, commit, and fast-forward merge", () => {
     const cwd = tmpWorkspace("helper-contract-finish");

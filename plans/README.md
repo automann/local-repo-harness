@@ -8,6 +8,9 @@ local-only VCS isolation needed to keep downstream project installs out of
 product Git history. Plan 012 narrows that VCS isolation with explicit profiles,
 a tracked whitelist, and root `.gitignore` precedence so public downstream
 projects do not accidentally treat repo-harness governance as product source.
+Plan 013 adds the missing canonical execution entrypoint for approved Sprint
+backlog rows so agents no longer have to reverse-engineer helper scripts,
+project-scoped runtime boundaries, and local-only workflow artifact sync.
 Older plans in this directory and `plans/archive/` remain historical context
 unless a future task explicitly reactivates them.
 
@@ -31,6 +34,7 @@ row when done.
 | 010 | Make doctor readiness fully project-scope aware | P1 | S | 009 | DONE (verified 2026-06-16; focused, release, and real install gates) |
 | 011 | Keep project-scoped installs out of downstream Git history | P1 | L | 005, 009, 010 | DONE (verified 2026-06-17; release gate passed for 0.5.9) |
 | 012 | Narrow local-only VCS policy with profiles and tracked whitelist | P1 | L | 011 | DONE (verified 2026-06-18; `check:release` passed for 0.5.11) |
+| 013 | Add a canonical approved Sprint row execution entrypoint | P1 | L | 006, 007, 012 | DONE (verified 2026-06-18; `check:release` passed for 0.5.14) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -75,6 +79,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   currently makes install state, workflow state, and product intent all local.
   012 keeps the machinery and narrows the policy using profiles,
   `tracked_whitelist`, and root `.gitignore` precedence.
+- 013 depends on 006 and 007 because those plans established package-mode
+  helper dispatch and helper runtime policy semantics. It depends on 012 because
+  approved Sprint row execution must work when workflow artifacts are local-only
+  under project-scoped VCS profiles, which means linked worktrees need a
+  project-scoped runtime bridge and explicit local workflow artifact sync back
+  to the primary workspace.
 
 ## Findings considered and rejected
 
@@ -121,3 +131,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   for agents or users to turn it into a broad "remove project source from Git"
   footgun. Plan 012 keeps only three layers: root `.gitignore` hard boundary,
   `tracked_whitelist`, and VCS profile scopes.
+- Solve Sprint row execution only by adding prompt templates to documentation:
+  rejected because the 2026-06-18 real execution trace showed agents can follow
+  the prompts yet still get stuck discovering helper `--help`, package-mode
+  target repo roots, linked worktree runtime setup, and local-only workflow
+  state sync.
+- Ask agents to keep manually copying local-only workflow artifacts from linked
+  worktrees to the primary workspace: rejected because it turns a workflow
+  invariant into session memory. Plan 013 requires the closeout path to perform
+  safe, row-owned artifact sync mechanically.

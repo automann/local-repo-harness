@@ -19,6 +19,7 @@ import { buildBrainCommand } from './commands/brain';
 import { buildCapabilityContextCommand } from './commands/capability-context';
 import { buildDocsCommand } from './commands/docs';
 import { buildRunCommand } from './commands/run';
+import { buildSprintCommand } from './commands/sprint';
 import { buildVcsCommand } from './commands/vcs';
 import { formatSecurityScan, runSecurityScan, SECURITY_SCAN_SCOPES, type SecurityScanScope } from './commands/security';
 import { runGlobalRuntimeSetup } from './commands/global-runtime';
@@ -45,6 +46,7 @@ export const SUBCOMMANDS = [
   'bootstrap',
   'adopt',
   'run',
+  'sprint',
   'setup',
   'tools',
   'brain',
@@ -207,7 +209,7 @@ export function buildProgram(): Command {
     .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
     .option('--repo <path>', 'Target repository path (defaults to cwd)')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.13')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.14')
     .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
     .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
@@ -662,6 +664,7 @@ export function buildProgram(): Command {
   program.addCommand(buildCapabilityContextCommand());
   program.addCommand(buildDocsCommand());
   program.addCommand(buildRunCommand());
+  program.addCommand(buildSprintCommand());
   program
     .command('prompt-guard-decide', { hidden: true })
     .description('Internal prompt-guard intent/state decision engine')

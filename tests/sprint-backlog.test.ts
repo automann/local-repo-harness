@@ -139,6 +139,15 @@ describe("sprint-backlog helper", () => {
       expect(next.stdout).toContain("mode: contract");
       expect(next.stdout).toContain("acceptance: unit tests pass");
 
+      const nextJson = run("bash", ["scripts/sprint-backlog.sh", "next", "--json"], cwd);
+      expect(nextJson.status).toBe(0);
+      const parsedNext = JSON.parse(nextJson.stdout);
+      expect(parsedNext.sprintFile).toBe(sprintPath);
+      expect(parsedNext.pending).toBe(true);
+      expect(parsedNext.rowIndex).toBe("1");
+      expect(parsedNext.task).toBe("task-a");
+      expect(parsedNext.nextAction).toContain("execute-approved");
+
       const completeBySlug = run(
         "bash",
         ["scripts/sprint-backlog.sh", "complete-task", "--task", "task-a", "--plan", "plans/plan-20260610-0001-task-a.md"],
@@ -308,6 +317,97 @@ describe("sprint-backlog helper", () => {
       expect(inlinePlan).toMatch(/task-b\.md$/);
       const sprintAfterInline = readFileSync(join(cwd, sprintPath), "utf-8");
       expect(sprintAfterInline).toContain(`| 2 | [ ] | task-b | inline | doc section updated | \`${inlinePlan}\` |`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("execute-approved captures an approved row plan and projects inline artifacts", () => {
+    const cwd = tmpWorkspace("sprint-backlog-execute-approved-inline");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh", "capture-plan.sh", "plan-to-todo.sh"]);
+      const sprintPath = "plans/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+      const bodyFile = join(cwd, "approved-plan.md");
+      writeFileSync(
+        bodyFile,
+        [
+          "# Approved detailed plan",
+          "",
+          "## Evidence Contract",
+          "",
+          "- **State/progress path**: tasks/notes/task-b.notes.md",
+          "- **Verification evidence**: .ai/harness/checks/latest.json and docs check",
+          "- **Evaluator rubric**: review file must recommend pass",
+          "- **Stop condition**: acceptance command fails",
+          "- **Rollback surface**: revert generated workflow artifacts",
+          "",
+          "## Task Breakdown",
+          "",
+          "- [ ] Update the requested docs section",
+        ].join("\n")
+      );
+
+      const exec = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "execute-approved", "--task", "task-b", "--body-file", bodyFile, "--json"],
+        cwd
+      );
+      expect(exec.status).toBe(0);
+      const result = JSON.parse(exec.stdout);
+      expect(result.sprintFile).toBe(sprintPath);
+      expect(result.rowIndex).toBe("2");
+      expect(result.task).toBe("task-b");
+      expect(result.mode).toBe("inline");
+      expect(result.planFile).toMatch(/^plans\/plan-\d{8}-\d{4}-task-b\.md$/);
+      expect(result.contractFile).toContain("tasks/contracts/");
+      expect(result.reviewFile).toContain("tasks/reviews/");
+      expect(result.notesFile).toContain("tasks/notes/");
+      expect(result.worktreePath).toBe("");
+
+      const plan = readFileSync(join(cwd, result.planFile), "utf-8");
+      expect(plan).toContain("> **Status**: Executing");
+      expect(plan).toContain("> **Planning Source**: waza-think");
+      expect(plan).toContain(`> **Source Ref**: sprint:${sprintPath}#task-b`);
+      expect(existsSync(join(cwd, result.contractFile))).toBe(true);
+      expect(existsSync(join(cwd, result.reviewFile))).toBe(true);
+      expect(existsSync(join(cwd, result.notesFile))).toBe(true);
+
+      const sprint = readFileSync(join(cwd, sprintPath), "utf-8");
+      expect(sprint).toContain(`| 2 | [ ] | task-b | inline | doc section updated | \`${result.planFile}\` |`);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("execute-approved refuses draft sprints and missing body files", () => {
+    const cwd = tmpWorkspace("sprint-backlog-execute-approved-gates");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh", "capture-plan.sh", "plan-to-todo.sh"]);
+      const sprintPath = "plans/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+      writeFileSync(
+        join(cwd, sprintPath),
+        readFileSync(join(cwd, sprintPath), "utf-8").replace("> **Status**: Approved", "> **Status**: Draft")
+      );
+      const bodyFile = join(cwd, "missing.md");
+
+      const missing = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "execute-approved", "--task", "task-b", "--body-file", bodyFile],
+        cwd
+      );
+      expect(missing.status).toBe(1);
+      expect(missing.stderr).toContain("body file not found");
+
+      writeFileSync(bodyFile, "# Plan\n\n## Evidence Contract\n\n- **State/progress path**: tasks\n- **Verification evidence**: tests\n- **Evaluator rubric**: pass\n- **Stop condition**: fail\n- **Rollback surface**: revert\n");
+      const draft = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "execute-approved", "--task", "task-b", "--body-file", bodyFile],
+        cwd
+      );
+      expect(draft.status).toBe(1);
+      expect(draft.stderr).toContain("approve the sprint before executing");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

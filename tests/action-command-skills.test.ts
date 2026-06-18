@@ -235,5 +235,7 @@ describe("repo-harness action command skills", () => {
     expect(sprint).toContain("> **Source PRD**");
     expect(sprint).toContain("must be machine-checkable");
     expect(sprint).toContain("must still run `$think` before code edits");
+    expect(sprint).toContain("local-repo-harness sprint next --json");
+    expect(sprint).toContain("local-repo-harness sprint execute-approved --body-file");
   });
 });

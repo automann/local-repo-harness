@@ -10,6 +10,10 @@ for runtime_lib in "$SCRIPT_DIR/lib/js-runtime.sh" "$SCRIPT_DIR/../lib/js-runtim
   fi
 done
 
+if [[ -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  cd "$REPO_HARNESS_TARGET_REPO_ROOT"
+fi
+
 usage() {
   cat <<'USAGE_EOF'
 Usage: scripts/check-task-workflow.sh [--strict]

@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+if [[ -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  cd "$REPO_HARNESS_TARGET_REPO_ROOT"
+elif REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
   cd "$REPO_ROOT"
 elif [[ "$SCRIPT_DIR" == */.ai/harness/scripts ]]; then
   cd "$SCRIPT_DIR/../../.."
@@ -15,7 +17,10 @@ usage() {
 Usage:
   scripts/sprint-backlog.sh init --slug <slug> [--title <title>]
   scripts/sprint-backlog.sh status
-  scripts/sprint-backlog.sh next
+  scripts/sprint-backlog.sh next [--json] [--sprint <file>]
+  scripts/sprint-backlog.sh execute-approved --body-file <file> [--task <index|task>]
+                                  [--slug <slug>] [--title <title>] [--sprint <file>]
+                                  [--json] [--no-worktree] [--worktree] [--force]
   scripts/sprint-backlog.sh start-task [--task <index|task>] [--execute] [--force] [--sprint <file>]
   scripts/sprint-backlog.sh complete-task --task <index|task> [--plan <plan-file>] [--sprint <file>]
 
@@ -64,6 +69,16 @@ normalize_slug() {
 # Trim without xargs: xargs chokes on unbalanced quotes in user-edited text.
 trim() {
   sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
 }
 
 extract_status() {
@@ -386,12 +401,80 @@ cmd_status() {
 }
 
 cmd_next() {
-  local sprint_file row
+  local json=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json)
+        json=1
+        shift
+        ;;
+      --sprint)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --sprint requires a value" >&2; exit 2; }
+        sprint_override="$2"
+        shift 2
+        ;;
+      *)
+        echo "sprint-backlog: unknown next argument: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  local sprint_file row sprint_status done total
   sprint_file="$(require_active_sprint)"
+  sprint_status="$(extract_status "$sprint_file")"
+  read -r done total <<<"$(backlog_counts "$sprint_file")"
   row="$(next_pending_row "$sprint_file")"
   if [[ -z "$row" ]]; then
+    if [[ "$json" -eq 1 ]]; then
+      printf '{\n'
+      printf '  "sprintFile": "%s",\n' "$(json_escape "$sprint_file")"
+      printf '  "sprintStatus": "%s",\n' "$(json_escape "${sprint_status:-unknown}")"
+      printf '  "pending": false,\n'
+      printf '  "tasksDone": %s,\n' "$done"
+      printf '  "tasksTotal": %s,\n' "$total"
+      printf '  "nextAction": "No pending backlog row remains. Review the sprint and set Status to Done when appropriate."\n'
+      printf '}\n'
+      exit 3
+    fi
     echo "next_task: (none)"
     exit 3
+  fi
+
+  if [[ "$json" -eq 1 ]]; then
+    printf '%s\n' "$row" | awk -F '\t' \
+      -v sprint_file="$sprint_file" \
+      -v sprint_status="${sprint_status:-unknown}" \
+      -v done="$done" \
+      -v total="$total" '
+        function esc(value) {
+          gsub(/\\/,"\\\\",value)
+          gsub(/"/,"\\\"",value)
+          gsub(/\t/,"\\t",value)
+          gsub(/\r/,"\\r",value)
+          gsub(/\n/,"\\n",value)
+          return value
+        }
+        {
+          printf "{\n"
+          printf "  \"sprintFile\": \"%s\",\n", esc(sprint_file)
+          printf "  \"sprintStatus\": \"%s\",\n", esc(sprint_status)
+          printf "  \"pending\": true,\n"
+          printf "  \"tasksDone\": %s,\n", done
+          printf "  \"tasksTotal\": %s,\n", total
+          printf "  \"rowIndex\": \"%s\",\n", esc($1)
+          printf "  \"task\": \"%s\",\n", esc($3)
+          printf "  \"mode\": \"%s\",\n", esc($4)
+          printf "  \"acceptance\": \"%s\",\n", esc($5)
+          printf "  \"plan\": \"%s\",\n", esc($6)
+          printf "  \"planningPrompt\": \"%s\",\n", esc("Use repo-harness-sprint run planning mode for this one row, expand it with $think, and stop for approval before implementation.")
+          printf "  \"nextAction\": \"%s\"\n", esc("Generate a just-in-time detailed plan for this row; after approval run local-repo-harness sprint execute-approved.")
+          printf "}\n"
+        }
+      '
+    return 0
   fi
 
   printf '%s\n' "$row" | awk -F '\t' '{
@@ -799,6 +882,284 @@ BODY_EOF
   fi
 }
 
+plan_artifact_stem_from_path() {
+  local plan_file="$1"
+  local base
+  base="$(basename "$plan_file" .md)"
+  printf '%s' "${base#plan-}"
+}
+
+run_capture_plan_helper() {
+  if [[ -f "scripts/capture-plan.sh" ]]; then
+    bash "scripts/capture-plan.sh" "$@"
+  elif [[ -n "${REPO_HARNESS_HELPER_SOURCE_PATH:-}" && -f "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/capture-plan.sh" ]]; then
+    bash "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/capture-plan.sh" "$@"
+  elif [[ -x ".ai/harness/bin/local-repo-harness" ]]; then
+    ./.ai/harness/bin/local-repo-harness run capture-plan "$@"
+  else
+    echo "sprint-backlog: missing scripts/capture-plan.sh and .ai/harness/bin/local-repo-harness" >&2
+    return 1
+  fi
+}
+
+cmd_execute_approved() {
+  local body_file=""
+  local owned_body_file=""
+  local task_ref=""
+  local slug=""
+  local title=""
+  local json=0
+  local no_worktree=0
+  local force_worktree=0
+  local force=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --body-file)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --body-file requires a value" >&2; exit 2; }
+        body_file="$2"
+        shift 2
+        ;;
+      --task)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --task requires a value" >&2; exit 2; }
+        task_ref="$2"
+        shift 2
+        ;;
+      --slug)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --slug requires a value" >&2; exit 2; }
+        slug="$2"
+        shift 2
+        ;;
+      --title)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --title requires a value" >&2; exit 2; }
+        title="$2"
+        shift 2
+        ;;
+      --sprint)
+        [[ -n "${2:-}" ]] || { echo "sprint-backlog: --sprint requires a value" >&2; exit 2; }
+        sprint_override="$2"
+        shift 2
+        ;;
+      --json)
+        json=1
+        shift
+        ;;
+      --no-worktree)
+        no_worktree=1
+        shift
+        ;;
+      --worktree)
+        force_worktree=1
+        shift
+        ;;
+      --force)
+        force=1
+        shift
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "sprint-backlog: unknown execute-approved argument: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  if [[ "$no_worktree" -eq 1 && "$force_worktree" -eq 1 ]]; then
+    echo "sprint-backlog: use either --worktree or --no-worktree, not both" >&2
+    exit 2
+  fi
+
+  if [[ -n "$body_file" ]]; then
+    [[ -f "$body_file" ]] || { echo "sprint-backlog: body file not found: $body_file" >&2; exit 1; }
+  elif [[ ! -t 0 ]]; then
+    owned_body_file="$(mktemp)"
+    cat > "$owned_body_file"
+    body_file="$owned_body_file"
+  else
+    echo "sprint-backlog: execute-approved requires --body-file or stdin" >&2
+    exit 2
+  fi
+
+  if [[ -z "$(tr -d '[:space:]' < "$body_file")" ]]; then
+    [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+    echo "sprint-backlog: approved plan body is empty" >&2
+    exit 1
+  fi
+
+  local sprint_file sprint_status
+  sprint_file="$(require_active_sprint)"
+  sprint_status="$(extract_status "$sprint_file")"
+  if [[ "$sprint_status" != "Approved" ]]; then
+    [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+    echo "sprint-backlog: sprint status is ${sprint_status:-unknown}; approve the sprint before executing an approved row plan" >&2
+    exit 1
+  fi
+
+  acquire_backlog_lock
+  prune_in_flight_markers "$sprint_file"
+
+  local target_row match_count candidate_row candidate_task
+  if [[ -n "$task_ref" ]]; then
+    match_count="$(backlog_rows "$sprint_file" | TASK_REF="$task_ref" awk -F '\t' '$1 == ENVIRON["TASK_REF"] || $3 == ENVIRON["TASK_REF"] { count++ } END { print count + 0 }')"
+    if [[ "$match_count" -eq 0 ]]; then
+      [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+      echo "sprint-backlog: no backlog row matches task '$task_ref' in $sprint_file" >&2
+      exit 1
+    fi
+    if [[ "$match_count" -gt 1 ]]; then
+      [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+      echo "sprint-backlog: task reference '$task_ref' is ambiguous (${match_count} backlog rows match); fix duplicate indices or task names first" >&2
+      exit 1
+    fi
+    target_row="$(backlog_rows "$sprint_file" | TASK_REF="$task_ref" awk -F '\t' '$1 == ENVIRON["TASK_REF"] || $3 == ENVIRON["TASK_REF"] { print; exit }')"
+  else
+    target_row=""
+    while IFS= read -r candidate_row; do
+      [[ -n "$candidate_row" ]] || continue
+      candidate_task="$(printf '%s' "$candidate_row" | cut -f3)"
+      if ! task_in_flight "$candidate_task"; then
+        target_row="$candidate_row"
+        break
+      fi
+    done < <(backlog_rows "$sprint_file" | awk -F '\t' '$2 == "[ ]"')
+    if [[ -z "$target_row" ]]; then
+      [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+      if [[ -n "$(next_pending_row "$sprint_file")" ]]; then
+        echo "sprint-backlog: every pending backlog task is already in flight; finish one or rerun with --task <ref> --force" >&2
+      fi
+      echo "next_task: (none)"
+      exit 3
+    fi
+  fi
+
+  local target_index target_status target_task target_mode target_acceptance
+  target_index="$(printf '%s' "$target_row" | cut -f1)"
+  target_status="$(printf '%s' "$target_row" | cut -f2)"
+  target_task="$(printf '%s' "$target_row" | cut -f3)"
+  target_mode="$(printf '%s' "$target_row" | cut -f4)"
+  target_acceptance="$(printf '%s' "$target_row" | cut -f5)"
+
+  if [[ "$target_status" != "[ ]" ]]; then
+    [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+    echo "sprint-backlog: backlog task '$target_task' (row $target_index) is already complete" >&2
+    exit 1
+  fi
+
+  if task_in_flight "$target_task" && [[ "$force" -ne 1 ]]; then
+    [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+    echo "sprint-backlog: backlog task '$target_task' is already in flight (recorded: $(cat "$(in_flight_marker_for "$target_task")" 2>/dev/null || printf 'capturing')); rerun with --force to restart it" >&2
+    exit 1
+  fi
+  record_in_flight "$target_task" "capturing"
+  release_backlog_lock
+
+  [[ -n "$slug" ]] || slug="$target_task"
+  [[ -n "$title" ]] || title="Sprint task: ${target_task}"
+
+  local -a capture_args
+  capture_args=(
+    --slug "$slug"
+    --title "$title"
+    --status Approved
+    --source waza-think
+    --orchestration-kind sprint-task
+    --source-ref "sprint:${sprint_file}#${target_task}"
+    --body-file "$body_file"
+    --execute
+  )
+
+  local disable_worktree=0
+  if [[ "$no_worktree" -eq 1 || ( "$target_mode" == "inline" && "$force_worktree" -ne 1 ) ]]; then
+    disable_worktree=1
+  fi
+
+  local capture_output plan_path artifact_stem contract_file review_file notes_file worktree_path branch next_action
+  if [[ "$disable_worktree" -eq 1 ]]; then
+    capture_output="$(REPO_HARNESS_DISABLE_CONTRACT_WORKTREE=1 run_capture_plan_helper "${capture_args[@]}" 2>&1)" || {
+      printf '%s\n' "$capture_output" >&2
+      [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+      clear_in_flight "$target_task"
+      echo "sprint-backlog: execute-approved failed for task '$target_task'" >&2
+      exit 1
+    }
+  else
+    capture_output="$(run_capture_plan_helper "${capture_args[@]}" 2>&1)" || {
+      printf '%s\n' "$capture_output" >&2
+      [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+      clear_in_flight "$target_task"
+      echo "sprint-backlog: execute-approved failed for task '$target_task'" >&2
+      exit 1
+    }
+  fi
+  [[ -z "$owned_body_file" ]] || rm -f "$owned_body_file"
+
+  plan_path="$(printf '%s\n' "$capture_output" | sed -nE 's/^Captured plan: (.+)$/\1/p' | head -1)"
+  if [[ -z "$plan_path" ]]; then
+    clear_in_flight "$target_task"
+    printf '%s\n' "$capture_output" >&2
+    echo "sprint-backlog: could not resolve captured plan path" >&2
+    exit 1
+  fi
+
+  artifact_stem="$(plan_artifact_stem_from_path "$plan_path")"
+  contract_file="tasks/contracts/${artifact_stem}.contract.md"
+  review_file="tasks/reviews/${artifact_stem}.review.md"
+  notes_file="tasks/notes/${artifact_stem}.notes.md"
+  worktree_path="$(printf '%s\n' "$capture_output" | sed -nE 's/^\[ContractWorktree\] (Created worktree|Reusing existing worktree|Added worktree for existing branch): (.+)$/\2/p' | tail -1)"
+  branch="$(printf '%s\n' "$capture_output" | sed -nE 's/^\[ContractWorktree\] Branch: (.+)$/\1/p' | tail -1)"
+
+  record_in_flight "$target_task" "$plan_path"
+
+  if [[ "$disable_worktree" -eq 1 ]]; then
+    acquire_backlog_lock
+    set_row_plan_cell "$sprint_file" "$target_index" "$target_task" "\`${plan_path}\`"
+    release_backlog_lock
+    next_action="Implement this inline row in the current worktree, run its acceptance command, then close the row after verification."
+  else
+    next_action="Continue implementation in the contract worktree, run acceptance and review gates, then finish with contract-worktree finish."
+  fi
+
+  if [[ "$json" -eq 1 ]]; then
+    printf '{\n'
+    printf '  "sprintFile": "%s",\n' "$(json_escape "$sprint_file")"
+    printf '  "rowIndex": "%s",\n' "$(json_escape "$target_index")"
+    printf '  "task": "%s",\n' "$(json_escape "$target_task")"
+    printf '  "mode": "%s",\n' "$(json_escape "$target_mode")"
+    printf '  "acceptance": "%s",\n' "$(json_escape "$target_acceptance")"
+    printf '  "planFile": "%s",\n' "$(json_escape "$plan_path")"
+    printf '  "contractFile": "%s",\n' "$(json_escape "$contract_file")"
+    printf '  "reviewFile": "%s",\n' "$(json_escape "$review_file")"
+    printf '  "notesFile": "%s",\n' "$(json_escape "$notes_file")"
+    printf '  "worktreePath": "%s",\n' "$(json_escape "${worktree_path:-}")"
+    printf '  "branch": "%s",\n' "$(json_escape "${branch:-}")"
+    printf '  "nextAction": "%s"\n' "$(json_escape "$next_action")"
+    printf '}\n'
+    return 0
+  fi
+
+  printf '%s\n' "$capture_output"
+  echo "Sprint row execution prepared:"
+  echo "  sprint: $sprint_file"
+  echo "  row: $target_index"
+  echo "  task: $target_task"
+  echo "  mode: $target_mode"
+  echo "  plan: $plan_path"
+  echo "  contract: $contract_file"
+  echo "  review: $review_file"
+  echo "  notes: $notes_file"
+  if [[ -n "$worktree_path" ]]; then
+    echo "  worktree: $worktree_path"
+  fi
+  if [[ -n "$branch" ]]; then
+    echo "  branch: $branch"
+  fi
+  echo "  next: $next_action"
+}
+
 [[ $# -gt 0 ]] || { usage >&2; exit 2; }
 
 command="$1"
@@ -813,6 +1174,9 @@ case "$command" in
     ;;
   next)
     cmd_next "$@"
+    ;;
+  execute-approved)
+    cmd_execute_approved "$@"
     ;;
   start-task)
     cmd_start_task "$@"

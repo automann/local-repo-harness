@@ -8,6 +8,14 @@ when_to_use: "repo-harness-sprint, plan a sprint, create sprint backlog, from-pr
 
 Use this command to plan a program-level Sprint from an upper-layer PRD or source spec and execute its tasks through the existing task-contract flow. Sub-routes: `plan`, `from-prd`, `run`, `status`.
 
+Canonical CLI entrypoints for execution are:
+
+- `local-repo-harness sprint next --json`
+- `local-repo-harness sprint execute-approved --body-file <approved-plan.md> [--task <index|task>]`
+
+When local-repo-harness is installed project-scoped, prefer the project shim:
+`./.ai/harness/bin/local-repo-harness sprint ...`.
+
 ## Protocol
 
 1. Confirm the working repo with `git rev-parse --show-toplevel`; read `docs/spec.md`, `.ai/harness/policy.json`, and `bash scripts/sprint-backlog.sh status` when present.
@@ -23,9 +31,10 @@ Use this command to plan a program-level Sprint from an upper-layer PRD or sourc
    - Acceptance lines must be machine-checkable, such as a test command, file existence assertion, grep pattern, or numeric assertion. Avoid subjective wording such as "works well".
    - Default mode is `contract`; use `inline` only for small isolated documentation, configuration, or single-file changes.
 4. Route `run` (incremental, one backlog task per invocation):
-   - Run `bash scripts/sprint-backlog.sh next` to resolve the next pending row; when it exits 3, report the backlog as complete and recommend setting the sprint Status to Done after review.
+   - Run `local-repo-harness sprint next --json` to resolve the next pending row; when it exits 3, report the backlog as complete and recommend setting the sprint Status to Done after review. In project-scoped installs, use `./.ai/harness/bin/local-repo-harness sprint next --json`.
    - Treat the row as a long-task waypoint, not a detailed implementation plan. Invoke `$think` with the sprint path, row task, mode, and acceptance line so the coding agent expands it into a decision-complete plan.
-   - Capture the approved `$think` output with `bash scripts/capture-plan.sh --source waza-think --source-ref sprint:<sprint-file>#<task> --status Approved --execute` so the plan projects through the contract worktree flow.
+   - After explicit approval, save the approved `$think` output to a temporary body file and run `local-repo-harness sprint execute-approved --body-file <approved-plan.md> --task <task>`. This captures the approved plan and projects it through the contract worktree flow.
+   - `bash scripts/sprint-backlog.sh next` and `bash scripts/sprint-backlog.sh execute-approved ...` are compatibility helpers behind the CLI; use them only when the CLI shim is unavailable.
    - `bash scripts/sprint-backlog.sh start-task` remains a compatibility helper for reserving a row and generating a thin plan seed; its generated plan must still run `$think` before code edits.
    - Execute the slice as usual (implement, `/check`, external acceptance, `bash scripts/contract-worktree.sh finish`); finish back-fills the backlog row warn-only.
 5. Route `status`: report `bash scripts/sprint-backlog.sh status` plus the Active Sprint section of `tasks/current.md`; mutate nothing.

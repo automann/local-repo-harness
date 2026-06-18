@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+if [[ -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  cd "$REPO_HARNESS_TARGET_REPO_ROOT"
+elif REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
   cd "$REPO_ROOT"
 elif [[ "$SCRIPT_DIR" == */.ai/harness/scripts ]]; then
   cd "$SCRIPT_DIR/../../.."
@@ -200,12 +202,20 @@ maybe_start_contract_worktree() {
 
   [[ "${REPO_HARNESS_CONTRACT_WORKTREE:-}" != "1" ]] || return 0
   [[ "${REPO_HARNESS_DISABLE_CONTRACT_WORKTREE:-}" != "1" ]] || return 0
-  [[ -x "scripts/contract-worktree.sh" ]] || return 0
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
   ! is_linked_worktree || return 0
   plan_requests_contract_worktree "$file" || return 0
 
-  bash "scripts/contract-worktree.sh" start --plan "$file"
+  if [[ -x "scripts/contract-worktree.sh" ]]; then
+    bash "scripts/contract-worktree.sh" start --plan "$file"
+  elif [[ -n "${REPO_HARNESS_HELPER_SOURCE_PATH:-}" && -f "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/contract-worktree.sh" ]]; then
+    bash "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/contract-worktree.sh" start --plan "$file"
+  elif [[ -x ".ai/harness/bin/local-repo-harness" ]]; then
+    ./.ai/harness/bin/local-repo-harness run contract-worktree start --plan "$file"
+  else
+    echo "plan-to-todo: contract worktree requested but no contract-worktree helper is available" >&2
+    exit 1
+  fi
   exit $?
 }
 

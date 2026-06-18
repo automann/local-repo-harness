@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.13`
+当前版本：`local-repo-harness@0.5.14`
 
 ## 这个项目适合谁
 
@@ -667,6 +667,16 @@ contract，也就是 not public。
 
 想知道这些 skills 什么时候用、如何和 Waza、Mermaid、cross-review skills、
 CodeGraph 搭配，请先读 [QUICK_START.md](QUICK_START.md)。
+
+Sprint backlog row 的标准落地命令是：
+
+```bash
+./.ai/harness/bin/local-repo-harness sprint next --json
+./.ai/harness/bin/local-repo-harness sprint execute-approved --body-file <approved-plan.md> --task <index-or-task>
+```
+
+这两个命令分别负责解析下一条 row、投射已批准的详细计划；row 完成仍然走
+`plan -> contract -> worktree -> verify`。
 
 ## Verification
 

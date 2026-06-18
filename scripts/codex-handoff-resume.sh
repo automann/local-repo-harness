@@ -37,6 +37,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$cwd" && -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  cwd="$REPO_HARNESS_TARGET_REPO_ROOT"
+fi
+
 if [[ -z "$cwd" ]]; then
   cwd="$(pwd)"
 fi

@@ -1,6 +1,6 @@
 {
-  "version": "0.5.13",
-  "templateVersion": "0.5.13",
+  "version": "0.5.14",
+  "templateVersion": "0.5.14",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -175,6 +175,10 @@
     {
       "version": "0.5.13",
       "description": "Expands ephemeral-agent-workspace local-only coverage so .agents/, .claude/, docs/, and skills-lock.json stay out of downstream commits"
+    },
+    {
+      "version": "0.5.14",
+      "description": "Adds canonical Sprint row execution CLI entrypoints and project-scoped worktree runtime bridging for one-row plan to contract execution"
     }
   ],
   "generatedProjectStamp": {

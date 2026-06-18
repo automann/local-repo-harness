@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+if [[ -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  cd "$REPO_HARNESS_TARGET_REPO_ROOT"
+elif REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
   cd "$REPO_ROOT"
 elif [[ "$SCRIPT_DIR" == */.ai/harness/scripts ]]; then
   cd "$SCRIPT_DIR/../../.."
@@ -330,6 +332,14 @@ fi
 echo "Captured plan: $plan_file"
 
 if [[ "$execute" -eq 1 ]]; then
-  [[ -f "scripts/plan-to-todo.sh" ]] || { echo "Missing scripts/plan-to-todo.sh" >&2; exit 1; }
-  bash "scripts/plan-to-todo.sh" --plan "$plan_file"
+  if [[ -f "scripts/plan-to-todo.sh" ]]; then
+    bash "scripts/plan-to-todo.sh" --plan "$plan_file"
+  elif [[ -n "${REPO_HARNESS_HELPER_SOURCE_PATH:-}" && -f "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/plan-to-todo.sh" ]]; then
+    bash "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/plan-to-todo.sh" --plan "$plan_file"
+  elif [[ -x ".ai/harness/bin/local-repo-harness" ]]; then
+    ./.ai/harness/bin/local-repo-harness run plan-to-todo --plan "$plan_file"
+  else
+    echo "Missing scripts/plan-to-todo.sh and .ai/harness/bin/local-repo-harness" >&2
+    exit 1
+  fi
 fi

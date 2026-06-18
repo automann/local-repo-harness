@@ -143,7 +143,11 @@ export function runHelper(opts: RunHelperOptions): RunHelperResult {
   const command = resolved.fileName.endsWith('.sh') ? 'bash' : process.execPath;
   const child = spawnSync(command, [resolved.path, ...args], {
     cwd: resolved.repoRoot,
-    env: { ...env, REPO_HARNESS_HELPER_SOURCE_PATH: resolved.path },
+    env: {
+      ...env,
+      REPO_HARNESS_HELPER_SOURCE_PATH: resolved.path,
+      REPO_HARNESS_TARGET_REPO_ROOT: resolved.repoRoot,
+    },
     encoding: opts.stdio === 'pipe' ? 'utf-8' : undefined,
     stdio: opts.stdio ?? 'inherit',
   });

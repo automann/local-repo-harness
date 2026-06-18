@@ -206,8 +206,9 @@ PRD 审过后：
 执行某个 sprint row：
 
 ```text
-使用 repo-harness-sprint run。每次只取一个 pending row，用 Waza /think 展开，
-再进入 plan -> contract -> worktree -> verify 流程。
+使用 repo-harness-sprint run。每次只取一个 pending row，先用 Waza /think 展开；
+计划批准后，通过 local-repo-harness sprint execute-approved 进入
+plan -> contract -> worktree -> verify 流程。
 ```
 
 ## 执行 Sprint Backlog Row
@@ -219,13 +220,34 @@ Sprint 文件选择下一行。
 一条 Sprint row 对应一次 `plan -> contract -> worktree -> verify` 循环。不要同时
 展开多个 row，也不要从 backlog row 直接跳进代码实现。
 
+项目级安装后，优先使用项目内 shim：
+
+```bash
+./.ai/harness/bin/local-repo-harness sprint next --json
+```
+
+这条命令只解析下一条 pending row，不会编辑实现文件。计划被用户批准后，把批准后的
+详细计划保存为一个临时 Markdown 文件，再执行：
+
+```bash
+./.ai/harness/bin/local-repo-harness sprint execute-approved \
+  --body-file /path/to/approved-row-plan.md \
+  --task <index-or-task> \
+  --json
+```
+
+`execute-approved` 会 capture 计划，并根据 row 的 mode 投射到 inline 或
+contract worktree 流程；它不是完成 row 的命令。row 的完成仍然要靠实现、review、
+external acceptance、`verify-sprint` 和 `contract-worktree finish`。
+
 ### Step 1：把下一条 Row 展开成详细计划
 
 Prompt template：
 
 ```text
 使用 repo-harness-sprint run 的 planning mode 处理当前 active sprint。
-解析下一条 pending Sprint backlog row，但不要编辑实现文件。
+先运行 ./.ai/harness/bin/local-repo-harness sprint next --json 解析下一条 pending Sprint backlog row。
+不要编辑实现文件。
 读取 sprint 文件、Source PRD、docs/spec.md 和相关 repo context。
 使用 $think 把这一条 row 展开成 decision-complete detailed landing plan。
 计划必须包含 scope、可能触及的文件、风险、acceptance command、rollback/verification notes。
@@ -242,7 +264,9 @@ Prompt template：
 只执行这一条 row，并通过 repo-harness plan -> contract -> worktree -> verify 流程推进。
 不要开始其他 backlog row。
 保留无关的本地变更。
-实现前先 capture/投射已批准计划，确保有对应 contract 和 worktree 边界。
+实现前先把已批准计划写入临时 Markdown 文件，然后运行：
+./.ai/harness/bin/local-repo-harness sprint execute-approved --body-file <approved-plan.md> --task <index-or-task>
+确保有对应 plan、contract 和 worktree 边界。
 运行这一条 row 的 acceptance command 和 repo workflow checks。
 报告 changed files、verification results、blockers 和 row status。
 ```

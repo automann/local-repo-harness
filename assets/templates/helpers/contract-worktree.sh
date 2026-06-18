@@ -2,7 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if REPO_ROOT="$(git -C "$SCRIPT_DIR/.." rev-parse --show-toplevel 2>/dev/null)"; then
+if [[ -n "${REPO_HARNESS_TARGET_REPO_ROOT:-}" ]]; then
+  REPO_ROOT="$(cd "$REPO_HARNESS_TARGET_REPO_ROOT" && pwd)"
+elif REPO_ROOT="$(git -C "$SCRIPT_DIR/.." rev-parse --show-toplevel 2>/dev/null)"; then
   :
 elif [[ "$SCRIPT_DIR" == */.ai/harness/scripts ]]; then
   REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -29,6 +31,85 @@ json_escape() {
   value="${value//$'\r'/\\r}"
   value="${value//$'\t'/\\t}"
   printf '%s' "$value"
+}
+
+file_checksum() {
+  local file="$1"
+  if [[ ! -f "$file" ]]; then
+    printf '__missing__'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  else
+    cksum "$file" | awk '{print $1 ":" $2}'
+  fi
+}
+
+plan_source_ref() {
+  local plan_file="$1"
+  [[ -f "$plan_file" ]] || return 1
+  awk '/^> \*\*Source Ref\*\*:/ {sub(/^> \*\*Source Ref\*\*:[[:space:]]*/, ""); gsub(/\r/, ""); print; exit}' "$plan_file" \
+    | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+plan_sprint_path() {
+  local plan_file="$1"
+  local source_ref sprint_path
+  source_ref="$(plan_source_ref "$plan_file" || true)"
+  case "$source_ref" in
+    sprint:*#*)
+      sprint_path="${source_ref#sprint:}"
+      sprint_path="${sprint_path%%#*}"
+      printf '%s' "$sprint_path"
+      ;;
+  esac
+}
+
+workflow_sync_paths_for_plan() {
+  local plan_file="$1"
+  local artifact_stem sprint_path
+  artifact_stem="$(derive_artifact_stem_from_plan "$plan_file")"
+  sprint_path="$(plan_sprint_path "$plan_file" || true)"
+
+  [[ -z "$sprint_path" ]] || printf '%s\n' "$sprint_path"
+  printf '%s\n' "$plan_file"
+  printf '%s\n' "tasks/contracts/${artifact_stem}.contract.md"
+  printf '%s\n' "tasks/reviews/${artifact_stem}.review.md"
+  printf '%s\n' "tasks/notes/${artifact_stem}.notes.md"
+  printf '%s\n' "tasks/todos.md"
+  printf '%s\n' ".ai/harness/checks/latest.json"
+  printf '%s\n' ".ai/harness/handoff/current.md"
+  printf '%s\n' ".ai/harness/handoff/resume.md"
+}
+
+is_safe_workflow_sync_path() {
+  case "$1" in
+    /*|*..*|.ai/harness/tools/*|.ai/harness/bin/*|.ai/harness/runtime/*|.ai/harness/codegraph-runtime/*|.agents/skills/*|.claude/skills/*|.codegraph/*|node_modules/*|*/node_modules/*|.codex/hooks.json|.codex/config.toml|.claude/settings.json|.mcp.json)
+      return 1
+      ;;
+    plans/*|tasks/*|.ai/harness/checks/*|.ai/harness/handoff/*|.ai/harness/runs/*|.ai/harness/worktrees/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+write_workflow_sync_manifest() {
+  local slug="$1"
+  local plan_file="$2"
+  local source_repo="$3"
+  local manifest_file=".ai/harness/worktrees/${slug}.sync"
+  local path checksum
+
+  mkdir -p "$(dirname "$manifest_file")"
+  : > "$manifest_file"
+  while IFS= read -r path; do
+    [[ -n "$path" ]] || continue
+    is_safe_workflow_sync_path "$path" || continue
+    checksum="$(file_checksum "${source_repo}/${path}")"
+    printf '%s\t%s\n' "$checksum" "$path" >> "$manifest_file"
+  done < <(workflow_sync_paths_for_plan "$plan_file")
 }
 
 policy_get() {
@@ -170,8 +251,10 @@ write_start_metadata() {
   local base_branch="$5"
   local metadata_dir=".ai/harness/worktrees"
   local metadata_file="${metadata_dir}/${slug}.json"
+  local sync_manifest="${metadata_dir}/${slug}.sync"
 
   mkdir -p "$metadata_dir"
+  write_workflow_sync_manifest "$slug" "$plan_file" "$REPO_ROOT"
   cat > "$metadata_file" <<EOF_METADATA
 {
   "slug": "$(json_escape "$slug")",
@@ -180,6 +263,7 @@ write_start_metadata() {
   "worktree": "$(json_escape "$worktree_path")",
   "source_repo": "$(json_escape "$REPO_ROOT")",
   "base_branch": "$(json_escape "$base_branch")",
+  "workflow_sync_manifest": "$(json_escape "$sync_manifest")",
   "started_at": "$(date '+%Y-%m-%dT%H:%M:%S%z')"
 }
 EOF_METADATA
@@ -223,6 +307,57 @@ clear_primary_markers_for_transferred_plan() {
     rm -f "$ACTIVE_PLAN_MARKER" "$LEGACY_ACTIVE_PLAN_MARKER" "$ACTIVE_WORKTREE_MARKER"
     echo "[ContractWorktree] Cleared primary active markers for transferred plan: $plan_file"
   fi
+}
+
+seed_project_runtime_bridge() {
+  local worktree_path="$1"
+  local source_bin="${REPO_ROOT}/.ai/harness/bin/local-repo-harness"
+  local rel
+
+  [[ -x "$source_bin" ]] || return 0
+
+  mkdir -p "$worktree_path/.ai/harness/bin" "$worktree_path/.ai/harness"
+  cat > "$worktree_path/.ai/harness/bin/local-repo-harness" <<EOF_BRIDGE
+#!/bin/bash
+set -euo pipefail
+primary_bin="$(json_escape "$source_bin")"
+if [[ ! -x "\$primary_bin" ]]; then
+  echo "local-repo-harness worktree bridge: primary project runtime is missing: \$primary_bin" >&2
+  echo "Run bootstrap/adopt in the primary repo, then recreate this contract worktree." >&2
+  exit 127
+fi
+exec "\$primary_bin" "\$@"
+EOF_BRIDGE
+  chmod +x "$worktree_path/.ai/harness/bin/local-repo-harness"
+
+  for rel in \
+    ".ai/harness/policy.json" \
+    ".ai/harness/workflow-contract.json" \
+    ".ai/harness/local-only-manifest.json"; do
+    if [[ -f "$REPO_ROOT/$rel" ]]; then
+      mkdir -p "$(dirname "$worktree_path/$rel")"
+      cp "$REPO_ROOT/$rel" "$worktree_path/$rel"
+    fi
+  done
+
+  echo "[ContractWorktree] Seeded project runtime bridge: $worktree_path/.ai/harness/bin/local-repo-harness"
+}
+
+seed_local_workflow_context() {
+  local worktree_path="$1"
+  local plan_file="$2"
+  local rel source target
+
+  while IFS= read -r rel; do
+    [[ -n "$rel" && "$rel" != "$plan_file" ]] || continue
+    is_safe_workflow_sync_path "$rel" || continue
+    source="$REPO_ROOT/$rel"
+    target="$worktree_path/$rel"
+    [[ -f "$source" && ! -e "$target" ]] || continue
+    mkdir -p "$(dirname "$target")"
+    cp "$source" "$target"
+    echo "[ContractWorktree] Seeded local workflow context: $rel"
+  done < <(workflow_sync_paths_for_plan "$plan_file")
 }
 
 start_worktree() {
@@ -297,15 +432,24 @@ start_worktree() {
   fi
 
   copy_plan_into_worktree "$plan_file" "$worktree_path"
+  seed_local_workflow_context "$worktree_path" "$plan_file"
   remove_copied_untracked_source_plan "$plan_file" "$worktree_path"
   clear_primary_markers_for_transferred_plan "$plan_file"
+  seed_project_runtime_bridge "$worktree_path"
 
   mkdir -p "$worktree_path/.ai/harness/worktrees"
   (
     cd "$worktree_path"
     write_start_metadata "$slug" "$plan_file" "$branch_name" "$worktree_path" "$base_branch"
-    if [[ "$run_plan_to_todo" -eq 1 && -f "scripts/plan-to-todo.sh" ]]; then
-      REPO_HARNESS_CONTRACT_WORKTREE=1 bash "scripts/plan-to-todo.sh" --plan "$plan_file"
+    if [[ "$run_plan_to_todo" -eq 1 ]]; then
+      if [[ -f "scripts/plan-to-todo.sh" ]]; then
+        REPO_HARNESS_CONTRACT_WORKTREE=1 bash "scripts/plan-to-todo.sh" --plan "$plan_file"
+      elif [[ -x ".ai/harness/bin/local-repo-harness" ]]; then
+        REPO_HARNESS_CONTRACT_WORKTREE=1 ./.ai/harness/bin/local-repo-harness run plan-to-todo --plan "$plan_file"
+      else
+        echo "contract-worktree: no plan-to-todo helper available in linked worktree" >&2
+        exit 1
+      fi
     fi
   )
 
@@ -397,6 +541,21 @@ clean_local_runtime_markers() {
   rm -f .ai/harness/active-plan .ai/harness/active-worktree .claude/.active-plan
 }
 
+run_workflow_helper() {
+  local helper="$1"
+  shift
+  if [[ -f "scripts/${helper}.sh" ]]; then
+    bash "scripts/${helper}.sh" "$@"
+  elif [[ -n "${REPO_HARNESS_HELPER_SOURCE_PATH:-}" && -f "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/${helper}.sh" ]]; then
+    bash "$(dirname "$REPO_HARNESS_HELPER_SOURCE_PATH")/${helper}.sh" "$@"
+  elif [[ -x ".ai/harness/bin/local-repo-harness" ]]; then
+    ./.ai/harness/bin/local-repo-harness run "$helper" "$@"
+  else
+    echo "contract-worktree: helper '$helper' is unavailable in this worktree" >&2
+    return 1
+  fi
+}
+
 latest_plan_for_slug() {
   local slug="$1"
   local latest
@@ -410,10 +569,78 @@ archive_finished_workflow() {
 
   [[ -n "$plan_file" ]] || { echo "contract-worktree: no active plan found to archive" >&2; exit 1; }
   [[ -f "$plan_file" ]] || { echo "contract-worktree: active plan not found for archive: $plan_file" >&2; exit 1; }
-  [[ -x "scripts/archive-workflow.sh" ]] || { echo "contract-worktree: scripts/archive-workflow.sh is missing or not executable" >&2; exit 1; }
 
   echo "[ContractWorktree] Archiving completed workflow before merge: $plan_file"
-  bash "scripts/archive-workflow.sh" --plan "$plan_file" --outcome Completed
+  run_workflow_helper archive-workflow --plan "$plan_file" --outcome Completed
+}
+
+target_path_is_local_workflow() {
+  local target_worktree="$1"
+  local rel_path="$2"
+
+  git -C "$target_worktree" check-ignore -q -- "$rel_path" 2>/dev/null
+}
+
+sync_one_local_workflow_artifact() {
+  local target_worktree="$1"
+  local rel_path="$2"
+  local original_checksum="$3"
+  local source_path="$PWD/$rel_path"
+  local target_path="$target_worktree/$rel_path"
+  local current_checksum
+
+  [[ -f "$source_path" ]] || return 0
+  is_safe_workflow_sync_path "$rel_path" || {
+    echo "[ContractWorktree] Warning: refusing to sync unsafe workflow path: $rel_path" >&2
+    return 0
+  }
+  target_path_is_local_workflow "$target_worktree" "$rel_path" || return 0
+
+  if [[ -f "$target_path" ]] && cmp -s "$source_path" "$target_path"; then
+    return 0
+  fi
+
+  current_checksum="$(file_checksum "$target_path")"
+  if [[ "$current_checksum" != "$original_checksum" ]]; then
+    echo "contract-worktree: local workflow artifact changed in target worktree; refusing to overwrite: $rel_path" >&2
+    echo "contract-worktree: expected start checksum ${original_checksum}, current checksum ${current_checksum}" >&2
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$target_path")"
+  cp "$source_path" "$target_path"
+  echo "[ContractWorktree] Synced local workflow artifact: $rel_path"
+}
+
+sync_local_workflow_artifacts() {
+  local slug="$1"
+  local target_worktree="$2"
+  local active_plan="$3"
+  local sync_file=".ai/harness/worktrees/${slug}.sync"
+  local checksum rel_path archived_plan archived_checksum archive_artifact
+
+  [[ -f "$sync_file" ]] || return 0
+
+  while IFS=$'\t' read -r checksum rel_path; do
+    [[ -n "$rel_path" ]] || continue
+    sync_one_local_workflow_artifact "$target_worktree" "$rel_path" "$checksum"
+  done < "$sync_file"
+
+  if [[ -n "$active_plan" ]]; then
+    archived_plan="plans/archive/$(basename "$active_plan")"
+    if [[ ! -f "$archived_plan" ]]; then
+      archived_plan="$(find plans/archive -maxdepth 1 -type f -name "$(basename "$active_plan" .md)*.md" 2>/dev/null | sort | tail -1)"
+    fi
+    if [[ -n "$archived_plan" && -f "$archived_plan" ]]; then
+      archived_checksum="__missing__"
+      sync_one_local_workflow_artifact "$target_worktree" "$archived_plan" "$archived_checksum"
+    fi
+
+    while IFS= read -r archive_artifact; do
+      [[ -n "$archive_artifact" ]] || continue
+      sync_one_local_workflow_artifact "$target_worktree" "$archive_artifact" "__missing__"
+    done < <(find tasks/archive -maxdepth 1 -type f -name "*-${slug}.md" 2>/dev/null | sort)
+  fi
 }
 
 finish_worktree() {
@@ -510,7 +737,7 @@ finish_worktree() {
   fi
 
   check_architecture_freshness "$target_branch"
-  bash "scripts/verify-sprint.sh"
+  run_workflow_helper verify-sprint
   check_scope_against_contract "$contract_file"
   archive_finished_workflow "$active_plan"
   clean_local_runtime_markers
@@ -532,6 +759,7 @@ finish_worktree() {
   [[ -n "$target_worktree" ]] || { echo "contract-worktree: target branch has no checked-out worktree: $target_branch" >&2; exit 1; }
 
   clean_matching_untracked_target_files "$target_worktree" "$current_branch"
+  sync_local_workflow_artifacts "$slug" "$target_worktree" "$active_plan"
 
   if [[ -n "$(git -C "$target_worktree" status --porcelain=v1 --untracked-files=all)" ]]; then
     echo "contract-worktree: target worktree is dirty, refusing merge: $target_worktree" >&2
@@ -549,8 +777,6 @@ finish_worktree() {
 backfill_sprint_backlog() {
   local plan_file="$1"
   local archived_plan source_ref sprint_path task_ref
-
-  [[ -f "scripts/sprint-backlog.sh" ]] || return 0
 
   archived_plan="plans/archive/$(basename "$plan_file")"
   if [[ ! -f "$archived_plan" ]]; then
@@ -579,7 +805,7 @@ backfill_sprint_backlog() {
   task_ref="${sprint_path#*#}"
   sprint_path="${sprint_path%%#*}"
 
-  if bash scripts/sprint-backlog.sh complete-task --sprint "$sprint_path" --task "$task_ref" --plan "$archived_plan"; then
+  if run_workflow_helper sprint-backlog complete-task --sprint "$sprint_path" --task "$task_ref" --plan "$archived_plan"; then
     echo "[ContractWorktree] Sprint backlog updated: $sprint_path ($task_ref)"
   else
     echo "[ContractWorktree] Warning: sprint backlog back-fill failed for $sprint_path ($task_ref); update the row manually." >&2

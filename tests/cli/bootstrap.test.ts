@@ -54,7 +54,7 @@ describe("bootstrap command", () => {
     });
     expect(help.status).toBe(0);
     expect(help.stdout).toContain("--package <spec>");
-    expect(help.stdout).toContain("local-repo-harness@0.5.13");
+    expect(help.stdout).toContain("local-repo-harness@0.5.14");
     expect(help.stdout).not.toContain("--version <version>");
     expect(help.stdout).not.toContain("--channel <channel>");
 

@@ -113,6 +113,8 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("CodeGraph");
     expect(quickStart).toContain("repo-harness-prd");
     expect(quickStart).toContain("repo-harness-sprint");
+    expect(quickStart).toContain("local-repo-harness sprint next --json");
+    expect(quickStart).toContain("local-repo-harness sprint execute-approved");
     expect(quickStart).toContain("repo-harness-plan");
     expect(quickStart).toContain("repo-harness-check");
     expect(quickStart).toContain("repo-harness-ship");
