@@ -1187,6 +1187,8 @@ describe("Workflow helper scripts", () => {
       expect(bridge).not.toContain("~/.agents");
       expect(bridge).not.toContain("~/.repo-harness");
       expect(bridge).not.toContain("~/.codegraph");
+      const metadata = JSON.parse(readFileSync(join(worktreePath, ".ai/harness/worktrees/demo.json"), "utf-8"));
+      expect(metadata.source_runtime_bin).toBe(join(cwd, ".ai/harness/bin/local-repo-harness"));
     } finally {
       run("git", ["worktree", "remove", "--force", worktreePath], cwd);
       rmSync(worktreePath, { recursive: true, force: true });
@@ -1336,6 +1338,147 @@ describe("Workflow helper scripts", () => {
       expect(existsSync(join(cwd, "tasks/reviews/20260304-1500-demo.review.md"))).toBe(true);
       expect(readdirSync(join(cwd, "tasks/archive")).some((name) => name.startsWith("notes-") && name.includes("demo"))).toBe(true);
       expect(readdirSync(join(cwd, "tasks/archive")).some((name) => name.startsWith("todo-") && name.includes("demo"))).toBe(true);
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  test("contract-worktree finish refuses to overwrite changed local-only workflow artifacts", () => {
+    const cwd = tmpWorkspace("helper-contract-local-workflow-conflict");
+    const worktreePath = `${cwd}-wt-demo`;
+    const sprintPath = "plans/sprints/20260618-0000-local-conflict.sprint.md";
+    try {
+      mkdirSync(join(cwd, "plans"), { recursive: true });
+      mkdirSync(join(cwd, "tasks"), { recursive: true });
+      mkdirSync(join(cwd, "docs"), { recursive: true });
+      copyHelpers(cwd);
+      mkdirSync(join(cwd, ".claude/templates"), { recursive: true });
+      for (const file of readdirSync(TEMPLATE_DIR).filter((name) => name.endsWith(".md"))) {
+        copyFileSync(join(TEMPLATE_DIR, file), join(cwd, ".claude/templates", file));
+      }
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      copyFileSync(join(ROOT, "assets/hooks/lib/workflow-state.sh"), join(cwd, ".ai/hooks/lib/workflow-state.sh"));
+      writeFileSync(
+        join(cwd, ".gitignore"),
+        [
+          "plans/",
+          "tasks/",
+          ".ai/harness/checks/",
+          ".ai/harness/runs/",
+          ".ai/harness/sprint/",
+          ".ai/harness/worktrees/",
+        ].join("\n") + "\n"
+      );
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify(
+          {
+            worktree_strategy: {
+              auto_for_contract_tasks: true,
+              branch_prefix: "codex/",
+              base_branch: "main",
+              merge_back: { target: "main" },
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      );
+      writeFileSync(
+        join(cwd, "package.json"),
+        JSON.stringify({ scripts: { typecheck: "test -f src/modules/demo/index.ts" } }, null, 2) + "\n"
+      );
+      writeFileSync(join(cwd, "docs/spec.md"), "# Spec\n");
+      initGitRepo(cwd);
+      commitAll(cwd, "init workflow");
+
+      mkdirSync(join(cwd, "plans/sprints"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      writeFileSync(
+        join(cwd, sprintPath),
+        [
+          "# Sprint: Local Conflict",
+          "",
+          "> **Status**: Approved",
+          "> **Slug**: local-conflict",
+          "> **Created**: 2026-06-18 00:00",
+          "> **Updated**: 2026-06-18 00:00",
+          "> **Source Spec**: `docs/spec.md`",
+          "> **Goal Mode**: incremental",
+          "",
+          "## PRD",
+          "",
+          "Real problem statement with concrete user outcomes.",
+          "",
+          "## Backlog",
+          "",
+          "| # | Status | Task | Mode | Acceptance | Plan |",
+          "|---|--------|------|------|------------|------|",
+          "| 1 | [ ] | demo | contract | demo module exists | (pending) |",
+          "",
+          "## Execution Log",
+          "",
+          "| When | Task | Plan | Result |",
+          "|------|------|------|--------|",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), sprintPath);
+      writeFileSync(
+        join(cwd, "plans/plan-20260304-1510-demo.md"),
+        [
+          "# Plan: demo",
+          "",
+          "> **Status**: Approved",
+          "> **Source Ref**: sprint:" + sprintPath + "#demo",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Build demo",
+        ].join("\n")
+      );
+
+      const start = run("bash", ["scripts/plan-to-todo.sh", "--plan", "plans/plan-20260304-1510-demo.md"], cwd);
+      expect(start.status).toBe(0);
+      writeFileSync(join(cwd, sprintPath), readFileSync(join(cwd, sprintPath), "utf-8") + "\n<!-- local primary edit -->\n");
+
+      mkdirSync(join(worktreePath, "src/modules/demo"), { recursive: true });
+      mkdirSync(join(worktreePath, "tests/unit"), { recursive: true });
+      writeFileSync(join(worktreePath, "src/modules/demo/index.ts"), "export const demo = true;\n");
+      writeFileSync(
+        join(worktreePath, "tests/unit/demo.test.ts"),
+        'import { test, expect } from "bun:test";\n' +
+          'test("demo", () => { expect(true).toBe(true); });\n'
+      );
+      writeFileSync(
+        join(worktreePath, "tasks/reviews/20260304-1510-demo.review.md"),
+        [
+          "# Sprint Review: demo",
+          "",
+          "> **Recommendation**: pass",
+          "",
+          "## Scorecard",
+          "",
+          "| Dimension | Score | Notes |",
+          "|-----------|-------|-------|",
+          "| Functionality | 8/10 | verified |",
+          "",
+          "## Verification Evidence",
+          "- Checked demo module.",
+          "",
+          externalAcceptanceAdvice(),
+          "",
+        ].join("\n")
+      );
+
+      const finish = run("bash", ["scripts/contract-worktree.sh", "finish"], worktreePath, { HOOK_HOST: "claude" });
+      expect(finish.status).toBe(1);
+      expect(finish.stderr).toContain("local workflow artifact changed in target worktree");
+      expect(finish.stderr).toContain(sprintPath);
+      expect(readFileSync(join(cwd, sprintPath), "utf-8")).toContain("local primary edit");
     } finally {
       run("git", ["worktree", "remove", "--force", worktreePath], cwd);
       rmSync(worktreePath, { recursive: true, force: true });

@@ -249,10 +249,12 @@ write_start_metadata() {
   local branch_name="$3"
   local worktree_path="$4"
   local base_branch="$5"
+  local source_runtime_bin="${REPO_ROOT}/.ai/harness/bin/local-repo-harness"
   local metadata_dir=".ai/harness/worktrees"
   local metadata_file="${metadata_dir}/${slug}.json"
   local sync_manifest="${metadata_dir}/${slug}.sync"
 
+  [[ -x "$source_runtime_bin" ]] || source_runtime_bin=""
   mkdir -p "$metadata_dir"
   write_workflow_sync_manifest "$slug" "$plan_file" "$REPO_ROOT"
   cat > "$metadata_file" <<EOF_METADATA
@@ -262,6 +264,7 @@ write_start_metadata() {
   "branch": "$(json_escape "$branch_name")",
   "worktree": "$(json_escape "$worktree_path")",
   "source_repo": "$(json_escape "$REPO_ROOT")",
+  "source_runtime_bin": "$(json_escape "$source_runtime_bin")",
   "base_branch": "$(json_escape "$base_branch")",
   "workflow_sync_manifest": "$(json_escape "$sync_manifest")",
   "started_at": "$(date '+%Y-%m-%dT%H:%M:%S%z')"
@@ -578,7 +581,17 @@ target_path_is_local_workflow() {
   local target_worktree="$1"
   local rel_path="$2"
 
-  git -C "$target_worktree" check-ignore -q -- "$rel_path" 2>/dev/null
+  if git -C "$target_worktree" check-ignore -q -- "$rel_path" 2>/dev/null; then
+    return 0
+  fi
+
+  # Local workflow files may be explicitly untracked rather than ignored. Treat
+  # them as syncable only when neither side has the path in Git; tracked files
+  # must travel through the normal fast-forward merge.
+  if git ls-files --error-unmatch -- "$rel_path" >/dev/null 2>&1; then
+    return 1
+  fi
+  ! git -C "$target_worktree" ls-files --error-unmatch -- "$rel_path" >/dev/null 2>&1
 }
 
 sync_one_local_workflow_artifact() {
@@ -643,6 +656,77 @@ sync_local_workflow_artifacts() {
   fi
 }
 
+workflow_synced_paths_for_slug() {
+  local slug="$1"
+  local active_plan="$2"
+  local sync_file=".ai/harness/worktrees/${slug}.sync"
+  local checksum rel_path archived_plan archive_artifact
+
+  if [[ -f "$sync_file" ]]; then
+    while IFS=$'\t' read -r checksum rel_path; do
+      [[ -n "$rel_path" ]] || continue
+      printf '%s\n' "$rel_path"
+    done < "$sync_file"
+  fi
+
+  if [[ -n "$active_plan" ]]; then
+    archived_plan="plans/archive/$(basename "$active_plan")"
+    if [[ ! -f "$archived_plan" ]]; then
+      archived_plan="$(find plans/archive -maxdepth 1 -type f -name "$(basename "$active_plan" .md)*.md" 2>/dev/null | sort | tail -1)"
+    fi
+    [[ -n "$archived_plan" ]] && printf '%s\n' "$archived_plan"
+
+    while IFS= read -r archive_artifact; do
+      [[ -n "$archive_artifact" ]] || continue
+      printf '%s\n' "$archive_artifact"
+    done < <(find tasks/archive -maxdepth 1 -type f -name "*-${slug}.md" 2>/dev/null | sort)
+  fi
+}
+
+status_path_from_porcelain() {
+  local line="$1"
+  local path="${line:3}"
+
+  case "$line" in
+    R*|C*)
+      path="${path##* -> }"
+      ;;
+  esac
+
+  printf '%s' "$path"
+}
+
+path_in_synced_workflow_set() {
+  local slug="$1"
+  local active_plan="$2"
+  local wanted="$3"
+  local candidate
+
+  while IFS= read -r candidate; do
+    [[ "$candidate" == "$wanted" ]] && return 0
+  done < <(workflow_synced_paths_for_slug "$slug" "$active_plan")
+
+  return 1
+}
+
+target_dirty_status_outside_synced_workflow() {
+  local target_worktree="$1"
+  local slug="$2"
+  local active_plan="$3"
+  local line rel_path
+
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    rel_path="$(status_path_from_porcelain "$line")"
+    if is_safe_workflow_sync_path "$rel_path" \
+      && path_in_synced_workflow_set "$slug" "$active_plan" "$rel_path" \
+      && target_path_is_local_workflow "$target_worktree" "$rel_path"; then
+      continue
+    fi
+    printf '%s\n' "$line"
+  done < <(git -C "$target_worktree" status --porcelain=v1 --untracked-files=all)
+}
+
 finish_worktree() {
   local merge_back=1
   local target_branch
@@ -687,7 +771,7 @@ finish_worktree() {
     exit 1
   fi
 
-  local current_branch slug active_plan contract_file review_file target_worktree artifact_stem
+  local current_branch slug active_plan contract_file review_file target_worktree artifact_stem dirty_status
   local external_status external_state external_reviewer external_source external_message
   current_branch="$(git branch --show-current)"
   [[ -n "$current_branch" ]] || { echo "contract-worktree: detached HEAD is not supported" >&2; exit 1; }
@@ -761,8 +845,10 @@ finish_worktree() {
   clean_matching_untracked_target_files "$target_worktree" "$current_branch"
   sync_local_workflow_artifacts "$slug" "$target_worktree" "$active_plan"
 
-  if [[ -n "$(git -C "$target_worktree" status --porcelain=v1 --untracked-files=all)" ]]; then
+  dirty_status="$(target_dirty_status_outside_synced_workflow "$target_worktree" "$slug" "$active_plan")"
+  if [[ -n "$dirty_status" ]]; then
     echo "contract-worktree: target worktree is dirty, refusing merge: $target_worktree" >&2
+    printf '%s\n' "$dirty_status" >&2
     exit 1
   fi
 

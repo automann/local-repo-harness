@@ -185,6 +185,33 @@ describe("sprint-backlog helper", () => {
     }
   });
 
+  test("next refuses draft sprints in text and json modes", () => {
+    const cwd = tmpWorkspace("sprint-backlog-next-draft");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh"]);
+      const sprintPath = "plans/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+      writeFileSync(
+        join(cwd, sprintPath),
+        readFileSync(join(cwd, sprintPath), "utf-8").replace("> **Status**: Approved", "> **Status**: Draft")
+      );
+
+      const next = run("bash", ["scripts/sprint-backlog.sh", "next"], cwd);
+      expect(next.status).toBe(1);
+      expect(next.stderr).toContain("approve the sprint before resolving");
+
+      const nextJson = run("bash", ["scripts/sprint-backlog.sh", "next", "--json"], cwd);
+      expect(nextJson.status).toBe(1);
+      const parsed = JSON.parse(nextJson.stdout);
+      expect(parsed.sprintFile).toBe(sprintPath);
+      expect(parsed.sprintStatus).toBe("Draft");
+      expect(parsed.pending).toBe(false);
+      expect(parsed.error).toContain("approve the sprint before resolving");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("init renders titles with sed/awk metacharacters literally", () => {
     const cwd = tmpWorkspace("sprint-backlog-metachar");
     try {
@@ -408,6 +435,48 @@ describe("sprint-backlog helper", () => {
       );
       expect(draft.status).toBe(1);
       expect(draft.stderr).toContain("approve the sprint before executing");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("execute-approved refuses completed rows and reports no pending rows", () => {
+    const cwd = tmpWorkspace("sprint-backlog-execute-approved-complete");
+    try {
+      copySprintHelpers(cwd, ["sprint-backlog.sh", "capture-plan.sh", "plan-to-todo.sh"]);
+      const sprintPath = "plans/sprints/20260610-0000-fixture-sprint.sprint.md";
+      writeActiveSprintFixture(cwd, sprintPath);
+      const bodyFile = join(cwd, "plan-body.md");
+      writeFileSync(
+        bodyFile,
+        "# Plan\n\n## Evidence Contract\n\n- **State/progress path**: tasks\n- **Verification evidence**: tests\n- **Evaluator rubric**: pass\n- **Stop condition**: fail\n- **Rollback surface**: revert\n"
+      );
+
+      writeFileSync(
+        join(cwd, sprintPath),
+        readFileSync(join(cwd, sprintPath), "utf-8").replace(
+          "| 1 | [ ] | task-a | contract | unit tests pass | (pending) |",
+          "| 1 | [x] | task-a | contract | unit tests pass | `plans/archive/plan-task-a.md` |"
+        )
+      );
+      const completed = run(
+        "bash",
+        ["scripts/sprint-backlog.sh", "execute-approved", "--task", "task-a", "--body-file", bodyFile],
+        cwd
+      );
+      expect(completed.status).toBe(1);
+      expect(completed.stderr).toContain("already complete");
+
+      writeFileSync(
+        join(cwd, sprintPath),
+        readFileSync(join(cwd, sprintPath), "utf-8").replace(
+          "| 2 | [ ] | task-b | inline | doc section updated | (pending) |",
+          "| 2 | [x] | task-b | inline | doc section updated | `plans/archive/plan-task-b.md` |"
+        )
+      );
+      const exhausted = run("bash", ["scripts/sprint-backlog.sh", "execute-approved", "--body-file", bodyFile], cwd);
+      expect(exhausted.status).toBe(3);
+      expect(exhausted.stdout).toContain("next_task: (none)");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

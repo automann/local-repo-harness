@@ -426,6 +426,20 @@ cmd_next() {
   sprint_file="$(require_active_sprint)"
   sprint_status="$(extract_status "$sprint_file")"
   read -r done total <<<"$(backlog_counts "$sprint_file")"
+  if [[ "$sprint_status" != "Approved" ]]; then
+    if [[ "$json" -eq 1 ]]; then
+      printf '{\n'
+      printf '  "sprintFile": "%s",\n' "$(json_escape "$sprint_file")"
+      printf '  "sprintStatus": "%s",\n' "$(json_escape "${sprint_status:-unknown}")"
+      printf '  "pending": false,\n'
+      printf '  "error": "%s",\n' "$(json_escape "sprint status is ${sprint_status:-unknown}; approve the sprint before resolving the next row")"
+      printf '  "nextAction": "Approve the sprint before generating a row plan."\n'
+      printf '}\n'
+    else
+      echo "sprint-backlog: sprint status is ${sprint_status:-unknown}; approve the sprint before resolving the next row" >&2
+    fi
+    exit 1
+  fi
   row="$(next_pending_row "$sprint_file")"
   if [[ -z "$row" ]]; then
     if [[ "$json" -eq 1 ]]; then
