@@ -325,7 +325,6 @@ Prompt template：
 ./.ai/harness/bin/local-repo-harness sprint next --json
 
 报告本 row 的最终状态、验证命令和结果、剩余风险，以及下一条 pending row 的 rowIndex/task/mode。
-最后建议为下一条 row 生成 just-in-time detailed plan，但等待我明确批准后再开始。
 ```
 
 ## Action Command Skills 怎么选
