@@ -316,7 +316,8 @@ Prompt template：
 - 如果是 contract worktree，确认 contract-worktree finish 已完成 merge/closeout。
 - 如果 closeout 没有自动完成，只做最小必要的 sprint row 状态更新，并说明依据。
 
-运行 strict workflow checks，例如：
+如果 closeout 改变了 sprint/handoff/worktree/merge 状态，或 Step 2 的 checks
+不是在最终主 worktree 状态下运行的，重跑 closeout 复核 checks，例如：
 ./.ai/harness/bin/local-repo-harness run verify-sprint
 ./.ai/harness/bin/local-repo-harness run check-task-workflow --strict
 
