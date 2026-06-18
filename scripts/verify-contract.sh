@@ -85,10 +85,88 @@ read_contract_review_file() {
   ' "$file" | xargs
 }
 
-review_recommends_pass() {
+if [[ -f ".ai/hooks/lib/workflow-state.sh" ]]; then
+  # shellcheck source=/dev/null
+  . ".ai/hooks/lib/workflow-state.sh"
+fi
+
+if ! declare -F workflow_review_field >/dev/null 2>&1; then
+  workflow_review_field() {
+    local review_file="${1:-}"
+    local label="${2:-}"
+    [[ -n "$review_file" && -f "$review_file" && -n "$label" ]] || return 1
+    sed -nE "s/^> \\*\\*${label}\\*\\*:[[:space:]]*(.*)[[:space:]]*$/\\1/p" "$review_file" |
+      head -n 1 |
+      sed -E 's/[[:space:]]+$//'
+  }
+fi
+
+if ! declare -F workflow_review_terminal_status >/dev/null 2>&1; then
+  workflow_review_terminal_status() {
+    local status="${1:-}"
+    local status_lc
+    status_lc="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+    case "$status_lc" in
+      reviewed|accepted|passed|complete|completed)
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+fi
+
+if ! declare -F workflow_review_terminal_pass_status >/dev/null 2>&1; then
+  workflow_review_terminal_pass_status() {
+    local review_file="${1:-}"
+    local review_status recommendation status_lc recommendation_lc
+
+    if [[ -z "$review_file" || ! -f "$review_file" ]]; then
+      printf 'fail\t\t\tMissing sprint review file: %s\n' "${review_file:-tasks/reviews/<slug>.review.md}"
+      return 0
+    fi
+
+    review_status="$(workflow_review_field "$review_file" "Status" || true)"
+    recommendation="$(workflow_review_field "$review_file" "Recommendation" || true)"
+    status_lc="$(printf '%s' "$review_status" | tr '[:upper:]' '[:lower:]')"
+    recommendation_lc="$(printf '%s' "$recommendation" | tr '[:upper:]' '[:lower:]')"
+
+    if [[ -z "$recommendation_lc" ]]; then
+      printf 'fail\t%s\t%s\tSprint review recommendation is missing; expected pass.\n' "${review_status:-missing}" "missing"
+      return 0
+    fi
+
+    if [[ "$recommendation_lc" != "pass" ]]; then
+      printf 'fail\t%s\t%s\tSprint review recommendation is %s; expected pass.\n' "${review_status:-missing}" "$recommendation" "$recommendation"
+      return 0
+    fi
+
+    if [[ -z "$status_lc" ]]; then
+      printf 'fail\tmissing\t%s\tSprint review status is missing; expected Reviewed.\n' "$recommendation"
+      return 0
+    fi
+
+    if workflow_review_terminal_status "$review_status"; then
+      printf 'pass\t%s\t%s\tSprint review is terminal pass.\n' "$review_status" "$recommendation"
+      return 0
+    fi
+
+    if [[ "$status_lc" == "pending" ]]; then
+      printf 'fail\t%s\t%s\tSprint review status is Pending; expected Reviewed.\n' "$review_status" "$recommendation"
+      return 0
+    fi
+
+    printf 'fail\t%s\t%s\tSprint review status is %s; expected Reviewed.\n' "$review_status" "$recommendation" "$review_status"
+  }
+fi
+
+review_terminal_pass() {
   local review_file="$1"
-  [[ -n "$review_file" && -f "$review_file" ]] || return 1
-  grep -Eq '^> \*\*Recommendation\*\*:[[:space:]]*pass[[:space:]]*$' "$review_file"
+  local row status
+  row="$(workflow_review_terminal_pass_status "$review_file")"
+  status="${row%%$'\t'*}"
+  [[ "$status" == "pass" ]]
 }
 
 review_score() {
@@ -330,6 +408,7 @@ fi
 declare -a files_exist=()
 declare -a tests_pass=()
 declare -a commands_succeed=()
+declare -a commands_fail=()
 declare -a artifacts_exist=()
 declare -a contain_paths=()
 declare -a contain_patterns=()
@@ -369,6 +448,11 @@ while IFS= read -r raw_line; do
       pending_path=""
       continue
       ;;
+    commands_fail:)
+      section="commands_fail"
+      pending_path=""
+      continue
+      ;;
     artifacts_exist:)
       section="artifacts_exist"
       pending_path=""
@@ -403,7 +487,7 @@ while IFS= read -r raw_line; do
   esac
 
   case "$section" in
-    files_exist|commands_succeed|files_not_exist|artifacts_exist|manual_checks)
+    files_exist|commands_succeed|commands_fail|files_not_exist|artifacts_exist|manual_checks)
       if [[ "$trimmed" =~ ^-[[:space:]]*(.+)$ ]]; then
         item="$(strip_quotes "${BASH_REMATCH[1]}")"
         [[ -n "$item" ]] || continue
@@ -411,6 +495,8 @@ while IFS= read -r raw_line; do
           files_exist+=("$item")
         elif [[ "$section" == "commands_succeed" ]]; then
           commands_succeed+=("$item")
+        elif [[ "$section" == "commands_fail" ]]; then
+          commands_fail+=("$item")
         elif [[ "$section" == "artifacts_exist" ]]; then
           artifacts_exist+=("$item")
         elif [[ "$section" == "manual_checks" ]]; then
@@ -517,6 +603,16 @@ if ((${#commands_succeed[@]})); then
   done
 fi
 
+if ((${#commands_fail[@]})); then
+  for cmd in "${commands_fail[@]}"; do
+    if bash -lc "$cmd" >/tmp/contract-command.log 2>&1; then
+      fail "commands_fail" "$cmd" "commands_fail unexpectedly succeeded: $cmd"
+    else
+      pass "commands_fail" "$cmd" "commands_fail: $cmd"
+    fi
+  done
+fi
+
 if ((${#qa_dimensions[@]})); then
   for idx in "${!qa_dimensions[@]}"; do
     dimension="${qa_dimensions[$idx]}"
@@ -535,10 +631,15 @@ if ((${#manual_checks[@]})); then
   for check in "${manual_checks[@]}"; do
     case "$check" in
       "Evaluator review file recommends pass")
-        if review_recommends_pass "$review_file"; then
+        fail "manual_checks" "$check" "manual_checks deprecated: use Evaluator review file is terminal pass"
+        ;;
+      "Evaluator review file is terminal pass")
+        review_row="$(workflow_review_terminal_pass_status "$review_file")"
+        IFS=$'\t' read -r review_gate review_gate_status review_gate_recommendation review_gate_message <<< "$review_row"
+        if [[ "$review_gate" == "pass" ]]; then
           pass "manual_checks" "$check" "manual_checks: $check"
         else
-          fail "manual_checks" "$check" "manual_checks: $check"
+          fail "manual_checks" "$check" "manual_checks: $check (${review_gate_message:-review is not terminal pass})"
         fi
         ;;
       *)

@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.14`
+当前版本：`local-repo-harness@0.5.15`
 
 ## 这个项目适合谁
 

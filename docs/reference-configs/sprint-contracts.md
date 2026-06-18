@@ -54,7 +54,7 @@ Existing contracts without this block remain valid. `scripts/verify-contract.sh`
 
 ## Review Coupling
 
-- A contract is not truly done until the matching review file records a passing recommendation.
+- A contract is not truly done until the matching review file records Status: Reviewed and Recommendation: pass.
 - `tasks/reviews/<plan-stem>.review.md` should be filled from Waza `/check` after verification and cite the contract, implementation notes, checks file, run snapshot, `## External Acceptance Advice`, and any manual observations.
 - `tasks/notes/<plan-stem>.notes.md` captures task-local decisions and should be archived or promoted deliberately, not left as hidden long-term memory.
 
@@ -62,4 +62,4 @@ Existing contracts without this block remain valid. `scripts/verify-contract.sh`
 
 - When `.ai/harness/policy.json` has `worktree_strategy.auto_for_contract_tasks: true`, `scripts/plan-to-todo.sh --plan <approved-plan>` starts a linked `codex/<slug>` worktree instead of mutating the primary tree.
 - Execute the sprint in that linked worktree. The primary worktree remains a merge target and must stay clean before merge-back.
-- After implementation, run Waza `/check` so the review file recommends pass, record passing `## External Acceptance Advice` from the peer reviewer or a concrete manual override, then run `scripts/contract-worktree.sh finish`. The finish command gates on external acceptance before `verify-sprint.sh`, commits the branch, and fast-forwards the target branch only when the target worktree is clean.
+- After implementation, run Waza `/check` so the review file records `Status: Reviewed` and `Recommendation: pass`, record passing `## External Acceptance Advice` from the peer reviewer or a constrained `manual_override`, then run `scripts/contract-worktree.sh finish`. The finish command gates on external acceptance before `verify-sprint.sh`, commits the branch, and fast-forwards the target branch only when the target worktree is clean.

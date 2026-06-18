@@ -8,6 +8,10 @@
 > **Last Updated**: {{TIMESTAMP}}
 > **Recommendation**: fail
 
+Set `Status: Reviewed` only after verification, external acceptance, and review
+are complete. A passing closeout requires `Status: Reviewed` and
+`Recommendation: pass`.
+
 ## Mode Evidence
 
 - Selected route:
@@ -34,6 +38,7 @@
 - P1 blockers:
 - P2 advisories:
 - Acceptance checklist:
+- Manual Override:
 
 ## Behavior Diff Notes
 
@@ -42,6 +47,9 @@
 ## Residual Risks / Follow-ups
 
 - ...
+
+Only record unavoidable ungated risk here. Known P1/P2 edge cases should be
+represented in the contract as `commands_succeed` or `commands_fail`.
 
 ## Scorecard
 

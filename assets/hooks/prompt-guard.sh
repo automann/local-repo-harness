@@ -723,7 +723,7 @@ Review the current sprint for acceptance only. Do not run /check. Do not edit fi
 - P2 advisories:
 - Acceptance checklist: pass
 
-If the peer CLI is unavailable, record **External Acceptance**: unavailable and include the failure reason. That does not satisfy the completion gate unless a Manual Override: line with a concrete reason is also recorded.
+If the peer CLI is unavailable, record **External Acceptance**: unavailable and include the failure reason. That does not satisfy the completion gate. A manual operator override must be explicit: **External Acceptance**: manual_override, **External Source**: manual-override, P1 blockers: none, and a concrete `Manual Override:` reason.
 EOF_EXTERNAL_ACCEPTANCE
 }
 
@@ -973,11 +973,11 @@ if [ "$done_intent" -eq 1 ]; then
   fi
 
   if ! workflow_review_recommends_pass "$review_file"; then
-    echo "[ReviewGuard] Sprint review does not recommend pass: $review_file"
+    echo "[ReviewGuard] Sprint review is not terminal pass: $review_file"
     hook_structured_error \
       "ReviewGuard" \
-      "Sprint review is missing a passing recommendation." \
-      "Run Waza /check with fresh verification evidence and record a pass recommendation before marking work done." \
+      "Sprint review is missing terminal Status: Reviewed plus Recommendation: pass." \
+      "Run Waza /check with fresh verification evidence and record Status: Reviewed and Recommendation: pass before marking work done." \
       "quality_gate"
     exit 2
   fi

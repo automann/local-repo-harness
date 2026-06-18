@@ -3402,7 +3402,7 @@ describe("Hook runtime behavior", () => {
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
       writeFileSync(
         join(cwd, "tasks/reviews/demo.review.md"),
-        ["# Sprint Review: demo", "", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
+        ["# Sprint Review: demo", "", "> **Status**: Reviewed", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
       );
       writeValidSprintChecks(cwd);
       writeFileSync(
@@ -3452,7 +3452,7 @@ describe("Hook runtime behavior", () => {
         "# Task Execution Checklist (Primary)\n\n> **Source Plan**: plans/plan-20260304-1410-demo.md\n"
       );
       writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
-      writeFileSync(join(cwd, "tasks/reviews/demo.review.md"), "# Sprint Review: demo\n\n> **Recommendation**: pass\n");
+      writeFileSync(join(cwd, "tasks/reviews/demo.review.md"), "# Sprint Review: demo\n\n> **Status**: Reviewed\n> **Recommendation**: pass\n");
       writeValidSprintChecks(cwd);
       writeFileSync(join(cwd, "scripts/verify-contract.sh"), "#!/bin/bash\nset -euo pipefail\necho \"[verify] ok\"\n");
       expect(run("chmod", ["+x", "scripts/verify-contract.sh"], cwd).status).toBe(0);
@@ -3563,7 +3563,7 @@ describe("Hook runtime behavior", () => {
         writeFileSync(join(cwd, "tasks/contracts/demo.contract.md"), "# contract\n");
         writeFileSync(
           join(cwd, "tasks/reviews/demo.review.md"),
-          ["# Sprint Review: demo", "", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
+          ["# Sprint Review: demo", "", "> **Status**: Reviewed", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
         );
         writeFileSync(join(cwd, ".ai/harness/checks/latest.json"), checks);
         writeFileSync(

@@ -32,14 +32,15 @@ describe("workflow-state shared library", () => {
     expect(content).toContain("## Task Breakdown");
   });
 
-  test("verify-sprint helper should use the same review pass pattern as workflow-state", () => {
+  test("verify-sprint helper should use the shared terminal review gate", () => {
     const helper = readFileSync(
       join(ROOT, "assets", "templates", "helpers", "verify-sprint.sh"),
       "utf-8"
     );
 
-    expect(helper).toContain("^> \\*\\*Recommendation\\*\\*:[[:space:]]*pass");
-    expect(helper).not.toContain("^\\> \\*\\*Recommendation\\*\\*:[[:space:]]*pass");
+    expect(helper).toContain("workflow_review_terminal_pass_status");
+    expect(helper).toContain("metadata_status");
+    expect(helper).not.toContain("review recommends pass");
   });
 
   test("external acceptance parser enforces reviewer, source, blockers, and manual override", () => {
@@ -50,6 +51,7 @@ describe("workflow-state shared library", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## External Acceptance Advice",
@@ -75,18 +77,34 @@ describe("workflow-state shared library", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## External Acceptance Advice",
           "",
-          "> **External Acceptance**: unavailable",
+          "> **External Acceptance**: manual_override",
           "> **External Reviewer**:",
-          "> **External Source**: claude-review",
+          "> **External Source**: manual-override",
           "",
-          "- P1 blockers: unavailable",
+          "- P1 blockers: none",
           "Manual Override: peer CLI auth is down; local reproduction and checks cover the acceptance surface",
           "",
         ].join("\n")
+      );
+      writeFileSync(
+        join(cwd, "bad-override.review.md"),
+        readFileSync(join(cwd, "override.review.md"), "utf-8").replace("- P1 blockers: none", "- P1 blockers: release regression")
+      );
+      writeFileSync(
+        join(cwd, "implicit-override.review.md"),
+        readFileSync(join(cwd, "override.review.md"), "utf-8").replace("> **External Acceptance**: manual_override", "> **External Acceptance**: unavailable")
+      );
+      writeFileSync(
+        join(cwd, "placeholder-override.review.md"),
+        readFileSync(join(cwd, "override.review.md"), "utf-8").replace(
+          "Manual Override: peer CLI auth is down; local reproduction and checks cover the acceptance surface",
+          "Manual Override: n/a"
+        )
       );
 
       const res = spawnSync(
@@ -98,6 +116,9 @@ describe("workflow-state shared library", () => {
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/pass.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/blocker.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/override.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/bad-override.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/implicit-override.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/placeholder-override.review.md"',
           ].join("\n"),
         ],
         {
@@ -113,7 +134,10 @@ describe("workflow-state shared library", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("pass\tClaude\tclaude-review\tExternal acceptance passed.");
       expect(res.stdout).toContain("fail\tClaude\tclaude-review\tExternal acceptance has P1 blockers: release regression");
-      expect(res.stdout).toContain("manual_override\t-\tclaude-review\tManual override recorded for external acceptance");
+      expect(res.stdout).toContain("manual_override\t-\tmanual-override\tManual override recorded for external acceptance");
+      expect(res.stdout).toContain("fail\t-\tmanual-override\tManual override requires P1 blockers: none; got release regression.");
+      expect(res.stdout).toContain("fail\t-\tmanual-override\tManual Override requires External Acceptance: manual_override.");
+      expect(res.stdout).toContain("fail\t-\tmanual-override\tManual override requires a concrete non-placeholder reason.");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

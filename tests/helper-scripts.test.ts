@@ -1310,6 +1310,7 @@ describe("Workflow helper scripts", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## Scorecard",
@@ -1458,6 +1459,7 @@ describe("Workflow helper scripts", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## Scorecard",
@@ -1570,6 +1572,7 @@ describe("Workflow helper scripts", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## Scorecard",
@@ -1594,6 +1597,7 @@ describe("Workflow helper scripts", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## Scorecard",
@@ -1738,6 +1742,7 @@ describe("Workflow helper scripts", () => {
         [
           "# Sprint Review: demo",
           "",
+          "> **Status**: Reviewed",
           "> **Recommendation**: pass",
           "",
           "## Scorecard",
@@ -1850,7 +1855,7 @@ describe("Workflow helper scripts", () => {
       writeFileSync(join(worktreePath, "tasks/contracts/demo.contract.md"), "# contract\n");
       writeFileSync(
         join(worktreePath, "tasks/reviews/demo.review.md"),
-        ["# Sprint Review: demo", "", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
+        ["# Sprint Review: demo", "", "> **Status**: Reviewed", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
       );
       writeValidSprintChecks(worktreePath);
       writeFileSync(
@@ -2478,6 +2483,129 @@ describe("Workflow helper scripts", () => {
     }
   });
 
+  test("verify-contract should support commands_fail criteria", () => {
+    const cwd = tmpWorkspace("helper-verify-contract-commands-fail");
+    try {
+      mkdirSync(join(cwd, "scripts"), { recursive: true });
+      copyHelpers(cwd);
+
+      const contractPath = join(cwd, "task.contract.md");
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: commands-fail",
+          "",
+          "> **Status**: Pending",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  commands_succeed:",
+          "    - true",
+          "  commands_fail:",
+          "    - false",
+          "```",
+          "",
+        ].join("\n")
+      );
+
+      const pass = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict", "--report-file", "report.json"], cwd);
+      expect(pass.status).toBe(0);
+      const report = readFileSync(join(cwd, "report.json"), "utf-8");
+      expect(report).toContain('"kind":"commands_fail"');
+      expect(report).toContain('"passed":true');
+
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: commands-fail",
+          "",
+          "> **Status**: Pending",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  commands_fail:",
+          "    - true",
+          "```",
+          "",
+        ].join("\n")
+      );
+
+      const fail = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
+      expect(fail.status).toBe(1);
+      expect(fail.stdout).toContain("commands_fail unexpectedly succeeded: true");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("verify-contract manual review check requires terminal review pass", () => {
+    const cwd = tmpWorkspace("helper-verify-contract-terminal-review");
+    try {
+      mkdirSync(join(cwd, "scripts"), { recursive: true });
+      mkdirSync(join(cwd, "tasks/reviews"), { recursive: true });
+      copyHelpers(cwd);
+
+      const contractPath = join(cwd, "task.contract.md");
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: terminal-review",
+          "",
+          "> **Status**: Pending",
+          "> **Review File**: `tasks/reviews/task.review.md`",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  manual_checks:",
+          "    - \"Evaluator review file is terminal pass\"",
+          "```",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(
+        join(cwd, "tasks/reviews/task.review.md"),
+        "# Sprint Review\n\n> **Status**: Reviewed\n> **Recommendation**: pass\n"
+      );
+
+      const pass = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
+      expect(pass.status).toBe(0);
+
+      writeFileSync(
+        join(cwd, "tasks/reviews/task.review.md"),
+        "# Sprint Review\n\n> **Status**: Pending\n> **Recommendation**: pass\n"
+      );
+      const pending = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
+      expect(pending.status).toBe(1);
+      expect(pending.stdout).toContain("Sprint review status is Pending");
+
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: terminal-review",
+          "",
+          "> **Status**: Pending",
+          "> **Review File**: `tasks/reviews/task.review.md`",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  manual_checks:",
+          "    - \"Evaluator review file recommends pass\"",
+          "```",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(
+        join(cwd, "tasks/reviews/task.review.md"),
+        "# Sprint Review\n\n> **Status**: Reviewed\n> **Recommendation**: pass\n"
+      );
+      const deprecated = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
+      expect(deprecated.status).toBe(1);
+      expect(deprecated.stdout).toContain("manual_checks deprecated");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("verify-contract --read-only should not rewrite contract Status on failure", () => {
     const cwd = tmpWorkspace("helper-verify-contract-read-only");
     try {
@@ -2749,7 +2877,7 @@ describe("Workflow helper scripts", () => {
       );
       writeFileSync(
         join(cwd, "tasks/reviews/demo.review.md"),
-        ["# Sprint Review: demo", "", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
+        ["# Sprint Review: demo", "", "> **Status**: Reviewed", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n")
       );
 
       const res = run("bash", ["scripts/verify-sprint.sh"], cwd, { HOOK_HOST: "claude" });
@@ -2764,6 +2892,8 @@ describe("Workflow helper scripts", () => {
       expect(checks.contract.status).toBe("pass");
       expect(checks.review.file).toBe("tasks/reviews/demo.review.md");
       expect(checks.review.status).toBe("pass");
+      expect(checks.review.metadata_status).toBe("Reviewed");
+      expect(checks.review.recommendation).toBe("pass");
       expect(checks.external_acceptance.status).toBe("pass");
       expect(checks.external_acceptance.reviewer).toBe("Codex");
       expect(checks.external_acceptance.source).toBe("codex-review");
@@ -2773,6 +2903,73 @@ describe("Workflow helper scripts", () => {
       expect(snapshot.lifecycle.evidence_tier).toBe("raw-verification");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("verify-sprint should reject non-terminal review pass shapes", () => {
+    const cases = [
+      {
+        name: "pending",
+        review: ["# Sprint Review: demo", "", "> **Status**: Pending", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n"),
+        message: "Sprint review status is Pending",
+      },
+      {
+        name: "missing-status",
+        review: ["# Sprint Review: demo", "", "> **Recommendation**: pass", "", externalAcceptanceAdvice(), ""].join("\n"),
+        message: "Sprint review status is missing",
+      },
+      {
+        name: "failed-recommendation",
+        review: ["# Sprint Review: demo", "", "> **Status**: Reviewed", "> **Recommendation**: fail", "", externalAcceptanceAdvice(), ""].join("\n"),
+        message: "Sprint review recommendation is fail",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const cwd = tmpWorkspace(`helper-verify-sprint-${testCase.name}`);
+      try {
+        mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+        mkdirSync(join(cwd, "plans"), { recursive: true });
+        mkdirSync(join(cwd, "tasks/contracts"), { recursive: true });
+        mkdirSync(join(cwd, "tasks/reviews"), { recursive: true });
+        mkdirSync(join(cwd, "docs"), { recursive: true });
+        copyHelpers(cwd);
+        copyFileSync(
+          join(ROOT, "assets/hooks/lib/workflow-state.sh"),
+          join(cwd, ".ai/hooks/lib/workflow-state.sh")
+        );
+
+        writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+        writeFileSync(join(cwd, "plans/plan-20260304-1620-demo.md"), "# Plan: demo\n\n> **Status**: Executing\n");
+        writeActivePlan(cwd, "plans/plan-20260304-1620-demo.md");
+        writeFileSync(
+          join(cwd, "tasks/contracts/demo.contract.md"),
+          [
+            "# Sprint Contract: demo",
+            "",
+            "> **Status**: Active",
+            "",
+            "```yaml",
+            "exit_criteria:",
+            "  files_exist:",
+            "    - docs/spec.md",
+            "```",
+            "",
+          ].join("\n")
+        );
+        writeFileSync(join(cwd, "tasks/reviews/demo.review.md"), testCase.review);
+
+        const res = run("bash", ["scripts/verify-sprint.sh"], cwd, { HOOK_HOST: "claude" });
+        expect(res.status).toBe(1);
+        expect(res.stderr).toContain(testCase.message);
+        const checks = JSON.parse(readFileSync(join(cwd, ".ai/harness/checks/latest.json"), "utf-8"));
+        expect(checks.status).toBe("fail");
+        expect(checks.contract.status).toBe("pass");
+        expect(checks.review.status).toBe("fail");
+        expect(checks.review.message).toContain(testCase.message);
+      } finally {
+        rmSync(cwd, { recursive: true, force: true });
+      }
     }
   });
 
@@ -2811,7 +3008,7 @@ describe("Workflow helper scripts", () => {
       );
       writeFileSync(
         join(cwd, "tasks/reviews/demo.review.md"),
-        "# Sprint Review: demo\n\n> **Recommendation**: pass\n"
+        "# Sprint Review: demo\n\n> **Status**: Reviewed\n> **Recommendation**: pass\n"
       );
 
       const res = run("bash", ["scripts/verify-sprint.sh"], cwd);

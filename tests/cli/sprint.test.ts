@@ -81,7 +81,7 @@ describe("sprint command", () => {
           "",
           "- **State/progress path**: tasks/notes/docs-row.notes.md",
           "- **Verification evidence**: .ai/harness/checks/latest.json and docs check",
-          "- **Evaluator rubric**: review file recommends pass",
+          "- **Evaluator rubric**: review file records Status: Reviewed and Recommendation: pass",
           "- **Stop condition**: docs check fails",
           "- **Rollback surface**: revert generated workflow artifacts",
           "",

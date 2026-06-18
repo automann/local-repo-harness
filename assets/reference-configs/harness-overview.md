@@ -60,7 +60,7 @@ with the project.
 - Use `docs/reference-configs/agentic-development-flow.md` for skill routing and `docs/reference-configs/external-tooling.md` for install/update commands.
 - Use `docs/reference-configs/global-working-rules.md` as the user-level Claude/Codex rule template; keep repo-local workflow contracts in repo files.
 - Externalized reference docs are indexed by `.ai/harness/brain-manifest.json` and checked by `scripts/check-brain-manifest.sh`. Valuable repo docs can opt into default-brain mirroring with `sync.direction=repo-to-brain`; `post-edit-guard.sh` then calls `scripts/sync-brain-docs.sh --changed <path>` for that specific file.
-- Contract-level execution should run in an isolated `codex/<task-slug>` worktree. Merge back only after the contract is fulfilled, `tasks/reviews/<plan-stem>.review.md` recommends pass, and the target worktree is clean.
+- Contract-level execution should run in an isolated `codex/<task-slug>` worktree. Merge back only after the contract is fulfilled, `tasks/reviews/<plan-stem>.review.md` records `Status: Reviewed` and `Recommendation: pass`, and the target worktree is clean.
 - Architecture-sensitive work also runs `scripts/check-architecture-sync.sh`: the check keeps the request index derived from `docs/architecture/requests/` and, when policy is strict, blocks finish if the current diff touches a capability with a pending architecture request at or above `architecture.gate_min_severity`.
 - Migration cleans legacy root `scripts/<repo-harness-helper>` files only when content is identifiable as generated repo-harness runtime; ambiguous app-owned root scripts are reported and preserved.
 

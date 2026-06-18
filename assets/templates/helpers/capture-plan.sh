@@ -304,8 +304,8 @@ See captured planning output.
 
 - **State/progress path**: \`${plan_file}\` task breakdown, \`tasks/todos.md\` deferred-goal ledger, \`tasks/contracts/${artifact_stem}.contract.md\`, \`tasks/reviews/${artifact_stem}.review.md\`, and \`tasks/notes/${artifact_stem}.notes.md\`
 - **Verification evidence**: \`.ai/harness/checks/latest.json\`, \`.ai/harness/runs/\`, and the commands named in the captured planning output
-- **Evaluator rubric**: \`tasks/reviews/${artifact_stem}.review.md\` must record a passing Waza /check style recommendation
-- **Stop condition**: all task breakdown items are complete, sprint verification passes, and the review recommends pass
+- **Evaluator rubric**: \`tasks/reviews/${artifact_stem}.review.md\` must record \`Status: Reviewed\` and \`Recommendation: pass\` from a Waza /check style review
+- **Stop condition**: all task breakdown items are complete, sprint verification passes, and the review status is Reviewed with Recommendation: pass
 - **Rollback surface**: before execution remove \`${plan_file}\`; after execution revert branch \`codex/${slug}\` or the generated task artifacts
 
 ## Captured Planning Output

@@ -390,7 +390,7 @@ Describe the exact outcome this task must deliver.
 - Checks file: `.ai/harness/checks/latest.json`
 - Run snapshots: `.ai/harness/runs/`
 - Scope gate: edit only paths listed under `allowed_paths`; update this contract before widening scope.
-- Completion gate: `scripts/verify-sprint.sh` must see this contract pass, the review recommend pass, and `## External Acceptance Advice` pass or record a manual override.
+- Completion gate: `scripts/verify-sprint.sh` must see this contract pass, the review status be terminal, the review recommendation be pass, and `## External Acceptance Advice` pass or record a constrained manual override.
 
 ## Allowed Paths
 
@@ -435,6 +435,7 @@ exit_criteria:
     - path: tests/unit/{{TASK_SLUG}}.test.ts
   commands_succeed:
     - bun run typecheck
+  commands_fail: []
   files_contain:
     - path: src/modules/{{TASK_SLUG}}/index.ts
       pattern: "export"
@@ -443,8 +444,8 @@ exit_criteria:
 ## Acceptance Notes (Human Review)
 
 - Functional behavior:
-- Edge cases:
-- Regression risks:
+- Edge cases covered by `commands_succeed` or `commands_fail`:
+- Regression risks and residual ungated risk:
 
 ## Rollback Point
 
@@ -465,6 +466,10 @@ CONTRACT_TEMPLATE_EOF
 > **Last Updated**: {{TIMESTAMP}}
 > **Recommendation**: fail
 
+Set `Status: Reviewed` only after verification, external acceptance, and review
+are complete. A passing closeout requires `Status: Reviewed` and
+`Recommendation: pass`.
+
 ## Verification Evidence
 
 - Waza /check run:
@@ -483,6 +488,14 @@ CONTRACT_TEMPLATE_EOF
 - P1 blockers:
 - P2 advisories:
 - Acceptance checklist:
+- Manual Override:
+
+## Residual Risks / Follow-ups
+
+- ...
+
+Only record unavoidable ungated risk here. Known P1/P2 edge cases should be
+represented in the contract as `commands_succeed` or `commands_fail`.
 
 ## Scorecard
 

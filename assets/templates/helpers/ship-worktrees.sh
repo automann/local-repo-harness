@@ -224,15 +224,57 @@ active_slug_or_empty() {
   plan_slug_from_path "$active_plan"
 }
 
+review_field_fallback() {
+  local review_file="$1"
+  local label="$2"
+  sed -nE "s/^> \\*\\*${label}\\*\\*:[[:space:]]*(.*)[[:space:]]*$/\\1/p" "$review_file" |
+    head -n 1 |
+    sed -E 's/[[:space:]]+$//'
+}
+
 review_recommends_pass_fallback() {
   local review_file="$1"
-  grep -Eq '^> \*\*Recommendation\*\*:[[:space:]]*pass([[:space:]]*)$' "$review_file"
+  local status recommendation status_lc recommendation_lc
+  status="$(review_field_fallback "$review_file" "Status")"
+  recommendation="$(review_field_fallback "$review_file" "Recommendation")"
+  status_lc="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+  recommendation_lc="$(printf '%s' "$recommendation" | tr '[:upper:]' '[:lower:]')"
+  [[ "$recommendation_lc" == "pass" ]] || return 1
+  case "$status_lc" in
+    reviewed|accepted|passed|complete|completed)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 external_acceptance_pass_fallback() {
   local review_file="$1"
-  grep -Eq '^> \*\*External Acceptance\*\*:[[:space:]]*(pass|manual_override)([[:space:]]*)$' "$review_file" \
-    && grep -Eq '^-?[[:space:]]*P1 blockers:[[:space:]]*none([[:space:]]*)$' "$review_file"
+  local acceptance source p1 manual reason_lc
+  acceptance="$(review_field_fallback "$review_file" "External Acceptance" | tr '[:upper:]' '[:lower:]')"
+  source="$(review_field_fallback "$review_file" "External Source" | tr '[:upper:]' '[:lower:]')"
+  p1="$(sed -nE 's/^- P1 blockers:[[:space:]]*(.*)[[:space:]]*$/\1/p' "$review_file" | head -n 1 | sed -E 's/[[:space:]]+$//' | tr '[:upper:]' '[:lower:]')"
+  manual="$(sed -nE 's/^-?[[:space:]]*Manual Override:[[:space:]]*(.*)[[:space:]]*$/\1/p' "$review_file" | head -n 1 | sed -E 's/[[:space:]]+$//')"
+
+  if [[ "$acceptance" == "pass" && "$p1" == "none" && -z "$manual" ]]; then
+    return 0
+  fi
+
+  reason_lc="$(printf '%s' "$manual" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | tr '[:upper:]' '[:lower:]')"
+  if [[ "$acceptance" == "manual_override" && "$source" == "manual-override" && "$p1" == "none" ]]; then
+    case "$reason_lc" in
+      ""|"-"|"..."|"n/a"|"na"|"none"|"todo"|"tbd"|"unavailable")
+        return 1
+        ;;
+      *)
+        return 0
+        ;;
+    esac
+  fi
+
+  return 1
 }
 
 require_finish_ready() {
@@ -256,9 +298,9 @@ require_finish_ready() {
   [[ -n "$review_file" && -f "$review_file" ]] || fail "active sprint review is missing"
 
   if declare -F workflow_review_recommends_pass >/dev/null 2>&1; then
-    workflow_review_recommends_pass "$review_file" || fail "$review_file does not recommend pass"
+    workflow_review_recommends_pass "$review_file" || fail "$review_file is not terminal review pass"
   else
-    review_recommends_pass_fallback "$review_file" || fail "$review_file does not recommend pass"
+    review_recommends_pass_fallback "$review_file" || fail "$review_file is not terminal review pass"
   fi
 
   if declare -F workflow_external_acceptance_pass >/dev/null 2>&1; then
@@ -308,7 +350,7 @@ pr_body_for_branch() {
 Automated repo-harness ship for \`${branch}\`.
 
 Checks:
-- Waza /check review artifact recommends pass.
+- Waza /check review artifact records Status: Reviewed and Recommendation: pass.
 - External acceptance is recorded in the sprint review.
 - \`bash scripts/verify-sprint.sh\` passed before \`contract-worktree.sh finish --no-merge\`.
 

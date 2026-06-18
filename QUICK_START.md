@@ -292,9 +292,11 @@ Prompt template：
 - inline：在当前 worktree 内按计划实现，并维护对应 plan/contract/review/notes 证据。
 - contract：进入命令返回的 worktreePath，在 contract worktree 内实现、验证和 finish。
 
-实现时严格按批准计划的 scope / non-scope 执行。完成后运行该 row 的 acceptance command
-和 repo workflow checks；需要外部验收时，用 cross-review skills 填写 External Acceptance
-Advice。只有验证通过后，才推进 row closeout。
+实现时严格按批准计划的 scope / non-scope 执行。把发现的边界场景写进 contract：
+预期成功场景放到 `commands_succeed`，预期失败场景放到 `commands_fail`。完成后运行
+该 row 的 acceptance command 和 repo workflow checks；需要外部验收时，用 cross-review
+skills 填写 External Acceptance Advice。只有 review 记录 `Status: Reviewed`、
+`Recommendation: pass`，且验证通过后，才推进 row closeout。
 
 最后报告 changed files、执行过的命令、verification results、blockers、row status，
 以及下一步是否需要 Step 3 closeout。
@@ -417,7 +419,9 @@ cross-review skills 用于让另一个 agent runtime 做独立审查：
 - 大 diff 合并前。
 - 涉及安全、数据、部署、hooks、MCP、安装脚本。
 - Waza `/check` 通过但你还想要第二视角。
-- `repo-harness-ship` 前需要 `External Acceptance Advice`。
+- `repo-harness-ship` 前需要 `External Acceptance Advice`；手动覆盖必须写成
+  `External Acceptance: manual_override`、`External Source: manual-override`、
+  `P1 blockers: none` 和具体的 `Manual Override:` 原因。
 
 边界：
 
@@ -508,7 +512,7 @@ repo-harness-check
 - 改了哪些文件，为什么这些文件在 scope 内。
 - 执行了哪些验证命令，结果是什么。
 - 是否更新了相关 `tasks/notes/`、`tasks/reviews/` 或 handoff。
-- Waza `/check` 或等价 review 的结论是什么。
+- Waza `/check` 或等价 review 是否已记录 `Status: Reviewed` 和 `Recommendation: pass`。
 - 是否需要 cross-review；如果需要，`External Acceptance Advice` 是否已记录。
 
 命令参考：

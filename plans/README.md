@@ -1,6 +1,6 @@
 # Active Improve Plans
 
-Generated and updated by the improve skill on 2026-06-17. This index tracks the
+Generated and updated by the improve skill on 2026-06-19. This index tracks the
 active project-scoped CodeGraph, Bun/Node runtime compatibility,
 package-boundary-free project bootstrap, post-0.5.5 real-acceptance diagnostic
 cleanup plans, the remaining project-scope doctor readiness cleanup, and the
@@ -11,6 +11,9 @@ projects do not accidentally treat repo-harness governance as product source.
 Plan 013 adds the missing canonical execution entrypoint for approved Sprint
 backlog rows so agents no longer have to reverse-engineer helper scripts,
 project-scoped runtime boundaries, and local-only workflow artifact sync.
+Plan 014 tightens the review, manual-override, and edge-case gates that decide
+whether a Sprint backlog row is actually safe to close after that canonical
+execution path runs.
 Older plans in this directory and `plans/archive/` remain historical context
 unless a future task explicitly reactivates them.
 
@@ -35,6 +38,7 @@ row when done.
 | 011 | Keep project-scoped installs out of downstream Git history | P1 | L | 005, 009, 010 | DONE (verified 2026-06-17; release gate passed for 0.5.9) |
 | 012 | Narrow local-only VCS policy with profiles and tracked whitelist | P1 | L | 011 | DONE (verified 2026-06-18; `check:release` passed for 0.5.11) |
 | 013 | Add a canonical approved Sprint row execution entrypoint | P1 | L | 006, 007, 012 | DONE (verified 2026-06-18; `check:release` passed for 0.5.14) |
+| 014 | Tighten review and edge-case gates | P1 | M | 013 | DONE (verified 2026-06-19; `check:release` passed for 0.5.15) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -85,6 +89,11 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   under project-scoped VCS profiles, which means linked worktrees need a
   project-scoped runtime bridge and explicit local workflow artifact sync back
   to the primary workspace.
+- 014 depends on 013 because the canonical Sprint row execution path made the
+  workflow easier to run, but the next real downstream run showed that closeout
+  gates still accept a review that is semantically unfinished and edge cases
+  that remain in prose. 014 tightens the exit criteria without changing the
+  row execution entrypoint itself.
 
 ## Findings considered and rejected
 
@@ -140,3 +149,13 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   worktrees to the primary workspace: rejected because it turns a workflow
   invariant into session memory. Plan 013 requires the closeout path to perform
   safe, row-owned artifact sync mechanically.
+- Treat the row 1 downstream wrapper/runtime findings as local-repo-harness
+  implementation bugs: rejected because those fixes belong in the downstream
+  project and runtime package. Plan 014 addresses the local-repo-harness escape
+  path: a row should not close while the review is still `Pending` or edge cases
+  are only written in notes.
+- Ban manual external-acceptance override entirely: rejected because constrained
+  operator overrides are still useful when external review infrastructure is
+  unavailable. Plan 014 keeps the escape hatch but requires explicit
+  `manual_override` status, `manual-override` source, no P1 blockers, and a
+  concrete reason.

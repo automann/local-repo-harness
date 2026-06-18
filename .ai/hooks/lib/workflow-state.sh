@@ -563,6 +563,7 @@ workflow_cleanup_candidate() {
 workflow_next_action() {
   local active_plan task_state total done next_pending contract_file review_file checks_file checks_error
   local external_status external_state external_reviewer external_source external_message expected_source
+  local review_gate review_state review_status review_recommendation review_message
   local target current_branch slug candidate branch worktree command message
 
   active_plan="$(get_active_plan || true)"
@@ -587,8 +588,10 @@ workflow_next_action() {
       return 0
     fi
 
-    if ! workflow_review_recommends_pass "$review_file"; then
-      printf 'check\t/check\tRun /check until %s records Recommendation: pass.\n' "$review_file"
+    review_gate="$(workflow_review_terminal_pass_status "$review_file")"
+    IFS=$'\t' read -r review_state review_status review_recommendation review_message <<< "$review_gate"
+    if [[ "$review_state" != "pass" ]]; then
+      printf 'check\t/check\t%s Run /check until %s records Status: Reviewed and Recommendation: pass.\n' "${review_message:-Sprint review is not terminal pass.}" "$review_file"
       return 0
     fi
 
@@ -1249,10 +1252,91 @@ workflow_write_run_summary() {
 EOF_RUN
 }
 
+workflow_review_field() {
+  local review_file="${1:-}"
+  local label="${2:-}"
+  [[ -n "$review_file" && -f "$review_file" && -n "$label" ]] || return 1
+  sed -nE "s/^> \\*\\*${label}\\*\\*:[[:space:]]*(.*)[[:space:]]*$/\\1/p" "$review_file" |
+    head -n 1 |
+    sed -E 's/[[:space:]]+$//'
+}
+
+workflow_review_terminal_status() {
+  local status="${1:-}"
+  local status_lc
+  status_lc="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+  case "$status_lc" in
+    reviewed|accepted|passed|complete|completed)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+workflow_review_terminal_pass_status() {
+  local review_file="${1:-}"
+  local review_status recommendation status_lc recommendation_lc
+
+  if [[ -z "$review_file" || ! -f "$review_file" ]]; then
+    printf 'fail\t\t\tMissing sprint review file: %s\n' "${review_file:-tasks/reviews/<slug>.review.md}"
+    return 0
+  fi
+
+  review_status="$(workflow_review_field "$review_file" "Status" || true)"
+  recommendation="$(workflow_review_field "$review_file" "Recommendation" || true)"
+  status_lc="$(printf '%s' "$review_status" | tr '[:upper:]' '[:lower:]')"
+  recommendation_lc="$(printf '%s' "$recommendation" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ -z "$recommendation_lc" ]]; then
+    printf 'fail\t%s\t%s\tSprint review recommendation is missing; expected pass.\n' "${review_status:-missing}" "missing"
+    return 0
+  fi
+
+  if [[ "$recommendation_lc" != "pass" ]]; then
+    printf 'fail\t%s\t%s\tSprint review recommendation is %s; expected pass.\n' "${review_status:-missing}" "$recommendation" "$recommendation"
+    return 0
+  fi
+
+  if [[ -z "$status_lc" ]]; then
+    printf 'fail\tmissing\t%s\tSprint review status is missing; expected Reviewed.\n' "$recommendation"
+    return 0
+  fi
+
+  if workflow_review_terminal_status "$review_status"; then
+    printf 'pass\t%s\t%s\tSprint review is terminal pass.\n' "$review_status" "$recommendation"
+    return 0
+  fi
+
+  if [[ "$status_lc" == "pending" ]]; then
+    printf 'fail\t%s\t%s\tSprint review status is Pending; expected Reviewed.\n' "$review_status" "$recommendation"
+    return 0
+  fi
+
+  printf 'fail\t%s\t%s\tSprint review status is %s; expected Reviewed.\n' "$review_status" "$recommendation" "$review_status"
+}
+
 workflow_review_recommends_pass() {
   local review_file="${1:-}"
-  [[ -n "$review_file" && -f "$review_file" ]] || return 1
-  grep -Eq '^> \*\*Recommendation\*\*:[[:space:]]*pass[[:space:]]*$' "$review_file"
+  local row status
+  row="$(workflow_review_terminal_pass_status "$review_file")"
+  status="${row%%$'\t'*}"
+  [[ "$status" == "pass" ]]
+}
+
+workflow_manual_override_placeholder() {
+  local value="${1:-}"
+  local value_lc
+  value_lc="$(printf '%s' "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | tr '[:upper:]' '[:lower:]')"
+  case "$value_lc" in
+    ""|"-"|"..."|"n/a"|"na"|"none"|"todo"|"tbd"|"unavailable")
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 workflow_external_acceptance_expected_reviewer() {
@@ -1339,15 +1423,10 @@ workflow_external_acceptance_status() {
   )"
   manual_override="$(
     printf '%s\n' "$section" |
-      sed -nE 's/^-?[[:space:]]*Manual Override:[[:space:]]*([^[:space:]].*)[[:space:]]*$/\1/p' |
+      sed -nE 's/^-?[[:space:]]*Manual Override:[[:space:]]*(.*)[[:space:]]*$/\1/p' |
       head -n 1 |
       sed -E 's/[[:space:]]+$//'
   )"
-
-  if [[ -n "$manual_override" ]]; then
-    printf 'manual_override\t%s\t%s\tManual override recorded for external acceptance: %s\n' "${reviewer:--}" "${source:--}" "$manual_override"
-    return 0
-  fi
 
   acceptance_lc="$(printf '%s' "$acceptance" | tr '[:upper:]' '[:lower:]')"
   reviewer_lc="$(printf '%s' "$reviewer" | tr '[:upper:]' '[:lower:]')"
@@ -1355,6 +1434,28 @@ workflow_external_acceptance_status() {
   expected_reviewer_lc="$(printf '%s' "$expected_reviewer" | tr '[:upper:]' '[:lower:]')"
   expected_source_lc="$(printf '%s' "$expected_source" | tr '[:upper:]' '[:lower:]')"
   p1_lc="$(printf '%s' "$p1_blockers" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$acceptance_lc" == "manual_override" ]]; then
+    if [[ "$source_lc" != "manual-override" ]]; then
+      printf 'fail\t%s\t%s\tManual override requires External Source: manual-override.\n' "${reviewer:--}" "${source:--}"
+      return 0
+    fi
+    if [[ "$p1_lc" != "none" ]]; then
+      printf 'fail\t%s\t%s\tManual override requires P1 blockers: none; got %s.\n' "${reviewer:--}" "${source:--}" "${p1_blockers:-missing}"
+      return 0
+    fi
+    if workflow_manual_override_placeholder "$manual_override"; then
+      printf 'fail\t%s\t%s\tManual override requires a concrete non-placeholder reason.\n' "${reviewer:--}" "${source:--}"
+      return 0
+    fi
+    printf 'manual_override\t%s\t%s\tManual override recorded for external acceptance: %s\n' "${reviewer:--}" "${source:--}" "$manual_override"
+    return 0
+  fi
+
+  if [[ -n "$manual_override" ]]; then
+    printf 'fail\t%s\t%s\tManual Override requires External Acceptance: manual_override.\n' "${reviewer:--}" "${source:--}"
+    return 0
+  fi
 
   if [[ "$acceptance_lc" != "pass" ]]; then
     printf 'fail\t%s\t%s\tExternal acceptance is %s; expected pass from %s via %s.\n' "${reviewer:--}" "${source:--}" "${acceptance:-missing}" "$expected_reviewer" "$expected_source"

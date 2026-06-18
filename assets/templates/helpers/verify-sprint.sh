@@ -39,6 +39,77 @@ else
   checks_file=".ai/harness/checks/latest.json"
 fi
 
+if ! declare -F workflow_review_field >/dev/null 2>&1; then
+  workflow_review_field() {
+    local review_file="${1:-}"
+    local label="${2:-}"
+    [[ -n "$review_file" && -f "$review_file" && -n "$label" ]] || return 1
+    sed -nE "s/^> \\*\\*${label}\\*\\*:[[:space:]]*(.*)[[:space:]]*$/\\1/p" "$review_file" |
+      head -n 1 |
+      sed -E 's/[[:space:]]+$//'
+  }
+fi
+
+if ! declare -F workflow_review_terminal_status >/dev/null 2>&1; then
+  workflow_review_terminal_status() {
+    local status="${1:-}"
+    local status_lc
+    status_lc="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
+    case "$status_lc" in
+      reviewed|accepted|passed|complete|completed)
+        return 0
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+fi
+
+if ! declare -F workflow_review_terminal_pass_status >/dev/null 2>&1; then
+  workflow_review_terminal_pass_status() {
+    local review_file="${1:-}"
+    local review_status recommendation status_lc recommendation_lc
+
+    if [[ -z "$review_file" || ! -f "$review_file" ]]; then
+      printf 'fail\t\t\tMissing sprint review file: %s\n' "${review_file:-tasks/reviews/<slug>.review.md}"
+      return 0
+    fi
+
+    review_status="$(workflow_review_field "$review_file" "Status" || true)"
+    recommendation="$(workflow_review_field "$review_file" "Recommendation" || true)"
+    status_lc="$(printf '%s' "$review_status" | tr '[:upper:]' '[:lower:]')"
+    recommendation_lc="$(printf '%s' "$recommendation" | tr '[:upper:]' '[:lower:]')"
+
+    if [[ -z "$recommendation_lc" ]]; then
+      printf 'fail\t%s\t%s\tSprint review recommendation is missing; expected pass.\n' "${review_status:-missing}" "missing"
+      return 0
+    fi
+
+    if [[ "$recommendation_lc" != "pass" ]]; then
+      printf 'fail\t%s\t%s\tSprint review recommendation is %s; expected pass.\n' "${review_status:-missing}" "$recommendation" "$recommendation"
+      return 0
+    fi
+
+    if [[ -z "$status_lc" ]]; then
+      printf 'fail\tmissing\t%s\tSprint review status is missing; expected Reviewed.\n' "$recommendation"
+      return 0
+    fi
+
+    if workflow_review_terminal_status "$review_status"; then
+      printf 'pass\t%s\t%s\tSprint review is terminal pass.\n' "$review_status" "$recommendation"
+      return 0
+    fi
+
+    if [[ "$status_lc" == "pending" ]]; then
+      printf 'fail\t%s\t%s\tSprint review status is Pending; expected Reviewed.\n' "$review_status" "$recommendation"
+      return 0
+    fi
+
+    printf 'fail\t%s\t%s\tSprint review status is %s; expected Reviewed.\n' "$review_status" "$recommendation" "$review_status"
+  }
+fi
+
 [[ -n "$contract_file" && -f "$contract_file" ]] || { echo "No active sprint contract found" >&2; exit 1; }
 
 generated_at="$(date '+%Y-%m-%dT%H:%M:%S%z')"
@@ -70,15 +141,13 @@ if [[ -n "$contract_output" ]]; then
 fi
 
 review_status="fail"
-review_message="Sprint review recommends pass."
-if [[ -z "$review_file" || ! -f "$review_file" ]]; then
-  review_message="Missing sprint review file."
-  echo "Missing sprint review file" >&2
-elif grep -Eq '^> \*\*Recommendation\*\*:[[:space:]]*pass([[:space:]]*)$' "$review_file"; then
-  review_status="pass"
-else
-  review_message="Sprint review does not recommend pass."
-  echo "Sprint review does not recommend pass" >&2
+review_metadata_status=""
+review_recommendation=""
+review_message="Sprint review is not terminal pass."
+review_row="$(workflow_review_terminal_pass_status "$review_file")"
+IFS=$'\t' read -r review_status review_metadata_status review_recommendation review_message <<< "$review_row"
+if [[ "$review_status" != "pass" ]]; then
+  echo "$review_message" >&2
 fi
 
 external_status="missing"
@@ -92,7 +161,7 @@ fi
 
 status="fail"
 exit_code=1
-if [[ "$contract_exit" -eq 0 && "$review_status" == "pass" ]]; then
+if [[ "$contract_exit" -eq 0 && "$review_status" == "pass" && ( "$external_status" == "pass" || "$external_status" == "manual_override" ) ]]; then
   status="pass"
   exit_code=0
 fi
@@ -112,6 +181,8 @@ if command -v jq >/dev/null 2>&1 && jq -e . "$contract_report" >/dev/null 2>&1; 
     --argjson contract_exit "$contract_exit" \
     --arg review_file "${review_file:-}" \
     --arg review_status "$review_status" \
+    --arg review_metadata_status "$review_metadata_status" \
+    --arg review_recommendation "$review_recommendation" \
     --arg review_message "$review_message" \
     --arg external_status "$external_status" \
     --arg external_reviewer "$external_reviewer" \
@@ -141,6 +212,8 @@ if command -v jq >/dev/null 2>&1 && jq -e . "$contract_report" >/dev/null 2>&1; 
       review: {
         file: $review_file,
         status: $review_status,
+        metadata_status: $review_metadata_status,
+        recommendation: $review_recommendation,
         message: $review_message
       },
       external_acceptance: {
@@ -174,6 +247,8 @@ else
   "review": {
     "file": "$(json_escape "${review_file:-}")",
     "status": "$(json_escape "$review_status")",
+    "metadata_status": "$(json_escape "$review_metadata_status")",
+    "recommendation": "$(json_escape "$review_recommendation")",
     "message": "$(json_escape "$review_message")"
   },
   "external_acceptance": {

@@ -36,7 +36,7 @@ When local-repo-harness is installed project-scoped, prefer the project shim:
    - After explicit approval, save the approved `$think` output to a temporary body file and run `local-repo-harness sprint execute-approved --body-file <approved-plan.md> --task <task>`. This captures the approved plan and projects it through the contract worktree flow.
    - `bash scripts/sprint-backlog.sh next` and `bash scripts/sprint-backlog.sh execute-approved ...` are compatibility helpers behind the CLI; use them only when the CLI shim is unavailable.
    - `bash scripts/sprint-backlog.sh start-task` remains a compatibility helper for reserving a row and generating a thin plan seed; its generated plan must still run `$think` before code edits.
-   - Execute the slice as usual (implement, `/check`, external acceptance, `bash scripts/contract-worktree.sh finish`); finish back-fills the backlog row warn-only.
+   - Execute the slice as usual (implement, `/check`, external acceptance, `bash scripts/contract-worktree.sh finish`); finish back-fills the backlog row warn-only. Before closeout, convert discovered edge cases into `commands_succeed` or `commands_fail` contract gates, then require review `Status: Reviewed`, `Recommendation: pass`, and passing or constrained manual-override external acceptance.
 5. Route `status`: report `bash scripts/sprint-backlog.sh status` plus the Active Sprint section of `tasks/current.md`; mutate nothing.
 6. After each completed task, re-read the sprint file before starting the next one; user edits to the backlog override stale session memory.
 
@@ -51,7 +51,7 @@ When local-repo-harness is installed project-scoped, prefer the project shim:
 
 - Does not implement backlog tasks itself; execution always flows through the existing plan -> contract -> worktree -> verify gates.
 - Does not set `> **Status**: Approved` without explicit user approval of the PRD and backlog.
-- Never bypasses `/check`, external acceptance, or `verify-sprint.sh` to mark a backlog row complete.
+- Never bypasses `/check`, terminal review status, external acceptance, or `verify-sprint.sh` to mark a backlog row complete.
 - Goal mode (`run --goal`, autonomous continuation) is not part of this command yet; treat requests for it as future work and say so.
 - Do not run two backlog tasks in parallel: concurrent contract rows merge-conflict on the sprint file's Updated and Execution Log lines; the backlog is an ordered queue.
 - `tasks/todos.md` stays the deferred-goal ledger; never write the backlog there.
