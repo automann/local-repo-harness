@@ -210,6 +210,56 @@ PRD 审过后：
 再进入 plan -> contract -> worktree -> verify 流程。
 ```
 
+## 执行 Sprint Backlog Row
+
+Sprint backlog 是有序路线图，不是一次性展开全部实现计划的地方。推荐节奏是
+just-in-time：每次只处理一个 row，先展开成详细计划，批准后执行，完成后再回到
+Sprint 文件选择下一行。
+
+一条 Sprint row 对应一次 `plan -> contract -> worktree -> verify` 循环。不要同时
+展开多个 row，也不要从 backlog row 直接跳进代码实现。
+
+### Step 1：把下一条 Row 展开成详细计划
+
+Prompt template：
+
+```text
+使用 repo-harness-sprint run 的 planning mode 处理当前 active sprint。
+解析下一条 pending Sprint backlog row，但不要编辑实现文件。
+读取 sprint 文件、Source PRD、docs/spec.md 和相关 repo context。
+使用 $think 把这一条 row 展开成 decision-complete detailed landing plan。
+计划必须包含 scope、可能触及的文件、风险、acceptance command、rollback/verification notes。
+明确这一条 row 只对应一次 plan -> contract -> worktree -> verify 循环。
+展示计划后停止，等待我批准。
+```
+
+### Step 2：按已批准计划执行当前 Row
+
+Prompt template：
+
+```text
+当前 Sprint backlog row 的详细计划已批准。
+只执行这一条 row，并通过 repo-harness plan -> contract -> worktree -> verify 流程推进。
+不要开始其他 backlog row。
+保留无关的本地变更。
+实现前先 capture/投射已批准计划，确保有对应 contract 和 worktree 边界。
+运行这一条 row 的 acceptance command 和 repo workflow checks。
+报告 changed files、verification results、blockers 和 row status。
+```
+
+### Step 3：关闭当前 Row，并准备下一条
+
+Prompt template：
+
+```text
+关闭当前 Sprint backlog row。
+重新从磁盘读取 sprint 文件，不使用旧 session 记忆。
+只有在 verification passed 后才更新 row status，并追加 execution log。
+运行 strict workflow checks，包括 sprint/task workflow 相关检查。
+然后报告下一条 pending row，并建议为它生成 just-in-time detailed plan。
+不要开始实现下一条 row，直到我明确批准。
+```
+
 ## Action Command Skills 怎么选
 
 这些 `repo-harness-*` 是 action command skills，不是普通 shell 命令。它们的作用是让 agent 进入对应的工作流协议。
