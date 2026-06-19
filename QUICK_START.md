@@ -21,6 +21,20 @@
 - `repo-harness-*` action command skills 应该什么时候使用。
 - Waza、Mermaid、cross-review skills、CodeGraph 应该怎样搭配，而不是互相替代。
 
+## 目录
+
+1. [一句话模型](#一句话模型) — repo-harness 的分层心智模型
+2. [装好后先确认](#装好后先确认) — 安装状态与就绪检查
+3. [VCS Profile 怎么选与切换](#vcs-profile-怎么选与切换) — 交付边界、切换与清理
+4. [按任务选入口](#按任务选入口) — 任务类型到入口的路由表
+5. [第一件任务怎么跑](#第一件任务怎么跑) — 普通改动 / Bug / 大需求
+6. [执行 Sprint Backlog Row](#执行-sprint-backlog-row) — just-in-time 三步循环
+7. [Action Command Skills 怎么选](#action-command-skills-怎么选) — `repo-harness-*` 速查表
+8. [外部 skills 和工具怎么搭配](#外部-skills-和工具怎么搭配) — Waza / CodeGraph / Mermaid / cross-review
+9. [常见组合](#常见组合) — 端到端流水线
+10. [不要这样用](#不要这样用) — 反模式清单
+11. [每次完成前的最小检查](#每次完成前的最小检查) — 收尾 checklist
+
 ## 一句话模型
 
 repo-harness 的核心不是某个 hook 或某个 skill，而是把 agent 工作流变成项目里的可审查文件：
@@ -34,7 +48,7 @@ repo-harness 的核心不是某个 hook 或某个 skill，而是把 agent 工作
 
 技能和工具只负责推进流程；真正的事实以这些文件为准。
 
-## 装好后的 10 分钟
+## 装好后先确认
 
 先在目标项目根目录确认安装状态：
 
@@ -52,11 +66,10 @@ bash scripts/check-agent-tooling.sh --json --host both
 ./.ai/harness/bin/codegraph status .
 ```
 
-再确认当前 VCS profile 是否符合这个项目的交付方式：
+上面的 `vcs audit` 会顺带报告当前 VCS profile 是否符合这个项目的交付方式。要确认
+profile 选择、切换策略或清理残留 tracked 文件，见下一节《VCS Profile 怎么选与切换》。
 
-```bash
-./.ai/harness/bin/local-repo-harness vcs audit --repo "$PWD" --json
-```
+## VCS Profile 怎么选与切换
 
 常用 profile：
 
@@ -119,7 +132,9 @@ git status --short --ignored --untracked-files=all
 `--vcs-scope local` 等价于 `project-local-install`，`--vcs-scope tracked` 等价于
 `self-host`。
 
-然后按任务类型选择入口：
+## 按任务选入口
+
+确认安装与交付边界后，按任务类型选择入口：
 
 | 你要做什么 | 首选入口 | 外部工具搭配 |
 | --- | --- | --- |
@@ -245,20 +260,20 @@ external acceptance、`verify-sprint` 和 `contract-worktree finish`。
 Prompt template：
 
 ```text
-使用 repo-harness-sprint 的 planning mode，为当前 active sprint 的下一条 pending row
-生成 just-in-time 详细计划。不要编辑实现文件，不要 capture plan，不要创建 worktree。
+你的任务：用 repo-harness-sprint 的 planning mode，把当前 active sprint 的下一条 pending row
+展开成一个 decision-complete 详细计划。这一轮只规划，不实现——不要编辑实现文件、不要 capture plan、
+不要创建 worktree。
 
-先运行：
+第 1 步，运行并以输出为准：
 ./.ai/harness/bin/local-repo-harness sprint next --json
 
-把命令返回的 sprintFile、rowIndex、task、mode、acceptance 当作本轮唯一任务。
-如果 sprintStatus 不是 Approved，或 pending=false，停止并报告原因，不要继续规划。
+把返回的 sprintFile、rowIndex、task、mode、acceptance 作为本轮唯一任务来源。
+若 sprintStatus 不是 Approved，或 pending=false：立即停止，只报告原因，不要继续规划。
 
-读取 sprintFile、Source PRD、docs/spec.md、tasks/current.md、.ai/harness/policy.json，
-以及与该 row 相关的代码/文档上下文。需要结构定位时可以用 CodeGraph，但不要把
-CodeGraph 查询结果当作测试或验收证据。
+第 2 步，读取上下文：sprintFile、Source PRD、docs/spec.md、tasks/current.md、.ai/harness/policy.json，
+以及与该 row 相关的代码/文档。可用 CodeGraph 做结构定位，但不要把 CodeGraph 结果当作测试或验收证据。
 
-使用 $think 把这一条 row 展开成 decision-complete detailed landing plan。计划必须包含：
+第 3 步，用 $think 产出 detailed landing plan，必须包含：
 - row 引用：sprintFile、rowIndex、task、mode
 - scope / non-scope
 - 可能触及的文件或模块
@@ -267,8 +282,8 @@ CodeGraph 查询结果当作测试或验收证据。
 - repo workflow checks
 - 风险、回滚面、verification notes
 
-明确说明：这一条 row 只对应一次 plan -> contract -> worktree -> verify 循环。
-展示计划后停止，等待我批准。不要同时展开下一条 row。
+收尾：把计划完整展示给我，然后停止等待我批准。这一条 row 只对应一次
+plan -> contract -> worktree -> verify 循环；不要同时展开下一条 row。
 ```
 
 ### Step 2：按已批准计划执行当前 Row
@@ -276,30 +291,29 @@ CodeGraph 查询结果当作测试或验收证据。
 Prompt template：
 
 ```text
-当前 Sprint backlog row 的详细计划已批准。只执行这一个 row，不要开始其他 backlog row。
-保留无关本地变更；如果发现无关 dirty files，只报告并绕开，不要清理或重置。
+你的任务：按已批准的详细计划，执行当前这一条 Sprint backlog row（只此一条，不要开始其他 row）。
+保留无关本地变更——发现无关 dirty files 只报告并绕开，不要清理或重置。
 
-先把批准后的详细计划完整写入一个临时 Markdown 文件，然后运行：
+第 1 步，把已批准计划完整写入一个临时 Markdown 文件，然后运行：
 ./.ai/harness/bin/local-repo-harness sprint execute-approved \
   --body-file <approved-plan.md> \
   --task <index-or-task> \
   --json
 
-从命令输出读取 planFile、contractFile、reviewFile、notesFile、worktreePath。后续只沿用
-这些文件和 worktree 边界，不要自行新建第二套计划或合同。
+从输出读取 planFile、contractFile、reviewFile、notesFile、worktreePath，之后只沿用这些文件和
+worktree 边界，不要另建第二套计划或合同。
 
-按 row mode 执行：
-- inline：在当前 worktree 内按计划实现，并维护对应 plan/contract/review/notes 证据。
-- contract：进入命令返回的 worktreePath，在 contract worktree 内实现、验证和 finish。
+第 2 步，按 row mode 执行：
+- inline：在当前 worktree 内实现，并维护对应 plan/contract/review/notes 证据。
+- contract：进入 worktreePath，在 contract worktree 内实现、验证并 finish。
 
-实现时严格按批准计划的 scope / non-scope 执行。把发现的边界场景写进 contract：
-预期成功场景放到 `commands_succeed`，预期失败场景放到 `commands_fail`。完成后运行
-该 row 的 acceptance command 和 repo workflow checks；需要外部验收时，用 cross-review
-skills 填写 External Acceptance Advice。只有 review 记录 `Status: Reviewed`、
-`Recommendation: pass`，且验证通过后，才推进 row closeout。
+第 3 步，严格按计划的 scope / non-scope 实现；把边界场景写进 contract——预期成功放
+`commands_succeed`，预期失败放 `commands_fail`。然后运行该 row 的 acceptance command 和
+repo workflow checks；需要外部验收时用 cross-review skills 填写 External Acceptance Advice。
+只有当 review 记录 `Status: Reviewed`、`Recommendation: pass` 且验证全部通过，才可进入 closeout。
 
-最后报告 changed files、执行过的命令、verification results、blockers、row status，
-以及下一步是否需要 Step 3 closeout。
+收尾：报告 changed files、执行过的命令、verification results、blockers、row status，并明确给出
+下一步——验证已通过则进入 Step 3 closeout，未通过则停在这里列出缺口。
 ```
 
 ### Step 3：关闭当前 Row，并准备下一条
@@ -307,26 +321,26 @@ skills 填写 External Acceptance Advice。只有 review 记录 `Status: Reviewe
 Prompt template：
 
 ```text
-关闭当前 Sprint backlog row，并准备下一条 row 的上下文。不要开始实现下一条 row。
+你的任务：关闭当前 Sprint backlog row 并为下一条准备上下文（不要开始实现下一条 row）。
 
-重新从磁盘读取 sprintFile、planFile、contractFile、reviewFile 和当前 git status；
-不要依赖旧 session 记忆。如果 verification 没有通过，停止并报告缺口，不要把 row 标成完成。
+第 1 步，从磁盘重新读取 sprintFile、planFile、contractFile、reviewFile 和当前 git status，
+不要依赖旧 session 记忆。若 verification 未通过：立即停止并报告缺口，不要把 row 标成完成。
 
-如果 verification 已通过：
-- 确认当前 row 已被标记完成，Plan cell 指向最终 plan 或 archived plan。
-- 确认 Execution Log 记录了本次执行结果。
-- 如果是 contract worktree，确认 contract-worktree finish 已完成 merge/closeout。
-- 如果 closeout 没有自动完成，只做最小必要的 sprint row 状态更新，并说明依据。
+第 2 步（verification 已通过时），确认 closeout 已落地：
+- 当前 row 已标记完成，Plan cell 指向最终或 archived plan。
+- Execution Log 记录了本次执行结果。
+- 若是 contract worktree，确认 contract-worktree finish 已完成 merge/closeout。
+- 若 closeout 未自动完成，只做最小必要的 sprint row 状态更新，并说明依据。
 
-如果 closeout 改变了 sprint/handoff/worktree/merge 状态，或 Step 2 的 checks
-不是在最终主 worktree 状态下运行的，重跑 closeout 复核 checks，例如：
+第 3 步，若 closeout 改变了 sprint/handoff/worktree/merge 状态，或 Step 2 的 checks 不是在最终
+主 worktree 状态下跑的，重跑复核 checks：
 ./.ai/harness/bin/local-repo-harness run verify-sprint
 ./.ai/harness/bin/local-repo-harness run check-task-workflow --strict
 
-然后再次运行：
+第 4 步，运行：
 ./.ai/harness/bin/local-repo-harness sprint next --json
 
-报告本 row 的最终状态、验证命令和结果、剩余风险，以及下一条 pending row 的 rowIndex/task/mode。
+收尾：报告本 row 的最终状态、验证命令和结果、剩余风险，以及下一条 pending row 的 rowIndex/task/mode。
 ```
 
 ## Action Command Skills 怎么选
