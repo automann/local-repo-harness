@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>repo-harness — Architecture Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ BLUEPRINT THEME (dark-first) ============ */
+  :root {
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #0c1622;
+    --surface: #122236;
+    --surface-2: #16293f;
+    --surface-elevated: #19324d;
+    --border: rgba(120, 160, 210, 0.16);
+    --border-bright: rgba(120, 160, 210, 0.34);
+    --grid-line: rgba(120, 165, 215, 0.07);
+    --text: #dce8f7;
+    --text-dim: #88a0bf;
+
+    --accent: #5fa3dd;
+    --accent-dim: rgba(95, 163, 221, 0.14);
+
+    /* four architecture domains */
+    --d1: #e0ad4d; --d1-dim: rgba(224, 173, 77, 0.14);   /* public-surface */
+    --d2: #5fa3dd; --d2-dim: rgba(95, 163, 221, 0.14);   /* workflow-engine */
+    --d3: #5cc09a; --d3-dim: rgba(92, 192, 154, 0.14);   /* runtime-harness */
+    --d4: #dd8060; --d4-dim: rgba(221, 128, 96, 0.14);   /* verification */
+
+    --green: #5cc09a; --green-dim: rgba(92, 192, 154, 0.13);
+    --red: #dd8060;   --red-dim: rgba(221, 128, 96, 0.13);
+    --amber: #e0ad4d; --amber-dim: rgba(224, 173, 77, 0.13);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #eaf1f8;
+      --surface: #ffffff;
+      --surface-2: #f3f7fc;
+      --surface-elevated: #ffffff;
+      --border: rgba(28, 62, 102, 0.15);
+      --border-bright: rgba(28, 62, 102, 0.28);
+      --grid-line: rgba(30, 74, 124, 0.06);
+      --text: #16293f;
+      --text-dim: #5b7491;
+
+      --accent: #2f72b0;
+      --accent-dim: rgba(47, 114, 176, 0.10);
+
+      --d1: #b07d22; --d1-dim: rgba(176, 125, 34, 0.12);
+      --d2: #2f72b0; --d2-dim: rgba(47, 114, 176, 0.12);
+      --d3: #2c8c6b; --d3-dim: rgba(44, 140, 107, 0.12);
+      --d4: #c25a3f; --d4-dim: rgba(194, 90, 63, 0.12);
+
+      --green: #2c8c6b; --green-dim: rgba(44, 140, 107, 0.12);
+      --red: #c25a3f;   --red-dim: rgba(194, 90, 63, 0.12);
+      --amber: #b07d22; --amber-dim: rgba(176, 125, 34, 0.12);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 30px 30px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    padding: 32px 40px 80px;
+  }
+
+  /* faint atmospheric glow at top */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 90% 50% at 50% -8%, var(--accent-dim) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeScale { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+  .animate { animation: fadeUp 0.45s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* ============ LAYOUT / TOC ============ */
+  .wrap { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: 184px 1fr; gap: 0 44px; position: relative; z-index: 1; }
+  .main { min-width: 0; }
+
+  .toc {
+    position: sticky; top: 24px; align-self: start; grid-row: 1 / -1;
+    padding: 14px 0; max-height: calc(100dvh - 48px); overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-title {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 2px; color: var(--text-dim); padding: 0 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-decoration: none;
+    padding: 5px 9px; border-radius: 5px; border-left: 2px solid transparent; transition: all 0.15s; line-height: 1.4; margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface-2); }
+  .toc a.active { color: var(--text); border-left-color: var(--accent); background: var(--accent-dim); }
+  .toc a span { color: var(--accent); }
+
+  /* ============ HEADER ============ */
+  .titleblock {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    border-bottom: 1px solid var(--border-bright); padding-bottom: 18px; margin-bottom: 30px; flex-wrap: wrap;
+  }
+  h1 { font-size: 40px; font-weight: 700; letter-spacing: -1.4px; line-height: 1.05; }
+  h1 .mark { color: var(--accent); }
+  .subtitle { color: var(--text-dim); font-family: var(--font-mono); font-size: 12.5px; margin-top: 8px; letter-spacing: 0.2px; }
+  .stamp {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); text-align: right; line-height: 1.7;
+    border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; background: var(--surface);
+  }
+  .stamp b { color: var(--text); font-weight: 600; }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 2.5px;
+    color: var(--text); display: flex; align-items: center; gap: 12px; margin: 46px 0 18px; scroll-margin-top: 24px;
+  }
+  .sec-head:first-of-type { margin-top: 8px; }
+  .sec-head .num {
+    font-size: 11px; color: var(--bg); background: var(--accent); width: 22px; height: 22px; border-radius: 5px;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700;
+  }
+  .sec-head .rule { flex: 1; height: 1px; background: var(--border); }
+
+  .lead { font-size: 16.5px; line-height: 1.7; color: var(--text); max-width: 78ch; margin-bottom: 8px; }
+  .lead .k { color: var(--accent); font-weight: 600; }
+  .note { font-size: 13.5px; color: var(--text-dim); line-height: 1.65; max-width: 80ch; margin: 14px 0; }
+  .note code, .lead code, td code, .ve-card code, li code {
+    font-family: var(--font-mono); font-size: 0.86em; background: var(--accent-dim); color: var(--accent);
+    padding: 1px 5px; border-radius: 3px; word-break: break-word;
+  }
+
+  /* ============ CARDS ============ */
+  .ve-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; }
+  .ve-card__label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.4px;
+    margin-bottom: 9px; display: flex; align-items: center; gap: 8px;
+  }
+  .ve-card__label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .ve-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; letter-spacing: -0.2px; }
+  .ve-card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  .node-list { list-style: none; font-size: 12.5px; line-height: 1.75; margin-top: 10px; }
+  .node-list li { padding-left: 15px; position: relative; color: var(--text-dim); }
+  .node-list li::before { content: '›'; color: var(--accent); font-weight: 700; position: absolute; left: 0; }
+  .node-list b { color: var(--text); font-weight: 600; }
+
+  /* KPI row */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 22px 0 8px; }
+  .kpi-card { background: var(--surface-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 18px 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.10); animation: fadeScale 0.4s ease-out both; animation-delay: calc(var(--i,0)*0.06s); }
+  .kpi-card__value { font-size: 34px; font-weight: 700; letter-spacing: -1.2px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi-card__label { font-family: var(--font-mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.3px; color: var(--text-dim); margin-top: 8px; }
+
+  /* domain grid */
+  .domain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .domain-grid .ve-card { border-top: 3px solid var(--dc); }
+  .domain-grid .ve-card .ve-card__label { color: var(--dc); }
+  .cap { background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; margin-top: 9px; }
+  .cap b { font-size: 12.5px; }
+  .cap .pfx { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); display: block; margin-top: 3px; line-height: 1.5; }
+
+  /* ============ HERO CARD (system boundary) ============ */
+  .ve-card--hero {
+    background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--accent) 60%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.14); padding: 22px 24px; margin-bottom: 4px;
+  }
+  .boundary { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; margin-top: 18px; }
+  .boundary > div { padding: 14px 16px; }
+  .boundary__is { background: var(--green-dim); }
+  .boundary__not { background: var(--red-dim); border-left: 1px solid var(--border); }
+  .boundary h4 { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+  .boundary__is h4 { color: var(--green); }
+  .boundary__not h4 { color: var(--red); }
+  .boundary ul { list-style: none; font-size: 12.5px; line-height: 1.7; }
+  .boundary li { padding-left: 16px; position: relative; color: var(--text-dim); }
+  .boundary__is li::before { content: '+'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .boundary__not li::before { content: '\2212'; position: absolute; left: 0; color: var(--red); font-weight: 700; }
+
+  /* umbrella hierarchy chain */
+  .chain { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; font-family: var(--font-mono); }
+  .chain .lvl { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; font-size: 11.5px; color: var(--text); }
+  .chain .arr { color: var(--accent); font-size: 14px; }
+  .chain .leaf { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .chain .leaf .lvl { font-size: 10.5px; color: var(--text-dim); background: transparent; border-style: dashed; }
+
+  /* ============ MERMAID ============ */
+  .diagram-shell { position: relative; margin: 6px 0 8px; }
+  .diagram-shell__hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px; opacity: 0.75; }
+  .mermaid-wrap {
+    position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 30px 22px; overflow: hidden; display: flex; justify-content: center; align-items: center; min-height: 420px; cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .zoom-controls {
+    position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; z-index: 10;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px;
+  }
+  .zoom-controls button {
+    width: 28px; height: 28px; border: none; background: transparent; color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 14px; cursor: pointer; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s;
+  }
+  .zoom-controls button:hover { background: var(--border); color: var(--text); }
+  .zoom-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding: 0 6px; white-space: nowrap; align-self: center; }
+  .mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 360px; }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 15px !important; }
+  .mermaid .edgeLabel { font-family: var(--font-mono) !important; font-size: 12px !important; }
+  .mermaid .edgeLabel .label, .mermaid .edgeLabel foreignObject div { background: transparent !important; }
+  .mermaid .node rect, .mermaid .node polygon, .mermaid .node circle { stroke-width: 1.5px !important; }
+
+  /* ============ TABLE ============ */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 6px 0; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.55; }
+  .data-table thead th {
+    background: var(--surface-2); font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); text-align: left; padding: 11px 14px; border-bottom: 2px solid var(--border-bright); white-space: nowrap; position: sticky; top: 0;
+  }
+  .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .data-table tbody tr:nth-child(even) { background: var(--accent-dim); }
+  .data-table tbody tr { transition: background 0.15s; }
+  .data-table tbody tr:hover { background: var(--surface-2); }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table .term { font-family: var(--font-mono); font-weight: 600; color: var(--text); white-space: nowrap; }
+  .data-table small { display: block; color: var(--text-dim); font-size: 11px; margin-top: 3px; }
+
+  .status { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 5px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px; }
+  .status--hard { background: var(--red-dim); color: var(--red); }
+  .status--soft { background: var(--accent-dim); color: var(--accent); }
+  .status--gate { background: var(--amber-dim); color: var(--amber); }
+
+  /* ============ LAYER STACK ============ */
+  .layers { display: flex; flex-direction: column; gap: 0; }
+  .layer {
+    position: relative; border: 1px solid var(--border); border-left: 3px solid var(--lc, var(--accent));
+    border-radius: 9px; padding: 14px 16px 14px 18px; background: var(--surface);
+    margin-left: calc(var(--depth, 0) * 26px); margin-bottom: 10px;
+  }
+  .layer__top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+  .layer__n { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--bg); background: var(--lc, var(--accent)); padding: 2px 7px; border-radius: 4px; }
+  .layer__name { font-weight: 600; font-size: 14px; }
+  .layer__cmds { font-family: var(--font-mono); font-size: 11px; color: var(--lc, var(--accent)); }
+  .layer p { font-size: 12.5px; color: var(--text-dim); }
+  .layer p code { font-size: 11px; }
+
+  /* ============ CALLOUT ============ */
+  .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 9px 9px 0; padding: 14px 18px; font-size: 13px; color: var(--text-dim); line-height: 1.65; margin: 18px 0; }
+  .callout b { color: var(--text); }
+
+  /* start-here numbered */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 15px 16px; position: relative; }
+  .step__n { font-family: var(--font-mono); font-size: 24px; font-weight: 700; color: var(--accent-dim); line-height: 1; position: absolute; top: 12px; right: 14px; color: color-mix(in srgb, var(--accent) 32%, transparent); }
+  .step h4 { font-family: var(--font-mono); font-size: 12.5px; margin-bottom: 5px; color: var(--text); }
+  .step p { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    body { padding: 0 20px 60px; padding-top: 0; }
+    .wrap { grid-template-columns: 1fr; gap: 0; }
+    .toc {
+      position: sticky; top: 0; z-index: 200; max-height: none; display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 10px 20px; margin: 0 -20px 8px; grid-row: auto;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title { display: none; }
+    .toc a { white-space: nowrap; flex-shrink: 0; border-left: none; border-bottom: 2px solid transparent; border-radius: 4px 4px 0 0; }
+    .toc a.active { border-left: none; border-bottom-color: var(--accent); }
+    .main { padding-top: 14px; }
+    .sec-head { scroll-margin-top: 54px; }
+    .titleblock { padding-top: 8px; }
+  }
+  @media (max-width: 760px) {
+    body { padding-left: 14px; padding-right: 14px; }
+    h1 { font-size: 30px; }
+    .domain-grid, .two-col, .three-col, .boundary { grid-template-columns: 1fr; }
+    .layer { margin-left: 0 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="toc" id="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#s1"><span>00</span> &nbsp;Overview</a>
+    <a href="#s2"><span>01</span> &nbsp;Domains &amp; Capabilities</a>
+    <a href="#s3"><span>02</span> &nbsp;Hook Runtime</a>
+    <a href="#s4"><span>03</span> &nbsp;Planning Lifecycle</a>
+    <a href="#s5"><span>04</span> &nbsp;CLI Install Layers</a>
+    <a href="#s6"><span>05</span> &nbsp;Drift Loop</a>
+    <a href="#s7"><span>06</span> &nbsp;Where State Lives</a>
+    <a href="#s8"><span>07</span> &nbsp;Glossary &amp; Start Here</a>
+  </nav>
+
+  <div class="main">
+
+    <div class="titleblock animate" style="--i:0">
+      <div>
+        <h1><span class="mark">repo</span>-harness</h1>
+        <div class="subtitle">repo-local workflow harness for AI coding agents &nbsp;·&nbsp; architecture map</div>
+      </div>
+      <div class="stamp">
+        PKG &nbsp;<b>local-repo-harness</b><br>
+        SCOPE &nbsp;<b>4 domains / 7 capabilities</b><br>
+        STATE &nbsp;<b>file-backed · no DB/server</b>
+      </div>
+    </div>
+
+    <!-- ============ 00 OVERVIEW ============ -->
+    <div class="sec-head animate" id="s1" style="--i:1"><span class="num">0</span> Overview &mdash; what this is <span class="rule"></span></div>
+
+    <div class="ve-card ve-card--hero animate" style="--i:2">
+      <div class="ve-card__label" style="color:var(--accent)">System boundary</div>
+      <p class="lead"><b>repo-harness</b> is <span class="k">not an app</span> — it is a meta-tool that makes AI-agent work <span class="k">resumable, reviewable, and repo-local</span>. Its job: inspect a target repo, install a <span class="k">file-backed workflow contract</span>, route public command skills, run <span class="k">guard hooks</span> during agent sessions, and verify the generated surfaces stay consistent. This checkout is <b>self-hosting</b> — it runs its own harness on itself (<code>hook_source: "repo"</code> pins <code>.ai/hooks/</code> as the live runtime).</p>
+      <div class="boundary">
+        <div class="boundary__is">
+          <h4>It is</h4>
+          <ul>
+            <li>A repo inspector + contract installer</li>
+            <li>A command-skill router (Claude + Codex)</li>
+            <li>An event-driven guard-hook runtime</li>
+            <li>A consistency verifier for generated surfaces</li>
+          </ul>
+        </div>
+        <div class="boundary__not">
+          <h4>It is not</h4>
+          <ul>
+            <li>A product runtime, server, or DB service</li>
+            <li>An agent gateway or MCP server</li>
+            <li>An installer of external host tools (Waza/gstack/gbrain)</li>
+            <li>A vendor of external skill bodies (mermaid)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card" style="--i:0"><div class="kpi-card__value" style="color:var(--d1)">4</div><div class="kpi-card__label">Architecture domains</div></div>
+      <div class="kpi-card" style="--i:1"><div class="kpi-card__value" style="color:var(--d2)">7</div><div class="kpi-card__label">Capabilities</div></div>
+      <div class="kpi-card" style="--i:2"><div class="kpi-card__value" style="color:var(--d3)">8</div><div class="kpi-card__label">Hook routes / 5 events</div></div>
+      <div class="kpi-card" style="--i:3"><div class="kpi-card__value" style="color:var(--d4)">20</div><div class="kpi-card__label">CLI subcommands</div></div>
+    </div>
+
+    <div class="callout animate" style="--i:3">
+      <b>The umbrella hierarchy</b> is echoed everywhere in the code. Every changed path resolves to its owning capability by <b>longest-prefix match</b> (same-length ties fail), and that capability owns the agent-facing context, durable progress, and active slice.
+      <div class="chain">
+        <span class="lvl">Project</span><span class="arr">→</span>
+        <span class="lvl" style="border-color:var(--d1)">architecture domain</span><span class="arr">→</span>
+        <span class="lvl" style="border-color:var(--d2)">capability</span><span class="arr">→</span>
+        <span class="leaf">
+          <span class="lvl">contract block</span>
+          <span class="lvl">workstream ledger</span>
+          <span class="lvl">todo slice</span>
+          <span class="lvl">source plan</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- ============ 01 DOMAINS ============ -->
+    <div class="sec-head" id="s2"><span class="num">1</span> Domains &amp; Capabilities &mdash; the static skeleton <span class="rule"></span></div>
+    <p class="note">Source of truth: <code>.ai/context/capabilities.json</code>. Each capability declares its path <code>prefixes</code>, an <code>architecture_module</code>, a <code>workstream_dir</code>, and exact <code>verification_hints</code>. The registry is the spine — context loading, drift routing, and review scope all key off it.</p>
+
+    <div class="domain-grid">
+      <div class="ve-card" style="--dc:var(--d1)">
+        <div class="ve-card__label">public-surface</div>
+        <p>The public router and command facades that agents enter through.</p>
+        <div class="cap"><b>root-router</b><span class="pfx">SKILL · README · AGENTS · CLAUDE.md · docs/spec.md</span></div>
+        <div class="cap"><b>action-commands</b><span class="pfx">assets/skill-commands</span></div>
+      </div>
+      <div class="ve-card" style="--dc:var(--d2)">
+        <div class="ve-card__label">workflow-engine</div>
+        <p>Installs/refreshes the file-backed contract; generates policy &amp; context.</p>
+        <div class="cap"><b>inspection-migration</b><span class="pfx">scripts/inspect-* · migrate-* · scripts/lib</span></div>
+        <div class="cap"><b>contract-assets</b><span class="pfx">workflow-contract.v1.json · policy.json · capabilities.json · context-map.json · templates</span></div>
+      </div>
+      <div class="ve-card" style="--dc:var(--d3)">
+        <div class="ve-card__label">runtime-harness</div>
+        <p>The live, event-driven guard runtime that fires during agent sessions.</p>
+        <div class="cap"><b>hook-adapters</b><span class="pfx">.ai/hooks · assets/hooks · host adapters · run-skill-hook.ts</span></div>
+      </div>
+      <div class="ve-card" style="--dc:var(--d4)">
+        <div class="ve-card__label">verification</div>
+        <p>Unit tests, smoke checks, eval fixtures, and advisory tooling probes.</p>
+        <div class="cap"><b>codegraph-readiness</b><span class="pfx">ensure-codegraph.sh · src/cli/tools/codegraph</span></div>
+        <div class="cap"><b>evals-checks</b><span class="pfx">tests/ · evals/ · check-task-*.sh</span></div>
+      </div>
+    </div>
+
+    <!-- ============ 02 HOOK RUNTIME ============ -->
+    <div class="sec-head" id="s3"><span class="num">2</span> Flow 1 &mdash; Hook runtime (live session) <span class="rule"></span></div>
+    <p class="note">The dynamic heart, owned by <code>runtime-harness/hook-adapters</code>. A host event flows through the adapter → CLI dispatch → guard scripts. The dispatch table is <b>code, not config</b>: <code>src/cli/hook/route-registry.ts</code> is authoritative.</p>
+
+    <section class="diagram-shell animate" style="--i:2">
+      <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom · drag to pan · double-click to fit · &#x26F6; opens full size</p>
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+          <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+          <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+          <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+          <span class="zoom-label">Loading...</span>
+        </div>
+        <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+      </div>
+      <script type="text/plain" class="diagram-source">
+        graph TD
+          HOST["Claude Code / Codex<br/>fires hook event"]
+          ADP["Host adapter<br/>~/.claude/settings.json<br/>~/.codex/hooks.json"]
+          ENTRY["local-repo-harness hook<br/>src/cli/hook-entry.ts"]
+          RT["hook/runtime.ts<br/>resolveRepoRoot · isOptIn<br/>getRoute · resolveHooksDir"]
+          REG["route-registry.ts<br/>event &#8594; route &#8594; scripts"]
+          RUN[".ai/hooks/run-hook.sh<br/>dispatch"]
+          GUARD["guard scripts<br/>pre-edit · stop-orchestrator<br/>session-start · post-edit · ..."]
+          STATE[(".ai/harness/*<br/>markers · events · checks")]
+
+          HOST --> ADP --> ENTRY --> RT
+          RT -.lookup.-> REG
+          RT --> RUN --> GUARD
+          GUARD <-->|read / write| STATE
+          GUARD -->|exit 0 allow / exit 2 block| HOST
+
+          classDef host fill:#16293f,stroke:#88a0bf,color:#dce8f7;
+          classDef cli fill:#16314a,stroke:#5fa3dd,color:#dce8f7;
+          classDef guard fill:#163b30,stroke:#5cc09a,color:#dce8f7;
+          classDef state fill:#3a2c1e,stroke:#e0ad4d,color:#f3e8d2;
+          class HOST,ADP host;
+          class ENTRY,RT,REG,RUN cli;
+          class GUARD guard;
+          class STATE state;
+      </script>
+    </section>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Event</th><th>Route</th><th>Guards</th><th>Enforces</th><th>Level</th></tr></thead>
+          <tbody>
+            <tr><td class="term">SessionStart</td><td><code>default</code></td><td><code>session-start-context</code>, <code>security-sentinel</code></td><td>Inject handoff/resume + pending-plan &amp; architecture context; trust scan</td><td><span class="status status--soft">advisory</span></td></tr>
+            <tr><td class="term">PreToolUse</td><td><code>edit</code></td><td><code>worktree-guard</code>, <code>pre-edit-guard</code></td><td>Block edits to <code>_ref/*</code> / <code>_ops/*</code>, out-of-<code>allowed_paths</code>, or implementation edits with no Approved/Executing plan</td><td><span class="status status--hard">hard block</span></td></tr>
+            <tr><td class="term">PreToolUse</td><td><code>subagent</code></td><td><code>subagent-return-channel-guard</code></td><td>Advise on Task/Agent dispatch without plan context</td><td><span class="status status--soft">advisory</span></td></tr>
+            <tr><td class="term">PostToolUse</td><td><code>edit · bash · always</code></td><td><code>post-edit-guard</code>, <code>post-bash</code>, <code>post-tool-observer</code></td><td>Continuous contract verify · architecture-drift queueing · trace logging</td><td><span class="status status--soft">advisory</span></td></tr>
+            <tr><td class="term">UserPromptSubmit</td><td><code>default</code></td><td><code>prompt-guard</code></td><td>Detect done-claims / plan-ready / worktree routing; owns shell-side plan state</td><td><span class="status status--soft">advisory</span></td></tr>
+            <tr><td class="term">Stop</td><td><code>default</code></td><td><code>stop-orchestrator</code></td><td>Plan-completeness gate — can block stop until a draft plan is captured</td><td><span class="status status--hard">hard block</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="callout">Key distinction: <b>hard gates live only at <code>pre-edit-guard</code> and <code>stop-orchestrator</code></b>; everything else advises. <code>.ai/hooks/</code> is the live runtime; <code>assets/hooks/</code> is the product-source mirror shipped on install.</div>
+
+    <!-- ============ 03 PLANNING ============ -->
+    <div class="sec-head" id="s4"><span class="num">3</span> Flow 2 &mdash; Planning &amp; execution lifecycle <span class="rule"></span></div>
+    <p class="note">Owned by <code>workflow-engine</code>, driven by <code>scripts/*</code> (callable manually, by the <code>sprint</code>/<code>run</code> CLI commands, or auto-triggered by hooks). The <b>chain of markers</b> is what prevents concurrent, out-of-scope work.</p>
+
+    <section class="diagram-shell">
+      <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom · drag to pan · double-click to fit · &#x26F6; opens full size</p>
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+          <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+          <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+          <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+          <span class="zoom-label">Loading...</span>
+        </div>
+        <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"></div></div>
+      </div>
+      <script type="text/plain" class="diagram-source">
+        graph TD
+          PRD["PRD<br/>plans/prds"]
+          SPR["Sprint backlog<br/>plans/sprints"]
+          ROW["Sprint row<br/>expanded via $think"]
+          PLAN["Plan<br/>plans/plan-*.md"]
+          G1{"GATE<br/>Evidence Contract +<br/>status = Approved"}
+          CON["Contract · Review · Notes<br/>tasks/contracts · reviews · notes"]
+          WT["Worktree<br/>codex/{slug}"]
+          IMPL["Implement<br/>verify-contract.sh (continuous)"]
+          G2{"GATE<br/>verify-sprint:<br/>review = pass"}
+          DONE["Merge to main<br/>Plan &#8594; Completed<br/>workstream advances"]
+
+          PRD --> SPR
+          SPR -->|"marker: active-sprint"| ROW
+          ROW --> PLAN
+          PLAN -->|"marker: active-plan"| G1
+          G1 -->|"capture-plan &#8594; plan-to-todo"| CON
+          CON --> WT
+          WT -->|"marker: active-worktree"| IMPL
+          IMPL --> G2
+          G2 -->|"contract-worktree finish"| DONE
+
+          classDef plan fill:#16314a,stroke:#5fa3dd,color:#dce8f7;
+          classDef gate fill:#3a2c1e,stroke:#e0ad4d,color:#f3e8d2;
+          classDef exec fill:#163b30,stroke:#5cc09a,color:#dce8f7;
+          classDef done fill:#2f1f18,stroke:#dd8060,color:#f6e3da;
+          class PRD,SPR,ROW,PLAN plan;
+          class G1,G2 gate;
+          class CON,WT,IMPL exec;
+          class DONE done;
+      </script>
+    </section>
+
+    <div class="two-col">
+      <div class="ve-card">
+        <div class="ve-card__label" style="color:var(--d2)">Producing scripts</div>
+        <ul class="node-list">
+          <li><b>new-spec / new-sprint</b> — seed PRD &amp; sprint backlog</li>
+          <li><b>sprint-backlog.sh</b> — reserve next row, expand via <code>$think</code></li>
+          <li><b>capture-plan.sh</b> — persist a decision-complete plan</li>
+          <li><b>plan-to-todo.sh</b> — emit contract + review + notes</li>
+          <li><b>contract-worktree.sh</b> — start / finish isolated worktree</li>
+        </ul>
+      </div>
+      <div class="ve-card">
+        <div class="ve-card__label" style="color:var(--amber)">Verification gates (= required checks)</div>
+        <ul class="node-list">
+          <li><b>check-task-workflow.sh --strict</b> — marker/plan consistency</li>
+          <li><b>check-task-sync.sh</b> — code changes must sync <code>tasks/</code></li>
+          <li><b>verify-contract.sh</b> — exit-criteria (continuous)</li>
+          <li><b>verify-sprint.sh</b> — review terminal + <code>pass</code></li>
+          <li>Derived status lands in <code>tasks/current.md</code> (snapshot, not a lock)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ 04 INSTALL LAYERS ============ -->
+    <div class="sec-head" id="s5"><span class="num">4</span> Flow 3 &mdash; CLI install layers <span class="rule"></span></div>
+    <p class="note">Entry: <code>src/cli/index.ts</code> (commander). The <code>local-repo-harness</code> binary installs in <b>four nested layers</b> — the model that makes its 20 subcommands legible. Targets are a registry of <code>AgentTarget</code> implementations (<code>claude</code> / <code>codex</code>); managed hook entries are tagged <code>REPO_HARNESS_MANAGED=1</code> for idempotent, user-hook-preserving install.</p>
+
+    <div class="layers">
+      <div class="layer" style="--lc:var(--d1); --depth:0">
+        <div class="layer__top"><span class="layer__n">L1</span><span class="layer__name">User / global runtime</span><span class="layer__cmds">init · update · setup</span></div>
+        <p>Writes global adapters + host context into <code>~/.claude/*</code> and <code>~/.codex/*</code>.</p>
+      </div>
+      <div class="layer" style="--lc:var(--d2); --depth:1">
+        <div class="layer__top"><span class="layer__n">L2</span><span class="layer__name">Repo-vendored runtime</span><span class="layer__cmds">bootstrap</span></div>
+        <p>Installs the harness package into <code>.ai/harness/tools/…</code> + a <code>.ai/harness/bin/</code> shim.</p>
+      </div>
+      <div class="layer" style="--lc:var(--d3); --depth:2">
+        <div class="layer__top"><span class="layer__n">L3</span><span class="layer__name">Repo adoption</span><span class="layer__cmds">adopt &nbsp;(+ reclaim-runtime)</span></div>
+        <p>Applies repo template into <code>.ai/</code>, <code>tasks/</code>, <code>plans/</code>, project adapters, and the <code>.gitignore</code> / VCS boundary.</p>
+      </div>
+      <div class="layer" style="--lc:var(--d4); --depth:3">
+        <div class="layer__top"><span class="layer__n">L4</span><span class="layer__name">Host adapters</span><span class="layer__cmds">install · uninstall</span></div>
+        <p>Writes the tagged hook entries into host config. Runtime selection (<code>auto</code> / <code>global-path</code> / <code>project-vendored-bun</code>) picks PATH vs a repo-vendored bun wrapper.</p>
+      </div>
+    </div>
+    <div class="callout">Utility &amp; read-only commands round out the surface: <code>status</code>, <code>doctor</code>, <code>migrate</code>, <code>security scan</code>, <code>run</code>, <code>sprint</code>, <code>brain</code>, <code>capability-context</code>, <code>docs</code>, <code>vcs</code>, <code>tools</code>.</div>
+
+    <!-- ============ 05 DRIFT LOOP ============ -->
+    <div class="sec-head" id="s6"><span class="num">5</span> Architecture drift loop <span class="rule"></span></div>
+    <p class="note">Keeps the skeleton honest. When agent-facing context files change, hooks feed a queue that agents later resolve. Ledger lives at <code>docs/architecture/index.md</code>.</p>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Stage</th><th>Script</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td class="term">Record</td><td><code>architecture-queue.sh</code></td><td>Record an architecture-sensitive edit as a request card</td></tr>
+            <tr><td class="term">Resolve path</td><td><code>capability-resolver.ts</code></td><td>Map changed paths → owning capability (longest-prefix)</td></tr>
+            <tr><td class="term">Project progress</td><td><code>workstream-sync.sh</code></td><td>Maintain durable <code>tasks/workstreams/&lt;domain&gt;/&lt;capability&gt;/</code>, project pointers only</td></tr>
+            <tr><td class="term">Sync context</td><td><code>context-contract-sync.sh</code></td><td>Update only the controlled architecture block in capability <code>AGENTS.md</code> / <code>CLAUDE.md</code></td></tr>
+            <tr><td class="term">Archive</td><td><code>archive-architecture-request.sh</code></td><td>Move handled requests to the dated request archive with linked artifacts</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ 06 STATE ============ -->
+    <div class="sec-head" id="s7"><span class="num">6</span> Where state lives &mdash; truth vs derived <span class="rule"></span></div>
+    <div class="three-col">
+      <div class="ve-card" style="--dc:var(--d2)">
+        <div class="ve-card__label" style="color:var(--d2)">Contract / config &middot; authoritative</div>
+        <p>Tracked. The behavioral source of truth.</p>
+        <ul class="node-list">
+          <li><code>.ai/harness/policy.json</code></li>
+          <li><code>.ai/harness/workflow-contract.json</code></li>
+          <li><code>.ai/context/capabilities.json</code></li>
+          <li><code>.ai/context/context-map.json</code></li>
+        </ul>
+      </div>
+      <div class="ve-card" style="--dc:var(--d3)">
+        <div class="ve-card__label" style="color:var(--d3)">Runtime state &middot; ephemeral</div>
+        <p>Ignored. Written by hooks during sessions.</p>
+        <ul class="node-list">
+          <li><code>.ai/harness/runs · events.jsonl</code></li>
+          <li><code>.ai/harness/checks · failures</code></li>
+          <li><code>.ai/harness/handoff · planning</code></li>
+          <li>markers: <code>active-plan · active-worktree · active-sprint</code></li>
+        </ul>
+      </div>
+      <div class="ve-card" style="--dc:var(--d4)">
+        <div class="ve-card__label" style="color:var(--d4)">Memory &middot; advisory</div>
+        <p>Overridden by current repo state + evidence.</p>
+        <ul class="node-list">
+          <li><code>docs/researches/</code></li>
+          <li><code>tasks/lessons.md</code></li>
+          <li><code>gbrain</code> (external knowledge)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ 07 GLOSSARY + START ============ -->
+    <div class="sec-head" id="s8"><span class="num">7</span> Glossary &amp; where to start reading <span class="rule"></span></div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="term">Domain / Capability</td><td>Top-level boundary (4) subdivided into capabilities (7). Source: <code>.ai/context/capabilities.json</code></td></tr>
+            <tr><td class="term">Longest-prefix match</td><td>How a changed path resolves to its owning capability. Same-length ties <b>fail</b></td></tr>
+            <tr><td class="term">Workflow contract</td><td><code>.ai/harness/workflow-contract.json</code> — the opt-in marker that enables the harness for a repo</td></tr>
+            <tr><td class="term">Task contract</td><td>A scoped execution commitment in <code>tasks/contracts/</code> with <code>allowed_paths</code></td></tr>
+            <tr><td class="term">Route</td><td>A stable <code>(event, route-id, matcher) → scripts</code> tuple — the hook dispatch contract</td></tr>
+            <tr><td class="term">Guard</td><td>A hook script that enforces (blocks) or advises a workflow invariant</td></tr>
+            <tr><td class="term">Adapter / Target</td><td>Host-level hook config; a <i>target</i> is the per-host implementation (<code>claude</code> vs <code>codex</code>)</td></tr>
+            <tr><td class="term">Plan → Sprint → PRD</td><td>The planning ladder: product intent → ordered backlog → decision-complete <code>plans/plan-*.md</code></td></tr>
+            <tr><td class="term">Worktree</td><td>Isolated git linked-worktree (<code>codex/&lt;slug&gt;</code>) where a contract executes</td></tr>
+            <tr><td class="term">Workstream</td><td>Durable multi-session ledger per capability under <code>tasks/workstreams/&lt;domain&gt;/&lt;capability&gt;/</code></td></tr>
+            <tr><td class="term">Marker</td><td>A pointer file under <code>.ai/harness/</code> gating a transition (<code>active-plan</code>, <code>active-worktree</code>, <code>active-sprint</code>)</td></tr>
+            <tr><td class="term">Reclaim</td><td>Auditing repo-local runtime copies to choose <i>central</i> (global PATH) vs <i>repo-pinned</i> dispatch</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:26px">Four files unlock the rest of the codebase:</p>
+    <div class="steps">
+      <div class="step"><div class="step__n">1</div><h4>capabilities.json</h4><p><code>.ai/context/capabilities.json</code> + <code>docs/architecture/index.md</code> — the skeleton &amp; boundaries.</p></div>
+      <div class="step"><div class="step__n">2</div><h4>route-registry.ts</h4><p><code>src/cli/hook/route-registry.ts</code> — the live hook dispatch contract.</p></div>
+      <div class="step"><div class="step__n">3</div><h4>index.ts</h4><p><code>src/cli/index.ts</code> — every CLI entry point at a glance.</p></div>
+      <div class="step"><div class="step__n">4</div><h4>policy.json</h4><p><code>.ai/harness/policy.json</code> — every behavioral knob, named.</p></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /wrap -->
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0c1622' : '#eaf1f8';
+
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    look: 'classic',
+    flowchart: { curve: 'basis', nodeSpacing: 44, rankSpacing: 56, padding: 10 },
+    themeVariables: {
+      fontFamily: "'Space Grotesk', system-ui, sans-serif",
+      fontSize: '15px',
+      primaryColor: isDark ? '#16293f' : '#ffffff',
+      primaryBorderColor: isDark ? '#5fa3dd' : '#2f72b0',
+      primaryTextColor: isDark ? '#dce8f7' : '#16293f',
+      lineColor: isDark ? '#7e95b3' : '#5b7491',
+      tertiaryColor: isDark ? '#122236' : '#f3f7fc',
+      clusterBkg: isDark ? '#122236' : '#f3f7fc',
+      clusterBorder: isDark ? '#2a3f59' : '#c3d3e6',
+      edgeLabelBackground: isDark ? '#0c1622' : '#eaf1f8',
+    }
+  });
+
+  const config = { fitPadding: 26, minHeight: 380, maxHeightPx: 980, maxHeightVh: 0.86, maxInitialZoom: 1.7, minZoom: 0.1, maxZoom: 6, zoomStep: 0.14, readabilityFloor: 0.6 };
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) return;
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight, rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg'); if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px'; svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2), aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; } else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit(); zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2; panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom); fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2; panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom), ratio = next / zoom;
+      panX = cx - ratio * (cx - panX); panY = cy - ratio * (cy - panY); zoom = next; fitMode = 'custom'; applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg'); if (!svg) return;
+      const clone = svg.cloneNode(true); clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Diagram</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:${pageBg};padding:40px;box-sizing:border-box}svg{max-width:100%;max-height:92vh;height:auto}</style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    async function render() {
+      try {
+        const code = source.textContent.trim(); if (!code) { label.textContent = 'Error: empty'; return; }
+        const id = 'd-' + Math.random().toString(36).slice(2, 9);
+        const { svg } = await mermaid.render(id, code);
+        canvas.innerHTML = svg;
+        const svgNode = canvas.querySelector('svg'); if (!svgNode) { label.textContent = 'Error: no SVG'; return; }
+        const size = readSvgNaturalSize(svgNode); svgW = size.w; svgH = size.h;
+        svgNode.removeAttribute('width'); svgNode.removeAttribute('height');
+        svgNode.style.maxWidth = 'none'; svgNode.style.display = 'block';
+        setAdaptiveHeight(); fitDiagram();
+      } catch (err) { console.error(err); label.textContent = 'Error: ' + (err.message || 'render failed'); }
+    }
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram, 'zoom-one': setOneToOne, 'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([a, h]) => wrap.querySelector(`[data-action="${a}"]`)?.addEventListener('click', h));
+    viewport.addEventListener('dblclick', fitDiagram);
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        zoomAround(e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep), e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) { e.preventDefault(); panX -= e.deltaX; panY -= e.deltaY; applyTransform(); }
+    }, { passive: false });
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning'); sx = e.clientX; sy = e.clientY; spx = panX; spy = panY; e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => wrap.classList.remove('is-panning')
+      };
+    });
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; }
+      else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left; touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault(); panX = spx + (e.touches[0].clientX - sx); panY = spy + (e.touches[0].clientY - sy); applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY, d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy); touchDist = d;
+      }
+    }, { passive: false });
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+    render();
+  }
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+
+<script>
+  /* scroll-spy TOC */
+  (function () {
+    const toc = document.getElementById('toc');
+    const links = toc.querySelectorAll('a');
+    const sections = [];
+    links.forEach(link => {
+      const id = link.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) sections.push({ id, el, link });
+    });
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          links.forEach(l => l.classList.remove('active'));
+          const match = sections.find(s => s.el === entry.target);
+          if (match) {
+            match.link.classList.add('active');
+            if (window.innerWidth <= 1000) match.link.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+          }
+        }
+      });
+    }, { rootMargin: '-8% 0px -82% 0px' });
+    sections.forEach(s => observer.observe(s.el));
+    links.forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const el = document.getElementById(link.getAttribute('href').slice(1));
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.replaceState(null, '', link.getAttribute('href')); }
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
