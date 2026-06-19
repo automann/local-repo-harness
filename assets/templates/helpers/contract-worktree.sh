@@ -83,6 +83,123 @@ workflow_sync_paths_for_plan() {
   printf '%s\n' ".ai/harness/handoff/resume.md"
 }
 
+generated_helper_hydration_paths() {
+  cat <<'EOF_HELPERS'
+scripts/new-spec.sh
+scripts/new-sprint.sh
+scripts/new-plan.sh
+scripts/capture-plan.sh
+scripts/plan-to-todo.sh
+scripts/contract-run.ts
+scripts/contract-worktree.sh
+scripts/ship-worktrees.sh
+scripts/archive-workflow.sh
+scripts/refresh-current-status.sh
+scripts/prepare-handoff.sh
+scripts/verify-contract.sh
+scripts/summarize-failures.sh
+scripts/verify-sprint.sh
+scripts/sprint-backlog.sh
+scripts/check-task-sync.sh
+scripts/check-deploy-sql-order.sh
+scripts/check-architecture-sync.sh
+scripts/check-agent-tooling.sh
+scripts/check-context-files.sh
+scripts/check-brain-manifest.sh
+scripts/sync-brain-docs.sh
+scripts/check-skill-version.ts
+scripts/select-agent-context-blocks.sh
+scripts/ensure-task-workflow.sh
+scripts/check-task-workflow.sh
+scripts/maintenance-triage.sh
+scripts/heartbeat-triage.sh
+scripts/switch-plan.sh
+scripts/workflow-contract.ts
+scripts/inspect-project-state.ts
+scripts/migrate-workflow-docs.ts
+scripts/migrate-project-template.sh
+scripts/capability-resolver.ts
+scripts/architecture-event.ts
+scripts/capability-config.ts
+scripts/architecture-queue.sh
+scripts/archive-architecture-request.sh
+scripts/context-contract-sync.sh
+scripts/workstream-sync.sh
+scripts/prepare-codex-handoff.sh
+scripts/codex-handoff-resume.sh
+scripts/lib/js-runtime.sh
+EOF_HELPERS
+}
+
+worktree_hydration_paths_for_plan() {
+  local plan_file="$1"
+
+  workflow_sync_paths_for_plan "$plan_file"
+  cat <<'EOF_CONTEXT'
+plans/archive/
+plans/prds/
+plans/sprints/
+tasks/
+docs/spec.md
+docs/architecture/
+docs/reference-configs/
+docs/researches/
+deploy/
+.ai/context/
+.ai/hooks/lib/
+.ai/harness/policy.json
+.ai/harness/workflow-contract.json
+.ai/harness/local-only-manifest.json
+.ai/harness/brain-manifest.json
+.ai/harness/sprint/
+.claude/templates/
+AGENTS.md
+CLAUDE.md
+EOF_CONTEXT
+  generated_helper_hydration_paths
+}
+
+worktree_context_dirs() {
+  cat <<'EOF_DIRS'
+plans/archive
+plans/prds
+plans/sprints
+tasks/archive
+tasks/contracts
+tasks/reviews
+tasks/notes
+tasks/workstreams
+docs/architecture
+docs/architecture/domains
+docs/architecture/modules
+docs/architecture/requests
+docs/architecture/snapshots
+docs/architecture/diagrams
+docs/reference-configs
+docs/researches
+deploy
+deploy/env
+deploy/scripts
+deploy/submissions
+deploy/runbooks
+deploy/release-checklists
+deploy/sql
+.ai/context
+.ai/harness
+.ai/harness/checks
+.ai/harness/failures
+.ai/harness/handoff
+.ai/harness/security
+.ai/harness/planning
+.ai/harness/architecture
+.ai/harness/worktrees
+.ai/harness/runs
+.ai/harness/triage
+.claude/templates
+scripts
+EOF_DIRS
+}
+
 is_safe_workflow_sync_path() {
   case "$1" in
     /*|*..*|.ai/harness/tools/*|.ai/harness/bin/*|.ai/harness/runtime/*|.ai/harness/codegraph-runtime/*|.agents/skills/*|.claude/skills/*|.codegraph/*|node_modules/*|*/node_modules/*|.codex/hooks.json|.codex/config.toml|.claude/settings.json|.mcp.json)
@@ -93,6 +210,37 @@ is_safe_workflow_sync_path() {
       ;;
   esac
   return 1
+}
+
+is_denied_worktree_context_path() {
+  case "$1" in
+    ""|.|/*|..|../*|*/../*|.git|.git/*|_ops|_ops/*|.env|.env.*|*/.env|*/.env.*|node_modules|node_modules/*|*/node_modules|*/node_modules/*|.ai/harness/tools|.ai/harness/tools/*|.ai/harness/bin/codegraph|.ai/harness/runtime|.ai/harness/runtime/*|.ai/harness/codegraph-runtime|.ai/harness/codegraph-runtime/*|.agents/skills|.agents/skills/*|.claude/skills|.claude/skills/*|.codegraph|.codegraph/*|.codex/hooks.json|.codex/config.toml|.claude/settings.json|.mcp.json)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+is_generated_helper_hydration_path() {
+  local wanted="$1"
+  local helper_path
+  while IFS= read -r helper_path; do
+    [[ "$helper_path" == "$wanted" ]] && return 0
+  done < <(generated_helper_hydration_paths)
+  return 1
+}
+
+is_safe_worktree_hydration_path() {
+  local rel="$1"
+
+  is_denied_worktree_context_path "$rel" && return 1
+  case "$rel" in
+    plans|plans/*|tasks|tasks/*|docs/spec.md|docs/architecture|docs/architecture/*|docs/reference-configs|docs/reference-configs/*|docs/researches|docs/researches/*|deploy|deploy/*|.ai/context|.ai/context/*|.ai/hooks/lib|.ai/hooks/lib/*|.ai/harness/policy.json|.ai/harness/workflow-contract.json|.ai/harness/local-only-manifest.json|.ai/harness/brain-manifest.json|.ai/harness/sprint|.ai/harness/sprint/*|.ai/harness/checks|.ai/harness/checks/*|.ai/harness/failures|.ai/harness/failures/*|.ai/harness/handoff|.ai/harness/handoff/*|.ai/harness/security|.ai/harness/security/*|.ai/harness/planning|.ai/harness/planning/*|.ai/harness/architecture|.ai/harness/architecture/*|.ai/harness/worktrees|.ai/harness/worktrees/*|.ai/harness/runs|.ai/harness/runs/*|.ai/harness/triage|.ai/harness/triage/*|.claude/templates|.claude/templates/*|AGENTS.md|CLAUDE.md|scripts|scripts/lib|scripts/lib/js-runtime.sh)
+      return 0
+      ;;
+  esac
+
+  is_generated_helper_hydration_path "$rel"
 }
 
 write_workflow_sync_manifest() {
@@ -253,6 +401,7 @@ write_start_metadata() {
   local metadata_dir=".ai/harness/worktrees"
   local metadata_file="${metadata_dir}/${slug}.json"
   local sync_manifest="${metadata_dir}/${slug}.sync"
+  local hydration_manifest="${metadata_dir}/${slug}.hydration"
 
   [[ -x "$source_runtime_bin" ]] || source_runtime_bin=""
   mkdir -p "$metadata_dir"
@@ -267,6 +416,7 @@ write_start_metadata() {
   "source_runtime_bin": "$(json_escape "$source_runtime_bin")",
   "base_branch": "$(json_escape "$base_branch")",
   "workflow_sync_manifest": "$(json_escape "$sync_manifest")",
+  "worktree_hydration_manifest": "$(json_escape "$hydration_manifest")",
   "started_at": "$(date '+%Y-%m-%dT%H:%M:%S%z')"
 }
 EOF_METADATA
@@ -346,21 +496,146 @@ EOF_BRIDGE
   echo "[ContractWorktree] Seeded project runtime bridge: $worktree_path/.ai/harness/bin/local-repo-harness"
 }
 
+normalize_worktree_hydration_path() {
+  local rel="${1#./}"
+  while [[ "$rel" == */ ]]; do
+    rel="${rel%/}"
+  done
+  printf '%s' "$rel"
+}
+
+record_worktree_hydration_manifest() {
+  local manifest_file="$1"
+  local checksum="$2"
+  local role="$3"
+  local rel="$4"
+
+  printf '%s\t%s\t%s\n' "$checksum" "$role" "$rel" >> "$manifest_file"
+}
+
+seed_one_worktree_context_file() {
+  local worktree_path="$1"
+  local rel="$2"
+  local manifest_file="$3"
+  local role="$4"
+  local source="$REPO_ROOT/$rel"
+  local target="$worktree_path/$rel"
+  local checksum
+
+  is_safe_worktree_hydration_path "$rel" || {
+    echo "[ContractWorktree] Warning: refusing to hydrate unsafe workflow context path: $rel" >&2
+    return 0
+  }
+  if [[ -L "$source" ]]; then
+    echo "[ContractWorktree] Warning: skipping symlink workflow context path: $rel" >&2
+    return 0
+  fi
+  [[ -f "$source" ]] || return 0
+
+  if [[ -e "$target" ]]; then
+    if [[ -f "$target" ]] && cmp -s "$source" "$target"; then
+      checksum="$(file_checksum "$source")"
+      record_worktree_hydration_manifest "$manifest_file" "$checksum" "$role" "$rel"
+      return 0
+    fi
+    if is_local_runtime_marker_path "$rel"; then
+      :
+    else
+      echo "contract-worktree: hydrated workflow context already exists with different content: $rel" >&2
+      return 1
+    fi
+  fi
+
+  mkdir -p "$(dirname "$target")"
+  cp "$source" "$target"
+  checksum="$(file_checksum "$source")"
+  record_worktree_hydration_manifest "$manifest_file" "$checksum" "$role" "$rel"
+  echo "[ContractWorktree] Hydrated local workflow context: $rel"
+}
+
+seed_one_worktree_context_dir() {
+  local worktree_path="$1"
+  local rel="$2"
+  local manifest_file="$3"
+  local role="$4"
+  local source="$REPO_ROOT/$rel"
+  local target="$worktree_path/$rel"
+  local nested nested_rel
+
+  is_safe_worktree_hydration_path "$rel" || {
+    echo "[ContractWorktree] Warning: refusing to hydrate unsafe workflow context dir: $rel" >&2
+    return 0
+  }
+  if [[ -L "$source" ]]; then
+    echo "[ContractWorktree] Warning: skipping symlink workflow context dir: $rel" >&2
+    return 0
+  fi
+
+  mkdir -p "$target"
+  record_worktree_hydration_manifest "$manifest_file" "__dir__" "$role" "$rel"
+  [[ -d "$source" ]] || return 0
+
+  while IFS= read -r nested; do
+    [[ -n "$nested" ]] || continue
+    case "$nested" in
+      "$REPO_ROOT"/*)
+        nested_rel="${nested#"$REPO_ROOT"/}"
+        ;;
+      *)
+        echo "[ContractWorktree] Warning: skipping workflow context outside repo root: $nested" >&2
+        continue
+        ;;
+    esac
+    nested_rel="$(normalize_worktree_hydration_path "$nested_rel")"
+    is_safe_worktree_hydration_path "$nested_rel" || continue
+    mkdir -p "$worktree_path/$nested_rel"
+    record_worktree_hydration_manifest "$manifest_file" "__dir__" "$role" "$nested_rel"
+  done < <(find "$source" -type d -print 2>/dev/null)
+
+  while IFS= read -r nested; do
+    [[ -n "$nested" ]] || continue
+    case "$nested" in
+      "$REPO_ROOT"/*)
+        nested_rel="${nested#"$REPO_ROOT"/}"
+        ;;
+      *)
+        echo "[ContractWorktree] Warning: skipping workflow context outside repo root: $nested" >&2
+        continue
+        ;;
+    esac
+    nested_rel="$(normalize_worktree_hydration_path "$nested_rel")"
+    seed_one_worktree_context_file "$worktree_path" "$nested_rel" "$manifest_file" "$role"
+  done < <(find "$source" -type f -print 2>/dev/null)
+}
+
 seed_local_workflow_context() {
   local worktree_path="$1"
   local plan_file="$2"
-  local rel source target
+  local slug="$3"
+  local manifest_file="$worktree_path/.ai/harness/worktrees/${slug}.hydration"
+  local rel source
+
+  mkdir -p "$(dirname "$manifest_file")"
+  : > "$manifest_file"
 
   while IFS= read -r rel; do
+    rel="$(normalize_worktree_hydration_path "$rel")"
     [[ -n "$rel" && "$rel" != "$plan_file" ]] || continue
-    is_safe_workflow_sync_path "$rel" || continue
     source="$REPO_ROOT/$rel"
-    target="$worktree_path/$rel"
-    [[ -f "$source" && ! -e "$target" ]] || continue
-    mkdir -p "$(dirname "$target")"
-    cp "$source" "$target"
-    echo "[ContractWorktree] Seeded local workflow context: $rel"
-  done < <(workflow_sync_paths_for_plan "$plan_file")
+    if [[ -d "$source" && ! -L "$source" ]]; then
+      seed_one_worktree_context_dir "$worktree_path" "$rel" "$manifest_file" "workflow-context"
+    else
+      seed_one_worktree_context_file "$worktree_path" "$rel" "$manifest_file" "workflow-context"
+    fi
+  done < <(worktree_hydration_paths_for_plan "$plan_file" | awk 'NF && !seen[$0]++')
+
+  while IFS= read -r rel; do
+    rel="$(normalize_worktree_hydration_path "$rel")"
+    [[ -n "$rel" ]] || continue
+    is_safe_worktree_hydration_path "$rel" || continue
+    mkdir -p "$worktree_path/$rel"
+    record_worktree_hydration_manifest "$manifest_file" "__dir__" "workflow-dir" "$rel"
+  done < <(worktree_context_dirs)
 }
 
 start_worktree() {
@@ -435,7 +710,7 @@ start_worktree() {
   fi
 
   copy_plan_into_worktree "$plan_file" "$worktree_path"
-  seed_local_workflow_context "$worktree_path" "$plan_file"
+  seed_local_workflow_context "$worktree_path" "$plan_file" "$slug"
   remove_copied_untracked_source_plan "$plan_file" "$worktree_path"
   clear_primary_markers_for_transferred_plan "$plan_file"
   seed_project_runtime_bridge "$worktree_path"

@@ -1,6 +1,6 @@
 {
-  "version": "0.5.15",
-  "templateVersion": "0.5.15",
+  "version": "0.5.16",
+  "templateVersion": "0.5.16",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -183,6 +183,10 @@
     {
       "version": "0.5.15",
       "description": "Tightens Sprint closeout gates with terminal review status, constrained manual override, and negative command contract checks"
+    },
+    {
+      "version": "0.5.16",
+      "description": "Hydrates contract worktrees with safe local workflow context so ephemeral-agent-workspace strict gates run without copying install-state artifacts"
     }
   ],
   "generatedProjectStamp": {

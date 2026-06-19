@@ -139,6 +139,46 @@ function writeActivePlan(cwd: string, planPath: string) {
   writeFileSync(join(cwd, ".ai/harness/active-worktree"), `${realpathSync(cwd)}\n`);
 }
 
+function copyWorkflowTemplates(cwd: string) {
+  mkdirSync(join(cwd, ".claude/templates"), { recursive: true });
+  for (const file of readdirSync(TEMPLATE_DIR).filter((name) => name.endsWith(".md"))) {
+    copyFileSync(join(TEMPLATE_DIR, file), join(cwd, ".claude/templates", file));
+  }
+}
+
+function writeReferenceConfigStubs(cwd: string) {
+  mkdirSync(join(cwd, "docs/reference-configs"), { recursive: true });
+  for (const file of [
+    "harness-overview.md",
+    "agentic-development-flow.md",
+    "external-tooling.md",
+    "sprint-contracts.md",
+    "heartbeat-triage.md",
+    "handoff-protocol.md",
+    "document-generation.md",
+    "global-working-rules.md",
+  ]) {
+    writeFileSync(join(cwd, "docs/reference-configs", file), `# ${file}\n`);
+  }
+}
+
+function writeBrainManifest(cwd: string) {
+  mkdirSync(join(cwd, ".ai/harness"), { recursive: true });
+  writeFileSync(
+    join(cwd, ".ai/harness/brain-manifest.json"),
+    JSON.stringify(
+      {
+        version: 1,
+        project: "fixture",
+        default_brain_path: "brain/fixture/",
+        entries: [],
+      },
+      null,
+      2
+    ) + "\n"
+  );
+}
+
 function evidenceContract(): string {
   return [
     "## Evidence Contract",
@@ -1195,6 +1235,277 @@ describe("Workflow helper scripts", () => {
       rmSync(cwd, { recursive: true, force: true });
     }
   });
+
+  test("contract-worktree start hydrates local-only workflow context for ephemeral agent workspaces", () => {
+    const cwd = tmpWorkspace("helper-contract-local-context-hydration");
+    const worktreePath = `${cwd}-wt-local-only`;
+    const sprintPath = "plans/sprints/20260619-0900-local-only.sprint.md";
+    const planPath = "plans/plan-20260619-0905-local-only.md";
+    const artifactStem = "20260619-0905-local-only";
+    try {
+      writeFileSync(
+        join(cwd, ".gitignore"),
+        [
+          ".ai/",
+          ".agents/",
+          ".claude/",
+          ".codex/",
+          ".codegraph/",
+          ".mcp.json",
+          "_ops/",
+          "docs/",
+          "node_modules/",
+          "plans/",
+          "scripts/",
+          "skills-lock.json",
+          "tasks/",
+        ].join("\n") + "\n"
+      );
+      writeFileSync(join(cwd, "README.md"), "# Product Fixture\n");
+      writeFileSync(join(cwd, "package.json"), JSON.stringify({ scripts: { typecheck: "test -f src/product.ts" } }, null, 2) + "\n");
+      mkdirSync(join(cwd, "src"), { recursive: true });
+      writeFileSync(join(cwd, "src/product.ts"), "export const product = true;\n");
+      initGitRepo(cwd);
+      commitAll(cwd, "init product only");
+
+      copyHelpers(cwd);
+      copyWorkflowTemplates(cwd);
+      mkdirSync(join(cwd, ".ai/hooks/lib"), { recursive: true });
+      copyFileSync(join(ROOT, "assets/hooks/lib/workflow-state.sh"), join(cwd, ".ai/hooks/lib/workflow-state.sh"));
+      mkdirSync(join(cwd, ".ai/harness/bin"), { recursive: true });
+      writeFileSync(
+        join(cwd, ".ai/harness/bin/local-repo-harness"),
+        `#!/bin/bash\nexec bun ${JSON.stringify(join(ROOT, "src/cli/index.ts"))} "$@"\n`
+      );
+      expect(run("chmod", ["+x", ".ai/harness/bin/local-repo-harness"], cwd).status).toBe(0);
+      writeFileSync(
+        join(cwd, ".ai/harness/policy.json"),
+        JSON.stringify(
+          {
+            worktree_strategy: {
+              auto_for_contract_tasks: true,
+              branch_prefix: "codex/",
+              base_branch: "main",
+              merge_back: { target: "main" },
+            },
+            vcs: { profile: "ephemeral-agent-workspace" },
+            upgrade: { strategy_version: 1 },
+            harness: {
+              helper_dispatch: {
+                strategy: "package-runner",
+                project_cli: ".ai/harness/bin/local-repo-harness",
+                repo_runtime_required: false,
+              },
+            },
+          },
+          null,
+          2
+        ) + "\n"
+      );
+      writeFileSync(join(cwd, ".ai/harness/local-only-manifest.json"), JSON.stringify({ version: 1, entries: [] }, null, 2) + "\n");
+      writeBrainManifest(cwd);
+      mkdirSync(join(cwd, ".ai/context"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/context/context-map.json"), JSON.stringify({ version: 1, root: "." }, null, 2) + "\n");
+      writeFileSync(join(cwd, ".ai/context/capabilities.json"), JSON.stringify({ version: 1, capabilities: [] }, null, 2) + "\n");
+      writeFileSync(join(cwd, ".ai/context/capability-source-map.json"), "{}\n");
+      mkdirSync(join(cwd, ".ai/harness/sprint"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), "# Harness Handoff\n");
+      writeFileSync(join(cwd, ".ai/harness/handoff/resume.md"), "# Codex Resume Packet\n");
+      writeFileSync(join(cwd, "docs/spec.md"), "# Product Spec\n");
+      mkdirSync(join(cwd, "docs/researches"), { recursive: true });
+      writeFileSync(join(cwd, "docs/researches/README.md"), "# Researches\n");
+      writeReferenceConfigStubs(cwd);
+      for (const dir of [
+        "deploy/env",
+        "deploy/scripts",
+        "deploy/submissions",
+        "deploy/runbooks",
+        "deploy/release-checklists",
+        "deploy/sql",
+      ]) {
+        mkdirSync(join(cwd, dir), { recursive: true });
+        writeFileSync(join(cwd, dir, ".gitkeep"), "");
+      }
+      writeFileSync(join(cwd, "deploy/README.md"), "# Deploy\n");
+      mkdirSync(join(cwd, "tasks/workstreams"), { recursive: true });
+      mkdirSync(join(cwd, "plans/prds"), { recursive: true });
+      mkdirSync(join(cwd, "plans/sprints"), { recursive: true });
+      writeFileSync(
+        join(cwd, "tasks/current.md"),
+        [
+          "# Current Status Snapshot",
+          "",
+          "<!-- generated-by: repo-harness refresh-current-status v1 -->",
+          "<!-- updated_at: 2026-06-19T09:00:00+0800 -->",
+          "<!-- stale_after: 24h -->",
+          "",
+          "> **Status**: Idle",
+          "> **Updated At**: 2026-06-19T09:00:00+0800",
+          "> **Source Branch**: main",
+          "> **Source Commit**: fixture",
+          "> **Target Branch**: main",
+          "> **Stale After**: 24h",
+          "> **Reason**: fixture",
+          "> **Derived From**: active-plan, workstreams, handoff, checks, git status",
+          "",
+          "Fixture status snapshot.",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, "tasks/lessons.md"), "# Lessons\n");
+      writeFileSync(
+        join(cwd, "plans/prds/20260619-0855-local-only.prd.md"),
+        [
+          "# PRD: Local Only",
+          "",
+          "> **Status**: Draft",
+          "",
+          "## Problem",
+          "Fixture PRD.",
+        ].join("\n")
+      );
+      writeFileSync(
+        join(cwd, sprintPath),
+        [
+          "# Sprint: Local Only",
+          "",
+          "> **Status**: Approved",
+          "> **Slug**: local-only",
+          "> **Created**: 2026-06-19 09:00",
+          "> **Updated**: 2026-06-19 09:00",
+          "> **Source PRD**: `plans/prds/20260619-0855-local-only.prd.md`",
+          "> **Source Spec**: `docs/spec.md`",
+          "> **Goal Mode**: incremental",
+          "",
+          "## PRD",
+          "",
+          "Real local-only workflow context problem.",
+          "",
+          "## Backlog",
+          "",
+          "| # | Status | Task | Mode | Acceptance | Plan |",
+          "|---|--------|------|------|------------|------|",
+          "| 1 | [ ] | local-only | contract | local context is hydrated | (pending) |",
+          "",
+          "## Execution Log",
+          "",
+          "| When | Task | Plan | Result |",
+          "|------|------|------|--------|",
+          "",
+        ].join("\n")
+      );
+      writeFileSync(join(cwd, ".ai/harness/sprint/active-sprint"), sprintPath);
+      writeFileSync(
+        join(cwd, planPath),
+        [
+          "# Plan: local-only",
+          "",
+          "> **Status**: Approved",
+          "> **Source Ref**: sprint:" + sprintPath + "#local-only",
+          "",
+          "## Scope",
+          "Hydrate local-only workflow context.",
+          "",
+          evidenceContract(),
+          "",
+          "## Task Breakdown",
+          "- [ ] Build local-only context proof",
+        ].join("\n")
+      );
+      mkdirSync(join(cwd, ".agents/skills/repo-harness"), { recursive: true });
+      mkdirSync(join(cwd, ".claude/skills/codex-review"), { recursive: true });
+      mkdirSync(join(cwd, ".ai/harness/tools/local-repo-harness/node_modules"), { recursive: true });
+      mkdirSync(join(cwd, ".codegraph"), { recursive: true });
+      mkdirSync(join(cwd, ".codex"), { recursive: true });
+      mkdirSync(join(cwd, "_ops"), { recursive: true });
+      mkdirSync(join(cwd, "node_modules"), { recursive: true });
+      writeFileSync(join(cwd, ".codex/hooks.json"), "{}\n");
+      writeFileSync(join(cwd, ".codex/config.toml"), "\n");
+      writeFileSync(join(cwd, ".mcp.json"), "{}\n");
+      writeFileSync(join(cwd, ".env"), "SECRET=fixture\n");
+
+      expect(run("git", ["ls-files", "docs/spec.md"], cwd).stdout.trim()).toBe("");
+      expect(run("git", ["ls-files", "scripts/check-task-workflow.sh"], cwd).stdout.trim()).toBe("");
+      expect(run("git", ["ls-files", ".ai/context/context-map.json"], cwd).stdout.trim()).toBe("");
+
+      const start = run("bash", ["scripts/contract-worktree.sh", "start", "--plan", planPath], cwd);
+      expect(start.status).toBe(0);
+      expect(start.stdout).toContain("Hydrated local workflow context");
+      expect(existsSync(join(worktreePath, "docs/spec.md"))).toBe(true);
+      expect(existsSync(join(worktreePath, "plans/prds/20260619-0855-local-only.prd.md"))).toBe(true);
+      expect(existsSync(join(worktreePath, ".ai/context/context-map.json"))).toBe(true);
+      expect(existsSync(join(worktreePath, "tasks/current.md"))).toBe(true);
+      expect(existsSync(join(worktreePath, ".claude/templates/contract.template.md"))).toBe(true);
+      expect(existsSync(join(worktreePath, "scripts/verify-contract.sh"))).toBe(true);
+      expect(existsSync(join(worktreePath, "scripts/check-task-workflow.sh"))).toBe(true);
+      expect(existsSync(join(worktreePath, ".ai/harness/bin/local-repo-harness"))).toBe(true);
+      expect(existsSync(join(worktreePath, ".ai/harness/tools/local-repo-harness/node_modules"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".agents/skills/repo-harness"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".claude/skills/codex-review"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".codex/hooks.json"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".codex/config.toml"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".mcp.json"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".codegraph"))).toBe(false);
+      expect(existsSync(join(worktreePath, "_ops"))).toBe(false);
+      expect(existsSync(join(worktreePath, "node_modules"))).toBe(false);
+      expect(existsSync(join(worktreePath, ".env"))).toBe(false);
+
+      const hydrationManifest = readFileSync(join(worktreePath, ".ai/harness/worktrees/local-only.hydration"), "utf-8");
+      expect(hydrationManifest).toContain("workflow-context\tdocs/spec.md");
+      expect(hydrationManifest).toContain("workflow-context\tscripts/check-task-workflow.sh");
+      const syncManifest = readFileSync(join(worktreePath, ".ai/harness/worktrees/local-only.sync"), "utf-8");
+      expect(syncManifest).not.toContain("docs/spec.md");
+      expect(syncManifest).not.toContain("scripts/check-task-workflow.sh");
+
+      const workflow = run("./.ai/harness/bin/local-repo-harness", ["run", "check-task-workflow", "--strict"], worktreePath);
+      if (workflow.status !== 0) {
+        throw new Error(`check-task-workflow failed\nstdout:\n${workflow.stdout}\nstderr:\n${workflow.stderr}`);
+      }
+      expect(workflow.status).toBe(0);
+      expect(workflow.stdout).toContain("[workflow] OK");
+
+      mkdirSync(join(worktreePath, "tests/unit"), { recursive: true });
+      writeFileSync(
+        join(worktreePath, "tests/unit/local-only.test.ts"),
+        'import { test, expect } from "bun:test";\n' +
+          'test("local-only", () => { expect(true).toBe(true); });\n'
+      );
+      writeFileSync(
+        join(worktreePath, `tasks/reviews/${artifactStem}.review.md`),
+        [
+          "# Sprint Review: local-only",
+          "",
+          "> **Status**: Reviewed",
+          "> **Recommendation**: pass",
+          "",
+          "## Scorecard",
+          "",
+          "| Dimension | Score | Notes |",
+          "|-----------|-------|-------|",
+          "| Functionality | 8/10 | hydrated |",
+          "",
+          "## Verification Evidence",
+          "- Hydrated local workflow context.",
+          "",
+          externalAcceptanceAdvice(),
+          "",
+        ].join("\n")
+      );
+      const verify = run("./.ai/harness/bin/local-repo-harness", ["run", "verify-sprint"], worktreePath, { HOOK_HOST: "claude" });
+      if (verify.status !== 0) {
+        throw new Error(`verify-sprint failed\nstdout:\n${verify.stdout}\nstderr:\n${verify.stderr}`);
+      }
+      expect(verify.status).toBe(0);
+      expect(verify.stdout).toContain("Sprint verification passed");
+      const checks = JSON.parse(readFileSync(join(worktreePath, ".ai/harness/checks/latest.json"), "utf-8"));
+      expect(checks.status).toBe("pass");
+      expect(checks.source).toBe("verify-sprint");
+    } finally {
+      run("git", ["worktree", "remove", "--force", worktreePath], cwd);
+      rmSync(worktreePath, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  }, 30000);
 
   test("contract-worktree finish syncs local-only sprint workflow artifacts back to the primary worktree", () => {
     const cwd = tmpWorkspace("helper-contract-local-workflow-sync");

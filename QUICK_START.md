@@ -80,6 +80,12 @@ profile 选择、切换策略或清理残留 tracked 文件，见下一节《VCS
 | `ephemeral-agent-workspace` | 临时/私有 agent workspace，`.agents/`、`.claude/`、`docs/`、`skills-lock.json` 都只留本地 |
 | `self-host` | 维护 local-repo-harness 自身或明确要把 harness 治理框架纳入源码 |
 
+如果使用 `ephemeral-agent-workspace`，这些治理和产品意图文件依然不会进 Git。
+但创建 contract worktree 时，`contract-worktree start` 会从主 worktree hydrate 安全的
+local workflow context，让 linked worktree 可以运行 strict workflow 和 sprint verification。
+它不会复制 managed tools、skills、CodeGraph index、MCP/host adapter 配置、`_ops/`、
+cache、`node_modules/` 或 secrets。
+
 切换前先预览，不要盲目 apply：
 
 ```bash
