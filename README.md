@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.15`
+当前版本：`local-repo-harness@0.5.16`
 
 ## 这个项目适合谁
 
@@ -322,6 +322,12 @@ VCS 判定顺序只有三层：
 | `tracked-governance` | local | tracked | tracked | 团队要提交治理文件 |
 | `ephemeral-agent-workspace` | local | local | local | 临时私有 agent workspace，`.agents/`、`.claude/`、`docs/`、`skills-lock.json` 全部留本地 |
 | `self-host` | tracked | tracked | tracked | 维护 local-repo-harness 自身 |
+
+使用 `ephemeral-agent-workspace` 时，治理和产品意图文件仍然是 Git local-only。
+创建 contract worktree 时，`contract-worktree start` 会从主 worktree hydrate 一份安全的
+本地 workflow context，让 `check-task-workflow --strict` 和 `verify-sprint` 能在 linked
+worktree 内运行。这个 hydration 不是完整仓库复制，不会复制 managed tools、skills、
+CodeGraph index、MCP/host adapter 配置、`_ops/`、cache、`node_modules/` 或 secrets。
 
 选择 profile 时，先判断这三个问题：
 

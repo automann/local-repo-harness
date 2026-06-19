@@ -13,7 +13,11 @@ backlog rows so agents no longer have to reverse-engineer helper scripts,
 project-scoped runtime boundaries, and local-only workflow artifact sync.
 Plan 014 tightens the review, manual-override, and edge-case gates that decide
 whether a Sprint backlog row is actually safe to close after that canonical
-execution path runs.
+execution path runs. Plan 015 fixes the next downstream gap exposed by
+`ephemeral-agent-workspace`: linked contract worktrees need a safe, profile-aware
+hydration of local workflow/product-intent context so strict repo workflow gates
+can run without making governance files tracked or copying install/runtime
+state.
 Older plans in this directory and `plans/archive/` remain historical context
 unless a future task explicitly reactivates them.
 
@@ -39,6 +43,7 @@ row when done.
 | 012 | Narrow local-only VCS policy with profiles and tracked whitelist | P1 | L | 011 | DONE (verified 2026-06-18; `check:release` passed for 0.5.11) |
 | 013 | Add a canonical approved Sprint row execution entrypoint | P1 | L | 006, 007, 012 | DONE (verified 2026-06-18; `check:release` passed for 0.5.14) |
 | 014 | Tighten review and edge-case gates | P1 | M | 013 | DONE (verified 2026-06-19; `check:release` passed for 0.5.15) |
+| 015 | Hydrate contract worktrees with profile-aware local workflow context | P1 | L | 013, 014 | DONE (verified 2026-06-19; `bun test` and `check:release` passed for 0.5.16) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -94,6 +99,15 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   gates still accept a review that is semantically unfinished and edge cases
   that remain in prose. 014 tightens the exit criteria without changing the
   row execution entrypoint itself.
+- 015 depends on 013 and 014 because the canonical Sprint row path and tighter
+  closeout gates now correctly require `check-task-workflow --strict` and
+  `verify-sprint` to run in the contract worktree. Real downstream use with the
+  `ephemeral-agent-workspace` VCS profile showed that `git worktree add` only
+  materializes tracked files, while the governance/product-intent files needed
+  by those gates are intentionally local-only. 015 hydrates just that safe local
+  workflow context into linked worktrees while continuing to keep install state,
+  managed tools, skills, host adapters, CodeGraph indexes, caches, `_ops`, and
+  secrets out.
 
 ## Findings considered and rejected
 
@@ -159,3 +173,10 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   unavailable. Plan 014 keeps the escape hatch but requires explicit
   `manual_override` status, `manual-override` source, no P1 blockers, and a
   concrete reason.
+- Solve the `ephemeral-agent-workspace` worktree failure by copying the entire
+  primary repo into each linked worktree: rejected because it can bring along
+  unrelated dirty product changes, install-state directories, managed package
+  `node_modules`, CodeGraph indexes, skills, MCP/host adapter config, `_ops`,
+  caches, and secret-like files. Plan 015 instead requires a narrow,
+  profile-aware hydration bundle for workflow/product-intent context plus a
+  runtime bridge for the project CLI.
