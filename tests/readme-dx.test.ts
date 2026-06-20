@@ -136,6 +136,8 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("不要把 `verify-sprint`");
     expect(quickStart).toContain("repo workflow/meta gate");
     expect(quickStart).toContain("`manual_checks` 只支持文档里的 verifier enum");
+    expect(quickStart).toContain("Step 2 的 workflow checks 不是在最终");
+    expect(quickStart).toContain("local-repo-harness run check-task-workflow --strict");
   });
 
   test("links to the hook operations reference and parity contract", () => {
