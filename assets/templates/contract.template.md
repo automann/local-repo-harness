@@ -27,6 +27,7 @@ Describe the exact outcome this task must deliver.
 - Run snapshots: `.ai/harness/runs/`
 - Scope gate: edit only paths listed under `allowed_paths`; update this contract before widening scope.
 - Completion gate: `scripts/verify-sprint.sh` must see this contract pass, the review status be terminal, the review recommendation be pass, and `## External Acceptance Advice` pass or record a constrained manual override.
+- Contract command boundary: `commands_succeed` and `commands_fail` are task-local machine checks only. Do not place `verify-sprint`, `check-task-workflow`, `contract-worktree finish`, `sprint execute-approved`, or other workflow/closeout commands inside `exit_criteria`.
 
 ## Allowed Paths
 
@@ -63,6 +64,14 @@ delegation:
 
 ## Exit Criteria (Machine Verifiable)
 
+`commands_succeed` and `commands_fail` should contain row acceptance commands
+and task-local edge cases. Run outer workflow gates after contract verification
+and record those results in the review, notes, or checks snapshot.
+`manual_checks` is a verifier-owned enum; keep only
+`"Evaluator review file is terminal pass"` unless verifier code adds another
+supported value. Put custom human assertions in Acceptance Notes or the review
+file, not `exit_criteria.manual_checks`.
+
 ```yaml
 exit_criteria:
   files_exist:
@@ -85,7 +94,7 @@ exit_criteria:
 ## Acceptance Notes (Human Review)
 
 - Functional behavior:
-- Edge cases covered by `commands_succeed` or `commands_fail`:
+- Edge cases covered by task-local `commands_succeed` or `commands_fail`:
 - Regression risks and residual ungated risk:
 
 ## Rollback Point

@@ -2849,6 +2849,71 @@ describe("Workflow helper scripts", () => {
     }
   });
 
+  test("verify-contract should reject meta workflow commands without executing them", () => {
+    const cwd = tmpWorkspace("helper-verify-contract-meta-command");
+    try {
+      mkdirSync(join(cwd, "scripts"), { recursive: true });
+      copyHelpers(cwd);
+
+      const contractPath = join(cwd, "task.contract.md");
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: meta-command",
+          "",
+          "> **Status**: Pending",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  commands_succeed:",
+          "    - ./.ai/harness/bin/local-repo-harness run verify-sprint",
+          "```",
+          "",
+        ].join("\n")
+      );
+
+      const succeed = spawnSync(
+        "bash",
+        ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict", "--report-file", "report.json"],
+        { cwd, encoding: "utf-8", env: process.env, timeout: 3000 }
+      );
+      expect(succeed.status).toBe(1);
+      expect(succeed.stdout).toContain("unsupported meta workflow command");
+      const succeedReport = readFileSync(join(cwd, "report.json"), "utf-8");
+      expect(succeedReport).toContain('"kind":"commands_succeed"');
+      expect(succeedReport).toContain('"passed":false');
+
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: meta-command",
+          "",
+          "> **Status**: Pending",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  commands_fail:",
+          "    - bash ./scripts/verify-sprint.sh",
+          "```",
+          "",
+        ].join("\n")
+      );
+
+      const fail = spawnSync(
+        "bash",
+        ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict", "--report-file", "report-fail.json"],
+        { cwd, encoding: "utf-8", env: process.env, timeout: 3000 }
+      );
+      expect(fail.status).toBe(1);
+      expect(fail.stdout).toContain("commands_fail unsupported meta workflow command");
+      const failReport = readFileSync(join(cwd, "report-fail.json"), "utf-8");
+      expect(failReport).toContain('"kind":"commands_fail"');
+      expect(failReport).toContain('"passed":false');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   test("verify-contract manual review check requires terminal review pass", () => {
     const cwd = tmpWorkspace("helper-verify-contract-terminal-review");
     try {
@@ -2912,6 +2977,27 @@ describe("Workflow helper scripts", () => {
       const deprecated = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
       expect(deprecated.status).toBe(1);
       expect(deprecated.stdout).toContain("manual_checks deprecated");
+
+      writeFileSync(
+        contractPath,
+        [
+          "# Task Contract: terminal-review",
+          "",
+          "> **Status**: Pending",
+          "> **Review File**: `tasks/reviews/task.review.md`",
+          "",
+          "```yaml",
+          "exit_criteria:",
+          "  manual_checks:",
+          "    - \"Retained smoke is not copied from fixture\"",
+          "```",
+          "",
+        ].join("\n")
+      );
+      const unsupported = run("bash", ["scripts/verify-contract.sh", "--contract", "task.contract.md", "--strict"], cwd);
+      expect(unsupported.status).toBe(1);
+      expect(unsupported.stdout).toContain('Supported manual_checks values: "Evaluator review file is terminal pass"');
+      expect(unsupported.stdout).toContain("Put custom human assertions in Acceptance Notes or the review file");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -73,6 +73,10 @@ describe("workflow-state shared library", () => {
         readFileSync(join(cwd, "pass.review.md"), "utf-8").replace("- P1 blockers: none", "- P1 blockers: release regression")
       );
       writeFileSync(
+        join(cwd, "pass-none-variant.review.md"),
+        readFileSync(join(cwd, "pass.review.md"), "utf-8").replace("- P1 blockers: none", "- P1 blockers: None.")
+      );
+      writeFileSync(
         join(cwd, "override.review.md"),
         [
           "# Sprint Review: demo",
@@ -96,6 +100,14 @@ describe("workflow-state shared library", () => {
         readFileSync(join(cwd, "override.review.md"), "utf-8").replace("- P1 blockers: none", "- P1 blockers: release regression")
       );
       writeFileSync(
+        join(cwd, "override-none-variant.review.md"),
+        readFileSync(join(cwd, "override.review.md"), "utf-8").replace("- P1 blockers: none", "- P1 blockers: None.")
+      );
+      writeFileSync(
+        join(cwd, "wrong-source-override.review.md"),
+        readFileSync(join(cwd, "override.review.md"), "utf-8").replace("> **External Source**: manual-override", "> **External Source**: codex-review")
+      );
+      writeFileSync(
         join(cwd, "implicit-override.review.md"),
         readFileSync(join(cwd, "override.review.md"), "utf-8").replace("> **External Acceptance**: manual_override", "> **External Acceptance**: unavailable")
       );
@@ -115,8 +127,11 @@ describe("workflow-state shared library", () => {
             'source "$WORKFLOW_STATE"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/pass.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/blocker.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/pass-none-variant.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/override.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/bad-override.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/override-none-variant.review.md"',
+            'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/wrong-source-override.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/implicit-override.review.md"',
             'HOOK_HOST=codex workflow_external_acceptance_status "$PWD/placeholder-override.review.md"',
           ].join("\n"),
@@ -134,8 +149,11 @@ describe("workflow-state shared library", () => {
       expect(res.status).toBe(0);
       expect(res.stdout).toContain("pass\tClaude\tclaude-review\tExternal acceptance passed.");
       expect(res.stdout).toContain("fail\tClaude\tclaude-review\tExternal acceptance has P1 blockers: release regression");
+      expect(res.stdout.match(/pass\tClaude\tclaude-review\tExternal acceptance passed\./g)?.length).toBe(2);
       expect(res.stdout).toContain("manual_override\t-\tmanual-override\tManual override recorded for external acceptance");
+      expect(res.stdout.match(/manual_override\t-\tmanual-override\tManual override recorded for external acceptance/g)?.length).toBe(2);
       expect(res.stdout).toContain("fail\t-\tmanual-override\tManual override requires P1 blockers: none; got release regression.");
+      expect(res.stdout).toContain("fail\t-\tcodex-review\tManual override requires External Source: manual-override; got codex-review.");
       expect(res.stdout).toContain("fail\t-\tmanual-override\tManual Override requires External Acceptance: manual_override.");
       expect(res.stdout).toContain("fail\t-\tmanual-override\tManual override requires a concrete non-placeholder reason.");
     } finally {

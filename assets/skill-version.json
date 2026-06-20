@@ -1,6 +1,6 @@
 {
-  "version": "0.5.16",
-  "templateVersion": "0.5.16",
+  "version": "0.5.17",
+  "templateVersion": "0.5.17",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -187,6 +187,10 @@
     {
       "version": "0.5.16",
       "description": "Hydrates contract worktrees with safe local workflow context so ephemeral-agent-workspace strict gates run without copying install-state artifacts"
+    },
+    {
+      "version": "0.5.17",
+      "description": "Blocks recursive workflow/meta commands inside task contracts and clarifies strict contract/review schema values in errors, templates, docs, and tests"
     }
   ],
   "generatedProjectStamp": {

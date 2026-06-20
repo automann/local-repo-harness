@@ -58,7 +58,7 @@ describe("Bootstrap Script Contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     const cliEntry = read("src/cli/index.ts");
     expect(pkg.name).toBe("local-repo-harness");
-    expect(pkg.version).toBe("0.5.16");
+    expect(pkg.version).toBe("0.5.17");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["local-repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin).not.toHaveProperty("repo-harness");
@@ -94,6 +94,8 @@ describe("Bootstrap Script Contracts", () => {
   test("create-project-dirs should create tasks primary files", () => {
     const content = read("scripts/create-project-dirs.sh");
     const sharedLib = read("scripts/lib/project-init-lib.sh");
+    const contractTemplate = read("assets/templates/contract.template.md");
+    const reviewTemplate = read("assets/templates/review.template.md");
     const contract = JSON.parse(read("assets/workflow-contract.v1.json"));
 
     expect(content).toContain("create_contract_directories");
@@ -195,8 +197,19 @@ describe("Bootstrap Script Contracts", () => {
     expect(contract.artifacts.requiredFiles).toContain(".ai/context/capability-source-map.json");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.requiredFiles).not.toContain(".ai/harness/context-budget/latest.json");
-    expect(read("assets/templates/review.template.md")).toContain("## External Acceptance Advice");
+    expect(contractTemplate).toContain("Contract command boundary");
+    expect(contractTemplate).toContain("commands_succeed` and `commands_fail` are task-local machine checks only");
+    expect(contractTemplate).toContain("Do not place `verify-sprint`, `check-task-workflow`, `contract-worktree finish`");
+    expect(contractTemplate).toContain("manual_checks` is a verifier-owned enum");
+    expect(contractTemplate).toContain('"Evaluator review file is terminal pass"');
+    expect(contractTemplate).toContain("commands_fail: []");
+    expect(sharedLib).toContain("Contract command boundary");
+    expect(sharedLib).toContain("manual_checks` is a verifier-owned enum");
+    expect(reviewTemplate).toContain("## External Acceptance Advice");
+    expect(reviewTemplate).toContain("Manual override must use exactly:");
+    expect(reviewTemplate).toContain("> **External Source**: manual-override");
     expect(sharedLib).toContain("## External Acceptance Advice");
+    expect(sharedLib).toContain("Manual override must use exactly:");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/capability-context/");

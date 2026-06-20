@@ -40,6 +40,12 @@ are complete. A passing closeout requires `Status: Reviewed` and
 - Acceptance checklist:
 - Manual Override:
 
+Manual override must use exactly:
+> **External Acceptance**: manual_override
+> **External Source**: manual-override
+- P1 blockers: none
+- Manual Override: <concrete reason>
+
 ## Behavior Diff Notes
 
 - ...
@@ -49,7 +55,7 @@ are complete. A passing closeout requires `Status: Reviewed` and
 - ...
 
 Only record unavoidable ungated risk here. Known P1/P2 edge cases should be
-represented in the contract as `commands_succeed` or `commands_fail`.
+represented in the contract as task-local `commands_succeed` or `commands_fail`.
 
 ## Scorecard
 

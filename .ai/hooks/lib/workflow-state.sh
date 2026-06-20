@@ -1339,6 +1339,12 @@ workflow_manual_override_placeholder() {
   esac
 }
 
+workflow_normalize_none_value() {
+  printf '%s' "${1:-}" |
+    sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[.。]+$//' |
+    tr '[:upper:]' '[:lower:]'
+}
+
 workflow_external_acceptance_expected_reviewer() {
   local host="${HOOK_HOST:-}"
 
@@ -1433,11 +1439,11 @@ workflow_external_acceptance_status() {
   source_lc="$(printf '%s' "$source" | tr '[:upper:]' '[:lower:]')"
   expected_reviewer_lc="$(printf '%s' "$expected_reviewer" | tr '[:upper:]' '[:lower:]')"
   expected_source_lc="$(printf '%s' "$expected_source" | tr '[:upper:]' '[:lower:]')"
-  p1_lc="$(printf '%s' "$p1_blockers" | tr '[:upper:]' '[:lower:]')"
+  p1_lc="$(workflow_normalize_none_value "$p1_blockers")"
 
   if [[ "$acceptance_lc" == "manual_override" ]]; then
     if [[ "$source_lc" != "manual-override" ]]; then
-      printf 'fail\t%s\t%s\tManual override requires External Source: manual-override.\n' "${reviewer:--}" "${source:--}"
+      printf 'fail\t%s\t%s\tManual override requires External Source: manual-override; got %s.\n' "${reviewer:--}" "${source:--}" "${source:-missing}"
       return 0
     fi
     if [[ "$p1_lc" != "none" ]]; then

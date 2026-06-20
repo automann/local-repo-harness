@@ -17,7 +17,10 @@ execution path runs. Plan 015 fixes the next downstream gap exposed by
 `ephemeral-agent-workspace`: linked contract worktrees need a safe, profile-aware
 hydration of local workflow/product-intent context so strict repo workflow gates
 can run without making governance files tracked or copying install/runtime
-state.
+state. Plan 016 is the 0.5.17 follow-up from real Sprint row execution: make
+recursive workflow/meta commands invalid inside task contracts, and make the
+strict contract/review schema visible through errors, templates, docs, and
+tests so agents do not have to infer exact enum values by failed snapshots.
 Older plans in this directory and `plans/archive/` remain historical context
 unless a future task explicitly reactivates them.
 
@@ -44,6 +47,7 @@ row when done.
 | 013 | Add a canonical approved Sprint row execution entrypoint | P1 | L | 006, 007, 012 | DONE (verified 2026-06-18; `check:release` passed for 0.5.14) |
 | 014 | Tighten review and edge-case gates | P1 | M | 013 | DONE (verified 2026-06-19; `check:release` passed for 0.5.15) |
 | 015 | Hydrate contract worktrees with profile-aware local workflow context | P1 | L | 013, 014 | DONE (verified 2026-06-19; `bun test` and `check:release` passed for 0.5.16) |
+| 016 | Make contract schema failures explicit and prevent recursive workflow gates | P1 | M | 014, 015 | DONE (verified 2026-06-20; `bun test` and `check:release` passed for 0.5.17) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -108,6 +112,14 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   workflow context into linked worktrees while continuing to keep install state,
   managed tools, skills, host adapters, CodeGraph indexes, caches, `_ops`, and
   secrets out.
+- 016 depends on 014 because it tightens the same contract/review gate surface:
+  plan 014 added terminal review, constrained manual override, and
+  `commands_fail`, while the 2026-06-20 downstream row 6 run showed agents can
+  still put outer workflow checks such as `verify-sprint` inside
+  `commands_succeed` and can mistake strict enum fields for free-form prose.
+  It depends on 015 operationally because that downstream proof came from
+  hydrated contract worktrees running the real gates under project-scoped
+  installs.
 
 ## Findings considered and rejected
 
@@ -180,3 +192,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   caches, and secret-like files. Plan 015 instead requires a narrow,
   profile-aware hydration bundle for workflow/product-intent context plus a
   runtime bridge for the project CLI.
+- Make `manual_checks` a free-form human checklist: rejected because
+  `manual_checks` is executed by `verify-contract` and should remain a small
+  verifier-owned enum. Plan 016 keeps custom human evidence in Acceptance Notes
+  or review files and improves errors/templates so agents see that boundary.
+- Put `verify-sprint` under `commands_succeed` as a standard repo workflow
+  check: rejected because `verify-sprint` already runs `verify-contract`, which
+  executes `commands_succeed`; putting it inside the contract creates
+  self-recursion. Plan 016 blocks this class of meta workflow command and keeps
+  workflow checks as outer closeout gates.

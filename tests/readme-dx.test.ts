@@ -133,6 +133,9 @@ describe("README DX contract", () => {
     expect(quickStart).toContain("`--vcs-scope local` 等价于 `project-local-install`");
     expect(quickStart).toContain("tracked_whitelist");
     expect(quickStart).toContain("没有 `local_only_whitelist`");
+    expect(quickStart).toContain("不要把 `verify-sprint`");
+    expect(quickStart).toContain("repo workflow/meta gate");
+    expect(quickStart).toContain("`manual_checks` 只支持文档里的 verifier enum");
   });
 
   test("links to the hook operations reference and parity contract", () => {

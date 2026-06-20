@@ -35,6 +35,58 @@ json_escape() {
   printf '%s' "$value"
 }
 
+contract_command_is_meta_workflow() {
+  local command="$1"
+  local normalized prefix
+  normalized="$(
+    printf '%s' "$command" |
+      sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]+/ /g'
+  )"
+
+  local -a prefixes=(
+    "bash scripts/verify-sprint.sh"
+    "bash ./scripts/verify-sprint.sh"
+    "scripts/verify-sprint.sh"
+    "./scripts/verify-sprint.sh"
+    "bash scripts/check-task-workflow.sh"
+    "bash ./scripts/check-task-workflow.sh"
+    "scripts/check-task-workflow.sh"
+    "./scripts/check-task-workflow.sh"
+    "local-repo-harness run verify-sprint"
+    "./.ai/harness/bin/local-repo-harness run verify-sprint"
+    "bun --bun local-repo-harness run verify-sprint"
+    "bun --bun ./.ai/harness/bin/local-repo-harness run verify-sprint"
+    "local-repo-harness run check-task-workflow"
+    "./.ai/harness/bin/local-repo-harness run check-task-workflow"
+    "bun --bun local-repo-harness run check-task-workflow"
+    "bun --bun ./.ai/harness/bin/local-repo-harness run check-task-workflow"
+    "local-repo-harness sprint execute-approved"
+    "./.ai/harness/bin/local-repo-harness sprint execute-approved"
+    "bun --bun local-repo-harness sprint execute-approved"
+    "bun --bun ./.ai/harness/bin/local-repo-harness sprint execute-approved"
+    "local-repo-harness sprint next"
+    "./.ai/harness/bin/local-repo-harness sprint next"
+    "bun --bun local-repo-harness sprint next"
+    "bun --bun ./.ai/harness/bin/local-repo-harness sprint next"
+    "bash scripts/contract-worktree.sh finish"
+    "bash ./scripts/contract-worktree.sh finish"
+    "scripts/contract-worktree.sh finish"
+    "./scripts/contract-worktree.sh finish"
+    "local-repo-harness run contract-worktree finish"
+    "./.ai/harness/bin/local-repo-harness run contract-worktree finish"
+    "bun --bun local-repo-harness run contract-worktree finish"
+    "bun --bun ./.ai/harness/bin/local-repo-harness run contract-worktree finish"
+  )
+
+  for prefix in "${prefixes[@]}"; do
+    if [[ "$normalized" == "$prefix" || "$normalized" == "$prefix "* ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 resolve_bun_bin() {
   if [[ -n "${BUN_BIN:-}" ]] && [[ -x "${BUN_BIN}" ]]; then
     printf '%s' "$BUN_BIN"
@@ -595,6 +647,11 @@ fi
 
 if ((${#commands_succeed[@]})); then
   for cmd in "${commands_succeed[@]}"; do
+    if contract_command_is_meta_workflow "$cmd"; then
+      fail "commands_succeed" "$cmd" "commands_succeed unsupported meta workflow command: $cmd (run verify-sprint and closeout workflow checks outside exit_criteria)"
+      continue
+    fi
+
     if bash -lc "$cmd" >/tmp/contract-command.log 2>&1; then
       pass "commands_succeed" "$cmd" "commands_succeed: $cmd"
     else
@@ -605,6 +662,11 @@ fi
 
 if ((${#commands_fail[@]})); then
   for cmd in "${commands_fail[@]}"; do
+    if contract_command_is_meta_workflow "$cmd"; then
+      fail "commands_fail" "$cmd" "commands_fail unsupported meta workflow command: $cmd (run verify-sprint and closeout workflow checks outside exit_criteria)"
+      continue
+    fi
+
     if bash -lc "$cmd" >/tmp/contract-command.log 2>&1; then
       fail "commands_fail" "$cmd" "commands_fail unexpectedly succeeded: $cmd"
     else
@@ -631,7 +693,7 @@ if ((${#manual_checks[@]})); then
   for check in "${manual_checks[@]}"; do
     case "$check" in
       "Evaluator review file recommends pass")
-        fail "manual_checks" "$check" "manual_checks deprecated: use Evaluator review file is terminal pass"
+        fail "manual_checks" "$check" "manual_checks deprecated: use \"Evaluator review file is terminal pass\""
         ;;
       "Evaluator review file is terminal pass")
         review_row="$(workflow_review_terminal_pass_status "$review_file")"
@@ -643,7 +705,7 @@ if ((${#manual_checks[@]})); then
         fi
         ;;
       *)
-        fail "manual_checks" "$check" "manual_checks unsupported: $check"
+        fail "manual_checks" "$check" "manual_checks unsupported: $check. Supported manual_checks values: \"Evaluator review file is terminal pass\". Put custom human assertions in Acceptance Notes or the review file, not exit_criteria.manual_checks."
         ;;
     esac
   done

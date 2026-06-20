@@ -313,9 +313,11 @@ worktree 边界，不要另建第二套计划或合同。
 - inline：在当前 worktree 内实现，并维护对应 plan/contract/review/notes 证据。
 - contract：进入 worktreePath，在 contract worktree 内实现、验证并 finish。
 
-第 3 步，严格按计划的 scope / non-scope 实现；把边界场景写进 contract——预期成功放
-`commands_succeed`，预期失败放 `commands_fail`。然后运行该 row 的 acceptance command 和
-repo workflow checks；需要外部验收时用 cross-review skills 填写 External Acceptance Advice。
+第 3 步，严格按计划的 scope / non-scope 实现；把任务本地边界场景写进 contract——预期成功放
+`commands_succeed`，预期失败放 `commands_fail`。不要把 `verify-sprint`、`check-task-workflow --strict`
+或 `contract-worktree finish` 这类 repo workflow/meta gate 放进 `commands_succeed` / `commands_fail`；
+它们要在 review terminal pass 后单独运行。`manual_checks` 只支持文档里的 verifier enum，
+自定义人工判断写进 review notes。需要外部验收时用 cross-review skills 填写 External Acceptance Advice。
 只有当 review 记录 `Status: Reviewed`、`Recommendation: pass` 且验证全部通过，才可进入 closeout。
 
 收尾：报告 changed files、执行过的命令、verification results、blockers、row status，并明确给出
