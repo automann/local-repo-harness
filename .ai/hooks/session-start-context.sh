@@ -68,12 +68,56 @@ file_mtime() {
   stat -c '%Y' "$file" 2>/dev/null
 }
 
+file_sha256() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  return 1
+}
+
+resume_metadata_field() {
+  local file="$1"
+  local label="$2"
+  [[ -f "$file" ]] || return 1
+
+  awk -v label="$label" '
+    {
+      prefix = "> **" label "**:"
+      if (index($0, prefix) == 1) {
+        print substr($0, length(prefix) + 1)
+        exit
+      }
+    }
+  ' "$file" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
 resume_current_for_handoff() {
-  local handoff_file resume_mtime handoff_mtime
+  local handoff_file resume_mtime handoff_mtime generated_from generated_sha current_sha
   resume_available || return 1
 
   handoff_file="$(workflow_handoff_file)"
   [[ -f "$handoff_file" ]] || return 0
+
+  generated_from="$(resume_metadata_field "$resume_file" "Generated From Handoff" || true)"
+  generated_sha="$(resume_metadata_field "$resume_file" "Generated From Handoff SHA256" || true)"
+  if [[ -n "$generated_sha" && "$generated_sha" != "(unavailable)" ]]; then
+    if [[ -n "$generated_from" && "$generated_from" != "$handoff_file" ]]; then
+      return 1
+    fi
+    current_sha="$(file_sha256 "$handoff_file" || true)"
+    [[ -n "$current_sha" && "$generated_sha" == "$current_sha" ]]
+    return $?
+  fi
 
   resume_mtime="$(file_mtime "$resume_file" || true)"
   handoff_mtime="$(file_mtime "$handoff_file" || true)"

@@ -10,6 +10,7 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
@@ -3532,6 +3533,8 @@ describe("Workflow helper scripts", () => {
       expect(resume).toContain("**Reason**: unit-test");
       expect(resume).toContain(`**Working Directory**: ${cwd}`);
       expect(resume).toContain("generated-by: repo-harness codex-handoff-resume v1");
+      expect(resume).toContain("**Generated From Handoff**: .ai/harness/handoff/current.md");
+      expect(resume).toMatch(/\*\*Generated From Handoff SHA256\*\*: [a-f0-9]{64}/);
       expect(resume).toContain("Current prompt files first:");
       expect(resume.indexOf("Current prompt files first:") < resume.indexOf("Required first reads:")).toBe(true);
       expect(resume).not.toContain(".ai/harness/context-budget/latest.json");
@@ -3863,6 +3866,77 @@ describe("Workflow helper scripts", () => {
 
       expect(res.status).toBe(1);
       expect(res.stdout).toContain("resume packet references a historical plan");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("check-task-workflow should detect checksum-stale resume and repair through prepare-handoff", () => {
+    const cwd = tmpWorkspace("helper-check-workflow-handoff-checksum");
+    try {
+      copyHelpers(cwd);
+      expect(
+        run("bash", ["scripts/ensure-task-workflow.sh", "--slug", "handoff-check", "--title", "Handoff Check"], cwd)
+          .status
+      ).toBe(0);
+
+      rmSync(join(cwd, ".ai/harness/active-plan"), { force: true });
+      rmSync(join(cwd, ".claude/.active-plan"), { force: true });
+      rmSync(join(cwd, ".ai/harness/active-worktree"), { force: true });
+      for (const dir of [
+        ".ai/context",
+        ".ai/harness/triage",
+        "deploy",
+        "deploy/env",
+        "deploy/scripts",
+        "deploy/submissions",
+        "deploy/runbooks",
+        "deploy/release-checklists",
+        "deploy/sql",
+        "docs/reference-configs",
+      ]) {
+        mkdirSync(join(cwd, dir), { recursive: true });
+      }
+      writeFileSync(join(cwd, ".ai/context/capability-source-map.json"), "{}\n");
+      for (const file of [
+        "docs/reference-configs/harness-overview.md",
+        "docs/reference-configs/agentic-development-flow.md",
+        "docs/reference-configs/external-tooling.md",
+        "docs/reference-configs/sprint-contracts.md",
+        "docs/reference-configs/heartbeat-triage.md",
+        "docs/reference-configs/handoff-protocol.md",
+        "docs/reference-configs/document-generation.md",
+        "docs/reference-configs/global-working-rules.md",
+        "deploy/README.md",
+      ]) {
+        writeFileSync(join(cwd, file), "# Fixture\n");
+      }
+
+      const prepare = run("bash", ["scripts/prepare-handoff.sh", "workflow-sync"], cwd);
+      expect(prepare.status).toBe(0);
+      expect(prepare.stdout).toContain("Updated .ai/harness/handoff/current.md");
+      expect(prepare.stdout).toContain("Updated .ai/harness/handoff/resume.md");
+
+      const initial = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+      expect(initial.status).toBe(0);
+      expect(initial.stdout).toContain("[workflow] OK");
+
+      const handoffPath = join(cwd, ".ai/harness/handoff/current.md");
+      const resumePath = join(cwd, ".ai/harness/handoff/resume.md");
+      writeFileSync(handoffPath, readFileSync(handoffPath, "utf-8") + "\n## Manual Drift\n\nChanged after resume.\n");
+      const newerResume = new Date("2026-06-20T12:00:00Z");
+      utimesSync(resumePath, newerResume, newerResume);
+
+      const stale = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+      expect(stale.status).toBe(1);
+      expect(stale.stdout).toContain("Resume packet is stale for handoff current");
+      expect(stale.stdout).toContain("local-repo-harness run prepare-handoff workflow-sync");
+
+      const repair = run("bash", ["scripts/prepare-handoff.sh", "workflow-sync"], cwd);
+      expect(repair.status).toBe(0);
+      const repaired = run("bash", ["scripts/check-task-workflow.sh", "--strict"], cwd);
+      expect(repaired.status).toBe(0);
+      expect(repaired.stdout).toContain("[workflow] OK");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

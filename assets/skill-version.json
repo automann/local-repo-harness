@@ -1,6 +1,6 @@
 {
-  "version": "0.5.17",
-  "templateVersion": "0.5.17",
+  "version": "0.5.18",
+  "templateVersion": "0.5.18",
   "skillName": "repo-harness",
   "contractId": "tasks-first-harness-v1",
   "retiredAliases": [
@@ -191,6 +191,10 @@
     {
       "version": "0.5.17",
       "description": "Blocks recursive workflow/meta commands inside task contracts and clarifies strict contract/review schema values in errors, templates, docs, and tests"
+    },
+    {
+      "version": "0.5.18",
+      "description": "Makes handoff/resume a checksum-validated generated pair with explicit prepare-handoff repair guidance for stale workflow context"
     }
   ],
   "generatedProjectStamp": {

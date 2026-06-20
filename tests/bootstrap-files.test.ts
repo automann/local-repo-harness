@@ -58,7 +58,7 @@ describe("Bootstrap Script Contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     const cliEntry = read("src/cli/index.ts");
     expect(pkg.name).toBe("local-repo-harness");
-    expect(pkg.version).toBe("0.5.17");
+    expect(pkg.version).toBe("0.5.18");
     expect(pkg.private).toBeUndefined();
     expect(pkg.bin["local-repo-harness"]).toBe("src/cli/index.ts");
     expect(pkg.bin).not.toHaveProperty("repo-harness");
@@ -96,6 +96,8 @@ describe("Bootstrap Script Contracts", () => {
     const sharedLib = read("scripts/lib/project-init-lib.sh");
     const contractTemplate = read("assets/templates/contract.template.md");
     const reviewTemplate = read("assets/templates/review.template.md");
+    const readme = read("README.md");
+    const sprintSkill = read("assets/skill-commands/repo-harness-sprint/SKILL.md");
     const contract = JSON.parse(read("assets/workflow-contract.v1.json"));
 
     expect(content).toContain("create_contract_directories");
@@ -210,6 +212,10 @@ describe("Bootstrap Script Contracts", () => {
     expect(reviewTemplate).toContain("> **External Source**: manual-override");
     expect(sharedLib).toContain("## External Acceptance Advice");
     expect(sharedLib).toContain("Manual override must use exactly:");
+    expect(readme).toContain("handoff/resume pair");
+    expect(readme).toContain("local-repo-harness run prepare-handoff workflow-sync");
+    expect(sprintSkill).toContain("stale handoff/resume state");
+    expect(sprintSkill).toContain("local-repo-harness run prepare-handoff workflow-sync");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/handoff/resume.md");
     expect(contract.artifacts.runtimeFiles).not.toContain(".ai/harness/context-budget/latest.json");
     expect(contract.artifacts.runtimeFiles).toContain(".ai/harness/capability-context/");

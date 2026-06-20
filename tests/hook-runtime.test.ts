@@ -16,6 +16,7 @@ import {
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 import { spawnSync } from "child_process";
+import { createHash } from "crypto";
 
 const HOOK_RUNTIME_TIMEOUT_MS = 60000;
 const HOOK_RUNTIME_SPAWN_BUFFER_BYTES = 16 * 1024 * 1024;
@@ -42,6 +43,10 @@ const THINK_SKILL_BODY = [
 
 function tmpWorkspace(prefix: string): string {
   return realpathSync(mkdtempSync(join(tmpdir(), `${prefix}-`)));
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function installHooks(cwd: string): string {
@@ -1292,6 +1297,45 @@ describe("Hook runtime behavior", () => {
       utimesSync(join(cwd, ".ai/harness/handoff/current.md"), newTime, newTime);
 
       const res = runHook("session-start-context.sh", cwd);
+      expect(res.status).toBe(0);
+      expect(res.stdout.trim()).toBe("");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  test("session-start-context skips checksum-stale resume packets even when mtime is fresh", () => {
+    const cwd = tmpWorkspace("session-start-checksum-stale-resume");
+    try {
+      installHooks(cwd);
+      mkdirSync(join(cwd, ".ai/harness/handoff"), { recursive: true });
+
+      const originalHandoff = "# Harness Handoff\n\n## Changed Files\n\n```\nsrc/old.ts\n```\n";
+      writeFileSync(join(cwd, ".ai/harness/handoff/current.md"), originalHandoff);
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/resume.md"),
+        [
+          "# Codex Resume Packet",
+          "<!-- generated-by: repo-harness codex-handoff-resume v1 -->",
+          "",
+          "> **Reason**: manual",
+          "> **Generated From Handoff**: .ai/harness/handoff/current.md",
+          `> **Generated From Handoff SHA256**: ${sha256(originalHandoff)}`,
+          "",
+          "## Resume Prompt",
+          "",
+          "Checksum-stale resume packet that must not be injected.",
+        ].join("\n")
+      );
+      writeFileSync(
+        join(cwd, ".ai/harness/handoff/current.md"),
+        "# Harness Handoff\n\n## Changed Files\n\n```\nsrc/new.ts\n```\n"
+      );
+
+      const freshTime = new Date("2026-06-20T09:00:00Z");
+      utimesSync(join(cwd, ".ai/harness/handoff/resume.md"), freshTime, freshTime);
+
+      const res = runHook("session-start-context.sh", cwd, { env: { HOOK_HOST: "codex" } });
       expect(res.status).toBe(0);
       expect(res.stdout.trim()).toBe("");
     } finally {

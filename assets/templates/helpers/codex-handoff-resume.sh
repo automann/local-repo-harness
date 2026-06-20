@@ -204,6 +204,23 @@ latest_global_handoff() {
   find "$codex_home/handoffs" -maxdepth 1 -type f -name 'handoff-*.md' 2>/dev/null | sort | tail -1
 }
 
+file_sha256() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  return 1
+}
+
 resume_file="$(safe_repo_file "$(policy_get '.handoff_resume.resume_packet_file' '.ai/harness/handoff/resume.md')" '.ai/harness/handoff/resume.md' '.ai/harness/')"
 repo_handoff="$(safe_repo_file "$(policy_get '.harness.handoff_file' '.ai/harness/handoff/current.md')" '.ai/harness/handoff/current.md' '.ai/harness/')"
 checks_file="$(safe_repo_file "$(policy_get '.harness.checks_file' '.ai/harness/checks/latest.json')" '.ai/harness/checks/latest.json' '.ai/harness/')"
@@ -213,6 +230,7 @@ plan_file="$(active_plan || true)"
 contract_file="$(derive_contract "$plan_file" || true)"
 notes_file="$(derive_notes "$plan_file" || true)"
 global_handoff="$(latest_global_handoff || true)"
+repo_handoff_sha="$(file_sha256 "$repo_handoff" || true)"
 
 mkdir -p "$(dirname "$resume_file")"
 
@@ -223,6 +241,8 @@ cat > "$resume_file" <<EOF_RESUME
 > **Generated**: $(date '+%Y-%m-%d %H:%M:%S')
 > **Reason**: ${reason}
 > **Working Directory**: ${cwd}
+> **Generated From Handoff**: ${repo_handoff}
+> **Generated From Handoff SHA256**: ${repo_handoff_sha:-(unavailable)}
 
 ## Resume Prompt
 

@@ -8,7 +8,7 @@
 
 仓库：`https://github.com/automann/local-repo-harness`
 
-当前版本：`local-repo-harness@0.5.17`
+当前版本：`local-repo-harness@0.5.18`
 
 ## 这个项目适合谁
 
@@ -537,6 +537,14 @@ bash scripts/check-agent-tooling.sh --json --host both
 ./.ai/harness/bin/local-repo-harness tools ensure codegraph --check --json --repo "$PWD"
 ```
 
+如果 `check-task-workflow --strict` 提示 handoff/resume stale，先刷新 repo-local
+handoff/resume pair，再重跑 strict check：
+
+```bash
+./.ai/harness/bin/local-repo-harness run prepare-handoff workflow-sync
+bash scripts/check-task-workflow.sh --strict
+```
+
 期望结果：
 
 - `status` 能看到 repo opt-in 和 project scope 状态。
@@ -641,6 +649,8 @@ state、artifacts、logs 和 scratch files。可提交的运维资料放在 `dep
 - `local-repo-harness-hook` 进入 CLI route registry。
 - route registry 再调度 `.ai/hooks/` 或 package 内 hook assets。
 - 计划、合同、review、checks 和 handoff 文件才是最终工作流事实。
+- `prepare-handoff` 是 repo-local handoff/resume pair 的刷新入口；不要手动分别编辑
+  `.ai/harness/handoff/current.md` 和 `.ai/harness/handoff/resume.md`。
 
 更多 hook 操作细节见：
 

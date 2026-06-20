@@ -19,6 +19,7 @@ if [[ -f ".ai/hooks/lib/workflow-state.sh" ]]; then
   echo "Updated $(workflow_handoff_file)"
   if [[ "${REPO_HARNESS_SKIP_RESUME_REFRESH:-0}" != "1" && -f "scripts/codex-handoff-resume.sh" ]]; then
     bash scripts/codex-handoff-resume.sh --cwd "$(pwd -P)" --reason "${1:-manual}" >/dev/null
+    echo "Updated $(workflow_resume_packet_file)"
   fi
   exit 0
 fi
@@ -33,4 +34,5 @@ EOF_HANDOFF
 echo "Updated .ai/harness/handoff/current.md"
 if [[ "${REPO_HARNESS_SKIP_RESUME_REFRESH:-0}" != "1" && -f "scripts/codex-handoff-resume.sh" ]]; then
   bash scripts/codex-handoff-resume.sh --cwd "$(pwd -P)" --reason "${1:-manual}" >/dev/null
+  echo "Updated .ai/harness/handoff/resume.md"
 fi

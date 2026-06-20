@@ -344,6 +344,10 @@ Prompt template：
 主 worktree 状态下跑的，重跑：
 ./.ai/harness/bin/local-repo-harness run check-task-workflow --strict
 
+若 strict check 提示 handoff/resume stale，先刷新 pair 再重跑：
+./.ai/harness/bin/local-repo-harness run prepare-handoff closeout
+./.ai/harness/bin/local-repo-harness run check-task-workflow --strict
+
 第 4 步，运行：
 ./.ai/harness/bin/local-repo-harness sprint next --json
 

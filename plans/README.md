@@ -21,6 +21,11 @@ state. Plan 016 is the 0.5.17 follow-up from real Sprint row execution: make
 recursive workflow/meta commands invalid inside task contracts, and make the
 strict contract/review schema visible through errors, templates, docs, and
 tests so agents do not have to infer exact enum values by failed snapshots.
+Plan 017 is the 0.5.18 handoff/resume follow-up: make
+`.ai/harness/handoff/resume.md` an explicit generated read model of
+`.ai/harness/handoff/current.md`, validate that pair with content metadata
+instead of only mtimes, and document `prepare-handoff` as the canonical
+repo-local refresh entrypoint.
 Older plans in this directory and `plans/archive/` remain historical context
 unless a future task explicitly reactivates them.
 
@@ -48,6 +53,7 @@ row when done.
 | 014 | Tighten review and edge-case gates | P1 | M | 013 | DONE (verified 2026-06-19; `check:release` passed for 0.5.15) |
 | 015 | Hydrate contract worktrees with profile-aware local workflow context | P1 | L | 013, 014 | DONE (verified 2026-06-19; `bun test` and `check:release` passed for 0.5.16) |
 | 016 | Make contract schema failures explicit and prevent recursive workflow gates | P1 | M | 014, 015 | DONE (verified 2026-06-20; `bun test` and `check:release` passed for 0.5.17) |
+| 017 | Make handoff/resume a canonical generated pair | P1 | M | 013, 016 | DONE (verified 2026-06-20; `bun test` and `check:release` passed for 0.5.18) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -120,6 +126,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   It depends on 015 operationally because that downstream proof came from
   hydrated contract worktrees running the real gates under project-scoped
   installs.
+- 017 depends on 013 because the canonical Sprint row execution and closeout
+  prompts now route agents through `prepare-handoff`, `check-task-workflow`, and
+  row-level context refresh. It depends on 016 because 016 clarified that outer
+  workflow gates and generated workflow state must stay outside task-local
+  contract criteria; 017 applies the same boundary to handoff/resume by making
+  resume a generated read model with a checksum-based source contract.
 
 ## Findings considered and rejected
 
@@ -201,3 +213,12 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
   executes `commands_succeed`; putting it inside the contract creates
   self-recursion. Plan 016 blocks this class of meta workflow command and keeps
   workflow checks as outer closeout gates.
+- Fix handoff/resume drift primarily with a post-edit hook that auto-refreshes
+  `resume.md`: rejected because hidden writes make state ownership harder to
+  debug. Plan 017 keeps the repair explicit through the canonical pair writer
+  and lets strict workflow report a precise remediation command.
+- Add a new top-level `local-repo-harness handoff refresh` command before
+  fixing the state model: rejected for 0.5.18 because the existing
+  `local-repo-harness run prepare-handoff <reason>` entrypoint already covers
+  repo-local pair refresh. A future CLI alias can wrap the same semantics after
+  the checksum contract is proven.

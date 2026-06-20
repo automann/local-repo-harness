@@ -44,6 +44,7 @@ issues=0
 WORKFLOW_CONTRACT_PATH=".ai/harness/workflow-contract.json"
 policy_file=".ai/harness/policy.json"
 json_runtime=""
+HANDOFF_RESUME_REPAIR_COMMAND="local-repo-harness run prepare-handoff workflow-sync"
 
 report_issue() {
   local message="$1"
@@ -387,6 +388,45 @@ file_mtime() {
   stat -f '%m' "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null || printf '0'
 }
 
+file_sha256() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+    return 0
+  fi
+
+  return 1
+}
+
+resume_metadata_field() {
+  local file="$1"
+  local label="$2"
+  [[ -f "$file" ]] || return 1
+
+  awk -v label="$label" '
+    {
+      prefix = "> **" label "**:"
+      if (index($0, prefix) == 1) {
+        print substr($0, length(prefix) + 1)
+        exit
+      }
+    }
+  ' "$file" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+resume_has_generated_marker() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+  grep -Fq "<!-- generated-by: repo-harness codex-handoff-resume v1 -->" "$file"
+}
+
 handoff_declares_no_active_plan() {
   local file="$1"
   [[ -f "$file" ]] || return 1
@@ -402,12 +442,12 @@ resume_references_plan() {
 check_handoff_resume_pair() {
   local handoff_file="$1"
   local resume_file="$2"
-  local handoff_mtime resume_mtime
+  local handoff_mtime resume_mtime generated_from generated_sha current_sha
 
   [[ -f "$handoff_file" || -f "$resume_file" ]] || return 0
 
   if [[ -f "$handoff_file" && ! -f "$resume_file" ]]; then
-    report_issue "Handoff current exists but resume packet is missing: $resume_file"
+    report_issue "Handoff current exists but resume packet is missing: $resume_file. Refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
     return 0
   fi
 
@@ -416,10 +456,28 @@ check_handoff_resume_pair() {
     return 0
   fi
 
-  handoff_mtime="$(file_mtime "$handoff_file")"
-  resume_mtime="$(file_mtime "$resume_file")"
-  if [[ "$resume_mtime" =~ ^[0-9]+$ && "$handoff_mtime" =~ ^[0-9]+$ && "$resume_mtime" -lt "$handoff_mtime" ]]; then
-    report_issue "Resume packet is older than handoff current: $resume_file < $handoff_file"
+  if resume_has_generated_marker "$resume_file"; then
+    generated_from="$(resume_metadata_field "$resume_file" "Generated From Handoff" || true)"
+    generated_sha="$(resume_metadata_field "$resume_file" "Generated From Handoff SHA256" || true)"
+
+    if [[ -z "$generated_from" || -z "$generated_sha" || "$generated_sha" == "(unavailable)" ]]; then
+      report_issue "Resume packet lacks handoff checksum metadata; refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
+    elif [[ "$generated_from" != "$handoff_file" ]]; then
+      report_issue "Resume packet was generated from ${generated_from:-missing}, expected $handoff_file. Refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
+    else
+      current_sha="$(file_sha256 "$handoff_file" || true)"
+      if [[ -z "$current_sha" ]]; then
+        report_issue "Could not compute handoff checksum for $handoff_file; refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
+      elif [[ "$generated_sha" != "$current_sha" ]]; then
+        report_issue "Resume packet is stale for handoff current: $resume_file was generated from $generated_sha, expected $current_sha. Refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
+      fi
+    fi
+  else
+    handoff_mtime="$(file_mtime "$handoff_file")"
+    resume_mtime="$(file_mtime "$resume_file")"
+    if [[ "$resume_mtime" =~ ^[0-9]+$ && "$handoff_mtime" =~ ^[0-9]+$ && "$resume_mtime" -lt "$handoff_mtime" ]]; then
+      report_issue "Resume packet is older than handoff current: $resume_file < $handoff_file. Refresh with: $HANDOFF_RESUME_REPAIR_COMMAND"
+    fi
   fi
 
   if handoff_declares_no_active_plan "$handoff_file" && resume_references_plan "$resume_file"; then

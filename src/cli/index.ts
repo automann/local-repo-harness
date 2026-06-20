@@ -209,7 +209,7 @@ export function buildProgram(): Command {
     .description('Install local-repo-harness into a repo-managed tool root, then delegate to project adopt')
     .option('--repo <path>', 'Target repository path (defaults to cwd)')
     .option('--target <target>', `Host target for adapters and runtime skills: ${VALID_TARGETS.join('|')}`, 'both')
-    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.17')
+    .option('--package <spec>', 'Package spec to install into the project-managed runtime, e.g. local-repo-harness@0.5.18')
     .option('--no-sync-skill', 'Skip repo-harness skill alias installation during delegated adopt')
     .option('--skill-scope <scope>', `repo-harness-owned skill scope: ${VALID_SCOPES.join('|')}`, 'project')
     .option('--no-host-adapters', 'Skip writing Codex/Claude hook adapters during delegated adopt')
